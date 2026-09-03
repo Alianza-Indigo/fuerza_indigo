@@ -180,9 +180,10 @@ sequenceDiagram
     alt evento ya procesado (mismo stripeEventId)
         WH-->>STR: 200 sin efectos
     else evento nuevo
-        WH->>DB: transacción: Payment→SUCCEEDED + LedgerEntry + AuditEvent
-        DB->>ENT: otorgar derecho (membresía, herramienta, servicio, programa)
+        WH->>DB: transacción: Payment→SUCCEEDED + LedgerEntry + AuditEvent + OutboxMessage
         WH-->>STR: 200
+        DB->>ENT: entrega del evento al manejador registrado
+        ENT->>DB: otorgar derecho de forma idempotente (membresía, herramienta, servicio, programa)
     end
 ```
 
@@ -194,6 +195,9 @@ sequenceDiagram
 | Webhook fuera de orden | El procesamiento es por estado final, no por secuencia de llegada; un evento antiguo no revierte uno más reciente. |
 | Evento sin pago local correspondiente | Queda `UNRECONCILED` y genera alerta; nunca se descarta en silencio. |
 | Falla la base al procesar | La transacción se revierte y el trabajo de reintento reprocesa desde el evento persistido. |
+| El proceso termina entre la confirmación y el otorgamiento | El `OutboxMessage` quedó escrito en la misma transacción que el pago: el despachador lo entrega en el siguiente ciclo. No existe un estado en el que el pago conste y la orden de otorgamiento se haya perdido. |
+| El manejador se ejecuta dos veces | El único `(outboxMessageId, handlerCode)` de `OutboxDelivery` lo vuelve inocuo: no se duplica la membresía ni el derecho. |
+| Mensaje sin entregar tras agotar reintentos | Alerta operativa y aparición en el panel de salud, junto a los webhooks sin conciliar. La persona ve su pago registrado y su derecho pendiente, nunca un silencio. |
 | Cuenta Stripe equivocada | La ruta incluye la cuenta; un evento de una cuenta no puede afectar registros de la otra entidad jurídica. |
 | Pago manual | Lo registra Finanzas con evidencia adjunta y lo aprueba una segunda persona; sin doble control no produce activación. |
 
@@ -364,41 +368,48 @@ sequenceDiagram
 
 ## F-12 Elección con voto secreto
 
-**Fase 5.** El diseño garantiza simultáneamente que se pruebe **quién tenía derecho y quién votó**, y que **nadie pueda saber qué votó cada quien**.
+**Fase 5.** El diseño garantiza simultáneamente que se pruebe **quién tenía derecho y a quién se le entregó su credencial**, y que **nadie pueda saber qué votó cada quien**. El mecanismo completo, con sus límites explícitos, está en [`SECURITY.md`](SECURITY.md) §9 y su justificación en ADR-0012.
 
 ```mermaid
 sequenceDiagram
     actor E as Persona electora
     participant AUTH as Elegibilidad
     participant BOX as Urna
-    participant REC as Acuses
     participant TAL as Escrutinio
 
     E->>AUTH: solicita votar
     AUTH->>AUTH: verifica padrón congelado, membresía y pleno goce de derechos
     alt no elegible
-        AUTH-->>E: motivo explicado (sin exponer datos de terceros)
-    else elegible y sin voto previo
-        AUTH->>AUTH: marca ballotIssuedAt y emite testigo ciego de un solo uso
-        AUTH-->>E: boleta
-        E->>BOX: emite el voto con el testigo
-        BOX->>BOX: guarda Ballot SIN identidad, con hora truncada
-        BOX->>AUTH: consume el testigo (transacción separada)
-        BOX->>REC: acuse con código que prueba que votó, no qué votó
-        REC-->>E: acuse descargable
+        AUTH-->>E: motivo explicado, sin exponer datos de terceros
+    else elegible y sin credencial previa
+        AUTH->>AUTH: genera 32 bytes aleatorios y los firma con la clave del proceso
+        Note over AUTH: No almacena la credencial ni su huella.<br/>Marca credentialIssued y la fecha civil.
+        AUTH-->>E: credencial firmada + acuse de emisión
+        E->>BOX: deposita selección con su credencial
+        BOX->>BOX: verifica la firma
+        BOX->>BOX: transacción única: Ballot sin identidad ni tiempo<br/>+ SpentVoteCredential con la huella
+        BOX-->>E: verificationCode para comprobar la inclusión
     end
     TAL->>BOX: cierra la urna y cuenta
-    TAL->>TAL: acta de resultados verificable
+    TAL->>TAL: acta con resultados y lista de códigos escrutados
+    E->>TAL: coteja su verificationCode en la lista publicada
 ```
 
 | Camino | Comportamiento |
 |---|---|
-| Intento de votar dos veces | El testigo ya consumido lo impide; se registra `SecurityEvent` y la persona ve que su voto ya fue emitido. |
+| Intento de obtener una segunda credencial | `VoteEligibility.credentialIssued` ya es verdadero; se deniega y se registra `SecurityEvent`. La persona ve que su credencial ya fue emitida y que puede usarla si aún no depositó. |
+| Intento de depositar dos veces | La unicidad de `SpentVoteCredential.credentialHash` lo impide en la transacción. |
+| Credencial con firma inválida o de otro proceso | Se rechaza sin crear boleta; la firma incluye el identificador del proceso. |
 | Afiliado honorario o beneficiario | Nunca aparece como elegible; el intento se deniega y se audita. |
 | Persona con derechos suspendidos | No elegible, con motivo `SUSPENDED` visible solo para ella y para la Comisión Electoral. |
-| Caída durante la emisión | El testigo no consumido permite reintentar; la boleta solo existe si la transacción de urna concluyó. |
-| Solicitud de correlacionar persona y sentido | Imposible desde la interfaz y desde la base operativa: la tabla de boletas no contiene identidad, ni IP, ni agente de usuario, ni orden reconstruible. |
+| Caída después de emitir la credencial y antes de depositar | La credencial vive en el navegador de la persona y sigue siendo válida hasta el cierre: puede depositar más tarde. Si la pierde, no hay reemisión automática; la Comisión Electoral resuelve el caso como incidencia, con constancia. |
+| Caída durante el depósito | La transacción es atómica: o existen boleta y huella, o no existe ninguna de las dos. Un reintento con la misma credencial funciona; con una ya consumida, se rechaza. |
+| La persona quiere comprobar que su voto se contó | Coteja su `verificationCode` en la lista publicada por el acta. La lista **no** muestra el sentido de cada código, de modo que no puede demostrar ante nadie por quién votó. |
+| Alguien pide correlacionar persona y sentido | No existe la información. El lado identificado guarda solo un booleano y una fecha civil; la urna no guarda identidad, ni hora, ni identificadores ordenables en el tiempo. |
+| Descuadre entre credenciales consumidas y boletas contadas | El escrutinio no puede certificarse: se levanta incidencia y se resuelve antes de declarar resultados. |
 | Impugnación | Se registra como `ElectionIncident` con evidencia y resolución; puede anular el proceso mediante decisión humana, nunca automática. |
+
+**Auditoría:** `ELECTION_CALL_ISSUED`, `ROSTER_FROZEN`, `VOTE_CREDENTIAL_ISSUED` (sin la credencial), `VOTE_PROCESS_CLOSED`, `VOTE_TALLIED`, `VOTE_CERTIFIED`, `ELECTION_INCIDENT_RESOLVED`. Ningún evento de auditoría registra el depósito de una boleta concreta: hacerlo reintroduciría la correlación temporal que el diseño elimina.
 
 ---
 

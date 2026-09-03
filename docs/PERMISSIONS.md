@@ -83,7 +83,7 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `support` | `request.create`, `request.read`, `request.triage`, `request.route` | Sensible |
 | `cases` | `case.read`, `case.assign`, `case.update`, `case.message`, `case.close`, `case.reopen`, `case.refer`, `case.read_reserved_notes`, `case.export` | Sensible · Crítica en `read_reserved_notes` y `export` (exigen motivo) |
 | `cian` | `intake.read`, `intake.triage`, `appointment.manage`, `episode.read`, `careplan.manage`, `clinicalnote.read`, `clinicalnote.write`, `outcome.read` | Crítica en todo lo clínico |
-| `billing` | `catalog.manage`, `payment.read`, `payment.register_manual`, `payment.approve_manual`, `refund.request`, `refund.approve`, `ledger.read`, `ledger.adjust`, `reconciliation.close`, `asset.manage`, `report.export` | Crítica; ajustes y exportaciones exigen motivo |
+| `billing` | `catalog.manage`, `payment.read`, `payment.register_manual`, `payment.approve_manual`, `refund.request`, `refund.approve`, `ledger.read`, `ledger.adjust`, `reconciliation.close`, `asset.manage`, `report.export`, `accountability.read` | Crítica; ajustes y exportaciones exigen motivo. `accountability.read` es Normal |
 | `tools` | `tool.manage`, `entitlement.grant`, `entitlement.revoke`, `tool.launch` | Sensible |
 | `ceni` | `organization.manage`, `engagement.manage`, `assessment.respond`, `assessment.review`, `finding.manage`, `plan.manage`, `certification.decide`, `certificate.revoke` | Crítica en `certification.decide` y `certificate.revoke` |
 | `content` | `page.create`, `page.review`, `page.publish`, `page.archive`, `redirect.manage` | Normal · Sensible en `publish` |
@@ -145,7 +145,8 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `payment.register_manual` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P | — | — | — |
 | `payment.approve_manual` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `refund.approve` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
-| `ledger.read` | — | — | — | — | L | — | L | P | — | — | — | — | — | — | — | P | — | L | — |
+| `ledger.read` | — | — | — | — | — | — | L | P | — | — | — | — | — | — | — | P | — | L | — |
+| `accountability.read` | — | — | — | — | L | L | L | P | — | — | — | — | — | — | — | P | — | L | — |
 | `ledger.adjust` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P | — | — | — |
 | `reconciliation.close` | — | — | — | — | — | — | — | L | — | — | — | — | — | — | — | P | — | — | — |
 | `asset.manage` | — | — | — | — | — | — | P | L | — | — | — | — | — | — | — | P | — | L | — |
@@ -168,6 +169,8 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `job.manage` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P |
 | `webhook.replay` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P | — | — | P |
 
+**Rendición de cuentas frente a libro auxiliar (defecto `D-F0-011`).** El PRD §9.7 pone a disposición de los agremiados los **informes financieros semestrales**, no el libro auxiliar. Son cosas distintas: un asiento individual de `LedgerEntry` puede revelar quién pagó qué y cuándo, dato que ningún agremiado necesita para fiscalizar y que expone a sus compañeras y compañeros. Por eso `ledger.read` queda reservado a Finanzas, a la Comisión de Vigilancia —cuyo mandato es precisamente la revisión detallada—, a la Secretaría General y a auditoría, mientras que `accountability.read` da acceso a los informes agregados de rendición de cuentas y es el permiso que corresponde al agremiado y al delegado.
+
 Notas de lectura:
 
 - `EXECUTIVE_SECRETARY` no es un rol único: cada cartera recibe **solo** los permisos de su `OfficeDefinition`. La columna muestra la unión de las carteras; la matriz por cartera está en §4.1.
@@ -181,7 +184,7 @@ Notas de lectura:
 | Secretaría General | `assembly.convene`, `minutes.publish`, `power.grant`, `power.revoke`, `office.appoint`, lectura transversal sin acceso clínico |
 | Secretaría de Organización | `application.review`, `application.resolve`, `membership.*`, `roster.export`, `credential.issue`, `credential.revoke`, `unit.*` |
 | Secretaría de Trabajo y Conflictos | `cases.*` en dominio `UNION_DEFENSE`, `bargaining.file.manage`, `bargaining.consultation.open`, `strike.file_open` |
-| Secretaría de Finanzas y Tesorería | `catalog.manage`, `payment.*`, `refund.*`, `ledger.*`, `reconciliation.close`, `asset.manage`, `report.export` |
+| Secretaría de Finanzas y Tesorería | `catalog.manage`, `payment.*`, `refund.*`, `ledger.*`, `reconciliation.close`, `asset.manage`, `report.export`, `accountability.read` |
 | Secretaría de Actas y Acuerdos | `resolution.record`, `minutes.publish`, `document.certify_copy`, archivo histórico |
 | Secretaría de Neuroinclusión y Enlace Familiar | `beneficiary.*`, `cases.*` en dominio `SOCIAL_ATTENTION`, `case.refer`, `entitlement.grant` |
 | Secretaría de Equidad y Género | Lectura de composición agregada, `policy.manage`, `complaint.read` en su protocolo |
@@ -206,28 +209,75 @@ Incompatibilidades verificadas por el dominio: quien integra la Comisión de Vig
 
 ### 5.1 Algoritmo de decisión
 
+**Regla estructural (corrige D-F0-001):** no existe una vía rápida para ningún actor. El tipo de actor determina **de dónde salen sus permisos**, nunca **cuántas verificaciones atraviesa**. Todo actor —incluido el Superadmin raíz— recorre las mismas siete comprobaciones, en el mismo orden.
+
 ```ts
 function can(ctx: ActorContext, permission: PermissionCode, resource: Resource): Decision {
-  if (ctx.actorKind === 'ROOT_SUPERADMIN') {
-    if (SUBSTANTIVE_ACTS.has(permission)) return deny('SUPERADMIN_SIN_ACTOS_SUSTANTIVOS');
-    if (requiresReason(permission) && !ctx.reason) return deny('MOTIVO_REQUERIDO');
-    return allow({ audit: 'SUPERADMIN_ACTION' });
-  }
-  const grants = ctx.roles.filter(isCurrentlyEffective);           // vigencia del nombramiento
+  // 1. Origen de los permisos. Es lo ÚNICO que depende del tipo de actor.
+  const grants = resolveGrants(ctx);
   if (!grants.some((g) => g.permissions.has(permission))) return deny('SIN_PERMISO');
+
+  // 2. Entidad jurídica.
   if (!matchesLegalEntity(grants, resource)) return deny('FUERA_DE_ENTIDAD');
+
+  // 3. Territorio.
   if (!matchesTerritory(grants, resource)) return deny('FUERA_DE_TERRITORIO');
+
+  // 4. Asignación viva sobre el expediente.
   if (needsAssignment(permission) && !hasLiveAssignment(ctx, resource)) return deny('SIN_ASIGNACION');
+
+  // 5. Consentimiento vigente para el propósito.
   if (needsConsent(permission) && !hasValidConsent(ctx, resource, purposeOf(permission)))
     return deny('CONSENTIMIENTO_REQUERIDO');
+
+  // 6. Compartimento de sensibilidad.
   if (isCompartmented(resource) && !ctx.compartments.has(resource.compartment))
     return deny('COMPARTIMENTO_AJENO');
+
+  // 7. Motivo capturado por la persona.
   if (requiresReason(permission) && !ctx.reason) return deny('MOTIVO_REQUERIDO');
+
   return allow({ fieldMask: fieldMaskFor(ctx, resource) });
+}
+
+function resolveGrants(ctx: ActorContext): Grant[] {
+  switch (ctx.actorKind) {
+    case 'PERSON':
+      // Solo nombramientos vigentes: startsAt ≤ ahora < coalesce(endsAt, revokedAt, ∞)
+      return ctx.roles.filter(isCurrentlyEffective);
+    case 'ROOT_SUPERADMIN':
+      // Lista CERRADA de concesión, no lista de prohibiciones.
+      return [{ permissions: SUPERADMIN_GRANTED, legalEntities: 'ALL', territories: 'ALL' }];
+    case 'SYSTEM':
+      // Un trabajo programado solo puede lo que su tipo declara.
+      return [jobGrantFor(ctx.jobType)];
+  }
 }
 ```
 
-Toda denegación produce un `SecurityEvent` con el motivo. Toda concesión sobre datos sensibles produce un `AuditEvent`. El `fieldMask` se aplica **en la consulta**, no en la vista: los campos no autorizados nunca salen de la base.
+**Por qué la lista cerrada.** Una lista de prohibiciones concede por omisión: cada permiso nuevo que se agregue al sistema queda automáticamente disponible para el actor raíz salvo que alguien recuerde vetarlo. Una lista de concesión deniega por omisión, que es la única postura compatible con el objetivo de cero incidentes de acceso indebido del PRD §1.3.
+
+**Contenido de `SUPERADMIN_GRANTED`.** Exclusivamente permisos de configuración técnica y de operación del sistema:
+
+```
+system.module.configure   system.job.manage        system.webhook.replay
+system.health.read        system.integration.configure
+access.permission.read    access.session.revoke_other
+billing.catalog.manage    ai.provider.configure    ai.prompt.publish
+content.page.publish      tools.tool.manage        tools.entitlement.grant
+files.retention.manage    files.legalhold.manage
+audit.audit.read          audit.security.read
+identity.person.read      identity.person.merge
+```
+
+Todo lo demás le está **denegado por no figurar en la lista**: admisiones, resoluciones, votos, sanciones, certificaciones, autorización de pagos, expedientes de casos, notas clínicas, padrones y directorios.
+
+**Compartimentos del actor raíz.** `ctx.compartments` es el **conjunto vacío**. En consecuencia, la comprobación 6 deniega cualquier recurso de los compartimentos `UNION`, `SOCIAL`, `CLINICAL` o `DISCIPLINARY`, aunque un permiso concedido pareciera alcanzarlo. Esta es la salvaguarda que impide que una lectura de soporte se convierta en acceso a información clínica o disciplinaria.
+
+**Lecturas sensibles del actor raíz.** `identity.person.read` está concedido, pero `identity.person.read_sensitive` no. Además, el motor aplica al actor raíz un límite de volumen: las consultas que devolverían más de un registro de datos personales se deniegan con `LECTURA_MASIVA_PROHIBIDA`. No existe exportación masiva para este actor.
+
+**Trazabilidad.** Toda denegación produce un `SecurityEvent` con el motivo. Toda concesión sobre datos sensibles produce un `AuditEvent`. Cada acción del actor raíz produce además `SUPERADMIN_ACTION` con su motivo obligatorio. El `fieldMask` se aplica **en la consulta**, no en la vista: los campos no autorizados nunca salen de la base.
+
 
 ---
 
@@ -280,11 +330,13 @@ Cuando una persona sustituye a otra se crea un `OfficeTerm` nuevo con su propia 
 |---|---|
 | No depende de un registro editable en base | Se define por `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD_HASH`; no existe fila en `User` |
 | No aparece en padrones ni directorios | Ninguna consulta de padrón, directorio o asamblea considera al actor raíz |
-| No vota ni ejecuta actos sindicales | El conjunto `SUBSTANTIVE_ACTS` (admisión, resolución, voto, sanción, certificación, autorización de pagos) le está vedado por el motor |
+| No vota ni ejecuta actos sindicales | Su conjunto de concesión `SUPERADMIN_GRANTED` (§5.1) es **cerrado** y no contiene admisiones, resoluciones, votos, sanciones, certificaciones ni autorización de pagos. Lo no listado queda denegado por omisión, incluidos los permisos que se agreguen en el futuro |
 | Sesión firmada, corta y revocable | Cookie propia, duración limitada, invalidación masiva vía `SUPERADMIN_SESSION_VERSION` |
 | Límite de intentos, alertas y auditoría | `SecurityEvent` `SUPERADMIN_LOGIN` y alerta operativa en cada acceso |
-| Motivo obligatorio en acciones críticas de soporte | El motor exige `ctx.reason`; sin él, deniega |
-| Sin acceso masivo a datos sensibles | Las lecturas sensibles son de a un registro, con motivo y auditadas; no existe exportación masiva para este actor |
+| Motivo obligatorio en acciones críticas de soporte | El motor exige `ctx.reason` en la comprobación 7 de la tubería; sin él, deniega |
+| Sin acceso a compartimentos | `ctx.compartments` es el conjunto vacío, de modo que la comprobación 6 deniega todo recurso sindical, social, clínico o disciplinario |
+| Sin vía rápida en el motor | Recorre las siete comprobaciones de §5.1 igual que cualquier actor; el tipo de actor solo determina el **origen** de sus permisos, nunca cuántas verificaciones atraviesa |
+| Sin acceso masivo a datos sensibles | `identity.person.read_sensitive` no está concedido; además el motor deniega con `LECTURA_MASIVA_PROHIBIDA` toda consulta que devolvería más de un registro con datos personales. No existe exportación masiva para este actor |
 
 Los administradores ordinarios **sí** existen como personas y reciben permisos mediante nombramientos; ninguno puede asignarse a sí mismo permisos superiores a los que ya posee (verificación explícita en `role.assign`).
 
@@ -302,8 +354,11 @@ Cada permiso se prueba en positivo y en negativo (PRD §25.4). Estas pruebas neg
 6. Organización ajena: un `CENI_ORG_USER` consulta el expediente de otra organización y es denegado.
 7. Consentimiento ausente: una canalización sin consentimiento vigente no avanza de `AWAITING_CONSENT`.
 8. Honorario y voto: un `HONORARY_AFFILIATE` no aparece como elegible en ningún `VoteProcess` ni computa para el quórum.
-9. Superadmin acotado: el actor raíz intenta emitir un voto, resolver una admisión y certificar CENI, y es denegado en los tres casos.
-10. Archivo privado: la URL persistente de un archivo sensible no entrega contenido sin evaluación de política.
+9. Superadmin acotado: el actor raíz intenta emitir un voto, resolver una admisión y certificar CENI, y es denegado en los tres casos con `SIN_PERMISO`, por ausencia en la lista de concesión.
+10. Superadmin sin compartimentos: el actor raíz intenta leer una nota clínica, un expediente disciplinario y un caso social, y es denegado con `COMPARTIMENTO_AJENO`.
+11. Superadmin sin lectura masiva: el actor raíz intenta listar personas con datos sensibles y es denegado con `LECTURA_MASIVA_PROHIBIDA`.
+12. Permiso nuevo: se agrega un permiso al catálogo sin tocar `SUPERADMIN_GRANTED` y el actor raíz **no** lo obtiene. Esta prueba es la que hace verificable la elección de lista cerrada frente a lista de vetos.
+13. Archivo privado: la URL persistente de un archivo sensible no entrega contenido sin evaluación de política.
 
 ---
 

@@ -17,7 +17,7 @@
 | [0009](#adr-0009-dinero-en-unidades-menores-con-moneda-explícita) | Dinero en unidades menores con moneda explícita | Aceptada |
 | [0010](#adr-0010-identificadores-internos-uuidv7-y-públicos-opacos) | Identificadores internos UUIDv7 y públicos opacos | Aceptada |
 | [0011](#adr-0011-auditoría-transaccional-anexable-y-encadenada) | Auditoría transaccional, anexable y encadenada | Aceptada |
-| [0012](#adr-0012-secreto-del-voto-por-testigo-ciego-y-urna-sin-identidad) | Secreto del voto por testigo ciego y urna sin identidad | Aceptada |
+| [0012](#adr-0012-secreto-del-voto-la-credencial-no-se-almacena-al-emitirse) | Secreto del voto: la credencial no se almacena al emitirse | Aceptada, sustituye la redacción original |
 | [0013](#adr-0013-archivos-privados-con-descarga-por-ruta-autenticada) | Archivos privados con descarga por ruta autenticada | Aceptada |
 | [0014](#adr-0014-abstracción-de-stripe-por-entidad-jurídica) | Abstracción de Stripe por entidad jurídica | Aceptada |
 | [0015](#adr-0015-internacionalización-sin-dependencia-externa) | Internacionalización sin dependencia externa | Aceptada |
@@ -30,6 +30,12 @@
 | [0022](#adr-0022-reglas-estatutarias-versionadas-como-dato) | Reglas estatutarias versionadas como dato | Aceptada |
 | [0023](#adr-0023-el-repositorio-solo-declara-comandos-que-funcionan) | El repositorio solo declara comandos que funcionan | Aceptada |
 | [0024](#adr-0024-verificador-de-fase-sin-dependencias) | Verificador de fase sin dependencias | Aceptada |
+| [0025](#adr-0025-bandeja-de-salida-transaccional-para-otorgar-derechos) | Bandeja de salida transaccional para otorgar derechos | Aceptada |
+| [0026](#adr-0026-actor-como-sujeto-de-atribución) | `Actor` como sujeto de atribución | Aceptada |
+| [0027](#adr-0027-jerarquía-territorial-por-ruta-materializada) | Jerarquía territorial por ruta materializada | Aceptada |
+| [0028](#adr-0028-pgvector-con-búsqueda-híbrida-para-la-base-documental) | pgvector con búsqueda híbrida para la base documental | Aceptada |
+| [0029](#adr-0029-llavero-de-firma-con-identificador-de-clave) | Llavero de firma con identificador de clave | Aceptada |
+| [0030](#adr-0030-el-verificador-comprueba-coherencia-no-solo-existencia) | El verificador comprueba coherencia, no solo existencia | Aceptada |
 
 ---
 
@@ -143,15 +149,26 @@
 
 ---
 
-## ADR-0012 · Secreto del voto por testigo ciego y urna sin identidad
+## ADR-0012 · Secreto del voto: la credencial no se almacena al emitirse
+
+**Estado.** Aceptada. **Sustituye** la primera redacción de esta decisión, que titulaba "testigo ciego y urna sin identidad" y resultó insuficiente (defecto `D-F0-002`).
 
 **Contexto.** PRD §9.5: la identidad del votante y la boleta deben separarse criptográfica y lógicamente; la auditoría debe demostrar elegibilidad y emisión sin revelar contenido.
 
-**Decisión.** Tres almacenes separados: `VoteEligibility` prueba el derecho y consume un testigo ciego de un solo uso; `Ballot` guarda el sentido **sin** identidad, sin IP, sin agente de usuario y con la hora truncada al minuto; `VoteReceipt` entrega a la persona un acuse de que votó. La emisión del testigo y el depósito de la boleta ocurren en transacciones separadas para que el orden de inserción no revele la correspondencia.
+**Por qué la primera decisión no bastaba.** Guardaba `VoteEligibility.blindTokenHash` junto a `membershipId`, y `Ballot.castAt` truncado al minuto. Eso deja dos vías de correlación: la huella del testigo permitiría unir ambas filas si la boleta la referenciara, y —aun sin referenciarla— con pocos votos por minuto basta comparar `ballotConsumedAt` con `castAt` para emparejar persona y boleta. Además, un identificador UUIDv7 en la boleta codifica el instante del depósito en el propio identificador, de modo que truncar la columna temporal no servía de nada. La decisión afirmaba una garantía que el modelo no sostenía.
 
-**Consecuencias.** Un volcado completo de la base no permite reconstruir el sentido individual del voto. Esa propiedad se prueba explícitamente en E2E-07.
+**Decisión.**
 
----
+1. **La credencial de voto no se almacena al emitirse.** Se generan 32 bytes aleatorios, se firman con HMAC bajo una clave derivada por proceso y se entregan al navegador de la persona. El servidor no guarda ni el valor ni su huella. Del lado identificado solo queda `VoteEligibility.credentialIssued` (booleano) y `credentialIssuedOn` (**fecha civil**, sin hora).
+2. **La urna no tiene tiempo ni identidad.** `Ballot` carece de `membershipId`, `personId`, IP, agente de usuario y de **toda** columna temporal, incluido `createdAt`. Su clave primaria es **UUIDv4**, excepción documentada a la convención UUIDv7, porque un identificador ordenable en el tiempo reintroduciría la fuga que se busca cerrar.
+3. **El doble depósito se impide sin identificar.** Al depositar se verifica la firma y se inserta `SpentVoteCredential` con la huella de la credencial, en la misma transacción que la boleta. Esa fila tampoco tiene tiempo ni identidad.
+4. **La verificación la conserva la persona.** El `verificationCode` de su boleta le permite comprobar que fue contada en la lista que publica el acta. La lista publica los códigos escrutados, **no** el sentido de cada uno: la persona verifica inclusión sin poder demostrar ante un tercero por quién votó, lo que retira el instrumento de la coacción.
+5. **El acuse se emite al entregar la credencial, no al depositar.** Crear el acuse en el depósito produciría dos filas nacidas en la misma transacción —una identificada y otra no— cuyo orden físico permitiría emparejarlas.
+6. **La clave HMAC del proceso se destruye al certificar los resultados**, de modo que nadie pueda fabricar credenciales válidas retroactivamente.
+
+**Consecuencia asumida.** Quien obtiene su credencial y se abstiene es indistinguible de quien depositó. Es el precio directo de no crear el vínculo: acreditar el depósito por persona exigiría exactamente la correspondencia que se decidió no persistir. Los conteos agregados —elegibles, credenciales emitidas, credenciales consumidas, boletas contadas— detectan la diferencia sin señalar a nadie. Los límites del diseño están enunciados sin adorno en `SECURITY.md` §9.3.
+
+**Verificación.** `E2E-07` ejecuta una prueba adversaria sobre un volcado completo tras una votación con tres personas electoras. Con ese volumen, cualquier fuga temporal residual sería trivial de explotar; que la prueba pase es lo que convierte la afirmación en demostración.
 
 ## ADR-0013 · Archivos privados con descarga por ruta autenticada
 
@@ -260,3 +277,88 @@
 **Decisión.** `scripts/phase/verify.mjs` en Node.js puro, **sin dependencias**, ejecutable en un repositorio recién clonado y sin `npm install`. Lee la fase activa de `docs/PHASE_STATUS.md`, ejecuta los controles aplicables, imprime el resultado y escribe `reports/phase-verify.json`. Devuelve código de salida distinto de cero cuando algún control falla, de modo que la integración continua lo use como puerta.
 
 **Consecuencias.** El contrato del PRD (entidades, roles, variables, familias de endpoints, flujos E2E, fases) vive en `scripts/phase/prd-contract.json` y se comprueba de forma automática, no por lectura humana. Los controles crecen con cada fase.
+
+---
+
+## ADR-0025 · Bandeja de salida transaccional para otorgar derechos
+
+**Contexto.** Un pago confirmado debe activar una membresía, un derecho de herramienta, un servicio CIAN o un programa CENI. El PRD §11.4 exige que el webhook actualice pagos y derechos de acceso mediante transacciones. Pero el mapa de módulos sitúa `billing` **por debajo** de esos módulos y prohíbe dependencias circulares: si `billing` los invocara, rompería el grafo. La primera redacción de la arquitectura mencionaba "un evento de dominio o un módulo de coordinación superior" sin decidir cuál ni definirlo (defecto `D-F0-006`).
+
+**Decisión.** Bandeja de salida transaccional en `platform/events`, del que dependen tanto el publicador como los consumidores:
+
+1. El webhook escribe, **en una sola transacción**, el `Payment`, el `LedgerEntry`, el `AuditEvent` y un `OutboxMessage` con el evento de dominio.
+2. Tras confirmar, el mismo proceso intenta la entrega **en memoria**; en operación normal el derecho se otorga en el mismo instante.
+3. Si esa entrega falla o el proceso termina antes, el despachador de trabajos reintenta desde el mensaje persistido.
+4. Cada manejador es idempotente por `(outboxMessageId, handlerCode)`, de modo que la entrega al menos una vez produce efecto exactamente una vez.
+5. `billing` publica un nombre de evento; no conoce a sus consumidores. `membership`, `tools`, `cian`, `ceni` y `events` registran manejadores; no conocen a `billing`.
+
+**Alternativa descartada.** Un módulo coordinador por encima de todos, que hospedara el webhook y ejecutara el otorgamiento en la misma transacción. Es más simple de leer, pero concentra el conocimiento de todos los módulos de derechos en un punto: cada herramienta, programa o servicio nuevo obligaría a modificarlo, en contra de la extensibilidad que pide el PRD §24 Fase 7.
+
+**Consecuencia asumida.** La activación deja de ser síncrona en sentido estricto. Es aceptable y hasta deseable: el PRD §11.4 ya prohíbe activar derechos desde la página de retorno del navegador, de modo que la interfaz debía mostrar un estado de confirmación en curso de todas formas. Un mensaje sin entregar tras agotar reintentos genera alerta y aparece en el panel de salud.
+
+---
+
+## ADR-0026 · `Actor` como sujeto de atribución
+
+**Contexto.** Los campos de autoría del modelo apuntaban a `User`. Pero el Superadmin raíz **no tiene fila en `User`** por exigencia del PRD §4.4, y los trabajos programados tampoco. Sus actos quedaban sin poder atribuirse (defecto `D-F0-005`).
+
+**Decisión.** Una entidad `Actor` con `kind` (`PERSON`, `ROOT_SUPERADMIN`, `SYSTEM_JOB`, `MIGRATION`), `userId` opcional y `label`. Todos los campos de autoría del modelo —`createdByActorId`, `updatedByActorId`, `AuditEvent.actorId`— apuntan a ella.
+
+**Cómo se concilia con el PRD §4.4.** La fila de `Actor` del Superadmin raíz **no es una credencial ni una fuente de permisos**: no guarda contraseña, no concede nada, borrarla no le quita el acceso y crearla no se lo da. Su autenticación sigue viniendo de `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD_HASH`, y sus permisos de la lista cerrada `SUPERADMIN_GRANTED`. Es un asidero de atribución, no un sujeto de autorización. La prohibición del PRD apunta a que su **acceso** no dependa de un registro editable, y eso se mantiene intacto.
+
+**Alternativas descartadas.** Denormalizar `actorKind` + `actorUserId` + `actorLabel` en cada entidad: triplica columnas en más de ciento cincuenta tablas y pierde la integridad referencial. Crear cuentas de usuario ficticias para el sistema: peor que el problema, porque una cuenta ficticia puede recibir permisos por error y aparecer en padrones o directorios.
+
+---
+
+## ADR-0027 · Jerarquía territorial por ruta materializada
+
+**Contexto.** `TerritorialUnit` necesita consultas eficientes de descendientes para el alcance territorial de los permisos. La primera redacción dejó la elección abierta entre `ltree` y texto materializado, que es exactamente la clase de decisión que el PRD §0.1 obliga a cerrar en la Fase 0 (defecto `D-F0-010`).
+
+**Decisión.** **Ruta materializada en `text`**, con formato `/nacional/mx/jal/guadalajara/seccion-3` e índice B-tree con `text_pattern_ops` para las consultas por prefijo. La descendencia se resuelve con `path LIKE '/nacional/mx/jal/%'`.
+
+**Por qué no `ltree`.** Es más expresivo y más rápido en jerarquías profundas, pero exige habilitar una extensión y, sobre todo, Prisma no lo tipa: obligaría a declararlo como tipo no soportado y a escribir SQL crudo en las consultas de alcance, que son las más críticas del sistema en materia de seguridad. Prefiero que el filtro territorial —del que depende el aislamiento entre delegaciones— viva en código tipado y verificable. La jerarquía real tiene seis niveles como mucho, donde la ventaja de rendimiento de `ltree` es irrelevante.
+
+**Consecuencia.** La ruta se recalcula cuando una unidad cambia de padre, en una transacción que actualiza también la de sus descendientes. Es una operación rara y administrativa, y queda auditada.
+
+---
+
+## ADR-0028 · pgvector con búsqueda híbrida para la base documental
+
+**Contexto.** El PRD §15.2 contrata búsqueda semántica sobre una base documental autorizada. El modelo solo tenía `KnowledgeSource` con un `chunkCount` que presuponía una fragmentación inexistente: ni entidad de fragmento, ni almacenamiento de vectores, ni estrategia de recuperación (defecto `D-F0-009`).
+
+**Decisión.** `KnowledgeChunk` con `embedding vector(768)` mediante la extensión **pgvector** sobre Neon, índice HNSW con distancia coseno, más `tsvector` con índice GIN para la mitad léxica. La recuperación es **híbrida**: vecinos más próximos y coincidencia léxica combinados por fusión de rangos.
+
+**El filtro de permisos va dentro de la consulta.** `requiredPermissionCode` se copia de la fuente al fragmento para poder filtrar en la misma consulta del vecino más próximo. Recuperar primero y filtrar después significaría que el modelo ya vio fragmentos que la persona no puede leer, lo que incumpliría la separación de fuentes por permisos del PRD §15.5.
+
+**Por qué no un índice vectorial externo.** El PRD §26 deja fuera de alcance la infraestructura ajena a Vercel, Neon y Vercel Blob. pgvector mantiene los fragmentos en la misma base, en la misma transacción y bajo las mismas políticas de acceso y retención que el resto del modelo.
+
+---
+
+## ADR-0029 · Llavero de firma con identificador de clave
+
+**Contexto.** `QR_SIGNING_SECRET` era una clave única sin versión. Rotarla invalidaba de golpe todas las credenciales sindicales y todos los distintivos CENI vigentes, lo que convertía una medida rutinaria de higiene criptográfica en un incidente institucional (defecto `D-F0-012`).
+
+**Decisión.** La variable pasa a ser un **llavero**: una lista de entradas `identificador:clave`, donde la primera es la activa. `MemberCredential` y `CeniCertificate` guardan en `signingKeyId` la clave con la que se firmaron. Rotar consiste en anteponer una clave nueva; lo emitido antes sigue verificando con la anterior mientras permanezca en el llavero.
+
+**Consecuencia operativa.** Una entrada solo se retira cuando ya no queda credencial viva que dependa de ella. El panel de salud muestra ese conteo por clave antes de permitir el retiro, porque retirar una clave con credenciales vigentes sí produce la invalidación masiva que esta decisión evita.
+
+---
+
+## ADR-0030 · El verificador comprueba coherencia, no solo existencia
+
+**Contexto.** La primera versión de `phase:verify` daba por modelada una entidad **con encontrar su nombre en el documento**. Sus quince controles pasaron en verde sobre una Fase 0 que contenía doce contradicciones entre documentos, y esa señal verde sirvió para declararla aprobada (defecto `D-F0-013`).
+
+**Decisión.** El verificador incorpora controles de **coherencia** que comprueban relaciones entre documentos y propiedades estructurales del contenido, no solo su presencia. Los primeros ocho, cada uno derivado de un defecto real de esta fase:
+
+| Control | Qué impide que vuelva a ocurrir |
+|---|---|
+| `C-DATA-03` | Que una entidad se dé por modelada por aparecer su nombre: exige bloque de definición con campos |
+| `C-COH-01` | Que una relación se declare como arreglo de identificadores (`D-F0-003`) |
+| `C-COH-02` | Que una decisión quede redactada como disyuntiva abierta (`D-F0-010`) |
+| `C-COH-03` | Que una entidad se use en una fase anterior a aquella en que se migra (`D-F0-007`, `D-F0-008`) |
+| `C-COH-04` | Que el algoritmo de decisión conceda a un actor por vía rápida (`D-F0-001`) |
+| `C-COH-05` | Que la urna recupere identidad o marca temporal (`D-F0-002`) |
+| `C-COH-06` | Que se declare `APPROVED` una fase con defectos abiertos (la causa raíz del cierre revocado) |
+| `C-COH-07` | Que un defecto registrado quede sin tarea de corrección |
+
+**Principio que queda establecido.** Un control automatizado solo prueba lo que mide. Cuando el resultado en verde de un control se use para justificar una decisión, hay que preguntarse antes qué **no** mide. La lista de controles crece con cada defecto que se descubra: un defecto que no deja tras de sí un control es un defecto que puede repetirse.

@@ -53,10 +53,12 @@ Ruta independiente `/superadmin/login`, con sesión, cookie y ciclo de vida prop
 | Definido por entorno, no por base | `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD_HASH`; no existe fila editable que pueda alterarse desde la aplicación |
 | Invalidación masiva | `SUPERADMIN_SESSION_VERSION`; incrementarlo cierra toda sesión raíz de inmediato |
 | Sesión limitada | Duración corta, sin renovación silenciosa indefinida, revocable |
-| Sin derechos sustantivos | El motor de políticas rechaza admisiones, resoluciones, votos, sanciones, certificaciones y autorizaciones de pago para el actor raíz |
+| Sin derechos sustantivos | Su conjunto de concesión `SUPERADMIN_GRANTED` es **cerrado**: solo contiene permisos de configuración técnica y operación. Admisiones, resoluciones, votos, sanciones, certificaciones y autorización de pagos quedan denegados por no figurar en él, igual que cualquier permiso futuro que nadie recuerde vetar (`PERMISSIONS.md` §5.1) |
 | Invisible institucionalmente | No aparece en padrones, directorios, asambleas ni reportes |
 | Motivo obligatorio | Las acciones críticas de soporte exigen `reason` capturado por la persona; sin él, la acción se deniega |
-| Sin lectura masiva de datos sensibles | Las consultas sensibles son de a un registro, con motivo y auditadas; no existe exportación masiva para este actor |
+| Sin acceso a compartimentos | `ctx.compartments` es el conjunto vacío: toda lectura de expedientes sindicales, sociales, clínicos o disciplinarios se deniega con `COMPARTIMENTO_AJENO` |
+| Sin lectura masiva de datos sensibles | `identity.person.read_sensitive` no está concedido, y el motor deniega con `LECTURA_MASIVA_PROHIBIDA` toda consulta que devolvería más de un registro con datos personales. No existe exportación masiva para este actor |
+| Sin vía rápida en el motor | Recorre las siete comprobaciones de la tubería como cualquier actor. El tipo de actor determina el origen de sus permisos, nunca cuántas verificaciones atraviesa |
 | Alertas | Cada inicio de sesión raíz produce `SecurityEvent` `SUPERADMIN_LOGIN` y una alerta operativa |
 
 Generación del hash sin almacenar la contraseña original, mediante el comando documentado del repositorio (Fase 1):
@@ -151,7 +153,7 @@ Cada amenaza tiene control, prueba automatizada y fase propietaria. La ausencia 
 | 5 | Fuga mediante URL de Blob | Descarga por ruta autenticada; URL temporal corta; sin nombres predecibles | Integración: URL vencida y URL de otro actor | 1 |
 | 6 | Replay de webhooks | Firma verificada; unicidad de `stripeEventId`; persistir antes de procesar | Integración: mismo evento tres veces produce un solo efecto | 3 |
 | 7 | Doble pago o doble activación | Claves de idempotencia; unicidad de membresía activa; transacciones | Integración con concurrencia real sobre el mismo pago | 3 |
-| 8 | Voto duplicado o correlación persona-sentido | Testigo ciego de un solo uso; urna sin identidad; hora truncada | E2E-07 y prueba de no correlación sobre el volcado de la base | 5 |
+| 8 | Voto duplicado o correlación persona-sentido | Credencial firmada que nunca se almacena al emitirse; urna sin identidad, sin columna temporal y con identificadores UUIDv4; huella de la credencial registrada solo al consumirse | E2E-07 con prueba adversaria de no correlación sobre el volcado completo con tres personas electoras | 5 |
 | 9 | Inyección de prompt desde documentos | Contenido tratado como dato; filtro de instrucciones; validación de esquema | Contractual con documento hostil | 10 |
 | 10 | Exportación masiva no autorizada | Motivo obligatorio, alcance del actor, marca temporal y auditoría | Integración: exportación fuera de alcance denegada y auditada | 4 |
 | 11 | Secuestro de sesión | Cookies endurecidas, rotación, revocación, listado propio | Integración: cookie robada tras cambio de contraseña deja de servir | 1 |
@@ -163,14 +165,57 @@ Cada amenaza tiene control, prueba automatizada y fase propietaria. La ausencia 
 
 ## 9. Secreto del voto (PRD §9.5)
 
-Es el control más delicado del sistema y merece un enunciado explícito de lo que se garantiza:
+Es el control más delicado del sistema. Esta sección enuncia **lo que el diseño demuestra y lo que no**, porque una garantía afirmada de más es peor que una garantía ausente: induce a confiar en una protección inexistente.
 
-- Se **puede** probar que una persona era elegible y que emitió su voto (`VoteEligibility`, `VoteReceipt`).
-- **No** se puede reconstruir qué votó, ni desde la interfaz, ni desde la base operativa, ni desde los registros de aplicación.
-- La tabla de boletas no contiene identidad, dirección IP ni agente de usuario, y la marca temporal se trunca para impedir la correlación por orden de llegada.
-- El testigo que autoriza depositar la boleta es ciego y de un solo uso: prueba el derecho sin identificar a la persona.
-- La emisión del testigo y el depósito de la boleta ocurren en transacciones separadas, de modo que el orden de inserción no revele la correspondencia.
-- La auditoría del proceso electoral demuestra elegibilidad y emisión **sin** revelar contenido.
+### 9.1 Mecanismo
+
+```mermaid
+sequenceDiagram
+    actor E as Persona electora
+    participant AUTH as Elegibilidad
+    participant URNA as Urna
+    participant ACTA as Escrutinio
+
+    E->>AUTH: solicita votar
+    AUTH->>AUTH: verifica padrón congelado y pleno goce de derechos
+    AUTH->>AUTH: genera credencial = 32 bytes aleatorios
+    AUTH->>AUTH: firma HMAC(clave del proceso, voteProcessId ‖ credencial)
+    Note over AUTH: NO se almacena la credencial ni su huella.<br/>Solo se marca credentialIssued = true<br/>y credentialIssuedOn = fecha civil.
+    AUTH-->>E: credencial + firma (viven solo en su navegador)
+    AUTH->>E: acuse de emisión (VoteReceipt)
+    E->>URNA: deposita selección + credencial + firma
+    URNA->>URNA: verifica la firma con la clave del proceso
+    URNA->>URNA: transacción única:<br/>insert Ballot (sin identidad, sin tiempo, UUIDv4)<br/>insert SpentVoteCredential (huella de la credencial)
+    URNA-->>E: verificationCode para comprobar la inclusión
+    ACTA->>URNA: al cerrar, cuenta y publica los códigos escrutados
+    E->>ACTA: coteja su verificationCode en la lista publicada
+```
+
+La clave HMAC es **por proceso**, se deriva de `AUTH_SECRET` y se destruye al certificar los resultados, de modo que después del escrutinio nadie —ni siquiera con la clave maestra— puede fabricar credenciales válidas retroactivamente.
+
+### 9.2 Lo que el diseño garantiza
+
+1. **Se puede probar** que una persona era elegible y que se le emitió su credencial (`VoteEligibility`, `VoteReceipt`).
+2. **No existe en ninguna tabla** el vínculo entre una persona y una boleta. No es que esté cifrado o disperso: **no se escribe nunca**. La credencial se genera, se firma, se entrega al navegador y el servidor la olvida; solo reaparece como huella al consumirse, en una fila que no identifica a nadie.
+3. **No hay vía de correlación temporal.** `Ballot` y `SpentVoteCredential` carecen de toda columna temporal y usan UUIDv4, que no codifica el instante. `VoteEligibility` guarda la fecha civil de emisión, no la hora.
+4. **No hay doble voto.** La unicidad de `SpentVoteCredential.credentialHash` lo impide, y la de `VoteEligibility(voteProcessId, membershipId)` impide la doble emisión.
+5. **El escrutinio es verificable por la persona votante.** Su `verificationCode` aparece en la lista de códigos contados. La lista **no** publica el sentido asociado a cada código, de modo que la persona verifica la inclusión de su voto sin poder demostrar ante un tercero por quién votó: sin esa prueba, la coacción pierde su instrumento.
+6. **La auditoría demuestra el proceso sin revelar el contenido:** número de personas elegibles, credenciales emitidas, credenciales consumidas y boletas contadas deben cuadrar, y esas cuatro cifras no dicen nada sobre nadie en particular.
+
+### 9.3 Lo que el diseño **no** garantiza
+
+Se enuncia explícitamente para que nadie construya sobre una expectativa falsa:
+
+| Límite | Consecuencia | Mitigación |
+|---|---|---|
+| Quien obtiene su credencial y se abstiene es indistinguible de quien depositó | El sistema no puede acreditar el acto de depósito de una persona concreta, solo la emisión de su credencial | Es una consecuencia **deseada** del secreto: acreditar el depósito por persona exigiría el vínculo que se decidió no crear. Los conteos agregados detectan la diferencia |
+| El orden físico de las filas de `Ballot` refleja el orden de depósito | Quien tenga acceso directo al almacenamiento puede conocer la secuencia de depósitos | Irrelevante por sí sola: esa secuencia no es enlazable con personas, porque el lado identificado no registra hora. Aun así, el escrutinio lee la urna en orden aleatorio y el acta publica los resultados sin secuencia |
+| Una persona con acceso al navegador de la votante durante la sesión ve su credencial | Podría depositar por ella | Fuera del alcance de una plataforma web; se mitiga con sesión corta, aviso visible y la posibilidad de reportar incidencia electoral |
+| La coacción presencial no se resuelve con criptografía | Alguien puede obligar a votar en su presencia | El acta registra incidencias; la modalidad remota se decide por acuerdo del órgano competente, que pondera este riesgo |
+
+### 9.4 Prueba
+
+`E2E-07` incluye una verificación adversaria: sobre un volcado completo de la base tras una votación con **tres** personas electoras, ninguna consulta puede asociar una fila de `Ballot` con una de `VoteEligibility`. El volumen bajo es deliberado: es el escenario donde cualquier fuga temporal residual sería más fácil de explotar.
 
 ---
 

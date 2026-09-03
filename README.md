@@ -43,7 +43,7 @@ Las versiones exactas se fijan y documentan al iniciar la Fase 1 (PRD §17.1). L
 |---|---|
 | [`docs/PRD.md`](docs/PRD.md) | Especificación maestra íntegra. Fuente de verdad del alcance. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Capas, módulos, rutas, archivos, auditoría, trabajos asíncronos, migraciones. |
-| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Las 130 entidades del PRD §18, enumeraciones, máquinas de estado y diagramas. |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Las 130 entidades del PRD §18 más 7 de apoyo y 26 tablas de relación, con enumeraciones, máquinas de estado y diagramas. |
 | [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md) | Roles, atributos, matriz de permisos, alcances y mapa de consentimientos. |
 | [`docs/FLOWS.md`](docs/FLOWS.md) | Flujos funcionales completos con estados alternos y de error. |
 | [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Contratos de Stripe, Gemini, correo, Blob, herramientas, cron y webhooks. |

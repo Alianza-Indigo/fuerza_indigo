@@ -19,6 +19,7 @@
 | F0-ARQ-003 | Trazar el mapa de módulos con sus dependencias permitidas | Terminada |
 | F0-ARQ-004 | Diseñar la arquitectura de rutas de las siete superficies y las familias de API | Terminada |
 | F0-DAT-001 | Modelar las 130 entidades del PRD §18.1 a §18.10 con campos, relaciones e índices | Terminada |
+| F0-DAT-005 | Modelar las entidades de apoyo y las tablas de relación que el articulado del PRD exige | Terminada |
 | F0-DAT-002 | Definir enumeraciones, máquinas de estado y transiciones con motivo y actor | Terminada |
 | F0-DAT-003 | Justificar consolidaciones y ampliaciones del modelo | Terminada |
 | F0-DAT-004 | Redactar el plan de migraciones y la estrategia de cambios con datos vivos | Terminada |
@@ -37,23 +38,24 @@
 
 ### Correcciones abiertas por la revisión semántica
 
-La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F0-DAT-002`, `F0-PER-001`, `F0-ARQ-003` y `F0-OPS-002`. Cada corrección cierra el defecto homónimo registrado en [`PHASE_STATUS.md`](PHASE_STATUS.md).
+La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F0-DAT-002`, `F0-PER-001`, `F0-ARQ-003` y `F0-OPS-002`. Cada corrección cierra el defecto homónimo registrado en [`PHASE_STATUS.md`](PHASE_STATUS.md). **Las catorce están terminadas**; `F0-COR-014` corrige un defecto que no vio ninguna persona, sino el control `C-COH-03` en su primera ejecución.
 
 | Id | Tarea | Severidad | Estado |
 |---|---|---|---|
-| F0-COR-001 | Reescribir el algoritmo de decisión para que el Superadmin recorra entidad, territorio, asignación, consentimiento y compartimento, con lista de permisos concedidos en vez de lista de prohibiciones | Crítica | Pendiente |
-| F0-COR-002 | Definir la construcción criptográfica del testigo electoral y eliminar toda vía de correlación temporal entre elegibilidad y boleta; ajustar la garantía afirmada en seguridad a lo que el diseño demuestra | Crítica | Pendiente |
-| F0-COR-003 | Sustituir los veintiún arreglos de identificadores por tablas de relación con clave foránea e integridad referencial | Alta | Pendiente |
-| F0-COR-004 | Condicionar los campos laborales de la solicitud a la categoría, de modo que la afiliación honoraria no responda requisitos de agremiado | Alta | Pendiente |
-| F0-COR-005 | Generalizar el modelo de autoría a persona, Superadmin raíz y sistema en todas las entidades, como ya ocurre en la bitácora | Alta | Pendiente |
-| F0-COR-006 | Definir el coordinador de otorgamiento de derechos y el patrón de bandeja de salida que resuelve la dependencia del cobro sin romper el mapa de módulos | Alta | Pendiente |
-| F0-COR-007 | Adelantar a la Fase 1 las plantillas versionadas de mensaje y el registro de entrega que exigen la invitación y la recuperación | Media | Pendiente |
-| F0-COR-008 | Resolver la dependencia de CENI sobre eventos: adelantar la entidad mínima o desacoplar el requisito de capacitación | Media | Pendiente |
-| F0-COR-009 | Modelar la fragmentación documental, el almacenamiento de vectores y la estrategia de recuperación de la búsqueda semántica | Media | Pendiente |
-| F0-COR-010 | Cerrar la decisión sobre la representación de la jerarquía territorial y registrarla como decisión de arquitectura | Media | Pendiente |
-| F0-COR-011 | Separar el permiso de informes de rendición de cuentas del de lectura del libro auxiliar y ajustar la matriz | Media | Pendiente |
-| F0-COR-012 | Introducir identificador de clave en la firma de códigos verificables para permitir rotación sin invalidación simultánea | Media | Pendiente |
-| F0-COR-013 | Incorporar al verificador controles de coherencia entre documentos, no solo de existencia y de presencia de nombres | Alta | Pendiente |
+| F0-COR-001 | Reescribir el algoritmo de decisión para que el Superadmin recorra entidad, territorio, asignación, consentimiento y compartimento, con lista de permisos concedidos en vez de lista de prohibiciones | Crítica | Terminada |
+| F0-COR-002 | Definir la construcción criptográfica del testigo electoral y eliminar toda vía de correlación temporal entre elegibilidad y boleta; ajustar la garantía afirmada en seguridad a lo que el diseño demuestra | Crítica | Terminada |
+| F0-COR-003 | Sustituir los veintiún arreglos de identificadores por tablas de relación con clave foránea e integridad referencial | Alta | Terminada |
+| F0-COR-004 | Condicionar los campos laborales de la solicitud a la categoría, de modo que la afiliación honoraria no responda requisitos de agremiado | Alta | Terminada |
+| F0-COR-005 | Generalizar el modelo de autoría a persona, Superadmin raíz y sistema en todas las entidades, como ya ocurre en la bitácora | Alta | Terminada |
+| F0-COR-006 | Definir el coordinador de otorgamiento de derechos y el patrón de bandeja de salida que resuelve la dependencia del cobro sin romper el mapa de módulos | Alta | Terminada |
+| F0-COR-007 | Adelantar a la Fase 1 las plantillas versionadas de mensaje y el registro de entrega que exigen la invitación y la recuperación | Media | Terminada |
+| F0-COR-008 | Resolver la dependencia de CENI sobre eventos: adelantar la entidad mínima o desacoplar el requisito de capacitación | Media | Terminada |
+| F0-COR-009 | Modelar la fragmentación documental, el almacenamiento de vectores y la estrategia de recuperación de la búsqueda semántica | Media | Terminada |
+| F0-COR-010 | Cerrar la decisión sobre la representación de la jerarquía territorial y registrarla como decisión de arquitectura | Media | Terminada |
+| F0-COR-011 | Separar el permiso de informes de rendición de cuentas del de lectura del libro auxiliar y ajustar la matriz | Media | Terminada |
+| F0-COR-012 | Introducir identificador de clave en la firma de códigos verificables para permitir rotación sin invalidación simultánea | Media | Terminada |
+| F0-COR-013 | Incorporar al verificador controles de coherencia entre documentos, no solo de existencia y de presencia de nombres | Alta | Terminada |
+| F0-COR-014 | Mover las reglas estatutarias versionadas a la Fase 1 y justificar por escrito las once referencias anulables hacia fases posteriores | Alta | Terminada |
 
 ---
 
@@ -67,13 +69,14 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F1-ARQ-004 | Configurar el linter con reglas de frontera que impidan importar infraestructura desde rutas | Pendiente |
 | F1-ARQ-005 | Configurar el despliegue en Vercel, regiones, runtime y cabeceras de seguridad | Pendiente |
 | F1-DAT-001 | Escribir el esquema Prisma multiarchivo de las entidades base de identidad, acceso y territorio | Pendiente |
-| F1-DAT-002 | Escribir el esquema de archivos, documentos, trabajos y auditoría | Pendiente |
+| F1-DAT-002 | Escribir el esquema de archivos, trabajos, bandeja de salida, auditoría y reglas estatutarias versionadas | Pendiente |
 | F1-DAT-003 | Generar la migración inicial y verificar su ejecución sobre base vacía | Pendiente |
 | F1-DAT-004 | Retirar los privilegios de actualización y borrado sobre las tablas de bitácora | Pendiente |
 | F1-DAT-005 | Implementar la semilla idempotente y sin datos personales reales | Pendiente |
 | F1-DAT-006 | Implementar la verificación de salud de base de datos y de configuración | Pendiente |
 | F1-AUT-001 | Implementar el registro de credenciales con Argon2id y su comando de generación de hash | Pendiente |
 | F1-AUT-002 | Implementar inicio y cierre de sesión con rotación y cookies endurecidas | Pendiente |
+| F1-NOT-001 | Migrar `NotificationTemplate`, `Notification` y `DeliveryAttempt`, e implementar el puerto de correo con plantillas versionadas y registro de entrega | Pendiente |
 | F1-AUT-003 | Implementar activación por invitación y verificación de correo | Pendiente |
 | F1-AUT-004 | Implementar recuperación de contraseña con respuesta uniforme y token de un solo uso | Pendiente |
 | F1-AUT-005 | Implementar el listado y la revocación de sesiones propias | Pendiente |
@@ -204,7 +207,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F5-TER-002 | Construir el panel territorial con padrón, solicitudes, casos, actividades e indicadores | Pendiente |
 | F5-GOB-001 | Implementar órganos, definiciones de cargo y sus conjuntos de permisos | Pendiente |
 | F5-GOB-002 | Implementar periodos, suplencias, poderes y su documentación probatoria | Pendiente |
-| F5-GOB-003 | Implementar las reglas estatutarias versionadas con vigencia | Pendiente |
+| F5-GOB-003 | Implementar la administración de las reglas estatutarias versionadas, cuyo modelo y semilla existen desde la Fase 1 | Pendiente |
 | F5-GOB-004 | Implementar el control de incompatibilidades entre cargos y comisiones | Pendiente |
 | F5-ASA-001 | Implementar convocatorias de primera y segunda vuelta con anticipación normativa | Pendiente |
 | F5-ASA-002 | Implementar el orden del día, los documentos previos y las reglas de elegibilidad | Pendiente |
@@ -216,7 +219,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F5-ELE-001 | Implementar la Comisión Electoral, su calendario y su convocatoria | Pendiente |
 | F5-ELE-002 | Implementar el padrón de electores y su publicación conforme a reglas | Pendiente |
 | F5-ELE-003 | Implementar el registro y la validación de planillas con alertas de proporcionalidad | Pendiente |
-| F5-ELE-004 | Implementar el voto secreto con testigo ciego y urna sin identidad | Pendiente |
+| F5-ELE-004 | Implementar el voto secreto: credencial firmada que no se almacena al emitirse, urna sin identidad ni marca temporal y registro de credencial consumida (ADR-0012) | Pendiente |
 | F5-ELE-005 | Implementar el escrutinio verificable, el acta de resultados y las incidencias | Pendiente |
 | F5-ELE-006 | Implementar la exportación de evidencia para la autoridad competente | Pendiente |
 | F5-NEG-001 | Implementar los expedientes de contrato colectivo y revisión contractual | Pendiente |
@@ -325,7 +328,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F9-CENI-006 | Implementar la carga y validación de evidencias con solicitud de corrección | Pendiente |
 | F9-CENI-007 | Implementar hallazgos con severidad y trazabilidad del evaluador | Pendiente |
 | F9-CENI-008 | Implementar planes de mejora con responsables, fechas y verificación | Pendiente |
-| F9-CENI-009 | Implementar requisitos de capacitación y su acreditación | Pendiente |
+| F9-CENI-009 | Implementar requisitos de capacitación y su acreditación **por evidencia documental**, sin depender del módulo de eventos | Pendiente |
 | F9-CENI-010 | Implementar el control de conflicto de interés del evaluador | Pendiente |
 | F9-CENI-011 | Implementar la decisión humana de certificación con fundamento | Pendiente |
 | F9-CENI-012 | Implementar la emisión de certificado y distintivo con código firmado | Pendiente |
@@ -372,9 +375,9 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F11-DAT-001 | Migrar las entidades de notificaciones, plantillas, eventos y registros | Pendiente |
+| F11-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Pendiente |
 | F11-NOT-001 | Implementar el centro de notificaciones dentro de la plataforma | Pendiente |
-| F11-NOT-002 | Implementar el envío por correo con plantillas versionadas y registro de entrega | Pendiente |
+| F11-NOT-002 | Ampliar el envío por correo con campañas, preferencias y reintentos sobre la base construida en la Fase 1 | Pendiente |
 | F11-NOT-003 | Implementar notificaciones web con autorización explícita de la persona | Pendiente |
 | F11-NOT-004 | Implementar preferencias por categoría sin permitir suprimir avisos obligatorios | Pendiente |
 | F11-NOT-005 | Implementar campañas operativas autorizadas y su separación de lo obligatorio | Pendiente |
@@ -382,6 +385,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F11-EVE-002 | Implementar registro, capacidad, elegibilidad y lista de espera | Pendiente |
 | F11-EVE-003 | Conectar el cobro de eventos con el catálogo financiero | Pendiente |
 | F11-EVE-004 | Implementar asistencia, materiales y evaluación | Pendiente |
+| F11-EVE-006 | Enlazar los requisitos de capacitación CENI con eventos, como enriquecimiento del mecanismo por evidencia ya operativo desde la Fase 9 | Pendiente |
 | F11-EVE-005 | Implementar constancias verificables y revocables | Pendiente |
 | F11-IND-001 | Construir los tableros por rol con decisiones accionables | Pendiente |
 | F11-IND-002 | Implementar indicadores territoriales con agregación y umbrales de privacidad | Pendiente |

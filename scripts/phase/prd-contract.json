@@ -234,18 +234,260 @@
     "E2E-15"
   ],
   "phases": [
-    { "id": 0, "name": "Arquitectura integral y preparación del repositorio" },
-    { "id": 1, "name": "Infraestructura, datos, autenticación, permisos y Superadmin" },
-    { "id": 2, "name": "Sistema de diseño, PWA, CMS y sitio público" },
-    { "id": 3, "name": "Catálogo financiero, Stripe y libro auxiliar" },
-    { "id": 4, "name": "Afiliación, padrones, directorios y credenciales" },
-    { "id": 5, "name": "Estructura territorial, gobierno, asambleas y elecciones" },
-    { "id": 6, "name": "Defensa, casos, protección y canalización social" },
-    { "id": 7, "name": "Herramientas tecnológicas" },
-    { "id": 8, "name": "CIAN" },
-    { "id": 9, "name": "CENI" },
-    { "id": 10, "name": "Inteligencia artificial Gemini" },
-    { "id": 11, "name": "Comunicaciones, eventos, capacitación e indicadores" },
-    { "id": 12, "name": "Endurecimiento, migración final y liberación productiva" }
-  ]
+    {
+      "id": 0,
+      "name": "Arquitectura integral y preparación del repositorio"
+    },
+    {
+      "id": 1,
+      "name": "Infraestructura, datos, autenticación, permisos y Superadmin"
+    },
+    {
+      "id": 2,
+      "name": "Sistema de diseño, PWA, CMS y sitio público"
+    },
+    {
+      "id": 3,
+      "name": "Catálogo financiero, Stripe y libro auxiliar"
+    },
+    {
+      "id": 4,
+      "name": "Afiliación, padrones, directorios y credenciales"
+    },
+    {
+      "id": 5,
+      "name": "Estructura territorial, gobierno, asambleas y elecciones"
+    },
+    {
+      "id": 6,
+      "name": "Defensa, casos, protección y canalización social"
+    },
+    {
+      "id": 7,
+      "name": "Herramientas tecnológicas"
+    },
+    {
+      "id": 8,
+      "name": "CIAN"
+    },
+    {
+      "id": 9,
+      "name": "CENI"
+    },
+    {
+      "id": 10,
+      "name": "Inteligencia artificial Gemini"
+    },
+    {
+      "id": 11,
+      "name": "Comunicaciones, eventos, capacitación e indicadores"
+    },
+    {
+      "id": 12,
+      "name": "Endurecimiento, migración final y liberación productiva"
+    }
+  ],
+  "entityMigrationPhase": {
+    "$comment": "Fase en la que la entidad se migra a la base. Una entidad no puede ser referenciada por otra de fase anterior (control C-COH-03).",
+    "1": [
+      "Actor",
+      "Person",
+      "User",
+      "Credential",
+      "Session",
+      "PasswordReset",
+      "Role",
+      "Permission",
+      "RoleAssignment",
+      "TerritorialScope",
+      "LegalEntity",
+      "Organization",
+      "OrganizationUser",
+      "TerritorialUnit",
+      "Consent",
+      "ConsentVersion",
+      "FileObject",
+      "FileVersion",
+      "RetentionPolicy",
+      "LegalHold",
+      "BackgroundJob",
+      "OutboxMessage",
+      "AuditEvent",
+      "SecurityEvent",
+      "WebhookEvent",
+      "NotificationTemplate",
+      "Notification",
+      "DeliveryAttempt",
+      "SpecialtyCatalog",
+      "NormativeRuleSet"
+    ],
+    "2": [
+      "ContentPage",
+      "ContentVersion"
+    ],
+    "3": [
+      "StripeAccountConfiguration",
+      "CatalogProduct",
+      "CatalogPrice",
+      "BillingAccount",
+      "Subscription",
+      "Payment",
+      "Refund",
+      "InvoiceReference",
+      "DiscountGrant",
+      "DiscountGrantProduct",
+      "Scholarship",
+      "ScholarshipEvidence",
+      "LedgerEntry",
+      "Reconciliation",
+      "ReconciliationException",
+      "AssetRegister",
+      "AssetDocument",
+      "AssetMovement",
+      "AssetMovementEvidence",
+      "StripeWebhookEvent"
+    ],
+    "4": [
+      "MembershipType",
+      "MembershipApplication",
+      "ApplicationDocument",
+      "ApplicationReview",
+      "Membership",
+      "MembershipStatusEvent",
+      "ProtectedBeneficiary",
+      "CareRelationship",
+      "ProfessionalProfile",
+      "ProfessionalSpecialty",
+      "DirectoryPreference",
+      "DirectoryPublication",
+      "MemberCredential",
+      "CredentialVerification",
+      "DocumentTemplate",
+      "GeneratedDocument",
+      "SignatureRecord"
+    ],
+    "5": [
+      "UnionBody",
+      "OfficeDefinition",
+      "OfficeIncompatibility",
+      "OfficeTerm",
+      "PowerGrant",
+      "Assembly",
+      "AssemblyCall",
+      "AgendaItem",
+      "AgendaItemDocument",
+      "AssemblyRosterSnapshot",
+      "Attendance",
+      "Resolution",
+      "VoteProcess",
+      "Ballot",
+      "SpentVoteCredential",
+      "VoteEligibility",
+      "VoteReceipt",
+      "Election",
+      "ElectionCommissionMember",
+      "CandidateSlate",
+      "ElectionIncident",
+      "ElectionIncidentEvidence",
+      "BargainingFile",
+      "BargainingCommissionMember",
+      "ComplianceObligation",
+      "ComplianceObligationDocument",
+      "DisciplinaryCase",
+      "DisciplinaryEvidence",
+      "DisciplinaryDecision",
+      "Appeal"
+    ],
+    "6": [
+      "SupportRequest",
+      "Case",
+      "CaseParticipant",
+      "CaseAssignment",
+      "CaseEvent",
+      "CaseTask",
+      "CaseMessage",
+      "CaseMessageAttachment",
+      "Referral",
+      "ReferralSharedFile",
+      "EmergencyFlag"
+    ],
+    "7": [
+      "ToolDefinition",
+      "ToolPlan",
+      "ToolEntitlement",
+      "ToolLaunch",
+      "ExternalIdentityLink",
+      "IntegrationCredentialReference",
+      "IntegrationEvent"
+    ],
+    "8": [
+      "CianIntake",
+      "CianProfessional",
+      "CianProfessionalService",
+      "CianProfessionalDiscipline",
+      "CianService",
+      "CianAvailability",
+      "CianAvailabilityService",
+      "CianAppointment",
+      "CianCareEpisode",
+      "CianCarePlan",
+      "CianGoal",
+      "CianClinicalNote",
+      "CianOutcome",
+      "CianReferral",
+      "CianReferralSharedFile"
+    ],
+    "9": [
+      "CeniProgram",
+      "CeniSite",
+      "CeniEngagement",
+      "CeniEngagementSite",
+      "CeniEngagementAssessor",
+      "AssessmentTemplate",
+      "AssessmentVersion",
+      "AssessmentResponse",
+      "AssessmentEvidence",
+      "Finding",
+      "ImprovementPlan",
+      "ImprovementAction",
+      "ImprovementActionEvidence",
+      "TrainingRequirement",
+      "TrainingRequirementEvidence",
+      "CertificationDecision",
+      "CeniCertificate",
+      "CeniCertificateSite",
+      "CeniBadge"
+    ],
+    "10": [
+      "AiProviderConfiguration",
+      "AiPrompt",
+      "AiPromptVersion",
+      "AiPromptVersionSource",
+      "AiConversation",
+      "AiGeneration",
+      "AiReview",
+      "KnowledgeSource",
+      "KnowledgeChunk"
+    ],
+    "11": [
+      "Event",
+      "EventRegistration",
+      "EventMaterial"
+    ]
+  },
+  "forwardReferenceAllowlist": {
+    "$comment": "Referencias ANULABLES a entidades de fases posteriores. Cada una se justifica: la columna la agrega la migración de la fase posterior y la fase propietaria cierra al 100 % sin ella. Una referencia OBLIGATORIA hacia adelante nunca se admite aquí: es un error de orden de fases.",
+    "RoleAssignment->OfficeTerm": "Enlace opcional del nombramiento. En la Fase 1 las asignaciones son administrativas; la Fase 5 agrega la columna al introducir los cargos.",
+    "ApplicationReview->OfficeTerm": "La revisión registra la cartera del revisor cuando existe. En la Fase 4 basta la cuenta revisora; la Fase 5 agrega el enlace.",
+    "CredentialVerification->CeniCertificate": "El verificador público atiende credenciales desde la Fase 4 y distintivos CENI desde la Fase 9, que agrega la columna.",
+    "TerritorialUnit->Resolution": "El acuerdo habilitante de una unidad territorial se registra cuando existe vida asamblearia, en la Fase 5.",
+    "SupportRequest->AiGeneration": "La sugerencia de canalización asistida es opcional por diseño: la Fase 6 opera con clasificación humana y la Fase 10 agrega el enlace.",
+    "Consent->CareRelationship": "El consentimiento otorgado por representación necesita la relación de cuidado, que llega en la Fase 4 junto con las personas representadas.",
+    "CatalogProduct->Resolution": "Solo las cuotas extraordinarias exigen acuerdo habilitante, y esas no existen antes de la Fase 5.",
+    "Subscription->Membership": "Una suscripción puede sostener una membresía, una herramienta o un servicio. La Fase 3 opera suscripciones sin membresías; la Fase 4 agrega el enlace.",
+    "Subscription->ToolEntitlement": "Mismo caso que el anterior, con el derecho de herramienta que llega en la Fase 7.",
+    "AssetRegister->Resolution": "La aprobación institucional de un acto patrimonial requiere acuerdo, que existe desde la Fase 5.",
+    "TrainingRequirement->Event": "El enlace es opcional (D-F0-008): CENI acredita la capacitación por evidencia documental y cierra su fase sin el módulo de eventos.",
+    "NormativeRuleSet->GeneratedDocument": "El documento probatorio de la reforma estatutaria se adjunta cuando existe generación documental, en la Fase 4. La versión normativa inicial se siembra en la Fase 1 sin documento asociado."
+  }
 }

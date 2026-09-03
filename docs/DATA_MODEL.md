@@ -1,6 +1,8 @@
 # Modelo de datos — Plataforma Integral Fuerza Índigo
 
-> Entregable de la **Fase 0** (PRD §24). Modela las 130 entidades contratadas por el PRD §18.1 a §18.10, sus enumeraciones, sus máquinas de estado, sus índices y sus reglas de integridad. Ninguna entidad del PRD queda sin modelar; las consolidaciones están justificadas en §14.
+> Entregable de la **Fase 0** (PRD §24). Modela las **130 entidades contratadas** por el PRD §18.1 a §18.10, sus enumeraciones, sus máquinas de estado, sus índices y sus reglas de integridad. Ninguna entidad del PRD queda sin modelar.
+>
+> El modelo resultante tiene **163 tablas**: las 130 del PRD, 7 entidades de apoyo exigidas por el articulado o por la corrección de defectos (`Actor`, `NormativeRuleSet`, `BargainingFile`, `ComplianceObligation`, `SpentVoteCredential`, `KnowledgeChunk`, `OutboxMessage`) y 26 tablas de relación (§13.bis). Todas las ampliaciones y consolidaciones están justificadas en §14.
 >
 > El esquema Prisma que materializa este documento se escribe en la **Fase 1** (`prisma/schema/`), dominio por dominio, con la migración inicial versionada en el repositorio.
 
@@ -10,7 +12,7 @@
 
 | Familia del PRD | Entidades | Sección |
 |---|---|---|
-| §18.1 Identidad y acceso | 12 | [§4](#4-identidad-y-acceso-prd-181) |
+| §18.1 Identidad y acceso | 12 + `Actor` | [§4](#4-identidad-y-acceso-prd-181) |
 | §18.2 Membresías y padrones | 13 | [§5](#5-membresías-y-padrones-prd-182) |
 | §18.3 Gobierno y territorio | 22 | [§6](#6-gobierno-y-territorio-prd-183) |
 | §18.4 Casos y atención social | 11 | [§7](#7-casos-y-atención-social-prd-184) |
@@ -31,7 +33,7 @@ Notación de cada campo: `nombre` *tipo* — definición. Se marcan `PK` clave p
 2. **La entidad jurídica es una columna, no una convención.** `legalEntityId` está presente desde el primer día en membresías, pagos, casos, documentos, consentimientos, archivos y auditoría, aunque inicialmente se opere una sola cuenta de cobro (PRD §2.3, §11.2).
 3. **El estado con efecto jurídico no se edita: se transiciona.** Cada cambio produce una fila de evento con actor, motivo y fecha; la fila actual solo refleja el resultado (PRD §3.6).
 4. **Lo normativo se versiona.** Estatutos, consentimientos, prompts, plantillas de evaluación, precios y plantillas documentales conservan la versión con la que se ejecutó cada acto, de modo que una reforma posterior no altera retrospectivamente lo ya ocurrido (PRD §9.3, §9.4).
-5. **El voto se separa criptográfica y lógicamente de la identidad.** La elegibilidad y la emisión se prueban; el sentido del voto no es correlacionable desde la base operativa (PRD §9.5).
+5. **El vínculo entre persona y boleta nunca se persiste.** La credencial de voto se firma y se entrega a la persona, pero no se almacena al emitirse; solo se registra su huella al consumirse, en una fila sin identidad ni tiempo. La elegibilidad y la emisión se prueban; la correspondencia entre persona y boleta no existe en ninguna tabla, ni siquiera para quien tenga acceso total a la base (PRD §9.5, ADR-0012).
 6. **Lo clínico vive aparte.** Las notas CIAN no comparten tabla, ni permiso, ni ruta de descarga con los expedientes sindicales (PRD §10.3, §13.3).
 
 ---
@@ -40,8 +42,8 @@ Notación de cada campo: `nombre` *tipo* — definición. Se marcan `PK` clave p
 
 | Regla | Materialización |
 |---|---|
-| Identificadores opacos no secuenciales | `id` *uuid* v7 como clave primaria interna. Toda entidad expuesta públicamente añade `publicId` *string(22)* base32 aleatorio, sin relación con el `id`. Los folios legibles (`folio`, `memberNumber`, `certificateNumber`) son series controladas por entidad y año, y nunca son el identificador de una URL. |
-| Fechas en UTC | `timestamptz` siempre; presentación en la zona de la persona o del territorio. Sufijo `At` para instantes, `Date` para fechas civiles sin hora. |
+| Identificadores opacos no secuenciales | `id` *uuid* v7 como clave primaria interna, salvo `Ballot` y `SpentVoteCredential`, que usan **UUIDv4** porque un identificador ordenable en el tiempo revelaría el momento del depósito (§6). Toda entidad expuesta públicamente añade `publicId` *string(22)* base32 aleatorio, sin relación con el `id`. Los folios legibles (`folio`, `memberNumber`, `certificateNumber`) son series controladas por entidad y año, y nunca son el identificador de una URL. |
+| Fechas en UTC | `timestamptz` siempre; presentación en la zona de la persona o del territorio. Sufijo `At` para instantes, `On` o tipo `date` para fechas civiles sin hora. Excepción deliberada: `Ballot` y `SpentVoteCredential` **no tienen ninguna columna temporal**, ni siquiera `createdAt`. |
 | Dinero en unidades menores | `amountMinor` *bigint* + `currency` *char(3)* ISO 4217. Prohibida la aritmética de punto flotante sobre importes. |
 | Estados controlados | Enumeraciones PostgreSQL; jamás texto libre para estado. Los catálogos extensibles por operación (tipos de caso, carteras, líneas CENI) son tablas de catálogo con `code` único. |
 | Borrado lógico donde hay obligación de conservar | `archivedAt`, `archivedById`, `archiveReason`. El borrado físico solo procede al vencer una `RetentionPolicy` sin `LegalHold` activo. |
@@ -50,9 +52,9 @@ Notación de cada campo: `nombre` *tipo* — definición. Se marcan `PK` clave p
 | Índices reales | Índice por cada filtro del directorio, del padrón, de la bandeja de casos, de la agenda CIAN y de la conciliación financiera (§15). |
 | Unicidad parcial o lógica | Índices únicos parciales para impedir duplicidades vivas (p. ej. una sola membresía activa por persona y categoría). |
 | Metadatos mínimos | `json` solo para instantáneas inmutables y respuestas de formularios versionados; nunca como sustituto de una relación. |
-| Trazabilidad de fila | `createdAt`, `createdById`, `updatedAt`, `updatedById`, `rowVersion` *int* para concurrencia optimista en toda entidad crítica. |
+| Trazabilidad de fila | `createdAt`, `createdByActorId`, `updatedAt`, `updatedByActorId`, `rowVersion` *int* para concurrencia optimista en toda entidad crítica. La autoría referencia `Actor`, que cubre persona, Superadmin raíz, trabajo programado y migración. |
 
-**Campos base.** Salvo indicación contraria, cada entidad incluye `id`, `createdAt`, `updatedAt`, `createdById`, `updatedById` y `rowVersion`. Las entidades inmutables por diseño (`AuditEvent`, `SecurityEvent`, `Ballot`, `MembershipStatusEvent`, `CaseEvent`, `LedgerEntry`, `AssetMovement`, `ToolLaunch`, `CredentialVerification`, `DeliveryAttempt`, `StripeWebhookEvent`, `IntegrationEvent`, `AiGeneration`) omiten `updatedAt`, `updatedById` y `rowVersion` porque nunca se actualizan.
+**Campos base.** Salvo indicación contraria, cada entidad incluye `id`, `createdAt`, `updatedAt`, `createdByActorId` FK→`Actor`, `updatedByActorId` FK→`Actor` y `rowVersion`. La autoría apunta a `Actor`, no a `User`, porque el Superadmin raíz y los trabajos programados ejecutan actos y no tienen cuenta de usuario (§4, defecto `D-F0-005`). Las entidades inmutables por diseño (`AuditEvent`, `SecurityEvent`, `Ballot`, `SpentVoteCredential`, `MembershipStatusEvent`, `CaseEvent`, `LedgerEntry`, `AssetMovement`, `ToolLaunch`, `CredentialVerification`, `DeliveryAttempt`, `StripeWebhookEvent`, `IntegrationEvent`, `AiGeneration`) omiten `updatedAt`, `updatedById` y `rowVersion` porque nunca se actualizan. `Ballot` y `SpentVoteCredential` omiten **además** `createdAt` y todo campo de autoría: conservarlos permitiría reconstruir el orden y el momento del depósito.
 
 ---
 
@@ -61,6 +63,8 @@ Notación de cada campo: `nombre` *tipo* — definición. Se marcan `PK` clave p
 ```mermaid
 erDiagram
     LegalEntity ||--o{ RoleAssignment : "acota"
+    Actor ||--o{ AuditEvent : "atribuye"
+    User ||--o| Actor : "tiene actor"
     Person ||--o| User : "puede tener cuenta"
     Person ||--o{ ProfessionalProfile : "declara"
     User ||--o{ Credential : "autentica con"
@@ -78,6 +82,17 @@ erDiagram
 **`LegalEntity`** — Entidad jurídica responsable. Semilla: Fuerza Índigo (sindicato) y Alianza Índigo Neurodivergente A.C.
 `id` PK · `code` *enum* U (`FUERZA_INDIGO`, `ALIANZA_INDIGO`) · `legalName` · `shortName` · `kind` *enum* (`UNION`, `CIVIL_ASSOCIATION`) · `taxId` NULL · `registryNumber` NULL — registro ante autoridad laboral · `address` · `contactEmail` · `privacyNoticeUrl` · `documentSeriesPrefix` U — prefijo de numeración documental · `isActive` *bool*.
 Regla: ninguna consulta de negocio omite el filtro por `legalEntityId` cuando el recurso pertenece a una entidad.
+
+**`Actor`** — Sujeto al que se atribuye un acto. Existe porque no todo acto lo ejecuta una cuenta de persona (defecto `D-F0-005`).
+`id` PK · `kind` *enum* U? (`PERSON`, `ROOT_SUPERADMIN`, `SYSTEM_JOB`, `MIGRATION`) IX · `userId` NULL FK→`User` U? — presente solo cuando `kind = PERSON` · `label` — nombre legible: el de la persona, `Superadmin raíz`, el tipo de trabajo programado o la migración · `isActive` *bool*.
+
+Reglas:
+
+- Se crea **una** fila por cada `User` al activarse la cuenta, **una** fila permanente para el Superadmin raíz, y **una** por tipo de trabajo programado.
+- La fila del Superadmin raíz **no es una credencial ni una fuente de permisos**: no guarda contraseña, no concede nada y borrarla no le quita el acceso ni crearla se lo da. Su autenticación y sus permisos siguen viniendo íntegramente de las variables de entorno y de la lista cerrada de concesión (PRD §4.4, `PERMISSIONS.md` §5.1). Es un asidero de atribución, no un sujeto de autorización.
+- Es la referencia de `createdByActorId`, `updatedByActorId` y de todo campo de autoría del modelo.
+
+Sin esta entidad, un acto ejecutado por el Superadmin raíz o por un trabajo programado dejaría `createdById` en nulo —perdiendo la atribución— o exigiría inventar cuentas de usuario ficticias, que es peor: una cuenta ficticia puede recibir permisos por error.
 
 **`Person`** — Registro maestro del ser humano (PRD §3.1).
 `id` PK · `publicId` U · `givenName` · `middleName` NULL · `familyName` · `secondFamilyName` NULL · `preferredName` NULL · `birthDate` NULL · `genderIdentity` *enum* (`WOMAN`, `MAN`, `NON_BINARY`, `OTHER`, `UNDISCLOSED`) — insumo de la proporcionalidad estatutaria (PRD §9.3) · `nationality` NULL · `nationalIdRef` NULL FK→`FileObject` · `primaryEmail` NULL IX · `primaryPhone` NULL · `alternateContact` NULL · `addressLine` NULL · `postalCode` NULL · `countryCode` · `stateCode` NULL · `municipalityCode` NULL · `territorialUnitId` NULL FK→`TerritorialUnit` IX · `timeZone` · `locale` · `accessibilityPreferences` *json* — preferencias sensoriales persistentes (PRD §5.3) · `isMinor` *bool derivado* · `deceasedAt` NULL · `mergedIntoPersonId` NULL FK→`Person` — resolución de duplicidad sin borrar historial · `archivedAt` NULL.
@@ -148,7 +163,18 @@ erDiagram
 Invariante de dominio verificada en pruebas: `category = HONORARY_AFFILIATE ⇒ grantsPoliticalRights = false ∧ countsForQuorum = false ∧ appearsInAuthorityRoster = false` (PRD §3.3).
 
 **`MembershipApplication`** — Solicitud de afiliación (agremiado u honoraria).
-`id` PK · `folio` U — serie por entidad y año · `personId` FK→`Person` IX · `membershipTypeId` FK IX · `legalEntityId` FK · `status` *enum* `ApplicationStatus` IX · `submittedAt` NULL · `territorialUnitId` NULL FK IX · `occupation` — especialidad, oficio o profesión · `workRelationKind` *enum* (`SUBORDINATE`, `INDEPENDENT`, `AUTONOMOUS`, `SELF_EMPLOYED`) · `neurodivergentContactStatement` *text* — cómo se relaciona su actividad con personas neurodivergentes (PRD §8.1.4) · `otherUnionMembership` *enum* (`NONE`, `SAME_TRADE`, `DIFFERENT_TRADE`) · `otherUnionClarification` NULL *text* (PRD §8.1.5) · `honoraryProfile` NULL *enum* (`NEURODIVERGENT_PERSON`, `FAMILY_MEMBER`, `CAREGIVER`) · `acceptedStatuteVersionId` FK→`NormativeRuleSet` · `originalSummary` *json* — instantánea inmutable de lo enviado; la revisión nunca altera la solicitud original (PRD §8.1.9) · `autosavedDraft` *json* NULL — recuperación de borrador (PRD §5.3) · `clarificationDueAt` NULL · `resolutionAt` NULL · `resolutionReason` NULL · `resolvedById` NULL FK→`User` · `paymentId` NULL FK→`Payment` · `archivedAt` NULL.
+`id` PK · `folio` U — serie por entidad y año · `personId` FK→`Person` IX · `membershipTypeId` FK IX · `legalEntityId` FK · `status` *enum* `ApplicationStatus` IX · `submittedAt` NULL · `territorialUnitId` NULL FK IX · `occupation` NULL — especialidad, oficio o profesión · `workRelationKind` NULL *enum* (`SUBORDINATE`, `INDEPENDENT`, `AUTONOMOUS`, `SELF_EMPLOYED`) · `neurodivergentContactStatement` NULL *text* — cómo se relaciona su actividad con personas neurodivergentes (PRD §8.1.4) · `otherUnionMembership` NULL *enum* (`NONE`, `SAME_TRADE`, `DIFFERENT_TRADE`) · `otherUnionClarification` NULL *text* (PRD §8.1.5) · `honoraryProfile` NULL *enum* (`NEURODIVERGENT_PERSON`, `FAMILY_MEMBER`, `CAREGIVER`) · `acceptedStatuteVersionId` FK→`NormativeRuleSet` · `originalSummary` *json* — instantánea inmutable de lo enviado; la revisión nunca altera la solicitud original (PRD §8.1.9) · `autosavedDraft` *json* NULL — recuperación de borrador (PRD §5.3) · `clarificationDueAt` NULL · `resolutionAt` NULL · `resolutionReason` NULL · `resolvedById` NULL FK→`User` · `paymentId` NULL FK→`Payment` · `archivedAt` NULL.
+
+**Campos condicionales por categoría (defecto `D-F0-004`).** Los cuatro campos laborales son anulables en el esquema y **obligatorios por dominio solo para la categoría que los necesita**. La restricción se expresa como comprobación en base y como invariante probada:
+
+| Categoría de `MembershipType` | Campos obligatorios | Campos que deben ser nulos |
+|---|---|---|
+| `UNION_MEMBER` | `occupation`, `workRelationKind`, `neurodivergentContactStatement`, `otherUnionMembership` | `honoraryProfile` |
+| `HONORARY_AFFILIATE` | `honoraryProfile` | `occupation`, `workRelationKind`, `otherUnionMembership` |
+
+`neurodivergentContactStatement` es opcional para la afiliación honoraria: una persona neurodivergente, un familiar o una persona cuidadora no tiene que justificar un vínculo laboral con la neurodivergencia. Exigírselo, como hacía la primera redacción, convertía un trámite de pertenencia comunitaria en un interrogatorio laboral improcedente.
+
+El formulario refleja la misma regla: quien elige afiliación honoraria **nunca ve** los campos laborales, no los ve deshabilitados ni marcados como opcionales.
 
 **`ApplicationDocument`** — Evidencia adjunta a una solicitud.
 `id` PK · `applicationId` FK IX · `fileObjectId` FK→`FileObject` · `documentKind` *enum* (`IDENTITY`, `WORK_PROOF`, `CERTIFICATE`, `REFERENCE`, `STATEMENT`, `CLARIFICATION`, `OTHER`) · `status` *enum* (`SUBMITTED`, `ACCEPTED`, `REJECTED`, `SUPERSEDED`) · `reviewNote` NULL · `reviewedById` NULL FK · `reviewedAt` NULL.
@@ -173,7 +199,7 @@ Reglas: no concede derechos electorales, no genera cuota automáticamente, no se
 Invariante: **una relación familiar no otorga por sí sola acceso a expedientes**; el acceso exige además consentimiento vigente y política que lo permita.
 
 **`ProfessionalProfile`** — Perfil profesional de una persona para el directorio y para CIAN o CENI.
-`id` PK · `personId` FK U · `headline` · `specialties` *string[]* IX · `credentialsSummary` NULL · `yearsOfExperience` NULL · `serviceModes` *enum[]* (`IN_PERSON`, `REMOTE`) · `availability` *enum* (`AVAILABLE`, `LIMITED`, `UNAVAILABLE`) · `professionalEmail` NULL · `professionalPhone` NULL · `verifiedSkills` *json* — habilidades y certificaciones verificadas por la plataforma · `verifiedById` NULL FK · `verifiedAt` NULL.
+`id` PK · `personId` FK U · `headline` · relación `ProfessionalSpecialty` → `SpecialtyCatalog` · `credentialsSummary` NULL · `yearsOfExperience` NULL · `serviceModes` *enum[]* (`IN_PERSON`, `REMOTE`) · `availability` *enum* (`AVAILABLE`, `LIMITED`, `UNAVAILABLE`) · `professionalEmail` NULL · `professionalPhone` NULL · `verifiedSkills` *json* — habilidades y certificaciones verificadas por la plataforma · `verifiedById` NULL FK · `verifiedAt` NULL.
 
 **`DirectoryPreference`** — Consentimiento granular de aparición pública (PRD §7.3).
 `id` PK · `personId` FK U · `visibility` *enum* (`HIDDEN`, `NAME_AND_TERRITORY`, `PROFESSIONAL_PROFILE`) · `showPhoto` *bool* · `showProfessionalContact` *bool* · `allowSearchEngineIndexing` *bool* · `consentVersionId` FK→`ConsentVersion` · `grantedAt` · `revokedAt` NULL.
@@ -184,7 +210,7 @@ Por omisión `HIDDEN`. Beneficiarios protegidos no son publicables por omisión 
 Al revocar el consentimiento se marca `withdrawnAt`, se invalida la caché y se emite la señal de no indexación; la fila permanece como evidencia de qué estuvo publicado y cuándo.
 
 **`MemberCredential`** — Credencial digital e imprimible con QR (PRD §7.4).
-`id` PK · `publicCode` U — identificador opaco contenido en el QR, sin datos personales · `signature` — firma con `QR_SIGNING_SECRET` · `membershipId` NULL FK IX · `personId` FK IX · `credentialKind` *enum* (`UNION_MEMBER`, `HONORARY_AFFILIATE`, `OFFICE_OR_REPRESENTATION`, `AUTHORIZED_PROFESSIONAL`) · `officeTermId` NULL FK · `displayName` — nombre autorizado a mostrar · `photoFileId` NULL FK→`FileObject` · `territoryLabel` NULL · `status` *enum* (`ACTIVE`, `SUSPENDED`, `REVOKED`, `EXPIRED`, `REPLACED`) IX · `issuedAt` · `expiresAt` NULL IX · `revokedAt` NULL · `revokeReason` NULL · `replacedByCredentialId` NULL FK · `renderedFileId` NULL FK→`FileObject`.
+`id` PK · `publicCode` U — identificador opaco contenido en el QR, sin datos personales · `signingKeyId` IX — identificador de la clave con la que se firmó, para permitir rotación sin invalidación simultánea (defecto `D-F0-012`) · `signature` · `membershipId` NULL FK IX · `personId` FK IX · `credentialKind` *enum* (`UNION_MEMBER`, `HONORARY_AFFILIATE`, `OFFICE_OR_REPRESENTATION`, `AUTHORIZED_PROFESSIONAL`) · `officeTermId` NULL FK · `displayName` — nombre autorizado a mostrar · `photoFileId` NULL FK→`FileObject` · `territoryLabel` NULL · `status` *enum* (`ACTIVE`, `SUSPENDED`, `REVOKED`, `EXPIRED`, `REPLACED`) IX · `issuedAt` · `expiresAt` NULL IX · `revokedAt` NULL · `revokeReason` NULL · `replacedByCredentialId` NULL FK · `renderedFileId` NULL FK→`FileObject`.
 La revocación surte efecto de inmediato en el verificador: la consulta lee siempre el estado vivo, nunca una caché con vigencia mayor a la revocación.
 
 **`CredentialVerification`** — Registro agregado de consultas al verificador. Inmutable.
@@ -221,13 +247,13 @@ erDiagram
 ```
 
 **`TerritorialUnit`** — Unidad territorial u organizativa (PRD §9.1).
-`id` PK · `publicId` U · `code` U · `name` · `type` *enum* (`NATIONAL`, `FOREIGN_COUNTRY`, `STATE`, `MUNICIPALITY`, `SECTION`, `DELEGATION`, `OFFICE`, `VIRTUAL_THEMATIC`) IX · `parentId` NULL FK→`TerritorialUnit` IX · `path` *ltree o text materializado* IX — consulta eficiente de descendientes · `countryCode` · `stateCode` NULL · `municipalityCode` NULL · `status` *enum* (`PLANNED`, `ACTIVE`, `SUSPENDED`, `DISSOLVED`) · `createdOn` *date* · `enablingResolutionId` NULL FK→`Resolution` — acuerdo habilitante · `dissolvedOn` NULL · `contactEmail` NULL.
+`id` PK · `publicId` U · `code` U · `name` · `type` *enum* (`NATIONAL`, `FOREIGN_COUNTRY`, `STATE`, `MUNICIPALITY`, `SECTION`, `DELEGATION`, `OFFICE`, `VIRTUAL_THEMATIC`) IX · `parentId` NULL FK→`TerritorialUnit` IX · `path` *text* U IX — ruta materializada `/nacional/mx/jal/guadalajara/seccion-3`, con índice `text_pattern_ops` para el prefijo (decisión cerrada en ADR-0027) · `countryCode` · `stateCode` NULL · `municipalityCode` NULL · `status` *enum* (`PLANNED`, `ACTIVE`, `SUSPENDED`, `DISSOLVED`) · `createdOn` *date* · `enablingResolutionId` NULL FK→`Resolution` — acuerdo habilitante · `dissolvedOn` NULL · `contactEmail` NULL.
 
 **`UnionBody`** — Órgano de gobierno (PRD §9.2).
 `id` PK · `code` U · `name` · `kind` *enum* (`GENERAL_ASSEMBLY`, `NATIONAL_EXECUTIVE_COMMITTEE`, `OVERSIGHT_COMMISSION`, `ELECTORAL_COMMISSION`, `SECTION_DELEGATION`, `TEMPORARY_COMMISSION`) · `territorialUnitId` FK IX · `legalEntityId` FK · `normativeRuleSetId` FK→`NormativeRuleSet` · `status` *enum* (`ACTIVE`, `INACTIVE`, `DISSOLVED`) · `installedOn` NULL · `dissolvedOn` NULL.
 
 **`OfficeDefinition`** — Cargo o cartera con sus facultades.
-`id` PK · `code` U · `name` · `unionBodyId` FK IX · `kind` *enum* (`SECRETARY_GENERAL`, `SECRETARY_ORGANIZATION`, `SECRETARY_LABOR_DISPUTES`, `SECRETARY_FINANCE`, `SECRETARY_MINUTES`, `SECRETARY_NEUROINCLUSION`, `SECRETARY_GENDER_EQUITY`, `SECRETARY_PRESS`, `ADDITIONAL_SECRETARY`, `OVERSIGHT_MEMBER`, `ELECTORAL_MEMBER`, `SECTION_DELEGATE`, `COMMISSION_MEMBER`) · `termMonths` *int* — 48 para el Comité Ejecutivo Nacional · `reelectionAllowed` *bool* · `seats` *int* — 3 para Vigilancia y Electoral · `incompatibleWith` *string[]* — códigos de cargos incompatibles · `permissionSetId` FK — permisos que confiere el cargo, nunca acceso ilimitado (PRD §9.2) · `normativeRuleSetId` FK.
+`id` PK · `code` U · `name` · `unionBodyId` FK IX · `kind` *enum* (`SECRETARY_GENERAL`, `SECRETARY_ORGANIZATION`, `SECRETARY_LABOR_DISPUTES`, `SECRETARY_FINANCE`, `SECRETARY_MINUTES`, `SECRETARY_NEUROINCLUSION`, `SECRETARY_GENDER_EQUITY`, `SECRETARY_PRESS`, `ADDITIONAL_SECRETARY`, `OVERSIGHT_MEMBER`, `ELECTORAL_MEMBER`, `SECTION_DELEGATE`, `COMMISSION_MEMBER`) · `termMonths` *int* — 48 para el Comité Ejecutivo Nacional · `reelectionAllowed` *bool* · `seats` *int* — 3 para Vigilancia y Electoral · relación `OfficeIncompatibility` — cargos incompatibles entre sí · `permissionSetId` FK — permisos que confiere el cargo, nunca acceso ilimitado (PRD §9.2) · `normativeRuleSetId` FK.
 
 **`OfficeTerm`** — Ocupación histórica de un cargo por una persona.
 `id` PK · `officeDefinitionId` FK IX · `personId` FK→`Person` IX · `membershipId` FK→`Membership` — solo agremiados en pleno goce de derechos · `territorialUnitId` NULL FK · `designationMethod` *enum* (`ELECTION`, `ASSEMBLY_APPOINTMENT`, `SUBSTITUTION`, `INTERIM`) · `electionId` NULL FK→`Election` · `evidenceDocumentId` NULL FK→`GeneratedDocument` · `startsOn` · `endsOn` IX · `substitutedTermId` NULL FK→`OfficeTerm` · `endedEarlyOn` NULL · `endReason` NULL.
@@ -244,7 +270,7 @@ Al llegar `endsOn` un trabajo programado revoca las `RoleAssignment` derivadas; 
 Único `(assemblyId, ordinal)`.
 
 **`AgendaItem`** — Punto del orden del día.
-`id` PK · `assemblyId` FK IX · `position` *int* · `title` · `description` · `kind` *enum* (`INFORMATIVE`, `DELIBERATIVE`, `ELECTIVE`, `STATUTE_REFORM`, `FINANCIAL_REPORT`, `DISSOLUTION`) · `requiredMajority` *enum* (`SIMPLE`, `QUALIFIED_TWO_THIRDS`, `QUALIFIED_STATUTORY`) · `supportingDocumentIds` *string[]* · `status` *enum* (`PENDING`, `IN_DISCUSSION`, `VOTED`, `DEFERRED`, `WITHDRAWN`).
+`id` PK · `assemblyId` FK IX · `position` *int* · `title` · `description` · `kind` *enum* (`INFORMATIVE`, `DELIBERATIVE`, `ELECTIVE`, `STATUTE_REFORM`, `FINANCIAL_REPORT`, `DISSOLUTION`) · `requiredMajority` *enum* (`SIMPLE`, `QUALIFIED_TWO_THIRDS`, `QUALIFIED_STATUTORY`) · relación `AgendaItemDocument` · `status` *enum* (`PENDING`, `IN_DISCUSSION`, `VOTED`, `DEFERRED`, `WITHDRAWN`).
 Único `(assemblyId, position)`.
 
 **`AssemblyRosterSnapshot`** — Padrón congelado de la sesión. Inmutable (PRD §9.4).
@@ -261,27 +287,36 @@ Nunca se recalcula tras concluir la asamblea.
 **`VoteProcess`** — Proceso de votación reutilizable por asambleas, elecciones y consultas contractuales.
 `id` PK · `publicId` U · `context` *enum* (`ASSEMBLY_ITEM`, `ELECTION`, `COLLECTIVE_CONSULTATION`, `DISCIPLINARY_APPEAL`) IX · `assemblyId` NULL FK · `agendaItemId` NULL FK · `electionId` NULL FK · `bargainingFileId` NULL FK→`BargainingFile` · `title` · `method` *enum* (`SECRET`, `OPEN_ROLL_CALL`) · `options` *json* — opciones inmutables al abrir · `rosterSnapshotId` FK→`AssemblyRosterSnapshot` · `opensAt` · `closesAt` IX · `status` *enum* (`SCHEDULED`, `OPEN`, `CLOSED`, `TALLIED`, `CERTIFIED`, `ANNULLED`) · `talliedAt` NULL · `results` *json* NULL — conteo por opción · `resultDocumentId` NULL FK→`GeneratedDocument` · `certifiedById` NULL FK→`User`.
 
-**`VoteEligibility`** — Derecho a votar de una persona en un proceso. Prueba elegibilidad sin revelar sentido.
-`id` PK · `voteProcessId` FK IX · `membershipId` FK IX · `eligible` *bool* · `reasonIfNot` NULL *enum* (`NO_POLITICAL_RIGHTS`, `SUSPENDED`, `DUES_ARREARS`, `NOT_IN_ROSTER`, `HONORARY_AFFILIATE`, `PROTECTED_BENEFICIARY`) · `ballotIssuedAt` NULL · `ballotConsumedAt` NULL IX · `blindTokenHash` NULL U — testigo de emisión sin vínculo con la boleta.
-Único `(voteProcessId, membershipId)`. Impide el voto duplicado sin revelar el contenido.
+**`VoteEligibility`** — Derecho a votar de una persona en un proceso. Prueba elegibilidad y emisión de credencial, **sin** vínculo alguno con una boleta.
+`id` PK · `voteProcessId` FK IX · `membershipId` FK IX · `eligible` *bool* · `reasonIfNot` NULL *enum* (`NO_POLITICAL_RIGHTS`, `SUSPENDED`, `DUES_ARREARS`, `NOT_IN_ROSTER`, `HONORARY_AFFILIATE`, `PROTECTED_BENEFICIARY`) · `credentialIssued` *bool* — se emitió la credencial de voto · `credentialIssuedOn` NULL *date* — **solo la fecha civil**, nunca la hora.
+Único `(voteProcessId, membershipId)`. Impide la doble emisión de credencial.
 
-**`Ballot`** — Boleta emitida. Inmutable y **sin** referencia a la persona (PRD §9.5).
-`id` PK · `voteProcessId` FK IX · `selection` *json* — sentido del voto · `castAt` — truncado al minuto para dificultar la correlación temporal · `nullifiedReason` NULL *enum* (`BLANK`, `INVALID`) · `verificationHash` — permite recuento verificable.
-El almacén de boletas no contiene `membershipId`, `personId`, IP ni agente de usuario. La emisión y el consumo del derecho se registran en `VoteEligibility` en una transacción separada, de modo que el orden de inserción no permite reconstruir la correspondencia.
+Esta tabla **no** guarda el valor de la credencial, ni su huella, ni la hora de emisión, ni referencia a boleta alguna. Guardar la huella permitiría unir esta fila con la boleta que la consumió; guardar la hora permitiría correlacionar por proximidad temporal. Ambas cosas se eliminan por diseño (ADR-0012).
 
-**`VoteReceipt`** — Acuse entregado a la persona votante.
-`id` PK · `voteProcessId` FK IX · `membershipId` FK IX · `receiptCode` U — comprueba que votó, no qué votó · `issuedAt`.
-Único `(voteProcessId, membershipId)`.
+**`Ballot`** — Boleta depositada. Inmutable, **sin identidad y sin tiempo** (PRD §9.5).
+`id` PK **UUIDv4** — aleatorio puro; la excepción documentada a la convención UUIDv7 de §3, porque un identificador ordenable en el tiempo revelaría el momento del depósito · `voteProcessId` FK IX · `selection` *json* — sentido del voto · `nullifiedReason` NULL *enum* (`BLANK`, `INVALID`) · `verificationCode` U — código aleatorio que la persona votante conserva para comprobar que su boleta fue contada.
+
+La tabla **no** contiene `membershipId`, `personId`, `castAt`, dirección IP, agente de usuario, ni referencia a la credencial que la habilitó. No tiene ninguna columna temporal: `createdAt` se omite deliberadamente, a diferencia de toda otra entidad del modelo.
+
+**`SpentVoteCredential`** — Credencial de voto ya utilizada. Impide el doble depósito sin identificar a nadie.
+`id` PK **UUIDv4** · `voteProcessId` FK IX · `credentialHash` U — `sha256` de la credencial presentada al depositar.
+Se inserta **en la misma transacción** que la boleta y, como ella, carece de columna temporal y de referencia a persona. Es la única fila que existe por credencial consumida: la credencial **nunca se almacenó al emitirse**.
+
+**`VoteReceipt`** — Acuse de **emisión de credencial**, entregado a la persona electora.
+`id` PK · `voteProcessId` FK IX · `membershipId` FK IX · `receiptCode` U · `issuedOn` *date* — solo la fecha civil.
+Único `(voteProcessId, membershipId)`. Se crea **al emitir la credencial**, no al depositar la boleta: crearlo en el depósito produciría dos filas nacidas en la misma transacción —una identificada y otra no— cuyo orden de inserción físico permitiría emparejarlas.
+
+La comprobación de que la boleta fue contada la hace la persona con el `verificationCode` que solo ella conserva, cotejándolo contra la lista de códigos escrutados que publica el acta. La lista publica los códigos contados, **no** el sentido asociado a cada uno: así la persona verifica la inclusión de su voto sin poder demostrar ante nadie por quién votó, lo que cerraría la puerta a la coacción.
 
 **`Election`** — Proceso electoral (PRD §9.5).
-`id` PK · `publicId` U · `unionBodyId` FK · `territorialUnitId` FK IX · `name` · `calendar` *json* — etapas con fechas · `callDocumentId` NULL FK→`GeneratedDocument` · `electoralCommissionTermIds` *string[]* — integrantes sin candidatura incompatible · `rosterPublishedAt` NULL · `status` *enum* (`PLANNED`, `CALL_ISSUED`, `REGISTRATION_OPEN`, `CAMPAIGN`, `VOTING`, `TALLYING`, `RESULTS_DECLARED`, `CHALLENGED`, `CLOSED`, `ANNULLED`) IX · `resultDocumentId` NULL FK · `normativeRuleSetId` FK.
+`id` PK · `publicId` U · `unionBodyId` FK · `territorialUnitId` FK IX · `name` · `calendar` *json* — etapas con fechas · `callDocumentId` NULL FK→`GeneratedDocument` · relación `ElectionCommissionMember` — integrantes sin candidatura incompatible · `rosterPublishedAt` NULL · `status` *enum* (`PLANNED`, `CALL_ISSUED`, `REGISTRATION_OPEN`, `CAMPAIGN`, `VOTING`, `TALLYING`, `RESULTS_DECLARED`, `CHALLENGED`, `CLOSED`, `ANNULLED`) IX · `resultDocumentId` NULL FK · `normativeRuleSetId` FK.
 
 **`CandidateSlate`** — Planilla o candidatura.
 `id` PK · `electionId` FK IX · `name` · `registeredAt` · `status` *enum* (`SUBMITTED`, `UNDER_REVIEW`, `VALIDATED`, `REJECTED`, `WITHDRAWN`) · `rejectionReason` NULL · `genderComposition` *json* — instantánea del cálculo de proporcionalidad · `complianceWarnings` *json* — alertas mostradas antes de registrar (PRD §9.3) · `validatedById` NULL FK · `members` — tabla hija `SlateMember(slateId, personId, officeDefinitionId, position, isSubstitute)`.
 La determinación formal de cumplimiento corresponde al órgano competente; el sistema alerta, no decide.
 
 **`ElectionIncident`** — Incidencia o impugnación interna.
-`id` PK · `electionId` FK IX · `reportedById` FK→`User` · `reportedAt` · `kind` *enum* (`PROCEDURAL`, `ELIGIBILITY`, `TECHNICAL`, `CONDUCT`, `CHALLENGE`) · `description` *text* · `evidenceFileIds` *string[]* · `status` *enum* (`OPEN`, `UNDER_REVIEW`, `RESOLVED`, `DISMISSED`, `ESCALATED`) · `resolution` NULL *text* · `resolvedById` NULL FK · `resolvedAt` NULL.
+`id` PK · `electionId` FK IX · `reportedById` FK→`User` · `reportedAt` · `kind` *enum* (`PROCEDURAL`, `ELIGIBILITY`, `TECHNICAL`, `CONDUCT`, `CHALLENGE`) · `description` *text* · relación `ElectionIncidentEvidence` · `status` *enum* (`OPEN`, `UNDER_REVIEW`, `RESOLVED`, `DISMISSED`, `ESCALATED`) · `resolution` NULL *text* · `resolvedById` NULL FK · `resolvedAt` NULL.
 
 **`DisciplinaryCase`** — Procedimiento disciplinario (PRD §9.8).
 `id` PK · `folio` U · `membershipId` FK IX · `personId` FK · `reportedAt` · `reportedById` NULL FK · `allegedFacts` *text* · `normativeRuleSetId` FK · `instructingBodyId` FK→`UnionBody` · `conflictOfInterestChecks` *json* — control de conflicto de interés de quienes instruyen · `status` *enum* `DisciplinaryStatus` IX · `notifiedAt` NULL · `hearingScheduledAt` NULL · `hearingHeldAt` NULL · `memberAccessGrantedAt` NULL — acceso del agremiado a su propio expediente · `closedAt` NULL · `confidentiality` *enum* (`RESERVED`) — siempre reservado.
@@ -300,16 +335,16 @@ Ninguna inteligencia artificial impone sanciones ni recomienda culpabilidad (PRD
 
 Estas entidades no aparecen nombradas en el PRD §18 pero son exigidas por el articulado (§9.3, §9.6, §9.7) y se declaran aquí para que ninguna regla quede sin soporte.
 
-**`NormativeRuleSet`** — Versión vigente de las reglas estatutarias.
+**`NormativeRuleSet`** — Versión vigente de las reglas estatutarias. **Se migra y se siembra en la Fase 1**, no en la Fase 5: la aceptación de estatutos de la solicitud de afiliación (Fase 4) la exige de forma obligatoria, y una referencia obligatoria hacia una fase posterior impediría cerrar la Fase 4 (control `C-COH-03`).
 `id` PK · `version` U · `effectiveFrom` · `effectiveTo` NULL · `approvedByAssemblyId` NULL FK · `rules` *json* — periodo del Comité (48 meses), reelección, integrantes de Vigilancia y Electoral (3), umbral de convocatoria por petición, anticipación mínima, quórum de primera y segunda convocatoria, mayorías simples y calificadas, reglas de proporcionalidad de género · `documentId` NULL FK→`GeneratedDocument` · `status` *enum* (`DRAFT`, `IN_FORCE`, `SUPERSEDED`).
 Todo acto guarda el `normativeRuleSetId` con el que se ejecutó.
 
 **`BargainingFile`** — Expediente de contrato colectivo, revisión o conflicto colectivo (PRD §9.6).
-`id` PK · `folio` U · `kind` *enum* (`COLLECTIVE_AGREEMENT_NEGOTIATION`, `CONTRACT_REVIEW`, `WAGE_REVIEW`, `COLLECTIVE_DISPUTE`, `STRIKE_PROCEDURE`) · `counterpartOrganizationId` NULL FK→`Organization` · `territorialUnitId` FK · `commissionMemberTermIds` *string[]* · `affectedRosterSnapshotId` NULL FK→`AssemblyRosterSnapshot` · `consultationVoteProcessId` NULL FK→`VoteProcess` · `enablingResolutionId` NULL FK→`Resolution` — el acuerdo humano es requisito; ninguna automatización inicia un procedimiento de huelga · `status` *enum* (`OPEN`, `NEGOTIATION`, `CONSULTATION`, `CONCILIATION`, `STRIKE_PROCEDURE`, `CONCLUDED`, `ARCHIVED`) · `authorityCaseNumber` NULL · `closedAt` NULL.
+`id` PK · `folio` U · `kind` *enum* (`COLLECTIVE_AGREEMENT_NEGOTIATION`, `CONTRACT_REVIEW`, `WAGE_REVIEW`, `COLLECTIVE_DISPUTE`, `STRIKE_PROCEDURE`) · `counterpartOrganizationId` NULL FK→`Organization` · `territorialUnitId` FK · relación `BargainingCommissionMember` · `affectedRosterSnapshotId` NULL FK→`AssemblyRosterSnapshot` · `consultationVoteProcessId` NULL FK→`VoteProcess` · `enablingResolutionId` NULL FK→`Resolution` — el acuerdo humano es requisito; ninguna automatización inicia un procedimiento de huelga · `status` *enum* (`OPEN`, `NEGOTIATION`, `CONSULTATION`, `CONCILIATION`, `STRIKE_PROCEDURE`, `CONCLUDED`, `ARCHIVED`) · `authorityCaseNumber` NULL · `closedAt` NULL.
 Tabla hija `BargainingProposal(fileId, version, documentId, submittedAt, submittedBy)`.
 
 **`ComplianceObligation`** — Obligación frente a autoridad laboral (PRD §9.7).
-`id` PK · `legalEntityId` FK · `kind` *enum* (`MEMBER_REGISTRY_UPDATE`, `LEADERSHIP_CHANGE`, `STATUTE_AMENDMENT`, `FINANCIAL_REPORT`, `OTHER`) · `triggerEventRef` — acto que la origina · `dueAt` IX · `status` *enum* (`PENDING`, `PREPARED`, `SUBMITTED`, `ACKNOWLEDGED`, `OBSERVED`, `CLOSED`) · `submittedAt` NULL · `authorityReference` NULL · `documentIds` *string[]*.
+`id` PK · `legalEntityId` FK · `kind` *enum* (`MEMBER_REGISTRY_UPDATE`, `LEADERSHIP_CHANGE`, `STATUTE_AMENDMENT`, `FINANCIAL_REPORT`, `OTHER`) · `triggerEventRef` — acto que la origina · `dueAt` IX · `status` *enum* (`PENDING`, `PREPARED`, `SUBMITTED`, `ACKNOWLEDGED`, `OBSERVED`, `CLOSED`) · `submittedAt` NULL · `authorityReference` NULL · relación `ComplianceObligationDocument`.
 
 ---
 
@@ -349,10 +384,10 @@ El acceso al expediente se concede por asignación y necesidad legítima, nunca 
 `id` PK · `caseId` FK IX · `title` · `description` NULL · `assigneeId` NULL FK→`User` IX · `dueAt` NULL IX · `status` *enum* (`PENDING`, `IN_PROGRESS`, `BLOCKED`, `DONE`, `CANCELLED`) · `completedAt` NULL · `completedById` NULL FK · `blockerNote` NULL.
 
 **`CaseMessage`** — Comunicación trazable dentro del caso.
-`id` PK · `caseId` FK IX · `authorId` NULL FK→`User` · `audience` *enum* (`PERSON_AND_TEAM`, `TEAM_ONLY`, `SUPERVISION_ONLY`) — las notas reservadas nunca se muestran a la persona ni al área receptora de una canalización · `body` *text* · `attachmentFileIds` *string[]* · `sentAt` IX · `readReceipts` *json* · `editedAt` NULL — solo correcciones antes del primer acuse, con registro.
+`id` PK · `caseId` FK IX · `authorId` NULL FK→`User` · `audience` *enum* (`PERSON_AND_TEAM`, `TEAM_ONLY`, `SUPERVISION_ONLY`) — las notas reservadas nunca se muestran a la persona ni al área receptora de una canalización · `body` *text* · relación `CaseMessageAttachment` · `sentAt` IX · `readReceipts` *json* · `editedAt` NULL — solo correcciones antes del primer acuse, con registro.
 
 **`Referral`** — Canalización entre entidades o áreas (PRD §10.4).
-`id` PK · `caseId` FK IX · `fromLegalEntityId` FK · `toLegalEntityId` FK IX · `toModule` *enum* (`UNION_DEFENSE`, `SOCIAL_ATTENTION`, `CIAN`, `CENI`, `EXTERNAL`) · `externalRecipient` NULL · `reason` *text* · `explanationShownToPerson` *text* — explicación comprensible previa al consentimiento · `consentId` FK→`Consent` · `sharedFields` *string[]* — selección explícita de datos que se transfieren · `sharedFileIds` *string[]* · `status` *enum* (`PROPOSED`, `AWAITING_CONSENT`, `SENT`, `ACCEPTED`, `REJECTED`, `RETURNED`, `CLOSED`) IX · `acceptedById` NULL FK · `acceptedAt` NULL · `returnReason` NULL · `targetCaseId` NULL FK→`Case`.
+`id` PK · `caseId` FK IX · `fromLegalEntityId` FK · `toLegalEntityId` FK IX · `toModule` *enum* (`UNION_DEFENSE`, `SOCIAL_ATTENTION`, `CIAN`, `CENI`, `EXTERNAL`) · `externalRecipient` NULL · `reason` *text* · `explanationShownToPerson` *text* — explicación comprensible previa al consentimiento · `consentId` FK→`Consent` · `sharedFields` *string[]* — selección explícita de datos que se transfieren · relación `ReferralSharedFile` · `status` *enum* (`PROPOSED`, `AWAITING_CONSENT`, `SENT`, `ACCEPTED`, `REJECTED`, `RETURNED`, `CLOSED`) IX · `acceptedById` NULL FK · `acceptedAt` NULL · `returnReason` NULL · `targetCaseId` NULL FK→`Case`.
 Invariante: sin `Consent` vigente que cubra exactamente los campos y archivos listados, la canalización no puede pasar de `AWAITING_CONSENT`.
 
 **`Consent`** — Consentimiento otorgado por una persona.
@@ -421,22 +456,22 @@ Ningún derecho se activa por la página de retorno del navegador: la activació
 La plataforma vincula comprobantes; no sustituye un sistema contable autorizado (PRD §26).
 
 **`DiscountGrant`** — Cupón, descuento o convenio aplicable.
-`id` PK · `code` U? · `name` · `legalEntityId` FK · `kind` *enum* (`PERCENTAGE`, `FIXED_AMOUNT`, `FULL_WAIVER`) · `value` *int* · `stripeCouponId` NULL · `appliesToProductIds` *string[]* · `maxRedemptions` NULL *int* · `redemptions` *int* · `validFrom` · `validTo` NULL · `agreementDocumentId` NULL FK · `authorizedById` FK · `revokedAt` NULL.
+`id` PK · `code` U? · `name` · `legalEntityId` FK · `kind` *enum* (`PERCENTAGE`, `FIXED_AMOUNT`, `FULL_WAIVER`) · `value` *int* · `stripeCouponId` NULL · relación `DiscountGrantProduct` · `maxRedemptions` NULL *int* · `redemptions` *int* · `validFrom` · `validTo` NULL · `agreementDocumentId` NULL FK · `authorizedById` FK · `revokedAt` NULL.
 
 **`Scholarship`** — Beca o exención documentada.
-`id` PK · `personId` FK IX · `legalEntityId` FK · `programKind` *enum* (`MEMBERSHIP`, `CIAN_SERVICE`, `COURSE`, `TOOL_ACCESS`) · `coveragePercent` *int* · `justification` *text* · `evidenceFileIds` *string[]* · `approvedById` FK · `approvedAt` · `validFrom` · `validTo` NULL · `revokedAt` NULL · `revokeReason` NULL.
+`id` PK · `personId` FK IX · `legalEntityId` FK · `programKind` *enum* (`MEMBERSHIP`, `CIAN_SERVICE`, `COURSE`, `TOOL_ACCESS`) · `coveragePercent` *int* · `justification` *text* · relación `ScholarshipEvidence` · `approvedById` FK · `approvedAt` · `validFrom` · `validTo` NULL · `revokedAt` NULL · `revokeReason` NULL.
 
 **`LedgerEntry`** — Asiento del libro auxiliar. Inmutable (PRD §11.5).
-`id` PK · `legalEntityId` FK IX · `entryDate` IX · `direction` *enum* (`DEBIT`, `CREDIT`) · `accountCode` — catálogo auxiliar interno · `amountMinor` *bigint* · `currency` · `sourceKind` *enum* (`PAYMENT`, `REFUND`, `MANUAL_ADJUSTMENT`, `ASSET_MOVEMENT`, `EXEMPTION`) · `sourceId` · `description` · `reason` NULL — obligatorio en ajustes · `createdById` FK · `reviewedById` NULL FK · `approvedById` NULL FK · `reconciliationId` NULL FK IX · `reversalOfEntryId` NULL FK→`LedgerEntry` — una corrección es un asiento nuevo, jamás una edición.
+`id` PK · `legalEntityId` FK IX · `entryDate` IX · `direction` *enum* (`DEBIT`, `CREDIT`) · `accountCode` — catálogo auxiliar interno · `amountMinor` *bigint* · `currency` · `sourceKind` *enum* (`PAYMENT`, `REFUND`, `MANUAL_ADJUSTMENT`, `ASSET_MOVEMENT`, `EXEMPTION`) · `sourceId` · `description` · `reason` NULL — obligatorio en ajustes · `createdByActorId` FK→`Actor` — un asiento puede originarlo el manejador de un webhook, no solo una persona · `reviewedById` NULL FK→`User` · `approvedById` NULL FK→`User` — el doble control exige personas, nunca el sistema · `reconciliationId` NULL FK IX · `reversalOfEntryId` NULL FK→`LedgerEntry` — una corrección es un asiento nuevo, jamás una edición.
 
 **`Reconciliation`** — Corte de conciliación por entidad y periodo.
-`id` PK · `legalEntityId` FK IX · `periodStart` · `periodEnd` · `stripeAccountKey` *enum* · `expectedTotalMinor` *bigint* · `observedTotalMinor` *bigint* · `differenceMinor` *bigint* · `status` *enum* (`OPEN`, `BALANCED`, `WITH_DIFFERENCES`, `CLOSED`) IX · `unmatchedEventIds` *string[]* · `closedById` NULL FK · `closedAt` NULL · `reportFileId` NULL FK.
+`id` PK · `legalEntityId` FK IX · `periodStart` · `periodEnd` · `stripeAccountKey` *enum* · `expectedTotalMinor` *bigint* · `observedTotalMinor` *bigint* · `differenceMinor` *bigint* · `status` *enum* (`OPEN`, `BALANCED`, `WITH_DIFFERENCES`, `CLOSED`) IX · relación `ReconciliationException` · `closedById` NULL FK · `closedAt` NULL · `reportFileId` NULL FK.
 
 **`AssetRegister`** — Registro patrimonial (PRD §11.5).
-`id` PK · `legalEntityId` FK IX · `assetKind` *enum* (`REAL_ESTATE`, `VEHICLE`, `EQUIPMENT`, `FURNITURE`, `BANK_ACCOUNT`, `INTANGIBLE`, `OTHER`) · `name` · `description` · `acquisitionMode` *enum* (`PURCHASE`, `DONATION`, `TRANSFER`, `OTHER`) · `acquiredOn` · `documentedValueMinor` *bigint* · `currency` · `location` NULL · `custodianPersonId` NULL FK · `supportingFileIds` *string[]* · `status` *enum* (`ACTIVE`, `IN_REPAIR`, `TRANSFERRED`, `DISPOSED`, `LOST`) · `authorizingResolutionId` NULL FK→`Resolution`.
+`id` PK · `legalEntityId` FK IX · `assetKind` *enum* (`REAL_ESTATE`, `VEHICLE`, `EQUIPMENT`, `FURNITURE`, `BANK_ACCOUNT`, `INTANGIBLE`, `OTHER`) · `name` · `description` · `acquisitionMode` *enum* (`PURCHASE`, `DONATION`, `TRANSFER`, `OTHER`) · `acquiredOn` · `documentedValueMinor` *bigint* · `currency` · `location` NULL · `custodianPersonId` NULL FK · relación `AssetDocument` · `status` *enum* (`ACTIVE`, `IN_REPAIR`, `TRANSFERRED`, `DISPOSED`, `LOST`) · `authorizingResolutionId` NULL FK→`Resolution`.
 
 **`AssetMovement`** — Movimiento patrimonial. Inmutable.
-`id` PK · `assetId` FK IX · `movementKind` *enum* (`REGISTERED`, `REVALUED`, `TRANSFERRED`, `ASSIGNED`, `DISPOSED`, `WRITTEN_OFF`) · `occurredOn` · `fromCustodianId` NULL FK · `toCustodianId` NULL FK · `amountMinor` NULL *bigint* · `authorizingResolutionId` NULL FK · `evidenceFileIds` *string[]* · `registeredById` FK.
+`id` PK · `assetId` FK IX · `movementKind` *enum* (`REGISTERED`, `REVALUED`, `TRANSFERRED`, `ASSIGNED`, `DISPOSED`, `WRITTEN_OFF`) · `occurredOn` · `fromCustodianId` NULL FK · `toCustodianId` NULL FK · `amountMinor` NULL *bigint* · `authorizingResolutionId` NULL FK · relación `AssetMovementEvidence` · `registeredById` FK.
 Los actos que requieren aprobación institucional no pueden marcarse como concluidos sin el acuerdo adjunto.
 
 **`StripeWebhookEvent`** — Evento recibido de Stripe. Inmutable y anterior a cualquier procesamiento (PRD §11.4).
@@ -520,13 +555,13 @@ erDiagram
 `id` PK · `folio` U · `personId` FK IX · `requestedByPersonId` NULL FK · `sourceKind` *enum* (`SELF`, `FAMILY`, `UNION_REFERRAL`, `SOCIAL_REFERRAL`, `EXTERNAL`) · `supportRequestId` NULL FK · `caseId` NULL FK→`Case` · `needsAssessment` *text* — valoración de necesidades, sin diagnóstico · `interviewedById` NULL FK→`User` · `interviewAt` NULL · `triageStatus` *enum* (`RECEIVED`, `TRIAGE`, `WAITLISTED`, `ACCEPTED`, `REFERRED_OUT`, `DECLINED`, `CLOSED`) IX · `triageById` NULL FK — el triage es humano · `priority` *enum* (`ROUTINE`, `PRIORITY`, `URGENT`) · `consentId` FK→`Consent` · `scholarshipId` NULL FK · `waitlistPosition` NULL *int* · `closedAt` NULL.
 
 **`CianProfessional`** — Profesional habilitado para atender.
-`id` PK · `personId` FK U · `professionalProfileId` FK→`ProfessionalProfile` · `licenseReference` NULL · `licenseFileId` NULL FK · `disciplines` *string[]* IX · `serviceIds` *string[]* · `capacityPerWeek` *int* · `acceptsRemote` *bool* · `status` *enum* (`ACTIVE`, `ON_LEAVE`, `INACTIVE`) IX · `verifiedById` NULL FK · `verifiedAt` NULL.
+`id` PK · `personId` FK U · `professionalProfileId` FK→`ProfessionalProfile` · `licenseReference` NULL · `licenseFileId` NULL FK · relación `CianProfessionalDiscipline` → `SpecialtyCatalog` · relación `CianProfessionalService` · `capacityPerWeek` *int* · `acceptsRemote` *bool* · `status` *enum* (`ACTIVE`, `ON_LEAVE`, `INACTIVE`) IX · `verifiedById` NULL FK · `verifiedAt` NULL.
 
 **`CianService`** — Servicio ofrecido.
 `id` PK · `code` U · `name` · `description` · `modality` *enum* (`IN_PERSON`, `REMOTE`, `BOTH`) · `durationMinutes` *int* · `catalogProductId` NULL FK · `requiresReferral` *bool* · `isActive`.
 
 **`CianAvailability`** — Disponibilidad publicada.
-`id` PK · `professionalId` FK IX · `startsAt` IX · `endsAt` · `serviceIds` *string[]* · `modality` *enum* · `slotMinutes` *int* · `recurrenceRule` NULL · `blockedReason` NULL · `isBlocked` *bool*.
+`id` PK · `professionalId` FK IX · `startsAt` IX · `endsAt` · relación `CianAvailabilityService` · `modality` *enum* · `slotMinutes` *int* · `recurrenceRule` NULL · `blockedReason` NULL · `isBlocked` *bool*.
 
 **`CianAppointment`** — Cita.
 `id` PK · `publicId` U · `episodeId` NULL FK IX · `personId` FK IX · `professionalId` FK IX · `serviceId` FK · `startsAt` IX · `endsAt` · `modality` *enum* · `location` NULL · `meetingLinkRef` NULL — referencia, no enlace con datos en la URL · `status` *enum* (`SCHEDULED`, `CONFIRMED`, `RESCHEDULED`, `COMPLETED`, `CANCELLED_BY_PERSON`, `CANCELLED_BY_CENTER`, `NO_SHOW`) IX · `rescheduledFromId` NULL FK · `cancelReason` NULL · `paymentId` NULL FK · `attendanceNote` NULL · `reminderJobId` NULL FK→`BackgroundJob`.
@@ -539,7 +574,7 @@ erDiagram
 Único `(episodeId, version)`.
 
 **`CianGoal`** — Objetivo del plan con actividades y seguimiento.
-`id` PK · `carePlanId` FK IX · `title` · `description` · `targetDate` NULL · `measure` NULL · `status` *enum* (`PROPOSED`, `ACTIVE`, `ACHIEVED`, `PARTIALLY_ACHIEVED`, `DISCONTINUED`) · `progressNotes` *json* · `updatedById` NULL FK.
+`id` PK · `carePlanId` FK IX · `title` · `description` · `targetDate` NULL · `measure` NULL · `status` *enum* (`PROPOSED`, `ACTIVE`, `ACHIEVED`, `PARTIALLY_ACHIEVED`, `DISCONTINUED`) · `progressNotes` *json* · `updatedByActorId` NULL FK→`Actor`.
 
 **`CianClinicalNote`** — Nota profesional de acceso restringido.
 `id` PK · `episodeId` FK IX · `appointmentId` NULL FK · `authorId` FK→`CianProfessional` IX · `noteKind` *enum* (`SESSION`, `ASSESSMENT`, `FOLLOW_UP`, `COORDINATION`, `CLOSURE`) · `body` *text* · `writtenAt` · `amendedFromNoteId` NULL FK — las correcciones crean una nota nueva que referencia la anterior; el contenido original nunca se sobrescribe · `visibility` *enum* (`AUTHOR_AND_COORDINATION`, `CARE_TEAM`) — el personal sindical y el administrativo sin función asistencial nunca aparecen aquí.
@@ -549,7 +584,7 @@ Ninguna nota se reutiliza con fines sindicales, comerciales o CENI sin consentim
 `id` PK · `episodeId` FK IX · `measuredAt` · `instrument` *enum* (`EXPERIENCE_SURVEY`, `GOAL_ATTAINMENT`, `FOLLOW_UP_CHECK`) · `score` NULL *int* · `responses` *json* — despersonalizadas para el tablero · `recordedById` NULL FK · `sharedForAggregateMetrics` *bool*.
 
 **`CianReferral`** — Canalización a especialidad externa o interna.
-`id` PK · `episodeId` FK IX · `direction` *enum* (`INTERNAL`, `EXTERNAL`) · `targetKind` *enum* (`NEUROLOGY`, `PSYCHIATRY`, `PSYCHOLOGY`, `EDUCATION`, `SOCIAL_PROGRAM`, `LEGAL_DEFENSE`, `OTHER`) — la canalización a evaluación diagnóstica es siempre a una persona profesional, nunca automática · `targetProfessionalId` NULL FK · `externalTarget` NULL · `reason` *text* · `consentId` FK→`Consent` · `sharedFileIds` *string[]* · `status` *enum* (`PROPOSED`, `SENT`, `ACCEPTED`, `COMPLETED`, `DECLINED`) · `sentAt` NULL · `closedAt` NULL.
+`id` PK · `episodeId` FK IX · `direction` *enum* (`INTERNAL`, `EXTERNAL`) · `targetKind` *enum* (`NEUROLOGY`, `PSYCHIATRY`, `PSYCHOLOGY`, `EDUCATION`, `SOCIAL_PROGRAM`, `LEGAL_DEFENSE`, `OTHER`) — la canalización a evaluación diagnóstica es siempre a una persona profesional, nunca automática · `targetProfessionalId` NULL FK · `externalTarget` NULL · `reason` *text* · `consentId` FK→`Consent` · relación `CianReferralSharedFile` · `status` *enum* (`PROPOSED`, `SENT`, `ACCEPTED`, `COMPLETED`, `DECLINED`) · `sentAt` NULL · `closedAt` NULL.
 
 ---
 
@@ -579,7 +614,7 @@ erDiagram
 `id` PK · `organizationId` FK IX · `name` · `address` · `territorialUnitId` NULL FK IX · `headcountBand` *enum* NULL · `contactPersonId` NULL FK · `isActive`.
 
 **`CeniEngagement`** — Contratación y ciclo de una organización.
-`id` PK · `folio` U · `organizationId` FK IX · `programId` FK IX · `siteIds` *string[]* — alcance contratado · `status` *enum* `CeniEngagementStatus` IX · `contractDocumentId` NULL FK · `paymentId` NULL FK · `subscriptionId` NULL FK · `startedAt` · `diagnosticCompletedAt` NULL · `assessmentCompletedAt` NULL · `assignedAssessorIds` *string[]* · `coordinatorId` NULL FK→`User` · `closedAt` NULL · `closeReason` NULL.
+`id` PK · `folio` U · `organizationId` FK IX · `programId` FK IX · relación `CeniEngagementSite` — alcance contratado · `status` *enum* `CeniEngagementStatus` IX · `contractDocumentId` NULL FK · `paymentId` NULL FK · `subscriptionId` NULL FK · `startedAt` · `diagnosticCompletedAt` NULL · `assessmentCompletedAt` NULL · relación `CeniEngagementAssessor` · `coordinatorId` NULL FK→`User` · `closedAt` NULL · `closeReason` NULL.
 
 **`AssessmentTemplate`** — Instrumento de evaluación.
 `id` PK · `code` U · `name` · `programId` NULL FK · `currentVersionId` NULL FK→`AssessmentVersion` · `isActive`.
@@ -602,16 +637,16 @@ Una evaluación cerrada no se altera; una reevaluación crea una respuesta nueva
 `id` PK · `engagementId` FK IX · `version` *int* · `summary` · `agreedAt` NULL · `agreedByOrganizationUserId` NULL FK · `status` *enum* (`DRAFT`, `AGREED`, `IN_PROGRESS`, `COMPLETED`, `OVERDUE`, `CANCELLED`) IX · `dueAt` NULL.
 
 **`ImprovementAction`** — Acción con responsable y fecha.
-`id` PK · `planId` FK IX · `findingId` NULL FK IX · `title` · `description` · `responsiblePersonId` NULL FK · `dueOn` IX · `status` *enum* (`PENDING`, `IN_PROGRESS`, `DONE`, `BLOCKED`, `CANCELLED`) · `completedAt` NULL · `evidenceFileIds` *string[]* · `verifiedById` NULL FK · `verifiedAt` NULL.
+`id` PK · `planId` FK IX · `findingId` NULL FK IX · `title` · `description` · `responsiblePersonId` NULL FK · `dueOn` IX · `status` *enum* (`PENDING`, `IN_PROGRESS`, `DONE`, `BLOCKED`, `CANCELLED`) · `completedAt` NULL · relación `ImprovementActionEvidence` · `verifiedById` NULL FK · `verifiedAt` NULL.
 
-**`TrainingRequirement`** — Capacitación exigida por el programa.
-`id` PK · `engagementId` FK IX · `eventId` NULL FK→`Event` · `title` · `requiredParticipants` *int* · `completedParticipants` *int* · `dueOn` NULL · `status` *enum* (`PENDING`, `SCHEDULED`, `COMPLETED`, `WAIVED`) · `evidenceFileIds` *string[]* · `waiverReason` NULL.
+**`TrainingRequirement`** — Capacitación exigida por el programa. **No depende del módulo de eventos** (defecto `D-F0-008`).
+`id` PK · `engagementId` FK IX · `eventId` NULL FK→`Event` — enlace **opcional** que solo se usa cuando el módulo de eventos existe; la acreditación por evidencia documental es suficiente y es la vía con la que CENI cierra su propia fase · `title` · `requiredParticipants` *int* · `completedParticipants` *int* · `dueOn` NULL · `status` *enum* (`PENDING`, `SCHEDULED`, `COMPLETED`, `WAIVED`) · relación `TrainingRequirementEvidence` · `waiverReason` NULL.
 
 **`CertificationDecision`** — Decisión humana de certificación (PRD §14.3.11).
 `id` PK · `engagementId` FK U · `decidedById` FK→`User` — persona, nunca automatismo ni modelo · `decidedAt` · `outcome` *enum* (`CERTIFIED`, `CERTIFIED_WITH_CONDITIONS`, `NOT_CERTIFIED`, `DEFERRED`) · `level` NULL · `rationale` *text* · `conflictOfInterestDeclared` *bool* · `reviewedById` NULL FK · `supportingResponseId` FK→`AssessmentResponse`.
 
 **`CeniCertificate`** — Certificado emitido.
-`id` PK · `certificateNumber` U · `publicCode` U — contenido opaco del QR · `signature` · `decisionId` FK U · `organizationId` FK IX · `programId` FK · `scopeSiteIds` *string[]* · `level` · `issuedOn` · `validUntil` IX · `status` *enum* (`VALID`, `SUSPENDED`, `EXPIRED`, `REVOKED`, `RENEWED`) IX · `suspendedReason` NULL · `revokedReason` NULL · `renewedFromCertificateId` NULL FK · `documentId` FK→`GeneratedDocument`.
+`id` PK · `certificateNumber` U · `publicCode` U — contenido opaco del QR · `signingKeyId` IX · `signature` · `decisionId` FK U · `organizationId` FK IX · `programId` FK · relación `CeniCertificateSite` · `level` · `issuedOn` · `validUntil` IX · `status` *enum* (`VALID`, `SUSPENDED`, `EXPIRED`, `REVOKED`, `RENEWED`) IX · `suspendedReason` NULL · `revokedReason` NULL · `renewedFromCertificateId` NULL FK · `documentId` FK→`GeneratedDocument`.
 El verificador público distingue con claridad vigencia, suspensión, vencimiento y revocación.
 
 **`CeniBadge`** — Distintivo publicable derivado de un certificado vigente.
@@ -628,7 +663,7 @@ El verificador público distingue con claridad vigencia, suspensión, vencimient
 `id` PK · `code` U · `purpose` · `module` IX · `criticality` *enum* (`STANDARD`, `CRITICAL`) — la publicación de un prompt crítico exige revisión humana · `currentVersionId` NULL FK→`AiPromptVersion` · `isActive`.
 
 **`AiPromptVersion`** — Versión concreta del prompt.
-`id` PK · `promptId` FK IX · `version` *int* · `systemText` *text* · `allowedVariables` *string[]* · `model` · `parameters` *json* · `authorizedSources` *string[]* — identificadores de `KnowledgeSource` permitidos · `outputSchema` *json* · `limits` *json* · `status` *enum* (`DRAFT`, `TESTING`, `PUBLISHED`, `RETIRED`) IX · `authorId` FK · `reviewerId` NULL FK · `reviewedAt` NULL · `publishedAt` NULL · `revertedFromVersionId` NULL FK.
+`id` PK · `promptId` FK IX · `version` *int* · `systemText` *text* · `allowedVariables` *string[]* · `model` · `parameters` *json* · relación `AiPromptVersionSource` — fuentes permitidas · `outputSchema` *json* · `limits` *json* · `status` *enum* (`DRAFT`, `TESTING`, `PUBLISHED`, `RETIRED`) IX · `authorId` FK · `reviewerId` NULL FK · `reviewedAt` NULL · `publishedAt` NULL · `revertedFromVersionId` NULL FK.
 Único `(promptId, version)`.
 
 **`AiConversation`** — Hilo de asistencia.
@@ -642,7 +677,15 @@ El verificador público distingue con claridad vigencia, suspensión, vencimient
 Las acciones sensibles requieren confirmación humana; la IA nunca decide admisiones, sanciones, elegibilidad, validez de votos, conflictos, representación, diagnósticos, certificaciones, pagos, accesos ni publicación de datos personales (PRD §15.4).
 
 **`KnowledgeSource`** — Fuente documental autorizada para búsqueda semántica.
-`id` PK · `code` U · `name` · `sourceKind` *enum* (`STATUTE`, `POLICY`, `PUBLIC_CONTENT`, `PROCEDURE_GUIDE`, `CENI_CRITERIA`) · `legalEntityId` NULL FK · `fileObjectId` NULL FK · `contentPageId` NULL FK · `requiredPermissionCode` NULL — las fuentes se separan por permisos: un fragmento nunca alcanza a quien no puede leer su origen · `indexedAt` NULL · `chunkCount` *int* · `status` *enum* (`PENDING`, `INDEXED`, `STALE`, `DISABLED`).
+`id` PK · `code` U · `name` · `sourceKind` *enum* (`STATUTE`, `POLICY`, `PUBLIC_CONTENT`, `PROCEDURE_GUIDE`, `CENI_CRITERIA`) · `legalEntityId` NULL FK · `fileObjectId` NULL FK · `contentPageId` NULL FK · `requiredPermissionCode` NULL — las fuentes se separan por permisos: un fragmento nunca alcanza a quien no puede leer su origen · `indexedAt` NULL · `chunkCount` *int* — derivado de `KnowledgeChunk` · `contentHash` — detecta que la fuente cambió y marca `STALE` · `status` *enum* (`PENDING`, `INDEXED`, `STALE`, `DISABLED`).
+
+**`KnowledgeChunk`** — Fragmento indexado de una fuente autorizada. Es lo que la búsqueda semántica recupera realmente (defecto `D-F0-009`).
+`id` PK · `knowledgeSourceId` FK IX · `ordinal` *int* · `text` *text* — fragmento con solapamiento respecto del anterior para no partir ideas a la mitad · `tokenCount` *int* · `embedding` *vector(768)* — pgvector, con índice HNSW y distancia coseno · `searchVector` *tsvector* — índice GIN para la mitad léxica de la búsqueda híbrida · `sectionPath` NULL — referencia legible para citar la fuente · `requiredPermissionCode` NULL IX — **copiado desde la fuente** para poder filtrar en la misma consulta del vecino más próximo, sin unir tablas · `indexedAt`.
+Único `(knowledgeSourceId, ordinal)`.
+
+**Estrategia de recuperación.** Búsqueda híbrida: se combinan los vecinos más próximos por coseno y los resultados léxicos, y se reordenan por fusión de rangos. El filtro de permisos se aplica **dentro** de la consulta, como cláusula sobre `requiredPermissionCode`, no como descarte posterior: recuperar primero y filtrar después significaría que el modelo ya vio fragmentos que la persona no puede leer. Un fragmento sin permiso requerido es público; uno con permiso solo alcanza a quien lo tiene (PRD §15.5).
+
+**Reindexación.** Cuando `contentHash` cambia, un trabajo programado marca la fuente `STALE`, regenera sus fragmentos y sustituye los anteriores en una transacción, de modo que nunca convivan fragmentos de dos versiones del mismo documento.
 
 **`ContentPage`** — Página, noticia, comunicado o recurso del CMS.
 `id` PK · `slug` U IX · `kind` *enum* (`PAGE`, `NEWS`, `STATEMENT`, `RESOURCE`, `FAQ`, `CALL_FOR_APPLICATIONS`, `BANNER`, `LEGAL`, `DELEGATION_PROFILE`, `PROTOCOL`) IX · `legalEntityId` NULL FK · `territorialUnitId` NULL FK · `currentVersionId` NULL FK→`ContentVersion` · `status` *enum* (`DRAFT`, `IN_REVIEW`, `SCHEDULED`, `PUBLISHED`, `ARCHIVED`) IX · `publishedAt` NULL IX · `scheduledFor` NULL · `accessLevel` *enum* (`PUBLIC`, `MEMBERS`, `INTERNAL`) · `redirectFromSlugs` *string[]*.
@@ -652,7 +695,7 @@ Las acciones sensibles requieren confirmación humana; la IA nunca decide admisi
 Único `(pageId, version)`.
 
 **`Event`** — Evento, curso, taller o convocatoria.
-`id` PK · `publicId` U · `slug` U · `title` · `kind` *enum* (`ASSEMBLY_PUBLIC`, `COURSE`, `WORKSHOP`, `DIPLOMA`, `MEETING`, `CAMPAIGN`, `CENI_TRAINING`) IX · `legalEntityId` FK IX · `territorialUnitId` NULL FK IX · `startsAt` IX · `endsAt` · `modality` *enum* · `venue` NULL · `capacity` NULL *int* · `eligibilityRules` *json* · `catalogProductId` NULL FK · `visibility` *enum* (`PUBLIC`, `MEMBERS`, `INVITATION`) · `materialsFileIds` *string[]* · `issuesConstancy` *bool* · `constancyTemplateId` NULL FK→`DocumentTemplate` · `status` *enum* (`DRAFT`, `PUBLISHED`, `REGISTRATION_OPEN`, `FULL`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`) IX.
+`id` PK · `publicId` U · `slug` U · `title` · `kind` *enum* (`ASSEMBLY_PUBLIC`, `COURSE`, `WORKSHOP`, `DIPLOMA`, `MEETING`, `CAMPAIGN`, `CENI_TRAINING`) IX · `legalEntityId` FK IX · `territorialUnitId` NULL FK IX · `startsAt` IX · `endsAt` · `modality` *enum* · `venue` NULL · `capacity` NULL *int* · `eligibilityRules` *json* · `catalogProductId` NULL FK · `visibility` *enum* (`PUBLIC`, `MEMBERS`, `INVITATION`) · relación `EventMaterial` · `issuesConstancy` *bool* · `constancyTemplateId` NULL FK→`DocumentTemplate` · `status` *enum* (`DRAFT`, `PUBLISHED`, `REGISTRATION_OPEN`, `FULL`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`) IX.
 
 **`EventRegistration`** — Inscripción y asistencia.
 `id` PK · `eventId` FK IX · `personId` FK IX · `registeredAt` · `status` *enum* (`REGISTERED`, `WAITLISTED`, `CONFIRMED`, `ATTENDED`, `NO_SHOW`, `CANCELLED`) IX · `paymentId` NULL FK · `attendanceAt` NULL · `evaluationScore` NULL *int* · `constancyDocumentId` NULL FK→`GeneratedDocument` · `constancyRevokedAt` NULL.
@@ -672,14 +715,96 @@ Las acciones sensibles requieren confirmación humana; la IA nunca decide admisi
 **`BackgroundJob`** — Trabajo asíncrono con bloqueo e idempotencia (PRD §17.5).
 `id` PK · `jobType` IX · `businessKey` — `(jobType, businessKey)` único parcial mientras el trabajo no esté terminado · `payload` *json* · `status` *enum* (`PENDING`, `CLAIMED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED`) IX · `runAt` IX · `claimedAt` NULL · `claimedBy` NULL · `attempts` *int* · `maxAttempts` *int* · `lastError` NULL · `result` *json* NULL · `alertedAt` NULL · `correlationId`.
 
+**`OutboxMessage`** — Bandeja de salida transaccional de eventos de dominio (ver `ARCHITECTURE.md` §4.3).
+`id` PK · `eventName` IX — p. ej. `billing.payment.succeeded` · `payload` *json* — identificadores y datos mínimos, nunca contenido personal · `legalEntityId` NULL FK IX · `occurredAt` IX · `availableAt` IX — permite diferir · `status` *enum* (`PENDING`, `DELIVERING`, `DELIVERED`, `FAILED`) IX · `attempts` *int* · `lastError` NULL · `correlationId` IX · `createdByActorId` FK→`Actor`.
+Se escribe **en la misma transacción** que el hecho que lo origina. Tabla hija `OutboxDelivery(outboxMessageId, handlerCode, status, attempts, deliveredAt, lastError)` con único `(outboxMessageId, handlerCode)`: es lo que hace idempotente a cada manejador y permite reintentar uno sin repetir los demás.
+
 **`WebhookEvent`** — Recepción genérica de webhooks distintos de Stripe. Inmutable.
 `id` PK · `source` IX · `externalId` NULL U? · `eventType` · `signatureVerified` *bool* · `payload` *json* · `receivedAt` IX · `processingStatus` *enum* (`RECEIVED`, `PROCESSED`, `FAILED`, `IGNORED`) · `attempts` *int* · `lastError` NULL.
 
 **`AuditEvent`** — Bitácora institucional anexable (PRD §20.4). Inmutable.
-`id` PK · `occurredAt` IX · `actorKind` *enum* (`PERSON`, `ROOT_SUPERADMIN`, `SYSTEM`, `JOB`) · `actorUserId` NULL FK IX · `actorLabel` NULL — para el Superadmin raíz, que no tiene fila en `User` · `action` — código del catálogo cerrado · `objectKind` IX · `objectId` IX · `legalEntityId` NULL FK IX · `territorialUnitId` NULL FK · `outcome` *enum* (`SUCCESS`, `DENIED`, `FAILED`) · `reason` NULL *text* — obligatorio cuando el permiso lo exige · `scope` *json* — alcance efectivo aplicado · `metadata` *json* — minimizada, sin datos personales innecesarios · `correlationId` IX · `previousHash` · `hash` — encadenamiento que evidencia supresiones.
+`id` PK · `occurredAt` IX · `actorId` FK→`Actor` IX — cubre persona, Superadmin raíz, trabajo programado y migración sin nulos ni cuentas ficticias · `onBehalfOfPersonId` NULL FK→`Person` — cuando alguien actúa por representación acreditada · `action` — código del catálogo cerrado · `objectKind` IX · `objectId` IX · `legalEntityId` NULL FK IX · `territorialUnitId` NULL FK · `outcome` *enum* (`SUCCESS`, `DENIED`, `FAILED`) · `reason` NULL *text* — obligatorio cuando el permiso lo exige · `scope` *json* — alcance efectivo aplicado · `metadata` *json* — minimizada, sin datos personales innecesarios · `correlationId` IX · `previousHash` · `hash` — encadenamiento que evidencia supresiones.
 
 **`SecurityEvent`** — Bitácora de seguridad. Inmutable.
-`id` PK · `occurredAt` IX · `kind` *enum* (`LOGIN_SUCCESS`, `LOGIN_FAILURE`, `LOGOUT`, `PASSWORD_RESET_REQUESTED`, `PASSWORD_CHANGED`, `SESSION_REVOKED`, `RATE_LIMITED`, `ACCESS_DENIED`, `PRIVILEGE_GRANTED`, `PRIVILEGE_REVOKED`, `SUPERADMIN_LOGIN`, `SUPERADMIN_ACTION`, `SUSPECTED_ENUMERATION`, `WEBHOOK_SIGNATURE_INVALID`, `FILE_ACCESS_DENIED`) IX · `userId` NULL FK IX · `subjectLabel` NULL — nunca la dirección de correo completa en eventos de fallo · `ipHash` NULL · `userAgentClass` NULL · `severity` *enum* (`INFO`, `WARNING`, `CRITICAL`) IX · `detail` *json* — sin credenciales ni tokens · `correlationId` IX.
+`id` PK · `occurredAt` IX · `kind` *enum* (`LOGIN_SUCCESS`, `LOGIN_FAILURE`, `LOGOUT`, `PASSWORD_RESET_REQUESTED`, `PASSWORD_CHANGED`, `SESSION_REVOKED`, `RATE_LIMITED`, `ACCESS_DENIED`, `PRIVILEGE_GRANTED`, `PRIVILEGE_REVOKED`, `SUPERADMIN_LOGIN`, `SUPERADMIN_ACTION`, `SUSPECTED_ENUMERATION`, `WEBHOOK_SIGNATURE_INVALID`, `FILE_ACCESS_DENIED`) IX · `actorId` NULL FK→`Actor` IX — nulo cuando el intento no llegó a identificar a nadie · `subjectLabel` NULL — nunca la dirección de correo completa en eventos de fallo · `ipHash` NULL · `userAgentClass` NULL · `severity` *enum* (`INFO`, `WARNING`, `CRITICAL`) IX · `detail` *json* — sin credenciales ni tokens · `correlationId` IX.
+
+---
+
+## 13.bis Tablas de relación
+
+Ninguna relación entre entidades se modela como arreglo de identificadores. Un arreglo no tiene clave foránea, no impide referencias a filas inexistentes, no sobrevive al borrado del extremo referenciado, no admite metadatos de la propia relación y no se indexa para consultas inversas. La regla de integridad referencial obligatoria de §3 y la justificación de §14 sobre el padrón congelado y las planillas exigen lo mismo aquí: **tabla con dos claves foráneas**.
+
+Estas veintiséis tablas sustituyen a los arreglos que contenía la primera redacción de este documento (defecto `D-F0-003`). Todas llevan clave primaria compuesta por sus dos claves foráneas salvo donde se indique, y todas declaran `ON DELETE RESTRICT` sobre el extremo que representa un objeto con valor propio.
+
+### Gobierno y territorio
+
+| Tabla | Columnas | Sustituye a |
+|---|---|---|
+| `AgendaItemDocument` | `agendaItemId` FK, `fileObjectId` FK, `position` *int* | `AgendaItem.supportingDocumentIds` |
+| `ElectionCommissionMember` | `electionId` FK, `officeTermId` FK, `role` *enum* (`PRESIDENT`, `SECRETARY`, `MEMBER`), `incompatibilityCleared` *bool* | `Election.electoralCommissionTermIds` |
+| `ElectionIncidentEvidence` | `incidentId` FK, `fileObjectId` FK, `description` | `ElectionIncident.evidenceFileIds` |
+| `BargainingCommissionMember` | `bargainingFileId` FK, `officeTermId` FK, `role` *enum* | `BargainingFile.commissionMemberTermIds` |
+| `ComplianceObligationDocument` | `obligationId` FK, `generatedDocumentId` FK, `purpose` *enum* (`FILING`, `ACKNOWLEDGEMENT`, `OBSERVATION`) | `ComplianceObligation.documentIds` |
+| `OfficeIncompatibility` | `officeDefinitionId` FK, `incompatibleWithId` FK, `basis` *text* — fundamento estatutario | `OfficeDefinition.incompatibleWith` |
+
+La incompatibilidad entre cargos deja de ser una lista de códigos sueltos y pasa a ser una relación simétrica verificable: el dominio comprueba que si A es incompatible con B, exista también la fila inversa, y `basis` documenta el fundamento estatutario de cada par (PRD §9.3).
+
+### Casos y atención social
+
+| Tabla | Columnas | Sustituye a |
+|---|---|---|
+| `CaseMessageAttachment` | `caseMessageId` FK, `fileObjectId` FK | `CaseMessage.attachmentFileIds` |
+| `ReferralSharedFile` | `referralId` FK, `fileObjectId` FK, `consentId` FK — el consentimiento que ampara **este** archivo | `Referral.sharedFileIds` |
+
+`ReferralSharedFile.consentId` es el ejemplo de por qué la tabla vale más que el arreglo: la canalización exige consentimiento **por archivo transferido** (PRD §10.4), y ese dato no cabe en una lista de identificadores.
+
+### Finanzas
+
+| Tabla | Columnas | Sustituye a |
+|---|---|---|
+| `DiscountGrantProduct` | `discountGrantId` FK, `catalogProductId` FK | `DiscountGrant.appliesToProductIds` |
+| `ScholarshipEvidence` | `scholarshipId` FK, `fileObjectId` FK, `kind` *enum* | `Scholarship.evidenceFileIds` |
+| `ReconciliationException` | `id` PK, `reconciliationId` FK, `stripeWebhookEventId` NULL FK, `paymentId` NULL FK, `kind` *enum* (`EVENT_WITHOUT_PAYMENT`, `PAYMENT_WITHOUT_EVENT`, `AMOUNT_MISMATCH`), `amountDifferenceMinor` *bigint*, `resolution` NULL *text*, `resolvedById` NULL FK, `resolvedAt` NULL | `Reconciliation.unmatchedEventIds` |
+| `AssetDocument` | `assetId` FK, `fileObjectId` FK, `kind` *enum* (`TITLE`, `INVOICE`, `APPRAISAL`, `INSURANCE`, `OTHER`) | `AssetRegister.supportingFileIds` |
+| `AssetMovementEvidence` | `assetMovementId` FK, `fileObjectId` FK | `AssetMovement.evidenceFileIds` |
+
+`ReconciliationException` deja de ser una lista de identificadores sin pareja y pasa a ser el registro con el que Finanzas cierra un corte: cada diferencia exige resolución con motivo, actor y fecha antes de pasar el corte a `CLOSED` (PRD §11.5).
+
+### CIAN
+
+| Tabla | Columnas | Sustituye a |
+|---|---|---|
+| `CianProfessionalService` | `professionalId` FK, `serviceId` FK | `CianProfessional.serviceIds` |
+| `CianAvailabilityService` | `availabilityId` FK, `serviceId` FK | `CianAvailability.serviceIds` |
+| `CianProfessionalDiscipline` | `professionalId` FK, `specialtyId` FK | `CianProfessional.disciplines` |
+| `CianReferralSharedFile` | `cianReferralId` FK, `fileObjectId` FK, `consentId` FK | `CianReferral.sharedFileIds` |
+
+### CENI
+
+| Tabla | Columnas | Sustituye a |
+|---|---|---|
+| `CeniEngagementSite` | `engagementId` FK, `siteId` FK | `CeniEngagement.siteIds` |
+| `CeniEngagementAssessor` | `engagementId` FK, `userId` FK, `assignedAt`, `unassignedAt` NULL, `conflictDeclared` *bool* | `CeniEngagement.assignedAssessorIds` |
+| `ImprovementActionEvidence` | `improvementActionId` FK, `fileObjectId` FK | `ImprovementAction.evidenceFileIds` |
+| `TrainingRequirementEvidence` | `trainingRequirementId` FK, `fileObjectId` FK, `kind` *enum* (`ATTENDANCE_LIST`, `CERTIFICATE`, `MATERIAL`, `OTHER`) | `TrainingRequirement.evidenceFileIds` |
+| `CeniCertificateSite` | `certificateId` FK, `siteId` FK | `CeniCertificate.scopeSiteIds` |
+
+`CeniEngagementAssessor` es la fila que la política de autorización consulta para conceder acceso por asignación: con un arreglo, el motor no podía distinguir a un evaluador vigente de uno retirado, ni registrar su declaración de conflicto de interés.
+
+### Directorio, herramientas, contenidos e IA
+
+| Tabla | Columnas | Sustituye a |
+|---|---|---|
+| `SpecialtyCatalog` | `id` PK, `code` U, `name`, `kind` *enum* (`TRADE`, `PROFESSION`, `CLINICAL_DISCIPLINE`), `isActive` | catálogo nuevo que respalda a las dos siguientes |
+| `ProfessionalSpecialty` | `professionalProfileId` FK, `specialtyId` FK, `isPrimary` *bool*, `verifiedAt` NULL | `ProfessionalProfile.specialties` |
+| `EventMaterial` | `eventId` FK, `fileObjectId` FK, `visibility` *enum* (`REGISTERED_ONLY`, `PUBLIC`) | `Event.materialsFileIds` |
+| `AiPromptVersionSource` | `promptVersionId` FK, `knowledgeSourceId` FK | `AiPromptVersion.authorizedSources` |
+
+El catálogo de especialidades es lo que hace posible el filtro por especialidad, oficio o profesión que exige el directorio interno (PRD §7.2): con arreglos de texto libre, dos personas escribirían la misma profesión de tres formas distintas y ningún filtro sería fiable.
+
+### Lo que sigue siendo un arreglo, y por qué
+
+Estos campos **no** son relaciones y permanecen como arreglos de valores escalares: `AssemblyCall.publishedChannels`, `Referral.sharedFields` (nombres de campo autorizados, que es precisamente una lista blanca), `ToolDefinition.publishedMetrics`, `ExternalIdentityLink.scopes`, `AiProviderConfiguration.allowedModels`, `AiPromptVersion.allowedVariables` y `ContentPage.redirectFromSlugs`. Ninguno apunta a una fila de otra tabla, de modo que no hay integridad referencial que preservar.
 
 ---
 
@@ -690,10 +815,13 @@ El PRD §24 Fase 0 admite consolidar entidades siempre que se justifique. Estas 
 | Decisión | Justificación |
 |---|---|
 | Los 15 estados de membresía del PRD §3.6 se reparten entre `ApplicationStatus` y `MembershipStatus` (§16). | La serie del PRD describe un solo continuo de vida, pero sus primeros estados pertenecen a la solicitud y los últimos a la membresía. Separarlos evita que una fila de `Membership` exista en estado `BORRADOR` y permite índices únicos parciales correctos. **Ningún estado se pierde:** la tabla de §16.1 mapea uno a uno los quince. |
+| `Actor` se agrega como entidad de atribución. | Los campos de autoría apuntaban solo a `User`, pero el Superadmin raíz no tiene fila en `User` (PRD §4.4) y los trabajos programados tampoco. Sin `Actor`, sus actos quedarían sin atribuir o exigirían cuentas ficticias que pueden recibir permisos por error. La fila de `Actor` del Superadmin raíz no concede ni retiene acceso alguno: la autenticación y los permisos siguen viniendo del entorno. |
+| Los campos laborales de `MembershipApplication` son anulables con obligatoriedad por categoría. | La primera redacción los declaraba obligatorios para toda solicitud, imponiendo requisitos de agremiado a la afiliación honoraria. La obligatoriedad se expresa ahora como comprobación en base e invariante probada, según la categoría del tipo de membresía. |
+| Veintiséis tablas de relación sustituyen a los arreglos de identificadores. | Ver §13.bis. Un arreglo no admite clave foránea, metadatos de la relación ni consultas inversas indexadas, y contradice la regla de integridad referencial obligatoria de §3. |
 | `RolePermission` se agrega como tabla puente. | Relación muchos a muchos entre `Role` y `Permission` implícita en el PRD §4.2 y §18.1; sin ella no hay integridad referencial. |
 | `AssemblyRosterEntry` y `SlateMember` se agregan como tablas hijas. | El PRD exige un padrón congelado verificable y planillas con integrantes; un arreglo JSON impediría índices, integridad y verificación de proporcionalidad (PRD §18.11 prohíbe usar JSON como sustituto de un modelo relacional). |
 | `NormativeRuleSet`, `BargainingFile`, `BargainingProposal` y `ComplianceObligation` se agregan. | Exigidas por el articulado del PRD §9.3, §9.6 y §9.7. Sin ellas, las reglas estatutarias versionadas, las consultas contractuales y el estado de notificación ante la autoridad laboral no tendrían dónde vivir. |
-| `Ballot` no referencia a la persona votante. | Requisito del PRD §9.5: la identidad y la boleta se separan criptográfica y lógicamente. La prueba de elegibilidad y de emisión vive en `VoteEligibility` y `VoteReceipt`. |
+| `Ballot` no referencia a la persona votante, no tiene columna temporal y usa UUIDv4. Se agrega `SpentVoteCredential`. | Requisito del PRD §9.5. La primera redacción de este documento conservaba `Ballot.castAt` y `VoteEligibility.ballotConsumedAt`, lo que permitía correlacionar persona y voto por proximidad temporal cuando el volumen es bajo, y usaba UUIDv7, que codifica el instante en el propio identificador. El defecto `D-F0-002` corrigió las tres cosas. La prueba de elegibilidad y de emisión vive en `VoteEligibility` y `VoteReceipt`; la prevención del doble depósito, en `SpentVoteCredential`. |
 | `WebhookEvent` e `IntegrationEvent` coexisten con `StripeWebhookEvent`. | El PRD nombra las tres. Stripe exige columnas propias (cuenta, versión de API, conciliación) que no aplican a otros proveedores; unificarlas produciría columnas huecas y una idempotencia más débil. |
 | `Case` absorbe los tres compartimentos mediante `domain`. | El PRD exige separación de expedientes sindical, social y CIAN. Se resuelve con una columna discriminante más políticas de acceso por compartimento, y con `CianCareEpisode` como expediente clínico distinto. Tres tablas gemelas duplicarían la lógica de tareas, mensajes y bitácora sin aportar aislamiento adicional. |
 
@@ -703,16 +831,16 @@ El PRD §24 Fase 0 admite consolidar entidades siempre que se justifique. Estas 
 
 | Propósito | Índice |
 |---|---|
-| Padrón sindical y directorio interno | `Membership(legalEntityId, status, membershipTypeId, territorialUnitId)`; `Person(familyName, givenName)`; `ProfessionalProfile(specialties)` GIN |
+| Padrón sindical y directorio interno | `Membership(legalEntityId, status, membershipTypeId, territorialUnitId)`; `Person(familyName, givenName)`; `ProfessionalSpecialty(specialtyId, profileId)` |
 | Una sola membresía viva por categoría | Único parcial sobre `Membership(personId, categoría)` donde `status IN (ACTIVE, SUSPENDED, DISCIPLINARY_PROCESS)` |
 | Bandeja de casos | `Case(legalEntityId, domain, status, priority, territorialUnitId)`; `CaseAssignment(userId, unassignedAt)` |
 | Agenda CIAN | `CianAppointment(professionalId, startsAt)`; `CianAppointment(personId, startsAt)`; exclusión de traslape por profesional |
 | Conciliación financiera | `Payment(legalEntityId, status, paidAt)`; `StripeWebhookEvent(stripeAccountKey, processingStatus)`; único `StripeWebhookEvent(stripeEventId)` |
 | Verificación pública | Único `MemberCredential(publicCode)`; único `CeniCertificate(publicCode)`; ambos con lectura del estado vivo |
-| Voto sin duplicidad | Único `VoteEligibility(voteProcessId, membershipId)`; único `VoteReceipt(voteProcessId, membershipId)` |
+| Voto sin duplicidad | Único `VoteEligibility(voteProcessId, membershipId)` impide doble emisión; único `SpentVoteCredential(credentialHash)` impide doble depósito; único `VoteReceipt(voteProcessId, membershipId)`. `Ballot` se indexa **solo** por `voteProcessId` y por `verificationCode`: cualquier otro índice sobre la urna sería una vía de correlación |
 | Vigencia de accesos | `ToolEntitlement(endsAt)` parcial donde `revokedAt IS NULL`; `RoleAssignment(endsAt)` parcial donde `revokedAt IS NULL` |
 | Trabajos programados | `BackgroundJob(status, runAt)`; único parcial `(jobType, businessKey)` donde `status NOT IN (SUCCEEDED, CANCELLED)` |
-| Auditoría | `AuditEvent(objectKind, objectId, occurredAt)`; `AuditEvent(actorUserId, occurredAt)`; `AuditEvent(correlationId)` |
+| Auditoría | `AuditEvent(objectKind, objectId, occurredAt)`; `AuditEvent(actorId, occurredAt)`; `AuditEvent(correlationId)` |
 
 ---
 
@@ -845,7 +973,7 @@ stateDiagram-v2
 
 ## 17. Datos semilla (no sensibles)
 
-La semilla es idempotente, versionada y libre de datos personales reales (PRD §24 Fase 1): dos `LegalEntity`; el árbol `TerritorialUnit` nacional con entidades federativas; los 19 `Role` con su conjunto de `Permission`; el `NormativeRuleSet` inicial con los valores estatutarios de §9.3 y §9.4; los `MembershipType` de agremiado y afiliación honoraria; las `ConsentVersion` iniciales por entidad; las `RetentionPolicy` base; los `DocumentTemplate` mínimos; y las tres `ToolDefinition` (NeuroPlan, ADIA, NEXO). Las personas de prueba solo existen en el entorno de pruebas, con datos manifiestamente ficticios.
+La semilla es idempotente, versionada y libre de datos personales reales (PRD §24 Fase 1): dos `LegalEntity`; el árbol `TerritorialUnit` nacional con entidades federativas; los 19 `Role` con su conjunto de `Permission`; el `NormativeRuleSet` inicial con los valores estatutarios de §9.3 y §9.4; los `MembershipType` de agremiado y afiliación honoraria; las `ConsentVersion` iniciales por entidad; las `RetentionPolicy` base; los `DocumentTemplate` mínimos; las tres `ToolDefinition` (NeuroPlan, ADIA, NEXO); el `SpecialtyCatalog` inicial de oficios, profesiones y disciplinas clínicas; y las filas de `Actor` del Superadmin raíz y de cada tipo de trabajo programado. Las personas de prueba solo existen en el entorno de pruebas, con datos manifiestamente ficticios.
 
 ---
 

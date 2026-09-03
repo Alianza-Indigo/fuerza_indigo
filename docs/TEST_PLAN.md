@@ -62,7 +62,7 @@ Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y
 **Fase 4.** Recorre `F-08`. **Asertos:** por omisión la persona no aparece; al publicar solo se exponen los campos autorizados; al retirar el consentimiento la ruta pública deja de responder, la caché se invalida y se emite la señal de no indexación.
 
 ### E2E-07 · Convocatoria, padrón congelado, quórum, voto secreto y acta
-**Fase 5.** Recorre `F-11` y `F-12`. **Asertos:** primera y segunda convocatoria se distinguen; el quórum se calcula desde el padrón congelado y lo declara una persona; el voto duplicado se impide; el volcado de la base **no** permite correlacionar persona y sentido del voto; el acta se publica en su versión reservada y en su versión publicable.
+**Fase 5.** Recorre `F-11` y `F-12`. **Asertos:** primera y segunda convocatoria se distinguen; el quórum se calcula desde el padrón congelado y lo declara una persona; el voto duplicado se impide por unicidad de la huella de credencial; el acta se publica en su versión reservada y en su versión publicable. **Aserto adversario:** tras una votación con **tres** personas electoras, sobre un volcado completo de la base ninguna consulta asocia una fila de `Ballot` con una de `VoteEligibility`; se comprueba además que `Ballot` no tiene columna temporal y que sus identificadores no son ordenables en el tiempo. El volumen bajo es deliberado: es el escenario donde cualquier fuga residual sería más explotable.
 
 ### E2E-08 · Caso disciplinario con audiencia, resolución y recurso
 **Fase 5.** Recorre `F-14`. **Asertos:** sin notificación y sin audiencia no existe transición a resolución; el agremiado accede a su expediente; el recurso se registra y puede revocar la sanción restituyendo derechos; el expediente permanece reservado para quien no está asignado.
@@ -92,7 +92,7 @@ Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y
 
 ## 5. Pruebas de autorización negativas
 
-Las diez pruebas negativas obligatorias están enumeradas en [`PERMISSIONS.md`](PERMISSIONS.md) §9 y las catorce amenazas con su prueba y fase propietaria en [`SECURITY.md`](SECURITY.md) §8. Ambas listas son condición de cierre de sus fases: `phase:verify` las exige y la revisión de la puerta universal las verifica.
+Las trece pruebas negativas obligatorias están enumeradas en [`PERMISSIONS.md`](PERMISSIONS.md) §9 y las catorce amenazas con su prueba y fase propietaria en [`SECURITY.md`](SECURITY.md) §8. Ambas listas son condición de cierre de sus fases: `phase:verify` las exige y la revisión de la puerta universal las verifica.
 
 Regla adicional: **cada permiso nuevo llega con su prueba negativa en el mismo cambio**. Un permiso sin prueba negativa se considera una función incompleta de la fase activa.
 
@@ -182,6 +182,23 @@ La distinción entre **vacío genuino** y **sin resultados por filtros** es obli
 | `npm run phase:verify` | Controles de la fase activa; resultado legible por humanos y por agentes | **0** |
 
 `phase:verify` está disponible desde la Fase 0 y no requiere dependencias instaladas. Los demás comandos se declaran en `package.json` **cuando funcionan**: este repositorio no publica comandos que no hagan lo que prometen.
+
+### 11.2 Controles de coherencia del verificador
+
+Los primeros quince controles comprobaban existencia, tamaño y presencia de nombres. No podían detectar contradicciones entre documentos, y su resultado en verde sirvió para declarar aprobada una fase que tenía doce (defecto `D-F0-013`). Los ocho controles de coherencia nacen cada uno de un defecto real y existen para que ese defecto no pueda repetirse en silencio:
+
+| Control | Qué comprueba |
+|---|---|
+| `C-DATA-03` | Cada entidad del PRD tiene bloque de definición con al menos cuatro campos, no una mención suelta |
+| `C-COH-01` | Ninguna relación se declara como arreglo de identificadores |
+| `C-COH-02` | Ningún tipo se declara como disyuntiva abierta y ninguna decisión se pospone |
+| `C-COH-03` | Ninguna entidad referencia **obligatoriamente** a otra de fase posterior; las referencias anulables hacia adelante exigen justificación escrita |
+| `C-COH-04` | El algoritmo de decisión tiene un solo punto de concesión, al final de la tubería, y comprueba las seis condiciones |
+| `C-COH-05` | La urna no declara identidad, marca temporal ni identificadores ordenables en el tiempo |
+| `C-COH-06` | Una fase con defectos abiertos de severidad bloqueante no puede declararse aprobada |
+| `C-COH-07` | Cada defecto abierto tiene su tarea de corrección en el backlog |
+
+**Regla que queda establecida.** Cada defecto que se descubra deja tras de sí un control que lo habría detectado. Un defecto sin control es un defecto que puede repetirse. Y ningún resultado en verde justifica una decisión sin preguntarse antes qué **no** mide el control que lo produjo.
 
 ### 11.1 Integración continua
 

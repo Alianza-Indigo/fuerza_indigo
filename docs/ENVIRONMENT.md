@@ -118,9 +118,11 @@ En desarrollo se usa `console`: los mensajes se registran sin enviarse y sin exp
 | Variable | Propósito | Formato | Desarrollo | Vista previa | Producción |
 |---|---|---|---|---|---|
 | `CRON_SECRET` | Autentica las invocaciones de Vercel Cron a `/api/v1/cron/*`. Se compara en tiempo constante. | 32 bytes aleatorios en base64url | Obl. | Obl. | Obl. |
-| `QR_SIGNING_SECRET` | Firma de los códigos opacos de credenciales y distintivos CENI. | 32 bytes aleatorios en base64url | Obl. | Obl. | Obl. |
+| `QR_SIGNING_SECRET` | **Llavero** de firma de los códigos opacos de credenciales y distintivos CENI. Contiene la clave activa y, durante una rotación, las anteriores que aún deben poder verificarse. | Lista separada por comas de entradas `identificador:clave`, la primera es la activa. Ej.: `k2:<32 bytes base64url>,k1:<32 bytes base64url>` | Obl. | Obl. | Obl. |
 
-Rotar `QR_SIGNING_SECRET` invalida las firmas existentes y **exige reemisión planificada** de credenciales y certificados; no es una rotación rutinaria y debe ejecutarse como un cambio institucional con aviso previo.
+**Rotación sin invalidación simultánea (defecto `D-F0-012`).** Cada credencial y cada certificado guardan en `signingKeyId` el identificador de la clave con la que se firmaron. Rotar consiste en anteponer una clave nueva al llavero: lo emitido a partir de ese momento se firma con ella, y lo emitido antes **sigue verificando** con la clave anterior, que permanece en el llavero. Solo cuando la última credencial firmada con una clave vieja ha vencido o se ha reemplazado se retira esa entrada del llavero.
+
+Sin el identificador de clave, una sola rotación invalidaría de golpe todas las credenciales sindicales y todos los distintivos CENI vigentes, lo que convertía una medida de higiene criptográfica en un incidente institucional. Retirar una clave del llavero **antes** de tiempo sí produce ese efecto, y por eso el panel de salud muestra cuántas credenciales vivas dependen de cada clave antes de permitir su retiro.
 
 ---
 
@@ -139,7 +141,7 @@ Rotar `QR_SIGNING_SECRET` invalida las firmas existentes y **exige reemisión pl
 | `GEMINI_API_KEY` | Según política del proveedor | El servicio de IA degrada al flujo humano hasta actualizarla |
 | `EMAIL_API_KEY` | Según política del proveedor | Los envíos fallan y se reintentan hasta actualizarla |
 | `CRON_SECRET` | Anual o ante sospecha | Debe actualizarse en Vercel Cron en el mismo cambio |
-| `QR_SIGNING_SECRET` | Solo como acto institucional planificado | Invalida credenciales y distintivos emitidos |
+| `QR_SIGNING_SECRET` | Anual, anteponiendo una clave nueva | Ninguno inmediato: lo ya emitido verifica con su clave anterior mientras siga en el llavero. Retirar una clave con credenciales vivas sí las invalida |
 
 ---
 

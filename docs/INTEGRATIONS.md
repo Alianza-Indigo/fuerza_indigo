@@ -95,13 +95,13 @@ Orden obligatorio del manejador:
 1. Leer el cuerpo **crudo** y verificar la firma con el secreto de esa cuenta.
 2. **Persistir** `StripeWebhookEvent` con el cuerpo íntegro, la cuenta y la versión de API, antes de cualquier procesamiento.
 3. Responder 200 en cuanto el evento está persistido; el procesamiento posterior es idempotente y reintentable.
-4. Procesar dentro de una transacción: actualizar `Payment`, escribir `LedgerEntry`, otorgar el derecho y registrar auditoría.
+4. Procesar dentro de una transacción: actualizar `Payment`, escribir `LedgerEntry`, registrar auditoría y **publicar el evento de dominio en la bandeja de salida**. El derecho lo otorga el módulo correspondiente al recibir ese evento, de forma idempotente; `billing` no invoca a `membership`, `tools`, `cian` ni `ceni` (ver `ARCHITECTURE.md` §4.3 y ADR-0025).
 5. Si el procesamiento falla, marcar `FAILED` y encolar el reintento; el evento persistido permite reprocesar sin depender de Stripe.
 
 | Evento | Efecto |
 |---|---|
 | `checkout.session.completed` | Vincula la sesión con el `Payment` y espera la confirmación del cobro |
-| `payment_intent.succeeded` | `Payment → SUCCEEDED`, asiento contable y otorgamiento del derecho |
+| `payment_intent.succeeded` | `Payment → SUCCEEDED`, asiento contable y publicación de `billing.payment.succeeded` en la bandeja de salida |
 | `payment_intent.payment_failed` | `Payment → FAILED` con código, notificación y ruta de recuperación |
 | `invoice.paid` | Renovación de suscripción y extensión de vigencia del derecho |
 | `invoice.payment_failed` | Inicio del periodo de gracia y aviso comprensible |

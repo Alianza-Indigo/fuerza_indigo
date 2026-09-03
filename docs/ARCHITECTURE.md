@@ -97,6 +97,7 @@ flowchart TD
         AUDIT["audit"]
         FILES["files"]
         JOBS["jobs"]
+        EVENTBUS["events<br/>(bandeja de salida)"]
         ERRORS["errors"]
         I18N["i18n"]
         OBS["observability"]
@@ -165,7 +166,15 @@ flowchart TD
     CIAN --> BILLING
     CREDENTIALING --> DOCS
     ANALYTICS --> AUDIT
+    BILLING -.->|"publica en la bandeja de salida"| EVENTBUS
+    EVENTBUS -.->|"entrega a manejadores registrados"| MEMBERSHIP
+    EVENTBUS -.->|" "| TOOLS
+    EVENTBUS -.->|" "| CIAN
+    EVENTBUS -.->|" "| CENI
+    EVENTBUS -.->|" "| EVENTS
 ```
+
+Las flechas punteadas **no** son dependencias de código: `billing` no importa a `membership`, y `membership` no importa a `billing` para recibir el aviso. Ambos dependen de `platform/events`, que está por debajo de los dos. Ver §4.3.
 
 ### 4.1 Inventario de módulos
 
@@ -178,6 +187,7 @@ flowchart TD
 | `platform/audit` | Bitácora anexable, encadenada y correlacionada. | `AuditEvent`, `SecurityEvent` | 1 |
 | `platform/files` | Carga, descarga firmada, versiones, retención y bloqueo legal. | `FileObject`, `FileVersion`, `RetentionPolicy`, `LegalHold` | 1 |
 | `platform/jobs` | Cola de trabajos idempotentes con bloqueo y reintentos. | `BackgroundJob` | 1 |
+| `platform/events` | Bandeja de salida transaccional y registro de manejadores de eventos de dominio. | `OutboxMessage` | 1 |
 | `platform/errors` | Errores con código estable, mensaje comprensible y correlación. | — | 1 |
 | `platform/i18n` | Catálogos de mensajes, formatos y zonas horarias. | — | 2 |
 | `platform/observability` | Correlación, salud, métricas y alertas. | — | 1 |
@@ -204,8 +214,9 @@ flowchart TD
 | `ceni` | Organizaciones, programas, evaluaciones, certificados y distintivos. | `CeniProgram`, `AssessmentVersion`, `CeniCertificate`, … | 9 |
 | `tools` | Catálogo, elegibilidad, derechos de acceso y lanzamiento firmado. | `ToolDefinition`, `ToolEntitlement`, `ToolLaunch`, … | 7 |
 | `events` | Eventos, capacitación, registros, asistencia y constancias. | `Event`, `EventRegistration` | 11 |
+| `knowledge` | Fuentes autorizadas, fragmentación e índice vectorial para la búsqueda semántica. | `KnowledgeSource`, `KnowledgeChunk` | 10 |
 | `content` | CMS versionado, páginas públicas, SEO y redirecciones. | `ContentPage`, `ContentVersion` | 2 |
-| `notifications` | Centro interno, correo, notificaciones web y plantillas. | `Notification`, `NotificationTemplate`, `DeliveryAttempt` | 11 |
+| `notifications` | Centro interno, correo, notificaciones web y plantillas. | `Notification`, `NotificationTemplate`, `DeliveryAttempt` | 1 (correo y plantillas) · 11 (centro, web y campañas) |
 | `ai` | Servicio Gemini, prompts versionados, generaciones y revisión humana. | `AiPrompt`, `AiGeneration`, `AiReview`, `KnowledgeSource` | 10 |
 | `analytics` | Indicadores agregados con umbrales de privacidad. | vistas derivadas | 11 |
 
@@ -216,6 +227,48 @@ flowchart TD
 3. La lectura entre módulos se hace por **proyecciones de solo lectura** declaradas en la interfaz pública, nunca por consultas Prisma cruzadas.
 4. Las dependencias circulares están prohibidas; cuando dos módulos se necesitan, se introduce un evento de dominio o un módulo de coordinación superior.
 5. `cases` y `cian` comparten personas, pero **no** comparten notas: la separación de expedientes es una regla de dominio, no una convención de interfaz (PRD §10.3, §13.3).
+
+### 4.3 Cómo un cobro otorga un derecho sin romper el grafo
+
+Un pago confirmado debe activar una membresía, un derecho de herramienta, un servicio CIAN o un programa CENI. Pero `billing` está **por debajo** de esos módulos en el grafo: si los invocara directamente, introduciría la dependencia circular que la regla 4 prohíbe. Este es el conflicto que la primera redacción dejó sin resolver (defecto `D-F0-006`).
+
+La solución es una **bandeja de salida transaccional** en `platform/events`, del que dependen tanto quien publica como quien consume:
+
+```mermaid
+sequenceDiagram
+    participant WH as Webhook (billing)
+    participant DB as Neon
+    participant BUS as platform/events
+    participant MOD as membership · tools · cian · ceni · events
+
+    Note over WH,DB: Transacción única
+    WH->>DB: Payment → SUCCEEDED
+    WH->>DB: LedgerEntry
+    WH->>DB: AuditEvent
+    WH->>DB: OutboxMessage('billing.payment.succeeded')
+    Note over WH,DB: Commit
+
+    WH->>BUS: intento de entrega inmediata en proceso
+    alt entrega inmediata correcta
+        BUS->>MOD: handle(evento)
+        MOD->>DB: otorgar derecho + marcar OutboxMessage entregado
+    else falla o el proceso termina antes
+        Note over BUS: el mensaje permanece pendiente
+        BUS-->>MOD: el despachador de trabajos lo reintenta
+    end
+```
+
+**Propiedades:**
+
+1. **Atomicidad donde importa.** El pago, el asiento contable, la auditoría y la **intención** de otorgar el derecho se escriben en una sola transacción. No existe un estado en el que el pago conste y la orden de otorgamiento se haya perdido.
+2. **Entrega inmediata como camino normal.** Tras confirmar la transacción, el mismo proceso intenta despachar en memoria. En operación normal el derecho se otorga en el mismo instante; la cola es la red de seguridad, no el camino habitual.
+3. **Exactamente una vez en efecto.** La entrega es al menos una vez, pero cada manejador es idempotente por `(outboxMessageId, handler)`, de modo que reintentar no duplica membresías ni derechos.
+4. **Sin dependencia circular.** `billing` publica un nombre de evento y una carga; no conoce a sus consumidores. `membership` registra un manejador; no conoce a `billing`. Ambos dependen de `platform/events`.
+5. **Observable.** Un mensaje sin entregar tras agotar reintentos genera alerta y aparece en el panel de salud, junto a los webhooks sin conciliar.
+
+**Qué se pierde.** La activación deja de ser síncrona en sentido estricto. Es un costo real y por eso la interfaz de retorno de Stripe ya muestra un estado de confirmación en curso (`FLOWS.md` F-05), que es lo correcto de todos modos: el PRD §11.4 prohíbe expresamente activar derechos desde la página de retorno del navegador.
+
+**Alternativa descartada.** Un módulo coordinador por encima de `billing` y de los módulos de derechos, que hospedara el manejador del webhook y ejecutara todo en una transacción. Funciona, pero concentra en un solo lugar el conocimiento de todos los módulos de derechos: cada herramienta, programa o servicio nuevo obligaría a modificarlo, que es justo lo que la extensibilidad del PRD §24 Fase 7 pide evitar.
 
 ---
 
@@ -259,12 +312,16 @@ Todo caso de uso comparte una firma uniforme. Esta uniformidad es lo que permite
 
 ```ts
 type ActorContext = {
-  actorId: string | null;          // Persona o Superadmin raíz
+  actorId: string;                 // Siempre presente: referencia a Actor (§DATA_MODEL 4)
   actorKind: 'PERSON' | 'ROOT_SUPERADMIN' | 'SYSTEM';
+  userId: string | null;           // Solo cuando actorKind === 'PERSON'
+  jobType: string | null;          // Solo cuando actorKind === 'SYSTEM'
   sessionId: string | null;
   roles: RoleAssignmentSnapshot[]; // Solo nombramientos vigentes
   legalEntityScope: string[];
   territorialScope: TerritorialScopeSnapshot[];
+  compartments: Set<Compartment>;  // Vacío para el Superadmin raíz
+  reason: string | null;           // Exigido por los permisos que lo marcan
   correlationId: string;
   ip: string | null;
   userAgent: string | null;

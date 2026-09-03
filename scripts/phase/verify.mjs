@@ -159,6 +159,50 @@ const MARKER_ALLOWLIST = new Set([
   'scripts/phase/verify.mjs',
 ]);
 
+/**
+ * Extrae los bloques de definición de entidad de docs/DATA_MODEL.md.
+ * Cada bloque empieza en una línea `**\`Entidad\`**` y termina antes del siguiente.
+ */
+function entityBlocks() {
+  const model = read('docs/DATA_MODEL.md');
+  if (model === null) return null;
+  const blocks = new Map();
+  const lines = model.split('\n');
+  let current = null;
+  for (const line of lines) {
+    const header = line.match(/^\*\*`(\w+)`\*\*/);
+    if (header) {
+      current = header[1];
+      blocks.set(current, []);
+    }
+    if (current) blocks.get(current).push(line);
+  }
+  for (const [name, ls] of blocks) blocks.set(name, ls.join('\n'));
+  return blocks;
+}
+
+/** Fase declarada de migración de cada entidad, desde el contrato del PRD. */
+function entityPhaseIndex() {
+  const index = new Map();
+  for (const [phase, names] of Object.entries(CONTRACT.entityMigrationPhase ?? {})) {
+    if (phase.startsWith('$')) continue;
+    for (const name of names) index.set(name, Number(phase));
+  }
+  return index;
+}
+
+/** Defectos registrados en docs/PHASE_STATUS.md con su estado. */
+function registeredDefects() {
+  const status = read('docs/PHASE_STATUS.md');
+  if (status === null) return [];
+  const found = [];
+  for (const line of status.split('\n')) {
+    const m = line.match(/^\|\s*(D-F\d+-\d+)\s*\|.*\|\s*(Abierto|Cerrado)\s*\|/);
+    if (m) found.push({ id: m[1], open: m[2] === 'Abierto', severity: line.split('|')[2]?.trim() ?? '' });
+  }
+  return found;
+}
+
 const CHECKS = [
   {
     id: 'C-REPO-01',
@@ -271,6 +315,192 @@ const CHECKS = [
         if (blocks === 0) problems.push(`${doc} no contiene diagramas Mermaid.`);
       }
       return problems.length ? fail(problems) : ok(['Diagramas Mermaid presentes en arquitectura, datos y flujos.']);
+    },
+  },
+  {
+    id: 'C-DATA-03',
+    title: 'Cada entidad del PRD tiene bloque de definición con campos, no solo una mención',
+    phases: 'all',
+    run() {
+      const blocks = entityBlocks();
+      if (blocks === null) return fail('No existe docs/DATA_MODEL.md.');
+      const problems = [];
+      for (const [group, entities] of Object.entries(CONTRACT.entities)) {
+        for (const entity of entities) {
+          const block = blocks.get(entity);
+          if (block === undefined) {
+            problems.push(`${group} → ${entity} no tiene bloque de definición \`**\`${entity}\`**\`.`);
+            continue;
+          }
+          const fieldCount = (block.match(/`\w+`/g) ?? []).length;
+          if (fieldCount < 4) {
+            problems.push(`${entity} declara ${fieldCount} identificadores; una definición útil necesita al menos 4.`);
+          }
+        }
+      }
+      return problems.length ? fail(problems) : ok([`${blocks.size} bloques de definición presentes.`]);
+    },
+  },
+  {
+    id: 'C-COH-01',
+    title: 'Ninguna relación se modela como arreglo de identificadores',
+    phases: 'all',
+    run() {
+      const model = read('docs/DATA_MODEL.md');
+      if (model === null) return fail('No existe docs/DATA_MODEL.md.');
+      const problems = [];
+      model.split('\n').forEach((line, index) => {
+        for (const hit of line.match(/`\w*(?:Id|Ids)` \*string\[\]\*/g) ?? []) {
+          problems.push(`docs/DATA_MODEL.md:${index + 1} declara ${hit}: use una tabla de relación con clave foránea (§13.bis).`);
+        }
+      });
+      return problems.length ? fail(problems) : ok(['Sin arreglos de identificadores; las relaciones tienen tabla propia.']);
+    },
+  },
+  {
+    id: 'C-COH-02',
+    title: 'No quedan decisiones redactadas como disyuntiva abierta',
+    phases: 'all',
+    run() {
+      const problems = [];
+      const openChoice = /\*[a-záéíóúñ]+(?:\([^)]*\))? o [a-záéíóúñ]+[^*]*\*/i;
+      const undecided = /(por definir|a decidir|queda abierto|se decidir[áa]|pendiente de decidir|se evaluar[áa] m[áa]s adelante)/i;
+      for (const doc of ['docs/DATA_MODEL.md', 'docs/ARCHITECTURE.md', 'docs/INTEGRATIONS.md', 'docs/SECURITY.md', 'docs/PERMISSIONS.md']) {
+        const content = read(doc);
+        if (content === null) continue;
+        content.split('\n').forEach((line, index) => {
+          if (openChoice.test(line)) problems.push(`${doc}:${index + 1} declara un tipo como disyuntiva: la Fase 0 debe cerrar la decisión (PRD §0.1).`);
+          if (undecided.test(line)) problems.push(`${doc}:${index + 1} pospone una decisión que el PRD §0.1 obliga a tomar y registrar.`);
+        });
+      }
+      return problems.length ? fail(problems) : ok(['Todas las decisiones técnicas están cerradas.']);
+    },
+  },
+  {
+    id: 'C-COH-03',
+    title: 'Ninguna entidad depende de otra que se migra en una fase posterior',
+    phases: 'all',
+    run() {
+      const blocks = entityBlocks();
+      if (blocks === null) return fail('No existe docs/DATA_MODEL.md.');
+      const phaseOf = entityPhaseIndex();
+      if (phaseOf.size === 0) return fail('El contrato del PRD no declara entityMigrationPhase.');
+      const allowlist = CONTRACT.forwardReferenceAllowlist ?? {};
+      const problems = [];
+      const unmapped = new Set();
+      for (const [entity, block] of blocks) {
+        const own = phaseOf.get(entity);
+        if (own === undefined) {
+          unmapped.add(entity);
+          continue;
+        }
+        for (const m of block.matchAll(/`(\w+)`( NULL)? FK→`(\w+)`/g)) {
+          const [, field, nullable, ref] = m;
+          const target = phaseOf.get(ref);
+          if (target === undefined || target <= own) continue;
+          if (!nullable) {
+            problems.push(
+              `${entity}.${field} (fase ${own}) referencia OBLIGATORIAMENTE a ${ref} (fase ${target}): la fase ${own} no podría cerrarse al 100 %. Una referencia obligatoria hacia adelante es un error de orden de fases y no admite excusa en la lista de tolerancia.`,
+            );
+          } else if (allowlist[`${entity}->${ref}`] === undefined) {
+            problems.push(
+              `${entity}.${field} (fase ${own}) referencia a ${ref} (fase ${target}). Es anulable, pero toda referencia hacia adelante exige justificación explícita en forwardReferenceAllowlist.`,
+            );
+          }
+        }
+      }
+      if (unmapped.size) problems.push(`Sin fase declarada en el contrato: ${[...unmapped].sort().join(', ')}.`);
+      return problems.length ? fail(problems) : ok([`${phaseOf.size} entidades con fase declarada y sin dependencias hacia adelante no justificadas.`]);
+    },
+  },
+  {
+    id: 'C-COH-04',
+    title: 'El algoritmo de decisión no concede a ningún actor por vía rápida',
+    phases: 'all',
+    run() {
+      const perms = read('docs/PERMISSIONS.md');
+      if (perms === null) return fail('No existe docs/PERMISSIONS.md.');
+      const start = perms.indexOf('function can(');
+      if (start === -1) return fail('docs/PERMISSIONS.md no contiene el algoritmo de decisión.');
+      const body = perms.slice(start, perms.indexOf('```', start));
+      const problems = [];
+      const superadminBranch = body.match(/ROOT_SUPERADMIN[\s\S]*?\n\s{2}\}/);
+      if (superadminBranch && /return allow\(/.test(superadminBranch[0])) {
+        problems.push('El algoritmo concede al Superadmin antes de recorrer las verificaciones comunes (defecto D-F0-001).');
+      }
+      for (const guard of ['FUERA_DE_ENTIDAD', 'FUERA_DE_TERRITORIO', 'SIN_ASIGNACION', 'CONSENTIMIENTO_REQUERIDO', 'COMPARTIMENTO_AJENO', 'MOTIVO_REQUERIDO']) {
+        if (!body.includes(guard)) problems.push(`El algoritmo no comprueba ${guard}.`);
+      }
+      const allowCount = (body.match(/return allow\(/g) ?? []).length;
+      if (allowCount > 1) problems.push(`El algoritmo tiene ${allowCount} puntos de concesión; debe haber exactamente uno, al final de la tubería.`);
+      return problems.length ? fail(problems) : ok(['Un solo punto de concesión, tras las seis verificaciones.']);
+    },
+  },
+  {
+    id: 'C-COH-05',
+    title: 'La urna no contiene identidad ni marca temporal',
+    phases: 'all',
+    run() {
+      const blocks = entityBlocks();
+      if (blocks === null) return fail('No existe docs/DATA_MODEL.md.');
+      const ballot = blocks.get('Ballot');
+      if (ballot === undefined) return fail('docs/DATA_MODEL.md no define `Ballot`.');
+      const problems = [];
+      const definition = ballot.split('\n')[1] ?? '';
+      for (const forbidden of ['membershipId', 'personId', 'castAt', 'createdAt', 'userId', 'ipHash', 'actorId']) {
+        if (definition.includes(forbidden)) {
+          problems.push(`\`Ballot\` declara \`${forbidden}\`: reintroduce la correlación entre persona y voto (defecto D-F0-002).`);
+        }
+      }
+      if (!/UUIDv4/.test(definition)) {
+        problems.push('`Ballot` debe declarar UUIDv4: un identificador ordenable en el tiempo revela el momento del depósito.');
+      }
+      const eligibility = blocks.get('VoteEligibility') ?? '';
+      for (const forbidden of ['ballotConsumedAt', 'blindTokenHash', 'ballotIssuedAt']) {
+        if (eligibility.includes(forbidden)) {
+          problems.push(`\`VoteEligibility\` declara \`${forbidden}\`: permite correlacionar por proximidad temporal o por huella.`);
+        }
+      }
+      return problems.length ? fail(problems) : ok(['Urna sin identidad, sin tiempo y con identificadores no ordenables.']);
+    },
+  },
+  {
+    id: 'C-COH-06',
+    title: 'Una fase con defectos abiertos no puede declararse aprobada',
+    phases: 'all',
+    run() {
+      const status = read('docs/PHASE_STATUS.md');
+      if (status === null) return fail('No existe docs/PHASE_STATUS.md.');
+      const declared = status.match(/^-\s*\*\*Estado:\*\*\s*`?(IN_PROGRESS|BLOCKED|APPROVED)`?/m);
+      const open = registeredDefects().filter((d) => d.open);
+      const blocking = open.filter((d) => /Cr[íi]tica|Alta|Media/i.test(d.severity));
+      if (declared && declared[1] === 'APPROVED' && blocking.length) {
+        return fail([
+          `La fase se declara APPROVED con ${blocking.length} defecto(s) de severidad bloqueante abiertos: ${blocking.map((d) => d.id).join(', ')}.`,
+          'El PRD §23.2 lo prohíbe. Ciérrelos o declare la fase BLOCKED.',
+        ]);
+      }
+      return ok([`Estado declarado coherente con ${open.length} defecto(s) abierto(s).`]);
+    },
+  },
+  {
+    id: 'C-COH-07',
+    title: 'Cada defecto abierto tiene su tarea de corrección en el backlog',
+    phases: 'all',
+    run() {
+      const backlog = read('docs/BACKLOG.md');
+      if (backlog === null) return fail('No existe docs/BACKLOG.md.');
+      const open = registeredDefects().filter((d) => d.open);
+      const problems = [];
+      for (const defect of open) {
+        const correction = defect.id.replace(/^D-(F\d+)-/, '$1-COR-');
+        if (!backlog.includes(correction)) {
+          problems.push(`El defecto ${defect.id} no tiene la tarea ${correction} en el backlog.`);
+        }
+      }
+      return problems.length
+        ? fail(problems)
+        : ok([`${open.length} defecto(s) abierto(s), todos con tarea de corrección asignada.`]);
     },
   },
   {

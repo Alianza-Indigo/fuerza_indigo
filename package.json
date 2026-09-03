@@ -1,0 +1,16 @@
+{
+  "name": "fuerza-indigo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma Integral del Sindicato Unión de Inclusión y Derechos Neurodivergentes \"Fuerza Índigo\"",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "phase:verify": "node scripts/phase/verify.mjs",
+    "phase:status": "node scripts/phase/verify.mjs --status"
+  }
+}

@@ -1,0 +1,61 @@
+# Dependencias
+node_modules/
+.pnp/
+.pnp.js
+
+# Construcción y caché
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+.swc/
+
+# Entorno y secretos
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+*.pem
+*.key
+!.env.example
+
+# Pruebas y reportes
+coverage/
+.nyc_output/
+playwright-report/
+blob-report/
+test-results/
+.playwright/
+reports/*.json
+!reports/.gitkeep
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+prisma/generated/
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json
+
+# Vercel
+.vercel/
+
+# Registros locales
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Archivos temporales de agentes
+.claude/local/
+tmp/

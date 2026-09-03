@@ -11,7 +11,7 @@
 - **Autorizada por la persona usuaria:** 3 de septiembre de 2026
 - **Fecha de inicio:** 3 de septiembre de 2026
 - **Fecha de cierre:** 3 de septiembre de 2026
-- **SHA del punto de control:** se registra en el propio commit de cierre
+- **SHA del punto de control:** `ac23003`
 - **Fase anterior:** 0 — `APPROVED`, cerrada en `7fecd6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 2 — Sistema de diseño, PWA, CMS y sitio público, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -116,7 +116,7 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de l
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
 | 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-03 | `APPROVED` | Se registra en el propio commit de cierre |
+| 1 | 2026-09-03 | 2026-09-03 | `APPROVED` | `ac23003` |
 | 2 a 12 | — | — | No iniciadas | — |
 
 ---

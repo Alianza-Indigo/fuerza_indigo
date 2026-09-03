@@ -224,7 +224,7 @@ Se registran aquí para que la fase propietaria los atienda, no como defectos de
 
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | por registrar tras el commit de cierre definitivo. El cierre revocado fue `a441aa7` |
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` — el cierre revocado fue `a441aa7` |
 | 1 a 12 | — | — | No iniciadas | — |
 
 ---

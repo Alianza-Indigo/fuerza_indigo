@@ -4,13 +4,55 @@
   "private": true,
   "description": "Plataforma Integral del Sindicato Unión de Inclusión y Derechos Neurodivergentes \"Fuerza Índigo\"",
   "license": "UNLICENSED",
-  "type": "module",
   "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed/index.ts",
+    "auth:hash-password": "tsx scripts/auth/hash-password.ts",
     "phase:verify": "node scripts/phase/verify.mjs",
     "phase:status": "node scripts/phase/verify.mjs --status"
+  },
+  "prisma": {
+    "schema": "prisma/schema"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.2.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "@vercel/blob": "2.8.0",
+    "next": "16.3.4",
+    "pg": "8.23.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.10.4",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "10.9.1",
+    "eslint-config-next": "16.3.4",
+    "prisma": "7.10.0",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.69.0",
+    "vitest": "3.2.7"
   }
 }

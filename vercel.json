@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "prisma generate && prisma migrate deploy && next build",
+  "installCommand": "npm ci",
+  "regions": ["iad1"],
+  "crons": [
+    { "path": "/api/v1/cron/dispatch", "schedule": "*/15 * * * *" },
+    { "path": "/api/v1/cron/health", "schedule": "0 * * * *" },
+    { "path": "/api/v1/cron/retention", "schedule": "0 4 * * *" },
+    { "path": "/api/v1/cron/role-expiry", "schedule": "0 3 * * *" }
+  ]
+}

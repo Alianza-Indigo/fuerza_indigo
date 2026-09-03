@@ -1,0 +1,352 @@
+// Identidad y acceso. Referencia: docs/DATA_MODEL.md §4.
+
+/// Sujeto al que se atribuye un acto (ADR-0026).
+///
+/// La fila del Superadmin raíz NO es una credencial ni una fuente de permisos:
+/// no guarda contraseña, no concede nada, borrarla no le quita el acceso y
+/// crearla no se lo da. Su autenticación viene de las variables de entorno y sus
+/// permisos de la lista cerrada de concesión (PRD §4.4).
+model Actor {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  kind      ActorKind
+  userId    String?   @unique @db.Uuid
+  /// Nombre legible: el de la persona, `Superadmin raíz` o el tipo de trabajo.
+  label     String    @db.VarChar(160)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  auditEvents    AuditEvent[]
+  securityEvents SecurityEvent[]
+
+  createdLegalEntities   LegalEntity[]      @relation("LegalEntityCreatedBy")
+  updatedLegalEntities   LegalEntity[]      @relation("LegalEntityUpdatedBy")
+  createdTerritorialUnits TerritorialUnit[] @relation("TerritorialUnitCreatedBy")
+  updatedTerritorialUnits TerritorialUnit[] @relation("TerritorialUnitUpdatedBy")
+  createdNormativeRuleSets NormativeRuleSet[] @relation("NormativeRuleSetCreatedBy")
+  updatedNormativeRuleSets NormativeRuleSet[] @relation("NormativeRuleSetUpdatedBy")
+  createdPeople          Person[]           @relation("PersonCreatedBy")
+  updatedPeople          Person[]           @relation("PersonUpdatedBy")
+  createdUsers           User[]             @relation("UserCreatedBy")
+  updatedUsers           User[]             @relation("UserUpdatedBy")
+  createdOrganizations   Organization[]     @relation("OrganizationCreatedBy")
+  updatedOrganizations   Organization[]     @relation("OrganizationUpdatedBy")
+  createdFileObjects     FileObject[]       @relation("FileObjectCreatedBy")
+  updatedFileObjects     FileObject[]       @relation("FileObjectUpdatedBy")
+  uploadedFileVersions   FileVersion[]      @relation("FileVersionUploadedBy")
+  createdOutboxMessages  OutboxMessage[]    @relation("OutboxCreatedBy")
+
+  @@index([kind])
+  @@map("actor")
+}
+
+enum ActorKind {
+  PERSON
+  ROOT_SUPERADMIN
+  SYSTEM_JOB
+  MIGRATION
+}
+
+/// Registro maestro del ser humano (PRD §3.1). Una persona, muchas relaciones.
+model Person {
+  id                 String         @id @default(uuid(7)) @db.Uuid
+  publicId           String         @unique @db.VarChar(22)
+  givenName          String         @db.VarChar(80)
+  middleName         String?        @db.VarChar(80)
+  familyName         String         @db.VarChar(80)
+  secondFamilyName   String?        @db.VarChar(80)
+  preferredName      String?        @db.VarChar(80)
+  birthDate          DateTime?      @db.Date
+  genderIdentity     GenderIdentity @default(UNDISCLOSED)
+  nationality        String?        @db.VarChar(60)
+  primaryEmail       String?        @db.VarChar(320)
+  primaryPhone       String?        @db.VarChar(40)
+  alternateContact   String?        @db.VarChar(200)
+  addressLine        String?        @db.VarChar(400)
+  postalCode         String?        @db.VarChar(15)
+  countryCode        String         @default("MX") @db.Char(2)
+  stateCode          String?        @db.VarChar(10)
+  municipalityCode   String?        @db.VarChar(15)
+  territorialUnitId  String?        @db.Uuid
+  timeZone           String         @default("America/Mexico_City") @db.VarChar(60)
+  locale             String         @default("es-MX") @db.VarChar(10)
+  /// Preferencias sensoriales persistentes por persona (PRD §5.3).
+  accessibilityPreferences Json     @default("{}")
+  deceasedAt         DateTime?      @db.Timestamptz(3)
+  /// Resolución de duplicidad sin borrar historial (PRD §3.1).
+  mergedIntoPersonId String?        @db.Uuid
+  archivedAt         DateTime?      @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  territorialUnit TerritorialUnit? @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  mergedInto      Person?          @relation("PersonMerge", fields: [mergedIntoPersonId], references: [id], onDelete: Restrict)
+  mergedFrom      Person[]         @relation("PersonMerge")
+
+  createdByActor Actor @relation("PersonCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("PersonUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  user              User?
+  organizationUsers OrganizationUser[]
+  consents          Consent[]          @relation("ConsentSubject")
+  grantedConsents   Consent[]          @relation("ConsentGrantor")
+  notifications     Notification[]
+  ownedFiles        FileObject[]
+
+  @@index([familyName, givenName])
+  @@index([territorialUnitId])
+  @@index([primaryEmail])
+  @@map("person")
+}
+
+enum GenderIdentity {
+  WOMAN
+  MAN
+  NON_BINARY
+  OTHER
+  UNDISCLOSED
+}
+
+/// Cuenta de acceso. Una persona puede no tener cuenta (PRD §3.4).
+model User {
+  id                 String     @id @default(uuid(7)) @db.Uuid
+  personId           String     @unique @db.Uuid
+  email              String     @unique @db.VarChar(320)
+  emailVerifiedAt    DateTime?  @db.Timestamptz(3)
+  status             UserStatus @default(INVITED)
+  lastLoginAt        DateTime?  @db.Timestamptz(3)
+  failedAttempts     Int        @default(0)
+  lockedUntil        DateTime?  @db.Timestamptz(3)
+  mustChangePassword Boolean    @default(false)
+  /// Incrementarlo revoca de inmediato todas las sesiones de la cuenta.
+  sessionVersion     Int        @default(1)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person         Person @relation(fields: [personId], references: [id], onDelete: Restrict)
+  createdByActor Actor  @relation("UserCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor  @relation("UserUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  actor           Actor?
+  credentials     Credential[]
+  sessions        Session[]
+  passwordResets  PasswordReset[]
+  roleAssignments RoleAssignment[]  @relation("RoleAssignmentSubject")
+  grantedRoles    RoleAssignment[]  @relation("RoleAssignmentGrantor")
+  revokedRoles    RoleAssignment[]  @relation("RoleAssignmentRevoker")
+
+  @@index([status])
+  @@map("user_account")
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+/// Material de autenticación. Nunca se registra ni se devuelve el valor en claro.
+model Credential {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  userId          String         @db.Uuid
+  type            CredentialType
+  secretHash      String         @db.VarChar(255)
+  /// Parámetros de Argon2id almacenados junto al hash para poder elevarlos
+  /// más adelante sin invalidar las credenciales existentes (ADR-0003).
+  algorithmParams Json
+  usedAt          DateTime?      @db.Timestamptz(3)
+  expiresAt       DateTime?      @db.Timestamptz(3)
+  revokedAt       DateTime?      @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("credential")
+}
+
+enum CredentialType {
+  PASSWORD
+  RECOVERY_CODE
+}
+
+/// Sesión activa o histórica. Solo se guarda el hash del testigo (PRD §20.1).
+model Session {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  userId          String?        @db.Uuid
+  actorKind       SessionActor
+  tokenHash       String         @unique @db.VarChar(64)
+  issuedAt        DateTime       @default(now()) @db.Timestamptz(3)
+  lastSeenAt      DateTime       @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime       @db.Timestamptz(3)
+  revokedAt       DateTime?      @db.Timestamptz(3)
+  revokedReason   SessionRevoke?
+  /// Solo el hash: la dirección no se conserva en claro (PRD §20.3).
+  ipHash          String?        @db.VarChar(64)
+  userAgentSummary String?       @db.VarChar(200)
+  deviceLabel     String?        @db.VarChar(80)
+  /// Copia de `User.sessionVersion` al emitirse: si la cuenta la incrementa,
+  /// esta sesión deja de ser válida sin necesidad de recorrer filas.
+  sessionVersion  Int            @default(1)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("session")
+}
+
+enum SessionActor {
+  PERSON
+  ROOT_SUPERADMIN
+}
+
+enum SessionRevoke {
+  LOGOUT
+  PASSWORD_CHANGE
+  ADMIN_ACTION
+  EXPIRY
+  SESSION_VERSION_BUMP
+}
+
+/// Recuperación de acceso. La respuesta al solicitante es idéntica exista o no
+/// la cuenta, para impedir enumeración (PRD §20.5).
+model PasswordReset {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  userId        String    @db.Uuid
+  tokenHash     String    @unique @db.VarChar(64)
+  requestedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime  @db.Timestamptz(3)
+  consumedAt    DateTime? @db.Timestamptz(3)
+  requestIpHash String?   @db.VarChar(64)
+  invalidatedAt DateTime? @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset")
+}
+
+/// Empresa, escuela, institución u organización civil.
+model Organization {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  publicId          String             @unique @db.VarChar(22)
+  legalName         String             @db.VarChar(200)
+  tradeName         String?            @db.VarChar(200)
+  taxId             String?            @db.VarChar(30)
+  kind              OrganizationKind
+  sector            String?            @db.VarChar(120)
+  sizeBand          OrganizationSize?
+  countryCode       String             @default("MX") @db.Char(2)
+  territorialUnitId String?            @db.Uuid
+  website           String?            @db.VarChar(300)
+  status            OrganizationStatus @default(PROSPECT)
+  legalEntityId     String             @db.Uuid
+  archivedAt        DateTime?          @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity     LegalEntity      @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  territorialUnit TerritorialUnit? @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  createdByActor  Actor            @relation("OrganizationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor            @relation("OrganizationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  users           OrganizationUser[]
+  roleAssignments RoleAssignment[]
+
+  @@index([legalEntityId])
+  @@index([taxId])
+  @@index([territorialUnitId])
+  @@map("organization")
+}
+
+enum OrganizationKind {
+  COMPANY
+  SCHOOL
+  PUBLIC_INSTITUTION
+  CIVIL_SOCIETY
+  OTHER
+}
+
+enum OrganizationSize {
+  MICRO
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum OrganizationStatus {
+  PROSPECT
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+/// Persona autorizada a actuar por una organización.
+/// Una organización nunca alcanza a otra (PRD §24 Fase 9).
+model OrganizationUser {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  organizationId String               @db.Uuid
+  personId       String               @db.Uuid
+  role           OrganizationUserRole
+  jobTitle       String?              @db.VarChar(120)
+  startsAt       DateTime             @default(now()) @db.Timestamptz(3)
+  endsAt         DateTime?            @db.Timestamptz(3)
+  revokedAt      DateTime?            @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([personId])
+  @@map("organization_user")
+}
+
+enum OrganizationUserRole {
+  OWNER
+  ADMIN
+  CONTACT
+  EVIDENCE_UPLOADER
+  READ_ONLY
+}
+
+/// Catálogo controlado de oficios, profesiones y disciplinas clínicas.
+/// Sustituye a los arreglos de texto libre (defecto D-F0-003, PRD §7.2).
+model SpecialtyCatalog {
+  id       String        @id @default(uuid(7)) @db.Uuid
+  code     String        @unique @db.VarChar(60)
+  name     String        @db.VarChar(160)
+  kind     SpecialtyKind
+  isActive Boolean       @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([kind])
+  @@map("specialty_catalog")
+}
+
+enum SpecialtyKind {
+  TRADE
+  PROFESSION
+  CLINICAL_DISCIPLINE
+}

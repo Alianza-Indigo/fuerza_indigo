@@ -36,7 +36,8 @@ reports/*.json
 # Prisma
 prisma/*.db
 prisma/*.db-journal
-prisma/generated/
+# Cliente generado: se produce con `npm run db:generate`, no se versiona.
+src/generated/
 
 # Sistema operativo y editores
 .DS_Store

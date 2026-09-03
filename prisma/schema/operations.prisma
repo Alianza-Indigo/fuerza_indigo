@@ -1,0 +1,122 @@
+// Trabajos asíncronos, bandeja de salida y webhooks (PRD §17.5, ADR-0017, ADR-0025).
+// Referencia: docs/DATA_MODEL.md §13.
+
+/// Trabajo asíncrono con bloqueo, idempotencia y reintentos.
+///
+/// La unicidad parcial sobre `(jobType, businessKey)` mientras el trabajo no ha
+/// terminado impide encolar dos veces el mismo efecto. Se crea en la migración.
+model BackgroundJob {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  jobType       String    @db.VarChar(80)
+  businessKey   String    @db.VarChar(200)
+  payload       Json      @default("{}")
+  status        JobStatus @default(PENDING)
+  runAt         DateTime  @default(now()) @db.Timestamptz(3)
+  claimedAt     DateTime? @db.Timestamptz(3)
+  claimedBy     String?   @db.VarChar(80)
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5)
+  lastError     String?   @db.VarChar(2000)
+  result        Json?
+  alertedAt     DateTime? @db.Timestamptz(3)
+  correlationId String    @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([status, runAt])
+  @@index([jobType])
+  @@map("background_job")
+}
+
+enum JobStatus {
+  PENDING
+  CLAIMED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+/// Bandeja de salida transaccional (ADR-0025).
+///
+/// Se escribe en la MISMA transacción que el hecho que lo origina. Así no existe
+/// un estado en el que el hecho conste y la orden derivada se haya perdido.
+model OutboxMessage {
+  id            String       @id @default(uuid(7)) @db.Uuid
+  eventName     String       @db.VarChar(120)
+  /// Identificadores y datos mínimos. Nunca contenido personal.
+  payload       Json
+  legalEntityId String?      @db.Uuid
+  occurredAt    DateTime     @default(now()) @db.Timestamptz(3)
+  availableAt   DateTime     @default(now()) @db.Timestamptz(3)
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  lastError     String?      @db.VarChar(2000)
+  correlationId String       @db.VarChar(64)
+  createdByActorId String    @db.Uuid
+
+  legalEntity    LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  createdByActor Actor        @relation("OutboxCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  deliveries OutboxDelivery[]
+
+  @@index([status, availableAt])
+  @@index([eventName])
+  @@index([correlationId])
+  @@map("outbox_message")
+}
+
+enum OutboxStatus {
+  PENDING
+  DELIVERING
+  DELIVERED
+  FAILED
+}
+
+/// Entrega a un manejador concreto. La unicidad `(mensaje, manejador)` es lo que
+/// hace idempotente la entrega al menos una vez.
+model OutboxDelivery {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  outboxMessageId String       @db.Uuid
+  handlerCode     String       @db.VarChar(120)
+  status          OutboxStatus @default(PENDING)
+  attempts        Int          @default(0)
+  deliveredAt     DateTime?    @db.Timestamptz(3)
+  lastError       String?      @db.VarChar(2000)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  outboxMessage OutboxMessage @relation(fields: [outboxMessageId], references: [id], onDelete: Cascade)
+
+  @@unique([outboxMessageId, handlerCode])
+  @@index([status])
+  @@map("outbox_delivery")
+}
+
+/// Recepción genérica de webhooks. Inmutable: se persiste antes de procesar.
+model WebhookEvent {
+  id                String            @id @default(uuid(7)) @db.Uuid
+  source            String            @db.VarChar(60)
+  externalId        String?           @db.VarChar(200)
+  eventType         String            @db.VarChar(120)
+  signatureVerified Boolean
+  payload           Json
+  receivedAt        DateTime          @default(now()) @db.Timestamptz(3)
+  processingStatus  ProcessingStatus  @default(RECEIVED)
+  attempts          Int               @default(0)
+  lastError         String?           @db.VarChar(2000)
+
+  @@unique([source, externalId])
+  @@index([source])
+  @@index([receivedAt])
+  @@map("webhook_event")
+}
+
+enum ProcessingStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}

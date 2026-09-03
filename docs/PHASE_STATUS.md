@@ -6,19 +6,90 @@
 
 ## Situación actual
 
-- **Fase activa:** 0 — Arquitectura integral y preparación del repositorio
-- **Estado:** `APPROVED`
+- **Fase activa:** 1 — Infraestructura, datos, autenticación, permisos y Superadmin
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 3 de septiembre de 2026
 - **Fecha de inicio:** 3 de septiembre de 2026
-- **Cierre revocado y reabierto:** 3 de septiembre de 2026, por revisión semántica externa
-- **Cierre definitivo:** 3 de septiembre de 2026, tras corregir los catorce defectos y superar la segunda revisión
-- **SHA del punto de control:** registrado en el **Historial de fases** al final de este documento
-- **Fase siguiente:** 1 — Infraestructura, datos, autenticación, permisos y Superadmin, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
-
-> **Historia de este cierre.** El 3 de septiembre de 2026 este documento declaró `APPROVED` apoyándose en que los quince controles de `npm run phase:verify` estaban en verde. Una revisión semántica encontró doce defectos que esos controles **no podían detectar**, porque comprobaban existencia, tamaño y presencia de nombres, no coherencia entre documentos. El cierre se revocó, se registraron los defectos, se corrigieron los catorce —los doce de la revisión, el del propio verificador y uno que los controles nuevos descubrieron al estrenarse— y el verificador pasó de quince a veintitrés controles. El registro de defectos se conserva completo: es la parte más útil de este documento para quien construya las fases siguientes.
+- **SHA del punto de control:** se registra al cerrar la fase
+- **Fase anterior:** 0 — `APPROVED`, cerrada en `7fecd6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 2 — Sistema de diseño, PWA, CMS y sitio público, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
 ---
 
 ## Alcance contratado
+
+El PRD §24 Fase 1 contrata: Next.js, TypeScript estricto y estructura modular; configuración de Vercel; Prisma y Neon; migración inicial completa de entidades base; conexión y salud de base de datos; autenticación ordinaria; acceso Superadmin por variables de entorno; sesiones, recuperación e invitaciones; roles, permisos y alcances; servicio de auditoría; servicio privado de Vercel Blob; validación central de variables; manejo uniforme de errores; trabajos programados base; pruebas y datos semilla no sensibles; y CI de calidad.
+
+Pantallas contratadas: inicio y cierre de sesión; activación y recuperación; sesiones propias; login de Superadmin; tablero técnico de Superadmin; gestión base de entidades jurídicas, personas administradoras y roles; y visor de auditoría con permisos.
+
+A ese alcance se suma, por la corrección `F0-COR-007` de la fase anterior, el puerto de correo con plantillas versionadas y registro de entrega, que la activación por invitación y la recuperación de contraseña necesitan.
+
+---
+
+## Criterios de aceptación
+
+Criterios específicos del PRD §24 Fase 1:
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Un Superadmin puede iniciar sesión sin existir como miembro | En curso |
+| 2 | Un administrador ordinario no puede asignarse permisos superiores | En curso |
+| 3 | El aislamiento por entidad y territorio funciona en consultas y mutaciones | En curso |
+| 4 | Un archivo privado no puede abrirse mediante su URL persistente sin autorización | En curso |
+| 5 | Las migraciones corren desde el repositorio sobre una base vacía | En curso |
+| 6 | No existe ninguna dependencia del proveedor prohibido | En curso |
+
+---
+
+## Tareas completadas
+
+En curso. El detalle vive en la sección **Fase 1** de [`BACKLOG.md`](BACKLOG.md).
+
+---
+
+## Evidencias
+
+Se registran al cerrar la fase.
+
+---
+
+## Pruebas y resultados
+
+Se registran al cerrar la fase.
+
+---
+
+## Defectos abiertos
+
+Ninguno registrado todavía en esta fase.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+| — | — | Sin defectos registrados en la Fase 1 | — |
+
+---
+
+## Decisiones
+
+Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0031.
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | — | `IN_PROGRESS` | — |
+| 2 a 12 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 0
+
+> Se conserva íntegro. Incluye el cierre revocado, los catorce defectos con su corrección y el informe final. Es la referencia de lo que falló y de por qué las decisiones son como son.
+
+### Alcance contratado
 
 El PRD §24 Fase 0 contrata: inspección del repositorio; inventario de código reutilizable y deuda; mapa de módulos y dependencias; modelo de dominios; diagrama completo de datos; matriz de roles, atributos y permisos; contratos de servicios e integraciones; arquitectura de rutas; estrategia de archivos; estrategia de auditoría; estrategia de Stripe por entidad; estrategia de IA y privacidad; mapa de consentimientos; catálogo inicial de estados y transiciones; plan de migraciones; plan de pruebas; ADR y documentación base; y configuración de seguimiento de fases.
 
@@ -30,7 +101,7 @@ El PRD §24 Fase 0 prohíbe implementar funciones de fases posteriores, salvo la
 
 ---
 
-## Criterios de aceptación
+### Criterios de aceptación
 
 Criterios específicos del PRD §24 Fase 0:
 
@@ -62,7 +133,7 @@ Criterios de la puerta universal del PRD §23.2 aplicables a una fase documental
 
 ---
 
-## Tareas completadas
+### Tareas completadas
 
 Las 20 tareas de la sección **Fase 0** de [`BACKLOG.md`](BACKLOG.md) se ejecutaron, pero cinco de ellas quedan **reabiertas** por los defectos registrados: `F0-DAT-001` (D-F0-003, D-F0-004, D-F0-005, D-F0-009), `F0-DAT-002` (D-F0-010), `F0-PER-001` (D-F0-001, D-F0-011), `F0-ARQ-003` (D-F0-006) y `F0-OPS-002` (D-F0-013). Se añaden las tareas de corrección `F0-COR-001` a `F0-COR-013`.
 
@@ -96,7 +167,7 @@ El repositorio se encontró **vacío**: sin commits, sin archivos versionados y 
 
 ---
 
-## Evidencias
+### Evidencias
 
 | Evidencia | Ubicación |
 |---|---|
@@ -108,7 +179,7 @@ El repositorio se encontró **vacío**: sin commits, sin archivos versionados y 
 
 ---
 
-## Pruebas y resultados
+### Pruebas y resultados
 
 La Fase 0 no introduce código ejecutable de producto, por lo que su verificación es documental y automatizada mediante `npm run phase:verify`. Controles ejecutados:
 
@@ -163,7 +234,7 @@ La corrección de `D-F0-013` incorporó al verificador ocho controles de coheren
 
 ---
 
-## Defectos abiertos
+### Defectos abiertos
 
 Trece defectos detectados por revisión semántica el 3 de septiembre de 2026, más uno detectado por los controles nuevos, todos con fase propietaria **0**. **Los catorce están cerrados.** Se conservan aquí, con su corrección, porque el PRD §23.1 exige el registro de defectos y porque el historial de lo que falló es la mejor guía para las fases siguientes.
 
@@ -196,7 +267,7 @@ Trece defectos detectados por revisión semántica el 3 de septiembre de 2026, m
 
 ---
 
-## Decisiones
+### Decisiones
 
 **30 decisiones** de arquitectura registradas en [`DECISIONS.md`](DECISIONS.md). Las estructurales: monolito modular en Next.js (ADR-0001), autenticación propia con Argon2id por el requisito de Superadmin sin base (ADR-0003), fronteras de módulo verificadas por el linter (ADR-0006), abstracción de Stripe por entidad jurídica (ADR-0014), reglas estatutarias versionadas como dato (ADR-0022) y la regla de no declarar comandos que no funcionan (ADR-0023).
 
@@ -206,7 +277,7 @@ Ninguna decisión técnica fue trasladada a la persona usuaria, conforme al PRD 
 
 ---
 
-## Riesgos identificados para las fases siguientes
+### Riesgos identificados para las fases siguientes
 
 Se registran aquí para que la fase propietaria los atienda, no como defectos de la Fase 0.
 
@@ -220,7 +291,7 @@ Se registran aquí para que la fase propietaria los atienda, no como defectos de
 
 ---
 
-## Historial de fases
+### Historial de fases
 
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
@@ -229,7 +300,7 @@ Se registran aquí para que la fase propietaria los atienda, no como defectos de
 
 ---
 
-## Informe de cierre de la Fase 0
+### Informe de cierre de la Fase 0
 
 ### Lo entregado
 

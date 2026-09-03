@@ -1,0 +1,138 @@
+// Base institucional: entidades jurídicas, territorio y reglas estatutarias.
+// Referencia: docs/DATA_MODEL.md §4 y §6.1.
+
+/// Entidad jurídica responsable. La separación exigida por el PRD §2.3 es una
+/// columna presente desde el primer registro, no una convención posterior.
+model LegalEntity {
+  id                   String          @id @default(uuid(7)) @db.Uuid
+  code                 LegalEntityCode @unique
+  legalName            String          @db.VarChar(200)
+  shortName            String          @db.VarChar(80)
+  kind                 LegalEntityKind
+  taxId                String?         @db.VarChar(30)
+  registryNumber       String?         @db.VarChar(60)
+  address              String          @db.VarChar(400)
+  contactEmail         String          @db.VarChar(320)
+  privacyNoticeUrl     String?         @db.VarChar(500)
+  documentSeriesPrefix String          @unique @db.VarChar(10)
+  isActive             Boolean         @default(true)
+
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId  String   @db.Uuid
+  updatedByActorId  String   @db.Uuid
+  rowVersion        Int      @default(0)
+
+  createdByActor Actor @relation("LegalEntityCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("LegalEntityUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  organizations     Organization[]
+  roleAssignments   RoleAssignment[]
+  consentVersions   ConsentVersion[]
+  fileObjects       FileObject[]
+  auditEvents       AuditEvent[]
+  outboxMessages    OutboxMessage[]
+
+  @@map("legal_entity")
+}
+
+enum LegalEntityCode {
+  FUERZA_INDIGO
+  ALIANZA_INDIGO
+}
+
+enum LegalEntityKind {
+  UNION
+  CIVIL_ASSOCIATION
+}
+
+/// Unidad territorial u organizativa (PRD §9.1).
+/// `path` es una ruta materializada: `/nacional/mx/jal/guadalajara` (ADR-0027).
+model TerritorialUnit {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  publicId          String              @unique @db.VarChar(22)
+  code              String              @unique @db.VarChar(60)
+  name              String              @db.VarChar(160)
+  type              TerritorialUnitType
+  parentId          String?             @db.Uuid
+  path              String              @unique @db.VarChar(500)
+  depth             Int
+  countryCode       String              @db.Char(2)
+  stateCode         String?             @db.VarChar(10)
+  municipalityCode  String?             @db.VarChar(15)
+  status            TerritorialStatus   @default(ACTIVE)
+  createdOn         DateTime            @db.Date
+  dissolvedOn       DateTime?           @db.Date
+  contactEmail      String?             @db.VarChar(320)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  parent   TerritorialUnit?  @relation("TerritorialHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children TerritorialUnit[] @relation("TerritorialHierarchy")
+
+  createdByActor Actor @relation("TerritorialUnitCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("TerritorialUnitUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  people           Person[]
+  organizations    Organization[]
+  territorialScopes TerritorialScope[]
+  auditEvents      AuditEvent[]
+
+  @@index([parentId])
+  @@index([type])
+  @@index([status])
+  @@map("territorial_unit")
+}
+
+enum TerritorialUnitType {
+  NATIONAL
+  FOREIGN_COUNTRY
+  STATE
+  MUNICIPALITY
+  SECTION
+  DELEGATION
+  OFFICE
+  VIRTUAL_THEMATIC
+}
+
+enum TerritorialStatus {
+  PLANNED
+  ACTIVE
+  SUSPENDED
+  DISSOLVED
+}
+
+/// Versión vigente de las reglas estatutarias (ADR-0022).
+/// Se migra en la Fase 1 porque la solicitud de afiliación la exige (D-F0-014).
+model NormativeRuleSet {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  version       String              @unique @db.VarChar(30)
+  effectiveFrom DateTime            @db.Date
+  effectiveTo   DateTime?           @db.Date
+  status        NormativeRuleStatus @default(DRAFT)
+  /// Umbrales estatutarios: periodo del Comité, reelección, integrantes de las
+  /// comisiones, anticipación de convocatoria, quórum y mayorías (PRD §9.3, §9.4).
+  rules         Json
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  createdByActor Actor @relation("NormativeRuleSetCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("NormativeRuleSetUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@map("normative_rule_set")
+}
+
+enum NormativeRuleStatus {
+  DRAFT
+  IN_FORCE
+  SUPERSEDED
+}

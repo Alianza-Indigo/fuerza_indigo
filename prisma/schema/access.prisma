@@ -1,0 +1,162 @@
+// Control de acceso por roles y atributos. Referencia: docs/PERMISSIONS.md.
+
+/// Rol base del PRD §4.2.
+model Role {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  code              RoleCode  @unique
+  name              String    @db.VarChar(120)
+  description       String    @db.VarChar(400)
+  scopeKind         ScopeKind
+  /// El rol solo existe mientras haya un nombramiento vigente (PRD §4.3).
+  requiresOfficeTerm Boolean  @default(false)
+  isSystem          Boolean   @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  permissions     RolePermission[]
+  roleAssignments RoleAssignment[]
+
+  @@map("role")
+}
+
+enum RoleCode {
+  PUBLIC
+  APPLICANT
+  PROTECTED_BENEFICIARY
+  HONORARY_AFFILIATE
+  UNION_MEMBER
+  TERRITORIAL_DELEGATE
+  EXECUTIVE_SECRETARY
+  OVERSIGHT_COMMISSION
+  ELECTORAL_COMMISSION
+  SOCIAL_STAFF
+  CIAN_PROFESSIONAL
+  CIAN_COORDINATION
+  CENI_ORG_USER
+  CENI_ASSESSOR
+  CENI_COORDINATION
+  FINANCE
+  COMMUNICATIONS
+  AUDITOR
+  SUPERADMIN
+}
+
+enum ScopeKind {
+  GLOBAL
+  LEGAL_ENTITY
+  TERRITORIAL
+  ASSIGNMENT
+  ORGANIZATION
+}
+
+/// Permiso atómico verificable. Código `modulo.recurso.accion`.
+model Permission {
+  id             String                @id @default(uuid(7)) @db.Uuid
+  code           String                @unique @db.VarChar(80)
+  module         String                @db.VarChar(40)
+  resource       String                @db.VarChar(40)
+  action         String                @db.VarChar(40)
+  sensitivity    PermissionSensitivity @default(NORMAL)
+  /// Cuando es verdadero, el motor exige un motivo escrito por la persona.
+  requiresReason Boolean               @default(false)
+  /// Cuando es verdadero, el permiso exige una asignación viva sobre el recurso.
+  needsAssignment Boolean              @default(false)
+  /// Compartimento al que pertenece el recurso protegido, cuando aplica.
+  compartment    Compartment?
+  description    String                @db.VarChar(400)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permission")
+}
+
+enum PermissionSensitivity {
+  NORMAL
+  SENSITIVE
+  CRITICAL
+}
+
+/// Compartimentos disjuntos (docs/SECURITY.md §5.1).
+/// Un permiso de un compartimento no habilita otro.
+enum Compartment {
+  UNION
+  SOCIAL
+  CLINICAL
+  DISCIPLINARY
+}
+
+/// Tabla puente entre roles y permisos.
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permission")
+}
+
+/// Otorgamiento de un rol a una cuenta, con alcance y vigencia (PRD §4.3).
+///
+/// El permiso efectivo se calcula solo con asignaciones vigentes. Al concluir un
+/// nombramiento, el acceso se revoca sin borrar el historial.
+model RoleAssignment {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  userId         String    @db.Uuid
+  roleId         String    @db.Uuid
+  legalEntityId  String?   @db.Uuid
+  organizationId String?   @db.Uuid
+  /// Enlace opcional al nombramiento. La columna existe desde la Fase 1; la
+  /// entidad `OfficeTerm` llega en la Fase 5 (referencia justificada en el
+  /// contrato del PRD, control C-COH-03).
+  officeTermRef  String?   @db.Uuid
+  grantedById    String    @db.Uuid
+  grantReason    String    @db.VarChar(400)
+  startsAt       DateTime  @default(now()) @db.Timestamptz(3)
+  endsAt         DateTime? @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  revokedById    String?   @db.Uuid
+  revokeReason   String?   @db.VarChar(400)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user         User          @relation("RoleAssignmentSubject", fields: [userId], references: [id], onDelete: Cascade)
+  role         Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity?  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  grantedBy    User          @relation("RoleAssignmentGrantor", fields: [grantedById], references: [id], onDelete: Restrict)
+  revokedBy    User?         @relation("RoleAssignmentRevoker", fields: [revokedById], references: [id], onDelete: Restrict)
+
+  territorialScopes TerritorialScope[]
+
+  @@index([userId])
+  @@index([roleId])
+  @@index([legalEntityId])
+  @@index([organizationId])
+  @@index([endsAt])
+  @@map("role_assignment")
+}
+
+/// Delimitación territorial de una asignación.
+model TerritorialScope {
+  id                 String  @id @default(uuid(7)) @db.Uuid
+  roleAssignmentId   String  @db.Uuid
+  territorialUnitId  String  @db.Uuid
+  includesDescendants Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  roleAssignment  RoleAssignment  @relation(fields: [roleAssignmentId], references: [id], onDelete: Cascade)
+  territorialUnit TerritorialUnit @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+
+  @@unique([roleAssignmentId, territorialUnitId])
+  @@index([territorialUnitId])
+  @@map("territorial_scope")
+}

@@ -1,0 +1,110 @@
+// Notificaciones y plantillas versionadas (PRD §16.2, ADR-0016).
+//
+// Se migran en la Fase 1 por la corrección `F0-COR-007`: la activación por
+// invitación y la recuperación de contraseña envían correo, y ningún mensaje
+// puede tener su texto incrustado en el código.
+
+/// Plantilla versionada de mensaje.
+model NotificationTemplate {
+  id           String               @id @default(uuid(7)) @db.Uuid
+  code         String               @db.VarChar(80)
+  version      Int
+  channel      NotificationChannel
+  category     NotificationCategory
+  locale       String               @default("es-MX") @db.VarChar(10)
+  subject      String?              @db.VarChar(300)
+  bodyTemplate String               @db.Text
+  /// Variables permitidas. Cualquier otra se descarta al renderizar.
+  variables    Json                 @default("[]")
+  status       TemplateStatus       @default(DRAFT)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  notifications Notification[]
+
+  @@unique([code, version, channel, locale])
+  @@index([code])
+  @@map("notification_template")
+}
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WEB_PUSH
+}
+
+/// Los avisos obligatorios de gobierno sindical se distinguen de las
+/// comunicaciones promocionales y NUNCA se suprimen por preferencia (PRD §16.2).
+enum NotificationCategory {
+  GOVERNANCE_MANDATORY
+  MEMBERSHIP
+  PAYMENT
+  CASE
+  APPOINTMENT
+  EVENT
+  SECURITY
+  PROMOTIONAL
+}
+
+/// Aviso dirigido a una persona.
+model Notification {
+  id          String                @id @default(uuid(7)) @db.Uuid
+  personId    String                @db.Uuid
+  templateId  String?               @db.Uuid
+  category    NotificationCategory
+  title       String                @db.VarChar(300)
+  body        String                @db.Text
+  linkPath    String?               @db.VarChar(400)
+  channels    NotificationChannel[]
+  createdAt   DateTime              @default(now()) @db.Timestamptz(3)
+  readAt      DateTime?             @db.Timestamptz(3)
+  archivedAt  DateTime?             @db.Timestamptz(3)
+  relatedKind String?               @db.VarChar(60)
+  relatedId   String?               @db.VarChar(60)
+
+  person   Person                @relation(fields: [personId], references: [id], onDelete: Restrict)
+  template NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  attempts DeliveryAttempt[]
+
+  @@index([personId, createdAt])
+  @@index([category])
+  @@map("notification")
+}
+
+/// Intento de entrega por canal. Inmutable.
+model DeliveryAttempt {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  notificationId    String              @db.Uuid
+  channel           NotificationChannel
+  providerMessageId String?             @db.VarChar(200)
+  attemptNumber     Int
+  status            DeliveryStatus
+  errorCode         String?             @db.VarChar(120)
+  occurredAt        DateTime            @default(now()) @db.Timestamptz(3)
+  nextRetryAt       DateTime?           @db.Timestamptz(3)
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status])
+  @@index([occurredAt])
+  @@map("delivery_attempt")
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+  /// Refleja la preferencia de la persona. Nunca aplica a un aviso obligatorio.
+  SUPPRESSED
+}

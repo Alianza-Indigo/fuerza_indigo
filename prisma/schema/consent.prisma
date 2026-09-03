@@ -1,0 +1,85 @@
+// Consentimientos granulares, versionados y revocables (PRD §7.3, §10.4).
+// Referencia: docs/DATA_MODEL.md §7 y docs/PERMISSIONS.md §6.
+
+/// Texto versionado de un consentimiento o aviso.
+model ConsentVersion {
+  id            String        @id @default(uuid(7)) @db.Uuid
+  code          String        @db.VarChar(60)
+  version       Int
+  legalEntityId String        @db.Uuid
+  title         String        @db.VarChar(200)
+  bodyMarkdown  String        @db.Text
+  /// Versión en lenguaje claro, exigida por la accesibilidad cognitiva (PRD §5.3).
+  plainLanguageSummary String @db.Text
+  requiredFor   ConsentPurpose[]
+  effectiveFrom DateTime      @db.Date
+  effectiveTo   DateTime?     @db.Date
+  status        ConsentVersionStatus @default(DRAFT)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  consents    Consent[]
+
+  @@unique([code, version])
+  @@index([code])
+  @@map("consent_version")
+}
+
+enum ConsentVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+/// Consentimiento otorgado por una persona.
+///
+/// La revocación surte efecto hacia el futuro y **no** borra la evidencia de lo
+/// ya consentido. Ningún consentimiento genérico sustituye a uno específico.
+model Consent {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  personId         String         @db.Uuid
+  consentVersionId String         @db.Uuid
+  purpose          ConsentPurpose
+  /// Módulos, entidades, campos y archivos alcanzados por este consentimiento.
+  scope            Json           @default("{}")
+  /// Quien otorga, que puede ser la persona representante.
+  grantedById      String         @db.Uuid
+  /// Enlace a la relación de cuidado que acredita la representación. La columna
+  /// existe desde la Fase 1; `CareRelationship` llega en la Fase 4.
+  representationRef String?       @db.Uuid
+  grantedAt        DateTime       @default(now()) @db.Timestamptz(3)
+  expiresAt        DateTime?      @db.Timestamptz(3)
+  revokedAt        DateTime?      @db.Timestamptz(3)
+  revokeReason     String?        @db.VarChar(400)
+  /// Texto exacto aceptado, versión, marca de tiempo y medio.
+  evidence         Json
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  person         Person         @relation("ConsentSubject", fields: [personId], references: [id], onDelete: Restrict)
+  grantedBy      Person         @relation("ConsentGrantor", fields: [grantedById], references: [id], onDelete: Restrict)
+  consentVersion ConsentVersion @relation(fields: [consentVersionId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@index([consentVersionId])
+  @@index([purpose])
+  @@index([revokedAt])
+  @@map("consent")
+}
+
+enum ConsentPurpose {
+  MEMBERSHIP
+  DIRECTORY_PUBLICATION
+  CASE_PROCESSING
+  INTER_ENTITY_REFERRAL
+  CIAN_CARE
+  CLINICAL_DATA_SHARING
+  AI_ASSISTANCE
+  TOOL_IDENTITY_EXCHANGE
+  MARKETING_COMMUNICATIONS
+  EVENT_PARTICIPATION
+  MINOR_REPRESENTATION
+}

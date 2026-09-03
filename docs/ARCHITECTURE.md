@@ -536,7 +536,7 @@ Convenciones: paginación por cursor, filtros y ordenamientos por lista explíci
 2. Producción ejecuta `prisma migrate deploy` desde el proceso de despliegue; el despliegue se detiene si una migración falla.
 3. Ningún despliegue depende de ejecutar SQL manual en el panel del proveedor.
 4. `prisma db push` no se usa en producción.
-5. Una migración aplicada no se edita; se agrega una migración correctiva explícita.
+5. Una migración **aplicada en un ambiente compartido** (vista previa o producción) no se edita nunca; se agrega una migración correctiva explícita. Mientras el esquema solo se ha aplicado a una base de desarrollo local, rehacer la migración inicial es parte normal del diseño: lo que la regla protege es el historial que otros ya ejecutaron, no el borrador de quien lo escribe.
 6. Los scripts de datos son idempotentes, auditables y versionados.
 7. Cada fase prueba **instalación sobre base vacía** y **actualización desde la fase anterior** (`F<n>-QA-MIG`).
 

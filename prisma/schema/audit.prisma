@@ -1,0 +1,112 @@
+// Bitácoras anexables (PRD §20.4, ADR-0011).
+// Referencia: docs/DATA_MODEL.md §13 y docs/SECURITY.md §6.
+//
+// Ambas tablas son ANEXABLES, NO EDITABLES: la migración inicial retira los
+// privilegios UPDATE y DELETE al usuario de aplicación. Que la interfaz no
+// ofrezca la acción no basta; la base tiene que impedirla.
+
+/// Bitácora institucional. Se escribe en la misma transacción que el acto.
+model AuditEvent {
+  id                String       @id @default(uuid(7)) @db.Uuid
+  occurredAt        DateTime     @default(now()) @db.Timestamptz(3)
+  actorId           String       @db.Uuid
+  /// Cuando alguien actúa por representación acreditada.
+  onBehalfOfPersonId String?     @db.Uuid
+  action            String       @db.VarChar(120)
+  objectKind        String       @db.VarChar(60)
+  objectId          String       @db.VarChar(60)
+  legalEntityId     String?      @db.Uuid
+  territorialUnitId String?      @db.Uuid
+  outcome           AuditOutcome
+  /// Obligatorio cuando el permiso lo exige. Lo escribe la persona, no el sistema.
+  reason            String?      @db.VarChar(600)
+  /// Alcance efectivo aplicado al resolver la política.
+  scope             Json         @default("{}")
+  /// Metadatos minimizados: identificadores y códigos, nunca datos personales.
+  metadata          Json         @default("{}")
+  correlationId     String       @db.VarChar(64)
+  /// Partición lógica de la cadena de hash. Encadenar una sola secuencia global
+  /// serializaría toda la escritura de auditoría del sistema; particionar por
+  /// entidad jurídica conserva la propiedad de detección de supresiones dentro
+  /// de cada partición y reparte la contención.
+  chainKey          String       @db.VarChar(40)
+  /// Posición dentro de su partición. Un hueco en la sucesión es evidencia.
+  chainSequence     BigInt
+  /// Encadenamiento que evidencia cualquier supresión posterior.
+  previousHash      String       @db.Char(64)
+  hash              String       @db.Char(64)
+
+  actor           Actor            @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity?     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  territorialUnit TerritorialUnit? @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+
+  @@index([occurredAt])
+  @@index([objectKind, objectId, occurredAt])
+  @@index([actorId, occurredAt])
+  @@index([correlationId])
+  @@index([legalEntityId])
+  @@unique([chainKey, chainSequence])
+  @@map("audit_event")
+}
+
+enum AuditOutcome {
+  SUCCESS
+  DENIED
+  FAILED
+}
+
+/// Bitácora de seguridad. Minimizada: nunca credenciales ni testigos.
+model SecurityEvent {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  occurredAt    DateTime          @default(now()) @db.Timestamptz(3)
+  kind          SecurityEventKind
+  actorId       String?           @db.Uuid
+  /// Nunca la dirección de correo completa en eventos de fallo.
+  subjectLabel  String?           @db.VarChar(120)
+  ipHash        String?           @db.VarChar(64)
+  userAgentClass UserAgentClass?
+  severity      SecuritySeverity  @default(INFO)
+  /// Sin credenciales ni testigos.
+  detail        Json              @default("{}")
+  correlationId String            @db.VarChar(64)
+
+  actor Actor? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([occurredAt])
+  @@index([kind])
+  @@index([severity])
+  @@index([actorId])
+  @@index([correlationId])
+  @@map("security_event")
+}
+
+enum SecurityEventKind {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_CHANGED
+  SESSION_REVOKED
+  RATE_LIMITED
+  ACCESS_DENIED
+  PRIVILEGE_GRANTED
+  PRIVILEGE_REVOKED
+  SUPERADMIN_LOGIN
+  SUPERADMIN_ACTION
+  SUSPECTED_ENUMERATION
+  WEBHOOK_SIGNATURE_INVALID
+  FILE_ACCESS_DENIED
+}
+
+enum SecuritySeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum UserAgentClass {
+  MOBILE
+  DESKTOP
+  BOT
+  UNKNOWN
+}

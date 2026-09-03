@@ -1,0 +1,155 @@
+// Archivos privados, retención y bloqueo legal (PRD §17.4, ADR-0013).
+// Referencia: docs/DATA_MODEL.md §9.
+
+/// Objeto lógico almacenado en Vercel Blob. Privado por omisión.
+///
+/// El nombre original NUNCA es el identificador público: se conserva solo como
+/// metadato de presentación.
+model FileObject {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  publicId          String              @unique @db.VarChar(22)
+  legalEntityId     String              @db.Uuid
+  ownerPersonId     String?             @db.Uuid
+  classification    FileClassification
+  contextKind       FileContextKind
+  contextId         String?             @db.Uuid
+  originalFileName  String              @db.VarChar(255)
+  mimeType          String              @db.VarChar(150)
+  sizeBytes         BigInt
+  currentVersionId  String?             @unique @db.Uuid
+  retentionPolicyId String?             @db.Uuid
+  legalHoldId       String?             @db.Uuid
+  archivedAt        DateTime?           @db.Timestamptz(3)
+  deletedAt         DateTime?           @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity     LegalEntity      @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  ownerPerson     Person?          @relation(fields: [ownerPersonId], references: [id], onDelete: Restrict)
+  retentionPolicy RetentionPolicy? @relation(fields: [retentionPolicyId], references: [id], onDelete: Restrict)
+  legalHold       LegalHold?       @relation(fields: [legalHoldId], references: [id], onDelete: Restrict)
+  currentVersion  FileVersion?     @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  createdByActor  Actor            @relation("FileObjectCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor            @relation("FileObjectUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  versions FileVersion[] @relation("ObjectVersions")
+
+  @@index([legalEntityId])
+  @@index([ownerPersonId])
+  @@index([classification])
+  @@index([contextKind, contextId])
+  @@index([legalHoldId])
+  @@map("file_object")
+}
+
+enum FileClassification {
+  PUBLIC
+  INTERNAL
+  RESTRICTED
+  SENSITIVE_PERSONAL
+  CLINICAL
+  LEGAL_PRIVILEGED
+}
+
+enum FileContextKind {
+  APPLICATION
+  CASE
+  CIAN
+  CENI
+  GOVERNANCE
+  FINANCE
+  CONTENT
+  CREDENTIAL
+  SYSTEM
+}
+
+/// Versión concreta del contenido. Inmutable.
+model FileVersion {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  fileObjectId String     @db.Uuid
+  version      Int
+  /// Ruta lógica opaca dentro del almacén. No deriva del nombre original.
+  blobPathname String     @unique @db.VarChar(400)
+  sha256       String     @db.Char(64)
+  sizeBytes    BigInt
+  uploadedByActorId String @db.Uuid
+  uploadedAt   DateTime   @default(now()) @db.Timestamptz(3)
+  scanStatus   ScanStatus @default(PENDING)
+  scanDetail   String?    @db.VarChar(400)
+
+  fileObject      FileObject @relation("ObjectVersions", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  uploadedByActor Actor      @relation("FileVersionUploadedBy", fields: [uploadedByActorId], references: [id], onDelete: Restrict)
+
+  currentOf FileObject? @relation("CurrentVersion")
+
+  @@unique([fileObjectId, version])
+  @@index([sha256])
+  @@map("file_version")
+}
+
+enum ScanStatus {
+  PENDING
+  CLEAN
+  REJECTED
+}
+
+/// Política de conservación por tipo de dato.
+model RetentionPolicy {
+  id                     String               @id @default(uuid(7)) @db.Uuid
+  code                   String               @unique @db.VarChar(60)
+  name                   String               @db.VarChar(160)
+  appliesToClassification FileClassification[]
+  appliesToContextKind   FileContextKind[]
+  retentionMonths        Int
+  /// Fundamento de la conservación.
+  basis                  String               @db.VarChar(600)
+  actionOnExpiry         RetentionAction
+  effectiveFrom          DateTime             @db.Date
+  effectiveTo            DateTime?            @db.Date
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  fileObjects FileObject[]
+
+  @@map("retention_policy")
+}
+
+enum RetentionAction {
+  ANONYMIZE
+  DELETE
+  ARCHIVE_COLD
+}
+
+/// Bloqueo legal. Mientras exista, ningún trabajo de retención elimina,
+/// anonimiza ni archiva en frío los objetos alcanzados.
+model LegalHold {
+  id         String        @id @default(uuid(7)) @db.Uuid
+  scopeKind  LegalHoldScope
+  scopeId    String        @db.Uuid
+  reason     String        @db.VarChar(600)
+  orderedBy  String        @db.VarChar(200)
+  startedAt  DateTime      @default(now()) @db.Timestamptz(3)
+  releasedAt DateTime?     @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  fileObjects FileObject[]
+
+  @@index([scopeKind, scopeId])
+  @@map("legal_hold")
+}
+
+enum LegalHoldScope {
+  PERSON
+  CASE
+  FILE
+  LEGAL_ENTITY
+  DISCIPLINARY_CASE
+  BARGAINING_FILE
+}

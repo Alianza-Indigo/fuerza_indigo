@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/*
+ * Tokens base de la Fase 1.
+ *
+ * El sistema de diseño completo es alcance de la Fase 2 (PRD §24). Aquí solo
+ * vive lo mínimo para que las pantallas de autenticación y del panel técnico
+ * cumplan contraste, foco visible y respeto por la reducción de movimiento.
+ */
+@theme {
+  --color-indigo-50: oklch(0.97 0.02 285);
+  --color-indigo-100: oklch(0.93 0.04 285);
+  --color-indigo-500: oklch(0.55 0.19 285);
+  --color-indigo-600: oklch(0.48 0.19 285);
+  --color-indigo-700: oklch(0.41 0.17 285);
+  --color-indigo-900: oklch(0.26 0.10 285);
+  --color-surface: oklch(0.99 0.003 285);
+  --color-surface-raised: oklch(1 0 0);
+  --color-ink: oklch(0.22 0.02 285);
+  --color-ink-soft: oklch(0.45 0.02 285);
+  --color-line: oklch(0.90 0.01 285);
+  --color-danger: oklch(0.52 0.20 25);
+  --color-danger-soft: oklch(0.96 0.03 25);
+  --color-success: oklch(0.52 0.14 155);
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-surface: oklch(0.19 0.015 285);
+      --color-surface-raised: oklch(0.24 0.018 285);
+      --color-ink: oklch(0.96 0.005 285);
+      --color-ink-soft: oklch(0.76 0.015 285);
+      --color-line: oklch(0.34 0.02 285);
+      --color-indigo-500: oklch(0.72 0.15 285);
+      --color-indigo-600: oklch(0.66 0.16 285);
+      --color-danger: oklch(0.70 0.17 25);
+      --color-danger-soft: oklch(0.28 0.06 25);
+    }
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  /* Foco siempre visible: es requisito de accesibilidad, no una preferencia. */
+  :focus-visible {
+    outline: 3px solid var(--color-indigo-500);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Respeto por la reducción de movimiento (PRD §5.2). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

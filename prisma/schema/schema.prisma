@@ -1,0 +1,25 @@
+// Plataforma Integral Fuerza Índigo — esquema base.
+//
+// Esquema multiarchivo por dominio (ADR-0021). Cada archivo de este directorio
+// cubre una familia del modelo documentado en `docs/DATA_MODEL.md`.
+//
+// Convenciones obligatorias (docs/DATA_MODEL.md §3):
+//   · Clave primaria UUIDv7, salvo las excepciones documentadas.
+//   · Marcas de tiempo `timestamptz`, siempre en UTC.
+//   · Estados mediante enumeraciones, nunca texto libre.
+//   · Autoría mediante `Actor`, que cubre persona, Superadmin raíz y sistema.
+//   · Integridad referencial explícita: `Restrict` por omisión.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// La URL no se declara aquí: Prisma 7 la toma de `prisma.config.ts` para las
+// migraciones (conexión directa, `DIRECT_URL`) y la aplicación la inyecta en
+// tiempo de ejecución mediante el adaptador (conexión agrupada, `DATABASE_URL`).
+// Separarlas es lo que exige el PRD §17.3 y ADR-0002.

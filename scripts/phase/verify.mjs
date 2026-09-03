@@ -17,6 +17,7 @@
  */
 
 import { readFileSync, existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -140,18 +141,54 @@ const COMPLIANCE_ALLOWLIST = new Set([
   'scripts/phase/prd-contract.json',
 ]);
 
-/** Marcadores de trabajo inconcluso prohibidos por el PRD §0.3. */
+/**
+ * Archivos que el repositorio versiona de verdad.
+ *
+ * Distinto de recorrer el disco: `.env.local`, las claves de desarrollo y los
+ * artefactos de construcción están en el disco de quien programa y no en el
+ * repositorio. Un control que dice «no debe versionarse» tiene que mirar lo
+ * versionado, o denuncia lo que no ocurre y calla lo que sí.
+ */
+let trackedCache = null;
+function tracked() {
+  if (trackedCache !== null) return trackedCache;
+  try {
+    const salida = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' });
+    trackedCache = salida.split('\0').filter((ruta) => ruta !== '');
+  } catch {
+    // Sin git —una copia descargada como archivo comprimido— se recae en el
+    // disco, que es una aproximación peor pero no deja el control sin ejecutar.
+    trackedCache = walk();
+  }
+  return trackedCache;
+}
+
+/**
+ * Marcadores de trabajo inconcluso prohibidos por el PRD §0.3.
+ *
+ * `shape: true` significa que la palabra solo cuenta como marcador cuando
+ * aparece con la **forma** de uno: seguida de dos puntos, de un paréntesis o de
+ * un guion. Sin esa distinción, «TODO» se dispara con la palabra española
+ * escrita en mayúsculas y «XXX» con cualquier resumen hexadecimal de un archivo
+ * de dependencias, y un control que avisa de lo que no es acaba desatendido.
+ */
 const FORBIDDEN_MARKERS = [
-  ['TO', 'DO'].join(''),
-  ['FIX', 'ME'].join(''),
-  ['HACK', ''].join(''),
-  ['XX', 'X'].join(''),
-  'próximamente',
-  'proximamente',
-  'lorem ipsum',
-  'Lorem Ipsum',
-  'placeholder de contenido',
+  { text: ['TO', 'DO'].join(''), shape: true },
+  { text: ['FIX', 'ME'].join(''), shape: true },
+  { text: ['HACK', ''].join(''), shape: true },
+  { text: ['XX', 'X'].join(''), shape: true },
+  { text: 'próximamente', shape: false },
+  { text: 'proximamente', shape: false },
+  { text: 'lorem ipsum', shape: false },
+  { text: 'Lorem Ipsum', shape: false },
+  { text: 'placeholder de contenido', shape: false },
 ];
+
+/** ¿La palabra aparece en esta línea con forma de marcador de trabajo? */
+function hasMarker(line, marker) {
+  if (!marker.shape) return line.includes(marker.text);
+  return new RegExp(`\\b${marker.text}\\b\\s*[:(\\-]`).test(line);
+}
 
 /** Rutas exentas del control de marcadores: contienen el texto normativo o el propio control. */
 const MARKER_ALLOWLIST = new Set([
@@ -231,8 +268,8 @@ const CHECKS = [
         const lines = content.split('\n');
         lines.forEach((line, index) => {
           for (const marker of FORBIDDEN_MARKERS) {
-            if (line.includes(marker)) {
-              problems.push(`${file}:${index + 1} contiene el marcador "${marker}".`);
+            if (hasMarker(line, marker)) {
+              problems.push(`${file}:${index + 1} contiene el marcador "${marker.text}".`);
             }
           }
         });
@@ -268,7 +305,7 @@ const CHECKS = [
     phases: 'all',
     run() {
       const problems = [];
-      for (const file of walk()) {
+      for (const file of tracked()) {
         const base = file.split('/').pop();
         if (base === '.env' || /^\.env\.(?!example$)/.test(base)) {
           problems.push(`${file} no debe versionarse.`);
@@ -659,7 +696,212 @@ const CHECKS = [
       return problems.length ? fail(problems) : ok(['Trazabilidad documento ↔ PRD verificada.']);
     },
   },
+  {
+    id: 'C-F1-01',
+    title: 'Fase 1: cada pantalla contratada por el PRD §24 existe como ruta',
+    phases: [1],
+    run() {
+      // La lista sale del propio PRD. Que una pantalla figure en el alcance y no
+      // exista como ruta es la forma más silenciosa de dejar una fase a medias:
+      // todo lo demás compila, pasa el lint y pasa las pruebas.
+      const pantallas = [
+        ['inicio y cierre de sesión', ['app/(auth)/acceso/page.tsx']],
+        ['activación', ['app/(auth)/activar/[token]/page.tsx']],
+        ['recuperación', ['app/(auth)/recuperar/page.tsx', 'app/(auth)/recuperar/[token]/page.tsx']],
+        ['sesiones propias', ['app/(portal)/mi/seguridad/page.tsx']],
+        ['login de Superadmin', ['app/superadmin/login/page.tsx']],
+        ['tablero técnico de Superadmin', ['app/superadmin/page.tsx', 'app/superadmin/salud/page.tsx']],
+        ['gestión de entidades jurídicas y personas', ['app/superadmin/personas/page.tsx']],
+        ['gestión de roles', ['app/gestion/nombramientos/page.tsx', 'app/gestion/personas/page.tsx']],
+        ['visor de auditoría con permisos', ['app/superadmin/auditoria/page.tsx']],
+      ];
+
+      const problems = [];
+      for (const [nombre, rutas] of pantallas) {
+        for (const ruta of rutas) {
+          if (!existsSync(join(ROOT, ruta))) problems.push(`Falta la pantalla de ${nombre}: ${ruta}.`);
+        }
+      }
+      return problems.length
+        ? fail(problems)
+        : ok([`${pantallas.length} pantallas contratadas por el PRD §24 presentes como rutas.`]);
+    },
+  },
+  {
+    id: 'C-F1-02',
+    title: 'Fase 1: todo caso de uso exportado se invoca desde alguna pantalla o ruta',
+    phases: [1],
+    run() {
+      // El defecto que este control impide: `assignRole` y `revokeRole` existían
+      // completos, probados y documentados, y ninguna pantalla los llamaba. Una
+      // función que nadie puede invocar es alcance no entregado, aunque el código
+      // esté escrito.
+      const superficies = walk().filter(
+        (file) => (file.startsWith('app/') || file.startsWith('scripts/')) && /\.tsx?$/.test(file),
+      );
+      const invocado = superficies.map((file) => read(file) ?? '').join('\n');
+
+      const problems = [];
+      for (const file of walk()) {
+        if (!/^src\/modules\/[^/]+\/index\.ts$/.test(file)) continue;
+        const content = read(file);
+        if (content === null) continue;
+
+        for (const match of content.matchAll(/^\s{2}([a-z][A-Za-z0-9]*),?$/gm)) {
+          const nombre = match[1];
+          if (nombre === undefined) continue;
+          // Los esquemas de validación no son casos de uso: se exportan para que
+          // quien llama pueda validar antes, y no tienen por qué invocarse desde
+          // una pantalla. Lo que este control persigue son funciones de negocio
+          // que quedaron sin superficie.
+          if (nombre.endsWith('Schema')) continue;
+          if (!new RegExp(`\\b${nombre}\\b`).test(invocado)) {
+            problems.push(`${file} exporta "${nombre}" y ninguna pantalla, ruta o guion lo invoca.`);
+          }
+        }
+      }
+      return problems.length
+        ? fail(problems)
+        : ok(['Todo caso de uso exportado tiene al menos una superficie que lo invoca.']);
+    },
+  },
+  {
+    id: 'C-F1-03',
+    title: 'Fase 1: la facultad de nombrar existe en algún rol del catálogo',
+    phases: [1],
+    run() {
+      // Un catálogo sin nadie capaz de otorgar roles produce un sistema que se
+      // despliega bien y no se puede administrar nunca. No lo detecta ninguna
+      // prueba negativa: todas seguirían en verde.
+      const semilla = read('prisma/seed/data/roles.ts');
+      if (semilla === null) return fail(['No se encontró la semilla de roles.']);
+
+      const problems = [];
+      for (const permiso of ['access.role.assign', 'access.role.revoke']) {
+        if (!semilla.includes(`'${permiso}'`)) {
+          problems.push(`Ningún rol de la semilla recibe "${permiso}": nadie podría nombrar ni revocar.`);
+        }
+      }
+
+      // Y ese permiso no puede acabar en la lista cerrada del actor raíz. Se
+      // acota la lectura a la declaración de esa lista: más abajo del archivo
+      // están las concesiones de los trabajos programados, y el trabajo de
+      // vencimientos sí revoca nombramientos, que es su función.
+      const permisos = read('src/platform/authz/permissions.ts') ?? '';
+      const inicio = permisos.indexOf('SUPERADMIN_GRANTED');
+      const cierre = permisos.indexOf(']);', inicio);
+      const cerrada = inicio === -1 || cierre === -1 ? '' : permisos.slice(inicio, cierre);
+      if (cerrada === '') problems.push('No se pudo leer la lista de concesión del actor raíz.');
+      for (const permiso of ['access.role.assign', 'access.role.revoke']) {
+        if (cerrada.includes(`'${permiso}'`)) {
+          problems.push(`"${permiso}" figura en la lista de concesión del actor raíz: nombrar es un acto institucional (PRD §4.4).`);
+        }
+      }
+
+      return problems.length ? fail(problems) : ok(['La facultad de nombrar reside en el catálogo y no en el actor raíz.']);
+    },
+  },
+  {
+    id: 'C-F1-04',
+    title: 'Fase 1: el modelo declarado y las migraciones no divergen',
+    phases: [1],
+    run() {
+      // El defecto que este control impide: la migración inicial creaba
+      // `audit_event` sin las dos columnas de la cadena de resúmenes que el
+      // modelo declaraba. La comparación real la hace la prueba de integración
+      // contra PostgreSQL; aquí se comprueba lo que se puede leer sin base:
+      // que cada campo del modelo aparece en alguna migración.
+      const problems = [];
+      const migraciones = walk()
+        .filter((file) => /^prisma\/migrations\/.+\/migration\.sql$/.test(file))
+        .map((file) => read(file) ?? '')
+        .join('\n');
+
+      if (migraciones === '') return fail(['No hay ninguna migración en el repositorio.']);
+
+      for (const file of walk()) {
+        if (!/^prisma\/schema\/.+\.prisma$/.test(file)) continue;
+        const content = read(file);
+        if (content === null) continue;
+
+        for (const match of content.matchAll(/^\s{2}(\w+)\s+(String|Int|BigInt|Boolean|DateTime|Json|Decimal|Float)\b/gm)) {
+          const campo = match[1];
+          if (campo === undefined) continue;
+          if (!migraciones.includes(`"${campo}"`)) {
+            problems.push(`${file}: el campo "${campo}" no aparece en ninguna migración.`);
+          }
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Cada campo escalar del modelo aparece en las migraciones del repositorio.']);
+    },
+  },
+  {
+    id: 'C-F1-05',
+    title: 'Fase 1: las pruebas negativas obligatorias de esta fase están escritas',
+    phases: [1],
+    run() {
+      // docs/PERMISSIONS.md §9 enumera trece. Las que dependen de entidades de
+      // fases posteriores se prueban allí; estas siete son las que la Fase 1
+      // puede y debe demostrar hoy.
+      const pruebas = walk()
+        .filter((file) => file.startsWith('tests/') && file.endsWith('.test.ts'))
+        .map((file) => read(file) ?? '')
+        .join('\n');
+
+      const obligatorias = [
+        ['1', 'prueba negativa 1', /acceso horizontal|E2E-14|expediente ajeno|archivo ajeno/i],
+        ['2', 'escalamiento vertical', /escalamiento vertical|elevación de privilegios|no posee/i],
+        ['3', 'territorio ajeno', /FUERA_DE_TERRITORIO/],
+        ['9', 'superadmin acotado', /SUPERADMIN_GRANTED/],
+        ['10', 'superadmin sin compartimentos', /COMPARTIMENTO_AJENO/],
+        ['11', 'superadmin sin lectura masiva', /LECTURA_MASIVA_PROHIBIDA/],
+        ['13', 'archivo privado', /pase.*(autorización|firma)|redeemDownload/i],
+      ];
+
+      const problems = obligatorias
+        .filter(([, , patron]) => !patron.test(pruebas))
+        .map(([numero, nombre]) => `Falta la prueba negativa ${numero} (${nombre}) de docs/PERMISSIONS.md §9.`);
+
+      return problems.length
+        ? fail(problems)
+        : ok([`${obligatorias.length} pruebas negativas obligatorias de la Fase 1 presentes.`]);
+    },
+  },
+  {
+    id: 'C-F1-06',
+    title: 'Fase 1: la integración continua ejecuta la puerta completa y en orden',
+    phases: [1],
+    run() {
+      const flujo = read('.github/workflows/calidad.yml');
+      if (flujo === null) return fail(['No existe .github/workflows/calidad.yml.']);
+
+      const orden = ['phase:verify', 'run lint', 'run typecheck', 'npm test', 'test:integration', 'run build'];
+      const posiciones = orden.map((paso) => flujo.indexOf(paso));
+
+      const problems = [];
+      orden.forEach((paso, indice) => {
+        if (posiciones[indice] === -1) problems.push(`La CI no ejecuta "${paso}".`);
+      });
+      for (let i = 1; i < posiciones.length; i += 1) {
+        const anterior = posiciones[i - 1];
+        const actual = posiciones[i];
+        if (anterior === -1 || actual === -1) continue;
+        if (actual < anterior) {
+          problems.push(`La CI ejecuta "${orden[i]}" antes que "${orden[i - 1]}" (docs/TEST_PLAN.md §11.1).`);
+        }
+      }
+      if (!/postgres/i.test(flujo)) {
+        problems.push('La CI no levanta PostgreSQL: las pruebas de integración necesitan la base real.');
+      }
+
+      return problems.length ? fail(problems) : ok(['La CI ejecuta la puerta de calidad completa y en orden.']);
+    },
+  },
 ];
+
 
 /* ------------------------------------------------------------------ */
 /* Ejecución                                                           */

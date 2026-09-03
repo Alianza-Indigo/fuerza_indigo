@@ -29,14 +29,48 @@ if (connectionString === undefined || connectionString === '') {
 const appUrl = (process.env['APP_URL'] ?? 'http://localhost:3000').replace(/\/$/, '');
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
-function preguntar(texto: string): Promise<string> {
-  const rl = createInterface({ input: stdin, output: stdout });
-  return new Promise((resolve) => {
-    rl.question(texto, (respuesta) => {
-      rl.close();
-      resolve(respuesta.trim());
-    });
-  });
+/**
+ * Lectura de las respuestas.
+ *
+ * Se distinguen los dos casos porque se comportan de forma distinta. Con un
+ * terminal, `readline` pregunta y espera. Con una tubería —otro guion, una
+ * prueba, un despliegue automatizado— el flujo termina en cuanto se han enviado
+ * todas las líneas, `readline` se cierra ahí y cualquier pregunta posterior
+ * muere con «readline was closed». Por eso, cuando la entrada no es un
+ * terminal, se lee entera de una vez y se reparte en líneas.
+ *
+ * Una respuesta que falta se trata como vacía y la validación de abajo la
+ * rechaza con un mensaje entendible, en vez de dejar el guion colgado.
+ */
+async function pedirDatos(): Promise<{
+  email: string;
+  givenName: string;
+  familyName: string;
+  secondFamilyName: string;
+}> {
+  const etiquetas = ['Correo electrónico: ', 'Nombre: ', 'Primer apellido: ', 'Segundo apellido (opcional): '];
+  let respuestas: string[];
+
+  if (stdin.isTTY === true) {
+    const lector = createInterface({ input: stdin, output: stdout });
+    try {
+      respuestas = [];
+      for (const etiqueta of etiquetas) {
+        respuestas.push(await new Promise<string>((resolve) => lector.question(etiqueta, resolve)));
+      }
+    } finally {
+      lector.close();
+    }
+  } else {
+    let entrada = '';
+    for await (const trozo of stdin) entrada += String(trozo);
+    const lineas = entrada.split('\n');
+    respuestas = etiquetas.map((_, indice) => lineas[indice] ?? '');
+    stdout.write(`${etiquetas.join('')}\n`);
+  }
+
+  const [email = '', givenName = '', familyName = '', secondFamilyName = ''] = respuestas.map((valor) => valor.trim());
+  return { email: email.toLowerCase(), givenName, familyName, secondFamilyName };
 }
 
 async function main(): Promise<void> {
@@ -70,10 +104,7 @@ async function main(): Promise<void> {
   console.log('\nArranque de la primera Secretaría Ejecutiva.');
   console.log('Se creará la cuenta y se imprimirá un enlace de activación de un solo uso.\n');
 
-  const email = (await preguntar('Correo electrónico: ')).toLowerCase();
-  const givenName = await preguntar('Nombre: ');
-  const familyName = await preguntar('Primer apellido: ');
-  const secondFamilyName = await preguntar('Segundo apellido (opcional): ');
+  const { email, givenName, familyName, secondFamilyName } = await pedirDatos();
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('El correo no tiene un formato válido.');
   if (givenName === '' || familyName === '') throw new Error('El nombre y el primer apellido son obligatorios.');

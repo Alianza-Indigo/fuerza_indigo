@@ -137,7 +137,26 @@ export async function revokeAllSessions(
     },
     data: { revokedAt: new Date(), revokedReason: reason },
   });
-  await tx.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+
+  const cuenta = await tx.user.update({
+    where: { id: userId },
+    data: { sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+
+  // La sesión exceptuada se lleva consigo la versión nueva.
+  //
+  // Sin esto, «cerrar todo lo demás» cerraba también la sesión desde la que se
+  // pedía: el incremento de versión invalida por definición todas las sesiones
+  // de la cuenta, incluida la que se acababa de excluir del `updateMany`. La
+  // pantalla prometía conservarla y la cerraba.
+  if (options.exceptSessionId !== undefined) {
+    await tx.session.update({
+      where: { id: options.exceptSessionId },
+      data: { sessionVersion: cuenta.sessionVersion },
+    });
+  }
+
   return result.count;
 }
 

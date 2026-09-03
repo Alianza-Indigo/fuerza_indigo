@@ -1,0 +1,111 @@
+name: Calidad
+
+# Puerta de calidad completa, en el mismo orden que docs/TEST_PLAN.md §11.1:
+# verificación de fase, lint, tipos, pruebas unitarias, pruebas de integración
+# contra PostgreSQL real y compilación. Se detiene en el primer fallo, para que
+# el registro señale la primera causa y no una cascada de consecuencias.
+#
+# La verificación de fase va primero por dos razones. La primera es de economía:
+# si la fase activa no está completa según sus propios controles, lo demás es
+# ruido. La segunda es que incluye el control de prohibición del PRD §0.2, que
+# recorre el repositorio entero y no puede quedar detrás de ningún otro fallo.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: calidad-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Puerta de calidad
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # Las pruebas de integración corren contra PostgreSQL de verdad. Un doble en
+    # memoria daría por buenas las garantías que viven en el motor —índices
+    # únicos parciales, bloqueos consultivos, privilegios revocados sobre las
+    # bitácoras— sin comprobar ninguna.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: fuerza
+          POSTGRES_PASSWORD: fuerza_de_integracion
+          POSTGRES_DB: fuerza_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fuerza"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      CI: 'true'
+      # Valores de prueba, sin ningún uso fuera de esta ejecución. Los secretos
+      # reales viven en el panel de Vercel y no pasan por aquí.
+      DATABASE_URL: postgresql://fuerza:fuerza_de_integracion@localhost:5432/fuerza_ci
+      DIRECT_URL: postgresql://fuerza:fuerza_de_integracion@localhost:5432/fuerza_ci
+      APP_URL: http://localhost:3000
+      AUTH_SECRET: Y2ktc2VjcmV0by1kZS1wcnVlYmEtcXVlLW5vLXNpcnZlLWZ1ZXJh
+      SUPERADMIN_EMAIL: superadmin@ejemplo.invalid
+      SUPERADMIN_SESSION_VERSION: '1'
+      BLOB_READ_WRITE_TOKEN: vercel_blob_rw_ciplaceholder_ciplaceholder
+      FILE_URL_SIGNING_SECRET: Y2ktZmlybWEtZGUtYXJjaGl2b3MtZGUtcHJ1ZWJhLXNvbG8
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: 'Fuerza Indigo <no-responder@ejemplo.invalid>'
+      CRON_SECRET: Y2ktc2VjcmV0by1kZS10YXJlYXMtcHJvZ3JhbWFkYXMtcHJ1ZWJh
+      QR_SIGNING_SECRET: k1:Y2ktZmlybWEtZGUtY29kaWdvcy12ZXJpZmljYWJsZXMtcQ
+
+    steps:
+      - name: Obtener el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar el cliente de Prisma
+        run: npm run db:generate
+
+      # El hash se calcula aquí y no se escribe en el repositorio. Un hash de
+      # contraseña versionado es un secreto versionado, aunque sea de prueba, y
+      # acaba copiado a un despliegue real por alguien que supone que estaba ahí
+      # por algo.
+      - name: Preparar credencial de prueba del actor raíz
+        run: |
+          HASH=$(node -e "
+            const { hash } = require('@node-rs/argon2');
+            hash('credencial efimera de integracion continua', {
+              algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32,
+            }).then((valor) => process.stdout.write(valor));
+          ")
+          echo "SUPERADMIN_PASSWORD_HASH=$HASH" >> "$GITHUB_ENV"
+
+      - name: Verificación de fase
+        run: npm run phase:verify
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Pruebas unitarias
+        run: npm test
+
+      - name: Pruebas de integración
+        run: npm run test:integration
+
+      - name: Compilación
+        run: npm run build

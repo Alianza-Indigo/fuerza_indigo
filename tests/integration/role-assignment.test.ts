@@ -299,6 +299,7 @@ describe('guion de arranque de la primera Secretaría Ejecutiva', () => {
       execFileSync('npx', ['tsx', 'scripts/access/bootstrap-secretary.ts'], {
         input: '\n',
         encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, DIRECT_URL: process.env['DIRECT_URL'] ?? '' },
       });
     } catch (error) {

@@ -89,8 +89,8 @@ export default async function SuperadminHomePage() {
           <Card>
             <p className="text-sm text-[var(--color-ink-soft)]">
               Catálogo y cobros, contenidos públicos, herramientas, CIAN, CENI e inteligencia artificial se
-              incorporan en sus fases correspondientes. Esta pantalla no los muestra como «próximamente» porque
-              todavía no existen: cuando existan, aparecerán aquí en funcionamiento.
+              incorporan en sus fases correspondientes. Esta pantalla no los anuncia todavía, porque anunciar
+              lo que aún no existe no le sirve a nadie: cuando existan, aparecerán aquí en funcionamiento.
             </p>
           </Card>
         </section>

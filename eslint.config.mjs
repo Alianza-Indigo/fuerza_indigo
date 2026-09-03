@@ -1,9 +1,14 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FlatCompat } from '@eslint/eslintrc';
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
 import tseslint from 'typescript-eslint';
 
-const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
+/**
+ * `eslint-config-next` publica configuración plana nativa desde la versión 16,
+ * de modo que se importa directamente. El puente `FlatCompat` sobra y además
+ * rompe bajo ESLint 10: al validar el formato antiguo intenta serializar el
+ * grafo de complementos, que es circular.
+ */
 
 /**
  * Infraestructura que la capa de presentación NUNCA puede importar (PRD §17.2).
@@ -31,7 +36,7 @@ export default tseslint.config(
     ignores: ['.next/**', 'node_modules/**', 'src/generated/**', 'coverage/**', 'reports/**', 'test-results/**', 'playwright-report/**'],
   },
 
-  ...compat.extends('next/core-web-vitals'),
+  ...nextCoreWebVitals,
   ...tseslint.configs.recommendedTypeChecked,
 
   {
@@ -47,7 +52,7 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
-      'no-console': ['error', { allow: [] }],
+      'no-console': 'error',
       eqeqeq: ['error', 'always'],
     },
   },
@@ -103,6 +108,17 @@ export default tseslint.config(
         { object: 'process', property: 'env', message: 'Lea la configuración validada de `@/platform/config`, nunca `process.env` (PRD §21).' },
       ],
     },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Los archivos de configuración en JavaScript quedan fuera del programa de
+  // TypeScript, de modo que las reglas que necesitan tipos no pueden aplicarse
+  // sobre ellos. Se revisan con las reglas sintácticas, que es lo que aportan.
+  // ---------------------------------------------------------------------------
+  {
+    files: ['**/*.mjs', '**/*.js', '**/*.cjs'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { parserOptions: { projectService: false, project: false } },
   },
 
   // Los guiones de operación y las pruebas sí pueden escribir en la consola.

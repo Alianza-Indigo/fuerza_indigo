@@ -12,6 +12,28 @@ import { logger } from '@/platform/observability/logger';
  */
 
 export type JobResult = Record<string, unknown>;
+
+/**
+ * La carga de un trabajo llega de la base de datos como JSON: su forma no está
+ * garantizada por el tipo. Leer un campo con `String()` convertiría un objeto
+ * en «[object Object]» y el trabajo seguiría adelante con un destinatario
+ * inventado. Un campo que no es del tipo esperado se trata como ausente, y el
+ * manejador falla de forma explícita más abajo.
+ */
+function textValue(payload: Record<string, unknown>, key: string): string {
+  const value = payload[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function stringMap(payload: Record<string, unknown>, key: string): Record<string, string> {
+  const value = payload[key];
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+  const result: Record<string, string> = {};
+  for (const [name, item] of Object.entries(value)) {
+    if (typeof item === 'string') result[name] = item;
+  }
+  return result;
+}
 export type JobHandler = (job: ClaimedJob) => Promise<JobResult>;
 
 const HANDLERS: Record<string, JobHandler> = {
@@ -20,9 +42,9 @@ const HANDLERS: Record<string, JobHandler> = {
    * notificación es la clave de negocio: reintentarlo no genera un aviso nuevo.
    */
   'mail-retry': async (job) => {
-    const to = String(job.payload['to'] ?? '');
-    const templateCode = String(job.payload['templateCode'] ?? '');
-    const variables = (job.payload['variables'] ?? {}) as Record<string, string>;
+    const to = textValue(job.payload, 'to');
+    const templateCode = textValue(job.payload, 'templateCode');
+    const variables = stringMap(job.payload, 'variables');
 
     if (to === '' || templateCode === '') {
       throw new Error('El trabajo de reenvío no trae destinatario ni plantilla.');

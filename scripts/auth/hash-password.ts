@@ -23,10 +23,19 @@ function askHidden(prompt: string): Promise<string> {
     const output = stdout as NodeJS.WriteStream & { muted?: boolean };
     const originalWrite = output.write.bind(output);
 
-    output.write = ((chunk: string | Uint8Array, ...rest: unknown[]) => {
+    // Las dos formas de `write` se declaran explícitamente: un `...rest: unknown[]`
+    // no encaja con ninguna de las dos sobrecargas de Node y obligaría a una
+    // aserción que apagaría la comprobación justo donde se manipula la salida.
+    output.write = (
+      chunk: string | Uint8Array,
+      encodingOrCallback?: BufferEncoding | ((error?: Error | null) => void),
+      callback?: (error?: Error | null) => void,
+    ): boolean => {
       if (output.muted === true && typeof chunk === 'string' && !chunk.includes('\n')) return true;
-      return (originalWrite as (c: unknown, ...r: unknown[]) => boolean)(chunk, ...rest);
-    }) as typeof output.write;
+      return typeof encodingOrCallback === 'function'
+        ? originalWrite(chunk, encodingOrCallback)
+        : originalWrite(chunk, encodingOrCallback, callback);
+    };
 
     rl.question(prompt, (answer) => {
       output.muted = false;

@@ -362,3 +362,33 @@
 | `C-COH-07` | Que un defecto registrado quede sin tarea de corrección |
 
 **Principio que queda establecido.** Un control automatizado solo prueba lo que mide. Cuando el resultado en verde de un control se use para justificar una decisión, hay que preguntarse antes qué **no** mide. La lista de controles crece con cada defecto que se descubra: un defecto que no deja tras de sí un control es un defecto que puede repetirse.
+
+---
+
+## ADR-0031 · ESLint fijado en la línea 9 mientras el ecosistema de React alcanza la 10
+
+**Contexto.** El proyecto arrancó con ESLint 10.9.1, la versión más reciente. La configuración de Next se cargaba a través del puente `FlatCompat`, que bajo ESLint 10 falla al intentar serializar el grafo de complementos —es circular— y aborta antes de revisar un solo archivo. Retirado el puente, `eslint-plugin-react` 7.37.5, que `eslint-config-next` arrastra, llama a `context.getFilename()`, API que ESLint 10 eliminó. Su rango de compatibilidad declarado termina en `^9.7`.
+
+**Decisión.** ESLint queda fijado en **9.39.5**, la línea de mantenimiento, y la configuración importa directamente `eslint-config-next/core-web-vitals`, que desde la versión 16 ya es configuración plana nativa. Se retira la dependencia `@eslint/eslintrc`.
+
+**Por qué no la alternativa.** Desactivar `eslint-plugin-react` para conservar la versión 10 habría dejado sin revisar las reglas de accesibilidad y de reglas de los ganchos, que son precisamente las que el PRD §5 vuelve obligatorias. Un revisor que no revisa lo que importa es peor que un revisor una versión más antiguo.
+
+**Cuándo se revierte.** Cuando `eslint-plugin-react` publique compatibilidad con ESLint 10, se sube la dependencia y se retira este anclaje. La condición es comprobable: `npm view eslint-plugin-react peerDependencies`.
+
+---
+
+## ADR-0032 · Los campos de formulario se leen con tipo, no con `String()`
+
+**Contexto.** `FormData.get` devuelve `string | File | null`. Las acciones de servidor leían sus campos con `String(formData.get('email') ?? '')`. Si alguien envía un archivo en un campo de texto —cosa trivial con un formulario alterado—, esa expresión produce la cadena literal `[object File]`, que sigue viaje hasta la validación y hasta las comparaciones de credenciales como si fuera un valor tecleado.
+
+**Decisión.** Toda lectura pasa por `textField(formData, nombre)` en `@/platform/http/form-fields`, que devuelve el valor solo cuando es una cadena y `''` en cualquier otro caso. Un valor que no es texto **no es texto vacío**: es un campo ausente. La misma regla se aplica a las cargas de los trabajos en segundo plano, que llegan de la base de datos como JSON sin forma garantizada (`textValue` y `stringMap` en `src/platform/jobs/handlers.ts`).
+
+**Consecuencia.** El envío manipulado recibe exactamente el mismo mensaje que un campo en blanco. No se le confirma que su manipulación fue detectada, y tampoco entra en la lógica de negocio.
+
+---
+
+## ADR-0033 · La intercepción de peticiones usa la convención `proxy`
+
+**Contexto.** Next 16 declara obsoleta la convención `middleware` y la sustituye por `proxy`. La compilación lo advierte en cada ejecución.
+
+**Decisión.** El archivo es `proxy.ts` con exportación por defecto. El contenido no cambia y ADR-0002 sigue vigente: **aquí no se decide ninguna autorización**, solo se propaga la correlación y la ruta. Arrancar una plataforma nueva sobre una convención ya obsoleta contradice el §0.3 del PRD.

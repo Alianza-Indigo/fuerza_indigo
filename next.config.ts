@@ -33,8 +33,8 @@ const nextConfig: NextConfig = {
   // del servidor para que Vercel los resuelva en tiempo de ejecución.
   serverExternalPackages: ['@node-rs/argon2', 'pg', '@prisma/adapter-pg'],
 
-  async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+  headers() {
+    return Promise.resolve([{ source: '/:path*', headers: securityHeaders }]);
   },
 };
 

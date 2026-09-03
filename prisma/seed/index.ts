@@ -2,7 +2,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client';
 import { PERMISSIONS } from '../../src/platform/authz/permissions';
 import { ROLE_SEEDS } from './data/roles';
-import { NATIONAL_CODE, pathFor, TERRITORY_SEEDS } from './data/territory';
+import { pathFor, TERRITORY_SEEDS } from './data/territory';
 import { newPublicId } from '../../src/platform/kernel/ids';
 
 /**

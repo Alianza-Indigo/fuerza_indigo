@@ -1,6 +1,6 @@
 import type { JobStatus } from '@prisma-client/enums';
 import { db } from '@/platform/db/client';
-import { transaction } from '@/platform/db/unit-of-work';
+import type { Tx } from '@/platform/db/unit-of-work';
 import { logger } from '@/platform/observability/logger';
 import { newCorrelationId } from '@/platform/kernel/ids';
 
@@ -178,7 +178,7 @@ export function onDomainEvent(eventName: string, handlerCode: string, handler: O
 }
 
 export function registeredHandlers(eventName: string): Map<string, OutboxHandler> {
-  return handlers.get(eventName) ?? new Map();
+  return handlers.get(eventName) ?? new Map<string, OutboxHandler>();
 }
 
 /** Solo para pruebas: limpia el registro entre casos. */
@@ -266,7 +266,7 @@ export async function dispatchOutbox(limit = 25): Promise<{ delivered: number; f
  * la orden derivada se haya perdido (ADR-0025).
  */
 export async function publishDomainEvent(
-  tx: Parameters<typeof transaction>[0] extends (tx: infer T) => unknown ? T : never,
+  tx: Tx,
   input: {
     eventName: string;
     payload: Record<string, unknown>;

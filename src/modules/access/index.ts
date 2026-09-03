@@ -7,3 +7,13 @@ export {
   revokeRoleSchema,
   type AssignRoleInput,
 } from './application/role-assignment';
+export {
+  assignableRoles,
+  liveAssignments,
+  territoryOptions,
+  accountsForAppointment,
+  type RoleOption,
+  type AssignmentView,
+  type TerritoryOption,
+  type AdministrableAccount,
+} from './application/role-catalog';

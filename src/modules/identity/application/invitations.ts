@@ -37,7 +37,13 @@ export type InviteInput = z.infer<typeof inviteSchema>;
 export interface InviteResult {
   readonly userId: string;
   readonly personId: string;
-  /** Solo se devuelve para poder mostrarlo en desarrollo; nunca se registra. */
+  /**
+   * Enlace de activación, **solo** cuando el proveedor de correo es la consola,
+   * es decir en desarrollo. En cualquier otro entorno llega cadena vacía: el
+   * enlace es una credencial de un solo uso dirigida a otra persona, y
+   * devolverlo a quien invita lo dejaría en su pantalla, en su historial y en
+   * cualquier captura que hiciera.
+   */
   readonly invitationUrl: string;
 }
 
@@ -170,7 +176,7 @@ export async function inviteUser(actor: ActorContext, input: InviteInput): Promi
     );
   }
 
-  return ok({ ...result, invitationUrl });
+  return ok({ ...result, invitationUrl: env().EMAIL_PROVIDER === 'console' ? invitationUrl : '' });
 }
 
 /* -------------------------------------------------------------------------- */

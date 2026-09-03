@@ -23,7 +23,8 @@
     "db:seed": "tsx prisma/seed/index.ts",
     "auth:hash-password": "tsx scripts/auth/hash-password.ts",
     "phase:verify": "node scripts/phase/verify.mjs",
-    "phase:status": "node scripts/phase/verify.mjs --status"
+    "phase:status": "node scripts/phase/verify.mjs --status",
+    "access:bootstrap": "tsx scripts/access/bootstrap-secretary.ts"
   },
   "prisma": {
     "schema": "prisma/schema"

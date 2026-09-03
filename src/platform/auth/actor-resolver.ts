@@ -28,7 +28,7 @@ export interface ResolveActorInput {
  * impide que una lectura de soporte alcance información clínica o disciplinaria
  * (docs/PERMISSIONS.md §5.1).
  */
-const ROLE_COMPARTMENTS: Partial<Record<RoleCode, Compartment[]>> = {
+export const ROLE_COMPARTMENTS: Partial<Record<RoleCode, readonly Compartment[]>> = {
   EXECUTIVE_SECRETARY: ['UNION', 'SOCIAL', 'DISCIPLINARY'],
   OVERSIGHT_COMMISSION: ['UNION', 'DISCIPLINARY'],
   TERRITORIAL_DELEGATE: ['UNION'],

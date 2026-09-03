@@ -90,7 +90,7 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `events` | `event.manage`, `registration.read`, `attendance.register`, `constancy.issue`, `constancy.revoke` | Normal |
 | `notifications` | `template.manage`, `campaign.send`, `notification.read_own` | Sensible en `campaign.send` |
 | `ai` | `prompt.read`, `prompt.edit`, `prompt.publish`, `generation.read`, `generation.review`, `provider.configure` | Crítica en `prompt.publish` y `provider.configure` |
-| `files` | `file.upload`, `file.download`, `file.download_sensitive`, `file.delete`, `retention.manage`, `legalhold.manage` | Crítica; `download_sensitive` exige motivo |
+| `files` | `file.upload`, `file.download`, `file.download_own`, `file.download_sensitive`, `file.delete`, `retention.manage`, `legalhold.manage` | Crítica; `download_sensitive` exige motivo. `download_own` es la `O` de la matriz: lo cubre la titularidad, no una asignación de expediente, y no exige motivo —nadie justifica abrir su propio expediente— |
 | `audit` | `audit.read`, `security.read`, `audit.export` | Crítica; `export` exige motivo |
 | `system` | `module.configure`, `job.manage`, `webhook.replay`, `health.read`, `integration.configure` | Crítica |
 
@@ -163,6 +163,7 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `prompt.publish` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P |
 | `generation.review` | — | — | — | — | — | P | P | — | — | P | A | P | — | A | P | — | P | — | — |
 | `file.download_sensitive` | — | — | O | O | O | A | A | A | A | A | A | A | O | A | A | A | — | A | — |
+| `file.download_own` | — | O | O | O | O | O | O | O | O | O | O | O | O | O | O | O | O | O | — |
 | `audit.read` | — | — | — | — | — | L | L | P | L | — | — | — | — | — | — | L | — | P | P |
 | `audit.export` | — | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | P | — |
 | `module.configure` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P |

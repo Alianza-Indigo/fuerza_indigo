@@ -33,7 +33,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Completar y consultar sus propias solicitudes.',
     scopeKind: 'GLOBAL',
     requiresOfficeTerm: false,
-    permissions: ['files.file.upload'],
+    permissions: [
+      'files.file.download_own','files.file.upload'],
   },
   {
     code: 'PROTECTED_BENEFICIARY',
@@ -41,7 +42,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Servicios, solicitudes y expedientes propios autorizados.',
     scopeKind: 'GLOBAL',
     requiresOfficeTerm: false,
-    permissions: ['files.file.upload', 'consent.read'],
+    permissions: [
+      'files.file.download_own','files.file.upload', 'consent.read'],
   },
   {
     code: 'HONORARY_AFFILIATE',
@@ -49,7 +51,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Membresía, beneficios y comunidad. Sin derechos electorales.',
     scopeKind: 'GLOBAL',
     requiresOfficeTerm: false,
-    permissions: ['files.file.upload', 'consent.read'],
+    permissions: [
+      'files.file.download_own','files.file.upload', 'consent.read'],
   },
   {
     code: 'UNION_MEMBER',
@@ -57,7 +60,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Derechos sindicales, votación, directorio interno y representación.',
     scopeKind: 'GLOBAL',
     requiresOfficeTerm: false,
-    permissions: ['files.file.upload', 'consent.read', 'territory.unit.read'],
+    permissions: [
+      'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read'],
   },
   {
     code: 'TERRITORIAL_DELEGATE',
@@ -65,7 +69,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Gestión limitada a su territorio y a las funciones delegadas.',
     scopeKind: 'TERRITORIAL',
     requiresOfficeTerm: true,
-    permissions: ['identity.person.read', 'territory.unit.read', 'files.file.upload', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'territory.unit.read', 'files.file.upload', 'files.file.download'],
   },
   {
     code: 'EXECUTIVE_SECRETARY',
@@ -74,6 +79,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: true,
     permissions: [
+      'files.file.download_own',
       'identity.person.read',
       'identity.person.update',
       'identity.person.read_sensitive',
@@ -88,6 +94,12 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'files.file.download_sensitive',
       'institution.legal_entity.read',
       'institution.normative_rules.manage',
+      // `office.appoint` de la matriz de docs/PERMISSIONS.md §4. Nombrar es un
+      // acto institucional del Comité Ejecutivo, no una función técnica: por eso
+      // está aquí y no en la lista cerrada del Superadmin raíz. La regla de no
+      // elevación acota lo que puede otorgar a lo que ya posee.
+      'access.role.assign',
+      'access.role.revoke',
     ],
   },
   {
@@ -96,7 +108,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Revisión financiera y de administración, sin facultades operativas incompatibles.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: true,
-    permissions: ['identity.person.read', 'audit.audit.read', 'audit.security.read', 'audit.audit.export', 'territory.unit.read'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'audit.audit.read', 'audit.security.read', 'audit.audit.export', 'territory.unit.read'],
   },
   {
     code: 'ELECTORAL_COMMISSION',
@@ -104,7 +117,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Gestión temporal del proceso electoral y del padrón de electores.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: true,
-    permissions: ['identity.person.read', 'territory.unit.read'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'territory.unit.read'],
   },
   {
     code: 'SOCIAL_STAFF',
@@ -112,7 +126,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Casos sociales asignados y programas autorizados.',
     scopeKind: 'ASSIGNMENT',
     requiresOfficeTerm: false,
-    permissions: ['identity.person.read', 'consent.grant', 'consent.read', 'files.file.upload', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'consent.grant', 'consent.read', 'files.file.upload', 'files.file.download'],
   },
   {
     code: 'CIAN_PROFESSIONAL',
@@ -120,7 +135,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Agenda, expediente y plan de atención de los casos asignados.',
     scopeKind: 'ASSIGNMENT',
     requiresOfficeTerm: false,
-    permissions: ['identity.person.read', 'files.file.upload', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'files.file.upload', 'files.file.download'],
   },
   {
     code: 'CIAN_COORDINATION',
@@ -128,7 +144,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Operación, asignación, calidad y seguimiento de CIAN.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
-    permissions: ['identity.person.read', 'identity.user.invite', 'files.file.upload', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'identity.user.invite', 'files.file.upload', 'files.file.download'],
   },
   {
     code: 'CENI_ORG_USER',
@@ -136,7 +153,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Expediente y actividades de su propia organización.',
     scopeKind: 'ORGANIZATION',
     requiresOfficeTerm: false,
-    permissions: ['files.file.upload'],
+    permissions: [
+      'files.file.download_own','files.file.upload'],
   },
   {
     code: 'CENI_ASSESSOR',
@@ -144,7 +162,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Evaluaciones y evidencias expresamente asignadas.',
     scopeKind: 'ASSIGNMENT',
     requiresOfficeTerm: false,
-    permissions: ['files.file.download'],
+    permissions: [
+      'files.file.download_own','files.file.download'],
   },
   {
     code: 'CENI_COORDINATION',
@@ -152,7 +171,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Operación completa del programa CENI.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
-    permissions: ['identity.person.read', 'identity.user.invite', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','identity.person.read', 'identity.user.invite', 'files.file.download'],
   },
   {
     code: 'FINANCE',
@@ -160,7 +180,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Catálogo, conciliación, reportes y comprobantes de su entidad jurídica.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
-    permissions: ['institution.legal_entity.read', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','institution.legal_entity.read', 'files.file.download'],
   },
   {
     code: 'COMMUNICATIONS',
@@ -168,7 +189,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Gestión de contenidos, eventos y comunicaciones autorizadas.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
-    permissions: ['files.file.upload', 'files.file.download'],
+    permissions: [
+      'files.file.download_own','files.file.upload', 'files.file.download'],
   },
   {
     code: 'AUDITOR',
@@ -176,7 +198,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     description: 'Lectura de evidencia y bitácoras dentro de un alcance definido y temporal.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
-    permissions: ['audit.audit.read', 'audit.security.read', 'audit.audit.export', 'identity.person.read'],
+    permissions: [
+      'files.file.download_own','audit.audit.read', 'audit.security.read', 'audit.audit.export', 'identity.person.read'],
   },
   {
     code: 'SUPERADMIN',

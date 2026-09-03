@@ -88,6 +88,17 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // files
   define('files.file.upload', 'Adjuntar un archivo'),
   define('files.file.download', 'Descargar un archivo'),
+  /**
+   * La `O` de la matriz de docs/PERMISSIONS.md §4: **solo lo propio**.
+   *
+   * Sin este permiso, la titular de un documento no podía abrir su propio
+   * archivo, porque los roles de afiliación no tienen la descarga general —y no
+   * deben tenerla: concedería los archivos de las demás—. Exige asignación
+   * viva, que para este permiso es precisamente la titularidad, y no exige
+   * motivo escrito: pedirle a alguien que justifique por qué abre su propio
+   * expediente sería tratarla como sospechosa de sí misma.
+   */
+  define('files.file.download_own', 'Descargar un archivo propio', { needsAssignment: true }),
   define('files.file.download_sensitive', 'Descargar material sensible o clínico', {
     sensitivity: 'CRITICAL',
     requiresReason: true,

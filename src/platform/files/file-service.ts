@@ -226,11 +226,17 @@ export async function authorizeDownload(
   }
 
   const isSensitive = SENSITIVE.has(file.classification);
-  const permissionCode = isSensitive ? 'files.file.download_sensitive' : 'files.file.download';
 
-  // La persona propietaria siempre puede descargar lo suyo, sin necesidad de
-  // una asignación de expediente.
+  // La persona titular descarga lo suyo por la vía de su propio permiso, no por
+  // la de quien lee expedientes ajenos. La distinción importa: darle a un rol de
+  // afiliación la descarga general para que pueda abrir su documento le daría
+  // también los documentos de las demás personas de su alcance.
   const isOwner = file.ownerPersonId !== null && file.ownerPersonId === actor.personId;
+  const permissionCode = isOwner
+    ? 'files.file.download_own'
+    : isSensitive
+      ? 'files.file.download_sensitive'
+      : 'files.file.download';
 
   const decision = can(
     actor,

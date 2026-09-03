@@ -25,7 +25,7 @@ export default async function PeoplePage() {
   return (
     <PageShell
       title="Personas y roles"
-      description="Cuentas del sistema y sus nombramientos vigentes. Los correos se muestran parcialmente ocultos a propósito."
+      description="Cuentas del sistema y sus nombramientos vigentes, en solo lectura. Los correos se muestran parcialmente ocultos a propósito."
     >
       <div className="space-y-8">
         <section>

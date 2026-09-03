@@ -1,8 +1,9 @@
 import type { PrismaClient } from '@prisma-client/client';
-import type { RoleCode } from '@prisma-client/enums';
+import type { Compartment, RoleCode } from '@prisma-client/enums';
 import { hashPassword } from '@/platform/auth/password';
 import type { ActorContext, RoleAssignmentSnapshot } from '@/platform/kernel/actor-context';
 import { newCorrelationId, newPublicId } from '@/platform/kernel/ids';
+import { ROLE_COMPARTMENTS } from '@/platform/auth/actor-resolver';
 
 /**
  * Datos de prueba para las pruebas de integración.
@@ -189,7 +190,12 @@ export async function contextoDe(
     sessionId: null,
     roles,
     legalEntityScope: roles.map((rol) => rol.legalEntityId).filter((id): id is string => id !== null),
-    compartments: new Set(),
+    // Se derivan del MISMO mapa que usa el resolvedor real. Fijarlos a mano en
+    // las pruebas dejaría que el código y las pruebas se separaran sin que nada
+    // lo advirtiera, y son justo estas pruebas las que deben detectarlo.
+    compartments: new Set<Compartment>(
+      roles.flatMap((rol) => [...(ROLE_COMPARTMENTS[rol.role] ?? [])]),
+    ),
     reason: null,
     correlationId: newCorrelationId(),
     ipHash: null,

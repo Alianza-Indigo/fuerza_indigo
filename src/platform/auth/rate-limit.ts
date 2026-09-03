@@ -44,10 +44,20 @@ export async function checkRateLimit(
 ): Promise<RateLimitVerdict> {
   const since = new Date(Date.now() - rule.windowMs);
 
+  // Un discriminante ausente NO significa «cuenta todo». Si al no conocerse el
+  // origen se omitiera el filtro, el recuento abarcaría los fallos de todo el
+  // sistema y bastaría con un atacante sin origen identificable para agotar el
+  // cupo y dejar fuera a todas las personas legítimas: una medida contra el
+  // abuso convertida en el abuso mismo. Un origen desconocido se agrupa con los
+  // demás orígenes desconocidos, que es un cubo acotado y separado.
   const where: Record<string, unknown> = { kind, occurredAt: { gte: since } };
-  if (discriminator.ipHash !== undefined && discriminator.ipHash !== null) where['ipHash'] = discriminator.ipHash;
-  if (discriminator.subjectLabel !== undefined && discriminator.subjectLabel !== null) {
-    where['subjectLabel'] = discriminator.subjectLabel;
+  if ('ipHash' in discriminator) where['ipHash'] = discriminator.ipHash ?? null;
+  if ('subjectLabel' in discriminator) where['subjectLabel'] = discriminator.subjectLabel ?? null;
+
+  if (where['ipHash'] === undefined && where['subjectLabel'] === undefined) {
+    throw new Error(
+      'checkRateLimit exige al menos un discriminante. Sin él, el recuento abarcaría todo el sistema.',
+    );
   }
 
   const attempts = await db().securityEvent.count({ where: where as never });

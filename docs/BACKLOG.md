@@ -35,6 +35,26 @@
 | F0-OPS-002 | Construir el verificador de fase sin dependencias y el contrato del PRD | Terminada |
 | F0-DOC-003 | Distribuir todo el alcance del PRD en el backlog de las trece fases | Terminada |
 
+### Correcciones abiertas por la revisión semántica
+
+La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F0-DAT-002`, `F0-PER-001`, `F0-ARQ-003` y `F0-OPS-002`. Cada corrección cierra el defecto homónimo registrado en [`PHASE_STATUS.md`](PHASE_STATUS.md).
+
+| Id | Tarea | Severidad | Estado |
+|---|---|---|---|
+| F0-COR-001 | Reescribir el algoritmo de decisión para que el Superadmin recorra entidad, territorio, asignación, consentimiento y compartimento, con lista de permisos concedidos en vez de lista de prohibiciones | Crítica | Pendiente |
+| F0-COR-002 | Definir la construcción criptográfica del testigo electoral y eliminar toda vía de correlación temporal entre elegibilidad y boleta; ajustar la garantía afirmada en seguridad a lo que el diseño demuestra | Crítica | Pendiente |
+| F0-COR-003 | Sustituir los veintiún arreglos de identificadores por tablas de relación con clave foránea e integridad referencial | Alta | Pendiente |
+| F0-COR-004 | Condicionar los campos laborales de la solicitud a la categoría, de modo que la afiliación honoraria no responda requisitos de agremiado | Alta | Pendiente |
+| F0-COR-005 | Generalizar el modelo de autoría a persona, Superadmin raíz y sistema en todas las entidades, como ya ocurre en la bitácora | Alta | Pendiente |
+| F0-COR-006 | Definir el coordinador de otorgamiento de derechos y el patrón de bandeja de salida que resuelve la dependencia del cobro sin romper el mapa de módulos | Alta | Pendiente |
+| F0-COR-007 | Adelantar a la Fase 1 las plantillas versionadas de mensaje y el registro de entrega que exigen la invitación y la recuperación | Media | Pendiente |
+| F0-COR-008 | Resolver la dependencia de CENI sobre eventos: adelantar la entidad mínima o desacoplar el requisito de capacitación | Media | Pendiente |
+| F0-COR-009 | Modelar la fragmentación documental, el almacenamiento de vectores y la estrategia de recuperación de la búsqueda semántica | Media | Pendiente |
+| F0-COR-010 | Cerrar la decisión sobre la representación de la jerarquía territorial y registrarla como decisión de arquitectura | Media | Pendiente |
+| F0-COR-011 | Separar el permiso de informes de rendición de cuentas del de lectura del libro auxiliar y ajustar la matriz | Media | Pendiente |
+| F0-COR-012 | Introducir identificador de clave en la firma de códigos verificables para permitir rotación sin invalidación simultánea | Media | Pendiente |
+| F0-COR-013 | Incorporar al verificador controles de coherencia entre documentos, no solo de existencia y de presencia de nombres | Alta | Pendiente |
+
 ---
 
 ## Fase 1 — Infraestructura, datos, autenticación, permisos y Superadmin

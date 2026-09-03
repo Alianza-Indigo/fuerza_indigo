@@ -388,12 +388,15 @@ Cada error lleva `code` estable, `message` en lenguaje claro para la persona, `d
 
 ### 7.1 Superficies de interfaz
 
+`/gestion` y `/superadmin` no son la misma cosa y la separación es deliberada. El actor raíz administra la plataforma y **no** puede otorgar nombramientos: su panel muestra las cuentas y sus roles en solo lectura. Otorgarlos es un acto institucional y ocurre en `/gestion`, donde entra quien tiene la facultad en su nombramiento (ADR-0034).
+
 | Grupo | Prefijo | Audiencia | Autenticación |
 |---|---|---|---|
 | Público | `/` | Cualquier persona | No |
 | Autenticación | `/acceso`, `/activar`, `/recuperar` | Personas con cuenta | Parcial |
 | Portal personal | `/mi/*` | Toda persona con cuenta | Sí |
 | Panel territorial | `/territorio/[unidad]/*` | Delegaciones y secciones | Sí + alcance territorial |
+| Gestión institucional | `/gestion/*` | Quien tiene facultades sindicales de nombramiento e invitación | Sí + permiso |
 | Panel institucional | `/institucional/*` | Órganos de gobierno | Sí + cargo vigente |
 | Panel CIAN | `/cian/*` | Profesionales y coordinación CIAN | Sí + asignación |
 | Panel CENI | `/ceni/*` | Organizaciones, evaluadores y coordinación | Sí + organización o asignación |
@@ -687,7 +690,7 @@ Manifiesto, iconos, metadatos y comportamiento móvil; caché de recursos públi
 | Región de ejecución | Cercana a la región de Neon para minimizar latencia; declarada en `vercel.json`. |
 | Entornos | Desarrollo local, Vista previa por rama y Producción, con bases de datos separadas (PRD §20.3). |
 | Comando de construcción | `prisma migrate deploy && next build`. |
-| Runtime | Node.js para autenticación, Prisma, Stripe, Blob y Gemini. El middleware se limita a comprobaciones sin acceso a base de datos. |
+| Runtime | Node.js para autenticación, Prisma, Stripe, Blob y Gemini. El `proxy` —la convención que Next 16 pone en lugar del antiguo `middleware`— se limita a propagar la correlación y la ruta, sin acceso a base de datos y sin decidir autorizaciones (ADR-0002, ADR-0033). |
 | Cron | Declarado en `vercel.json`, autenticado con `CRON_SECRET`. |
 | Cabeceras de seguridad | Definidas en [`SECURITY.md`](SECURITY.md) §7. |
 

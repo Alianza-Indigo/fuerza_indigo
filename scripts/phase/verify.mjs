@@ -900,7 +900,82 @@ const CHECKS = [
       return problems.length ? fail(problems) : ok(['La CI ejecuta la puerta de calidad completa y en orden.']);
     },
   },
+  {
+    id: 'C-F1-07',
+    title: 'Fase 1: accesibilidad estructural de las pantallas (PRD §5.2, docs/TEST_PLAN.md §7)',
+    phases: [1],
+    run() {
+      // La validación automatizada con motor de reglas y navegador llega en la
+      // Fase 2, que es la que habilita `test:a11y`. Lo que sí puede comprobarse
+      // hoy, y sin navegador, es lo estructural: que ningún campo se identifique
+      // solo con texto de marcador, que los objetivos táctiles lleguen al mínimo
+      // y que el documento declare idioma, ampliación y salto al contenido.
+      const problems = [];
+
+      const raiz = read('app/layout.tsx');
+      if (raiz === null) {
+        problems.push('Falta app/layout.tsx.');
+      } else {
+        if (!/lang="es-MX"/.test(raiz)) problems.push('app/layout.tsx no declara el idioma del documento.');
+        if (!/#contenido/.test(raiz)) problems.push('app/layout.tsx no ofrece enlace de salto al contenido.');
+        if (/maximumScale:\s*1\b|user-scalable=no/.test(raiz)) {
+          problems.push('app/layout.tsx bloquea la ampliación: es requisito de accesibilidad no hacerlo.');
+        }
+      }
+
+      const estilos = read('app/globals.css') ?? '';
+      if (!/prefers-reduced-motion/.test(estilos)) {
+        problems.push('app/globals.css no respeta la preferencia de movimiento reducido.');
+      }
+      if (!/:focus-visible/.test(estilos)) {
+        problems.push('app/globals.css no define un indicador de foco visible.');
+      }
+
+      for (const file of walk()) {
+        if (!file.startsWith('app/') || !file.endsWith('.tsx')) continue;
+        const content = read(file);
+        if (content === null) continue;
+
+        // Un `placeholder` sin etiqueta desaparece al escribir y deja a la
+        // persona sin saber qué se le pedía.
+        if (/placeholder=/.test(content) && !/<label|aria-label/.test(content)) {
+          problems.push(`${file} usa texto de marcador sin etiqueta visible.`);
+        }
+        // 44 px son 11 unidades de la escala de espaciado.
+        for (const match of content.matchAll(/min-h-(\d+)/g)) {
+          const unidades = Number(match[1]);
+          if (Number.isFinite(unidades) && unidades < 11) {
+            problems.push(`${file} declara un objetivo táctil de menos de 44 px (min-h-${match[1]}).`);
+          }
+        }
+        // Toda tabla ancha se desplaza dentro de su contenedor: el cuerpo de la
+        // página nunca se desplaza en horizontal.
+        if (/<table/.test(content) && !/overflow-x-auto/.test(content)) {
+          problems.push(`${file} contiene una tabla sin contenedor de desplazamiento propio.`);
+        }
+      }
+
+      const primitivas = read('src/design-system/primitives.tsx');
+      if (primitivas === null) {
+        problems.push('Falta el archivo de primitivas del sistema de diseño.');
+      } else {
+        if (!/htmlFor=/.test(primitivas)) problems.push('Las primitivas no asocian etiqueta y campo.');
+        if (!/aria-describedby/.test(primitivas)) problems.push('Las primitivas no asocian el error con su campo.');
+        // Vacío genuino y ausencia de resultados por filtros son estados
+        // distintos: confundirlos hace creer que el sistema está vacío cuando el
+        // filtro es demasiado estrecho.
+        if (!/function EmptyState/.test(primitivas) || !/function NoResults/.test(primitivas)) {
+          problems.push('Las primitivas no distinguen vacío genuino de ausencia de resultados (PRD §5.4).');
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Accesibilidad estructural verificada. La validación con motor de reglas es alcance de la Fase 2.']);
+    },
+  },
 ];
+
 
 
 /* ------------------------------------------------------------------ */

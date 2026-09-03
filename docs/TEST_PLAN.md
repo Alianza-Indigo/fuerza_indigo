@@ -198,6 +198,24 @@ Los primeros quince controles comprobaban existencia, tamaño y presencia de nom
 | `C-COH-06` | Una fase con defectos abiertos de severidad bloqueante no puede declararse aprobada |
 | `C-COH-07` | Cada defecto abierto tiene su tarea de corrección en el backlog |
 
+### 11.3 Controles propios de la Fase 1
+
+Siete controles más, nacidos igualmente de defectos reales de esa fase:
+
+| Control | Qué impide que vuelva a ocurrir |
+|---|---|
+| `C-F1-01` | Que una pantalla contratada por el PRD §24 no exista como ruta |
+| `C-F1-02` | Que un caso de uso quede escrito, probado y documentado sin que ninguna pantalla lo invoque (`D-F1-002`) |
+| `C-F1-03` | Que nadie del catálogo pueda nombrar, o que la facultad acabe en el actor raíz (`D-F1-002`) |
+| `C-F1-04` | Que el modelo declarado y las migraciones se separen (`D-F1-001`) |
+| `C-F1-05` | Que una prueba negativa obligatoria de la fase deje de escribirse |
+| `C-F1-06` | Que la integración continua deje de ejecutar la puerta entera, o la ejecute en otro orden |
+| `C-F1-07` | Que una pantalla use texto de marcador como etiqueta, bloquee la ampliación, ofrezca objetivos táctiles pequeños o confunda vacío genuino con ausencia de resultados |
+
+`C-F1-07` cubre lo estructural, que es lo comprobable sin navegador. La validación con motor de reglas y revisión manual de esta sección §7 llega con `test:a11y` en la Fase 2, que es la fase que habilita ese comando.
+
+---
+
 **Regla que queda establecida.** Cada defecto que se descubra deja tras de sí un control que lo habría detectado. Un defecto sin control es un defecto que puede repetirse. Y ningún resultado en verde justifica una decisión sin preguntarse antes qué **no** mide el control que lo produjo.
 
 ### 11.1 Integración continua

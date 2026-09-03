@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Badge, Card, EmptyState, ErrorNotice, NoResults, PageShell, ScrollableTable } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { queryAuditEvents, querySecurityEvents } from '@/modules/audit';
@@ -79,9 +80,9 @@ export default async function AuditPage({
               Filtrar
             </button>
             {hasFilters && (
-              <a href="/superadmin/auditoria" className="min-h-11 py-2.5 text-sm underline underline-offset-4">
+              <Link href="/superadmin/auditoria" className="min-h-11 py-2.5 text-sm underline underline-offset-4">
                 Quitar filtros
-              </a>
+              </Link>
             )}
           </form>
         </Card>
@@ -94,9 +95,9 @@ export default async function AuditPage({
             hasFilters ? (
               <NoResults
                 action={
-                  <a href="/superadmin/auditoria" className="underline underline-offset-4">
+                  <Link href="/superadmin/auditoria" className="underline underline-offset-4">
                     Quitar filtros
-                  </a>
+                  </Link>
                 }
               />
             ) : (

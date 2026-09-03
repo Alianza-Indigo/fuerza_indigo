@@ -7,10 +7,11 @@
 ## Situación actual
 
 - **Fase activa:** 1 — Infraestructura, datos, autenticación, permisos y Superadmin
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 3 de septiembre de 2026
 - **Fecha de inicio:** 3 de septiembre de 2026
-- **SHA del punto de control:** se registra al cerrar la fase
+- **Fecha de cierre:** 3 de septiembre de 2026
+- **SHA del punto de control:** se registra en el propio commit de cierre
 - **Fase anterior:** 0 — `APPROVED`, cerrada en `7fecd6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 2 — Sistema de diseño, PWA, CMS y sitio público, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -22,6 +23,8 @@ El PRD §24 Fase 1 contrata: Next.js, TypeScript estricto y estructura modular; 
 
 Pantallas contratadas: inicio y cierre de sesión; activación y recuperación; sesiones propias; login de Superadmin; tablero técnico de Superadmin; gestión base de entidades jurídicas, personas administradoras y roles; y visor de auditoría con permisos.
 
+La gestión de roles quedó repartida entre dos superficies, por una razón que no es de comodidad. El actor raíz **no** puede otorgar nombramientos: administra la plataforma y no gobierna el sindicato (ADR-0034). Su panel muestra las cuentas y sus nombramientos en solo lectura, y el otorgamiento vive en `/gestion`, donde entra quien tiene facultades sindicales.
+
 A ese alcance se suma, por la corrección `F0-COR-007` de la fase anterior, el puerto de correo con plantillas versionadas y registro de entrega, que la activación por invitación y la recuperación de contraseña necesitan.
 
 ---
@@ -30,48 +33,81 @@ A ese alcance se suma, por la corrección `F0-COR-007` de la fase anterior, el p
 
 Criterios específicos del PRD §24 Fase 1:
 
-| # | Criterio | Estado |
-|---|---|---|
-| 1 | Un Superadmin puede iniciar sesión sin existir como miembro | En curso |
-| 2 | Un administrador ordinario no puede asignarse permisos superiores | En curso |
-| 3 | El aislamiento por entidad y territorio funciona en consultas y mutaciones | En curso |
-| 4 | Un archivo privado no puede abrirse mediante su URL persistente sin autorización | En curso |
-| 5 | Las migraciones corren desde el repositorio sobre una base vacía | En curso |
-| 6 | No existe ninguna dependencia del proveedor prohibido | En curso |
+| # | Criterio | Estado | Evidencia |
+|---|---|---|---|
+| 1 | Un Superadmin puede iniciar sesión sin existir como miembro | Cumplido | `tests/integration/superadmin.test.ts`: entra con las credenciales del entorno sobre una base con cero personas y cero cuentas |
+| 2 | Un administrador ordinario no puede asignarse permisos superiores | Cumplido | `tests/integration/role-assignment.test.ts`: los dos controles —autonombramiento y no elevación— probados en negativo, sin excepción por tipo de actor |
+| 3 | El aislamiento por entidad y territorio funciona en consultas y mutaciones | Cumplido | `tests/integration/isolation.test.ts`: el visor recorta en la consulta y no al pintar; pedir la entidad ajena por filtro tampoco la devuelve |
+| 4 | Un archivo privado no puede abrirse mediante su URL persistente sin autorización | Cumplido | `tests/integration/file-access.test.ts`: el canje reevalúa la política, de modo que revocar un nombramiento invalida un pase ya emitido |
+| 5 | Las migraciones corren desde el repositorio sobre una base vacía | Cumplido | `tests/integration/migrations.test.ts` y `deployment.test.ts`: la base de todas las pruebas se construye con `prisma migrate deploy` sobre una base vacía |
+| 6 | No existe ninguna dependencia del proveedor prohibido | Cumplido | Control `C-REPO-03`: cero coincidencias fuera del propio control de cumplimiento |
 
 ---
 
 ## Tareas completadas
 
-En curso. El detalle vive en la sección **Fase 1** de [`BACKLOG.md`](BACKLOG.md).
+Las 38 tareas contratadas de la Fase 1 y las once correcciones de defectos hallados durante la construcción. El detalle vive en la sección **Fase 1** de [`BACKLOG.md`](BACKLOG.md).
 
 ---
 
 ## Evidencias
 
-Se registran al cerrar la fase.
+- 32 tablas creadas por las migraciones del repositorio sobre una base vacía, con tres migraciones aplicadas y ninguna a medias.
+- 33 permisos en el catálogo, 19 roles sembrados y 33 unidades territoriales, con semilla idempotente comprobada por doble ejecución.
+- Cero personas y cero cuentas sembradas: el padrón no se inventa.
+- Cadena de resúmenes de la bitácora verificada de extremo a extremo, incluida su detección de alteración y de supresión.
+- `UPDATE`, `DELETE` y `TRUNCATE` sobre las bitácoras denegados al rol con el que corre la aplicación, comprobado ejecutándolos.
+- 21 rutas construidas, ninguna con acción sin efecto ni dato simulado.
 
 ---
 
 ## Pruebas y resultados
 
-Se registran al cerrar la fase.
+| Nivel | Archivos | Casos | Resultado |
+|---|---|---|---|
+| Unitarias | 7 | 123 | En verde |
+| Integración contra PostgreSQL real | 10 | 135 | En verde |
+| **Total** | **17** | **258** | **En verde** |
+
+Controles del verificador de fase: **28 aprobados, 0 fallidos, 2 no aplicables**.
+
+Siete de las trece pruebas negativas obligatorias de [`PERMISSIONS.md`](PERMISSIONS.md) §9 están escritas y en verde: las números 1, 2, 3, 9, 10, 11 y 13. Las seis restantes —compartimento clínico de extremo a extremo, organización CENI ajena, consentimiento ausente, afiliación honoraria y voto, y nombramiento vencido sobre `OfficeTerm`— dependen de entidades que las fases 5 a 9 introducen; sus mecanismos sí están probados hoy en el motor de decisión, en `tests/unit/authz/`.
 
 ---
 
 ## Defectos abiertos
 
-Ninguno registrado todavía en esta fase.
+Ninguno. Los once defectos hallados durante la construcción se corrigieron dentro de la fase y cada uno dejó tras de sí un control que lo habría detectado.
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
-| — | — | Sin defectos registrados en la Fase 1 | — |
+| D-F1-001 | Bloqueante | La migración inicial creaba `audit_event` sin `chainKey` ni `chainSequence`, que el modelo sí declaraba: un despliegue desde base vacía levantaba un esquema sobre el que ninguna acción auditada podía escribirse | Corregido en `F1-COR-001`. Controles `C-F1-04` y la prueba de comparación entre migraciones y modelo |
+| D-F1-002 | Bloqueante | Ningún rol del catálogo recibía `access.role.assign` y ninguna pantalla invocaba `assignRole`: en un despliegue nuevo nadie podía nombrar a nadie, nunca | Corregido en `F1-COR-002`. Controles `C-F1-02` y `C-F1-03` |
+| D-F1-003 | Alta | No existía forma de crear la primera Secretaría Ejecutiva, a la que por construcción nadie de dentro puede nombrar | Corregido en `F1-COR-003`. Probado en `deployment.test.ts` |
+| D-F1-004 | Alta | La persona titular de un archivo no podía descargarlo: la matriz decía `O` y el catálogo no tenía el permiso que expresara esa `O` | Corregido en `F1-COR-004` (ADR-0035) |
+| D-F1-005 | Alta | El límite de intentos contaba los fallos de todo el sistema cuando la petición no traía origen identificable | Corregido en `F1-COR-005` (ADR-0037) |
+| D-F1-006 | Media | «Cerrar todo lo demás» cerraba también la sesión desde la que se pedía | Corregido en `F1-COR-006`. Probado en `account-lifecycle.test.ts` |
+| D-F1-007 | Media | El control de no elevación eximía al actor raíz; la exención era inalcanzable, pero se habría convertido en vía de elevación al primer cambio de la lista cerrada | Corregido en `F1-COR-007` |
+| D-F1-008 | Media | El separador del resumen de auditoría era un byte nulo literal, que volvía binario el módulo para git y para las búsquedas: un cambio ahí no aparecía en ningún diff de revisión | Corregido en `F1-COR-008` |
+| D-F1-009 | Alta | `npm run lint` abortaba antes de revisar un solo archivo, de modo que la puerta de calidad estaba en verde sin haber revisado nada | Corregido en `F1-COR-009` (ADR-0031). Reveló 23 defectos reales |
+| D-F1-010 | Media | El verificador daba falsos positivos con la palabra española «TODO» y con un `.env.local` que git nunca vio | Corregido en `F1-COR-010` |
+| D-F1-011 | Media | El guion de arranque perdía la entrada cuando no venía de un terminal | Corregido en `F1-COR-011` |
 
 ---
 
 ## Decisiones
 
-Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0031.
+Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de la ADR-0031 a la ADR-0037:
+
+| ADR | Decisión |
+|---|---|
+| 0031 | ESLint fijado en la línea 9 mientras el ecosistema de React alcanza la 10 |
+| 0032 | Los campos de formulario se leen con tipo, no con `String()` |
+| 0033 | La intercepción de peticiones usa la convención `proxy` |
+| 0034 | Nombrar es un acto institucional: la facultad vive en la Secretaría Ejecutiva |
+| 0035 | Descargar lo propio es un permiso distinto de descargar lo ajeno |
+| 0036 | Las pruebas de integración clonan una plantilla y se conectan con el rol acotado |
+| 0037 | Un origen desconocido no comparte cubo con todo el sistema |
 
 ---
 
@@ -80,7 +116,7 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a par
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
 | 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | — | `IN_PROGRESS` | — |
+| 1 | 2026-09-03 | 2026-09-03 | `APPROVED` | Se registra en el propio commit de cierre |
 | 2 a 12 | — | — | No iniciadas | — |
 
 ---

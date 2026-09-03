@@ -392,3 +392,45 @@
 **Contexto.** Next 16 declara obsoleta la convención `middleware` y la sustituye por `proxy`. La compilación lo advierte en cada ejecución.
 
 **Decisión.** El archivo es `proxy.ts` con exportación por defecto. El contenido no cambia y ADR-0002 sigue vigente: **aquí no se decide ninguna autorización**, solo se propaga la correlación y la ruta. Arrancar una plataforma nueva sobre una convención ya obsoleta contradice el §0.3 del PRD.
+
+---
+
+## ADR-0034 · Nombrar es un acto institucional: la facultad vive en la Secretaría Ejecutiva
+
+**Contexto.** `assignRole` y `revokeRole` estaban escritos, probados y documentados, pero ningún rol de la semilla recibía `access.role.assign` y el Superadmin raíz no lo tiene por diseño. En un despliegue nuevo, nadie podía nombrar a nadie, nunca. El defecto no lo detectaba ninguna prueba negativa: todas seguían en verde, porque todas comprobaban que quien **no** debe nombrar no puede.
+
+**Decisión.** La facultad reside en `EXECUTIVE_SECRETARY`, que es el `office.appoint` de la matriz de [`PERMISSIONS.md`](PERMISSIONS.md) §4. **No** se añade a la lista cerrada del actor raíz: administrar la plataforma y gobernar el sindicato son cosas distintas, y nombrar pertenece a lo segundo.
+
+**El problema del primer nombramiento.** Si solo la Secretaría Ejecutiva puede nombrar y no existe ninguna, nadie de dentro del sistema puede crear la primera. Ese nombramiento viene necesariamente de fuera, igual que la contraseña del actor raíz: `npm run access:bootstrap` lo hace desde la consola de operación. El guion **se niega a ejecutarse** en cuanto existe una Secretaría vigente, de modo que no se queda como puerta trasera permanente; a partir de ahí los nombramientos ocurren dentro de la plataforma, con motivo escrito y registro en la bitácora.
+
+**Consecuencia que se acepta.** La regla de no elevación acota a la Secretaría Ejecutiva a otorgar roles cuyos permisos ya posee. No puede, por tanto, crear una Comisión de Vigilancia ni una auditoría, que tienen permisos que ella no tiene. Es correcto: esos cargos los elige la asamblea, no los nombra el Comité Ejecutivo, y su alta llega con el módulo de gobernanza de la Fase 7.
+
+---
+
+## ADR-0035 · Descargar lo propio es un permiso distinto de descargar lo ajeno
+
+**Contexto.** La persona titular de un documento no podía abrirlo. Su rol de afiliación no tiene `files.file.download` —y no debe tenerlo, porque le daría también los documentos de las demás personas de su alcance—, de modo que la titularidad no bastaba. La matriz de permisos ya decía `O`, «solo lo propio», pero el catálogo no tenía ningún permiso que expresara esa `O`.
+
+**Decisión.** Se añade `files.file.download_own`. Exige asignación viva, que para este permiso es precisamente la titularidad, y **no** exige motivo escrito: pedirle a alguien que justifique por qué abre su propio expediente sería tratarla como sospechosa de sí misma. `authorizeDownload` elige el permiso según quién pide: la titular por la vía de lo propio, el resto por la de los expedientes ajenos.
+
+**Por qué no la alternativa.** Dar la descarga general a los roles de afiliación habría resuelto el caso de la titular abriendo, de paso, los documentos de todas las demás. Un permiso demasiado ancho concedido para resolver un caso estrecho es la forma más común de que una matriz de permisos deje de significar lo que dice.
+
+---
+
+## ADR-0036 · Las pruebas de integración clonan una plantilla y se conectan con el rol acotado
+
+**Contexto.** Buena parte de lo que la Fase 1 garantiza no vive en el código de la aplicación sino en el motor de base de datos: los índices únicos parciales, el bloqueo consultivo que serializa la cadena de la bitácora, el `FOR UPDATE SKIP LOCKED` de la cola y la revocación de `UPDATE` y `DELETE` sobre las bitácoras. Un doble en memoria las daría todas por buenas sin comprobar ninguna.
+
+**Decisión.** `global-setup` construye una base **plantilla** aplicando `prisma migrate deploy` sobre una base vacía —el mismo camino que ejecuta un despliegue— y cada archivo de prueba la clona con `CREATE DATABASE ... TEMPLATE`. El aislamiento no depende de que la prueba recuerde limpiar lo que escribió: la base entera se destruye al terminar.
+
+La aplicación se conecta durante las pruebas con el rol **sin** privilegios de modificación sobre las bitácoras, igual que en producción. Es la única forma de que la prueba de inmutabilidad demuestre algo: conectada como propietaria, el `UPDATE` prohibido tendría éxito y la garantía quedaría sin verificar.
+
+**Lo que esta decisión hizo posible.** El arnés encontró, en su primera ejecución, que la migración inicial creaba `audit_event` sin `chainKey` ni `chainSequence`. El modelo era correcto, el código compilaba y toda acción auditada habría fallado en producción.
+
+---
+
+## ADR-0037 · Un origen desconocido no comparte cubo con todo el sistema
+
+**Contexto.** El límite de intentos omitía el filtro cuando la petición no traía origen identificable. El recuento pasaba entonces a abarcar los fallos de **todo** el sistema: bastaba un atacante sin IP reconocible para agotar el cupo y dejar fuera a las personas legítimas. Una medida contra el abuso convertida en el abuso mismo.
+
+**Decisión.** Un discriminante ausente se cuenta como el valor nulo y agrupa los orígenes desconocidos entre sí, que es un cubo acotado y separado del de cada origen conocido. Un recuento sin ningún discriminante **lanza** en vez de contar todo: es un error de programación, y fallar ruidosamente es preferible a aplicar un límite global sin que nadie lo pretendiera.

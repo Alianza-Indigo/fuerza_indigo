@@ -63,44 +63,60 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F1-ARQ-001 | Inicializar Next.js con App Router y TypeScript en modo estricto | Pendiente |
-| F1-ARQ-002 | Crear la estructura modular y el andamiaje de capas por módulo | Pendiente |
-| F1-ARQ-003 | Implementar el núcleo de casos de uso: contexto de actor, resultado, errores y correlación | Pendiente |
-| F1-ARQ-004 | Configurar el linter con reglas de frontera que impidan importar infraestructura desde rutas | Pendiente |
-| F1-ARQ-005 | Configurar el despliegue en Vercel, regiones, runtime y cabeceras de seguridad | Pendiente |
-| F1-DAT-001 | Escribir el esquema Prisma multiarchivo de las entidades base de identidad, acceso y territorio | Pendiente |
-| F1-DAT-002 | Escribir el esquema de archivos, trabajos, bandeja de salida, auditoría y reglas estatutarias versionadas | Pendiente |
-| F1-DAT-003 | Generar la migración inicial y verificar su ejecución sobre base vacía | Pendiente |
-| F1-DAT-004 | Retirar los privilegios de actualización y borrado sobre las tablas de bitácora | Pendiente |
-| F1-DAT-005 | Implementar la semilla idempotente y sin datos personales reales | Pendiente |
-| F1-DAT-006 | Implementar la verificación de salud de base de datos y de configuración | Pendiente |
-| F1-AUT-001 | Implementar el registro de credenciales con Argon2id y su comando de generación de hash | Pendiente |
-| F1-AUT-002 | Implementar inicio y cierre de sesión con rotación y cookies endurecidas | Pendiente |
-| F1-NOT-001 | Migrar `NotificationTemplate`, `Notification` y `DeliveryAttempt`, e implementar el puerto de correo con plantillas versionadas y registro de entrega | Pendiente |
-| F1-AUT-003 | Implementar activación por invitación y verificación de correo | Pendiente |
-| F1-AUT-004 | Implementar recuperación de contraseña con respuesta uniforme y token de un solo uso | Pendiente |
-| F1-AUT-005 | Implementar el listado y la revocación de sesiones propias | Pendiente |
-| F1-AUT-006 | Implementar el límite de intentos, el bloqueo temporal y las alertas | Pendiente |
-| F1-AUT-007 | Implementar el acceso de Superadmin por variables de entorno en ruta independiente | Pendiente |
-| F1-PER-001 | Implementar el motor de políticas por rol y atributos con filtrado de filas y campos | Pendiente |
-| F1-PER-002 | Implementar roles, permisos, asignaciones y alcances territoriales | Pendiente |
-| F1-PER-003 | Implementar la revocación automática al concluir un nombramiento | Pendiente |
-| F1-PER-004 | Impedir que un administrador ordinario se otorgue permisos superiores | Pendiente |
-| F1-AUD-001 | Implementar el servicio de auditoría transaccional con encadenamiento por hash | Pendiente |
-| F1-AUD-002 | Implementar el visor de auditoría con filtrado por alcance del actor | Pendiente |
-| F1-ARC-001 | Implementar el servicio privado de archivos sobre Vercel Blob con validación de contenido | Pendiente |
-| F1-ARC-002 | Implementar la descarga por ruta autenticada con URL temporal según clasificación | Pendiente |
-| F1-ARC-003 | Implementar políticas de retención y bloqueo legal | Pendiente |
-| F1-JOB-001 | Implementar la cola de trabajos con bloqueo, idempotencia, reintentos y alertas | Pendiente |
-| F1-JOB-002 | Implementar el despachador de Vercel Cron autenticado y los trabajos base | Pendiente |
-| F1-UI-001 | Construir las pantallas de acceso, activación, recuperación y sesiones propias | Pendiente |
-| F1-UI-002 | Construir el tablero técnico de Superadmin y la gestión base de entidades, personas y roles | Pendiente |
-| F1-SEC-001 | Implementar el límite de tasa, la protección contra falsificación de peticiones y el saneamiento de registros | Pendiente |
-| F1-QA-001 | Configurar Vitest, base efímera y adaptadores controlados | Pendiente |
-| F1-QA-002 | Escribir las pruebas negativas de autorización obligatorias del catálogo | Pendiente |
-| F1-QA-003 | Escribir las pruebas de migración limpia y de actualización | Pendiente |
-| F1-QA-004 | Configurar la integración continua con los comandos de calidad de la fase | Pendiente |
-| F1-DOC-001 | Documentar el entorno, las decisiones nuevas y el estado de la fase | Pendiente |
+| F1-ARQ-001 | Inicializar Next.js con App Router y TypeScript en modo estricto | Terminada |
+| F1-ARQ-002 | Crear la estructura modular y el andamiaje de capas por módulo | Terminada |
+| F1-ARQ-003 | Implementar el núcleo de casos de uso: contexto de actor, resultado, errores y correlación | Terminada |
+| F1-ARQ-004 | Configurar el linter con reglas de frontera que impidan importar infraestructura desde rutas | Terminada |
+| F1-ARQ-005 | Configurar el despliegue en Vercel, regiones, runtime y cabeceras de seguridad | Terminada |
+| F1-DAT-001 | Escribir el esquema Prisma multiarchivo de las entidades base de identidad, acceso y territorio | Terminada |
+| F1-DAT-002 | Escribir el esquema de archivos, trabajos, bandeja de salida, auditoría y reglas estatutarias versionadas | Terminada |
+| F1-DAT-003 | Generar la migración inicial y verificar su ejecución sobre base vacía | Terminada |
+| F1-DAT-004 | Retirar los privilegios de actualización y borrado sobre las tablas de bitácora | Terminada |
+| F1-DAT-005 | Implementar la semilla idempotente y sin datos personales reales | Terminada |
+| F1-DAT-006 | Implementar la verificación de salud de base de datos y de configuración | Terminada |
+| F1-AUT-001 | Implementar el registro de credenciales con Argon2id y su comando de generación de hash | Terminada |
+| F1-AUT-002 | Implementar inicio y cierre de sesión con rotación y cookies endurecidas | Terminada |
+| F1-NOT-001 | Migrar `NotificationTemplate`, `Notification` y `DeliveryAttempt`, e implementar el puerto de correo con plantillas versionadas y registro de entrega | Terminada |
+| F1-AUT-003 | Implementar activación por invitación y verificación de correo | Terminada |
+| F1-AUT-004 | Implementar recuperación de contraseña con respuesta uniforme y token de un solo uso | Terminada |
+| F1-AUT-005 | Implementar el listado y la revocación de sesiones propias | Terminada |
+| F1-AUT-006 | Implementar el límite de intentos, el bloqueo temporal y las alertas | Terminada |
+| F1-AUT-007 | Implementar el acceso de Superadmin por variables de entorno en ruta independiente | Terminada |
+| F1-PER-001 | Implementar el motor de políticas por rol y atributos con filtrado de filas y campos | Terminada |
+| F1-PER-002 | Implementar roles, permisos, asignaciones y alcances territoriales | Terminada |
+| F1-PER-003 | Implementar la revocación automática al concluir un nombramiento | Terminada |
+| F1-PER-004 | Impedir que un administrador ordinario se otorgue permisos superiores | Terminada |
+| F1-AUD-001 | Implementar el servicio de auditoría transaccional con encadenamiento por hash | Terminada |
+| F1-AUD-002 | Implementar el visor de auditoría con filtrado por alcance del actor | Terminada |
+| F1-ARC-001 | Implementar el servicio privado de archivos sobre Vercel Blob con validación de contenido | Terminada |
+| F1-ARC-002 | Implementar la descarga por ruta autenticada con URL temporal según clasificación | Terminada |
+| F1-ARC-003 | Implementar políticas de retención y bloqueo legal | Terminada |
+| F1-JOB-001 | Implementar la cola de trabajos con bloqueo, idempotencia, reintentos y alertas | Terminada |
+| F1-JOB-002 | Implementar el despachador de Vercel Cron autenticado y los trabajos base | Terminada |
+| F1-UI-001 | Construir las pantallas de acceso, activación, recuperación y sesiones propias | Terminada |
+| F1-UI-002 | Construir el tablero técnico de Superadmin y la gestión base de entidades, personas y roles | Terminada |
+| F1-SEC-001 | Implementar el límite de tasa, la protección contra falsificación de peticiones y el saneamiento de registros | Terminada |
+| F1-QA-001 | Configurar Vitest, base efímera y adaptadores controlados | Terminada |
+| F1-QA-002 | Escribir las pruebas negativas de autorización obligatorias del catálogo | Terminada |
+| F1-QA-003 | Escribir las pruebas de migración limpia y de actualización | Terminada |
+| F1-QA-004 | Configurar la integración continua con los comandos de calidad de la fase | Terminada |
+| F1-DOC-001 | Documentar el entorno, las decisiones nuevas y el estado de la fase | Terminada |
+
+### Correcciones de defectos hallados durante la construcción
+
+| Id | Corrección | Severidad | Estado |
+|---|---|---|---|
+| F1-COR-001 | Añadir a `audit_event` las columnas de la cadena de resúmenes que el modelo declaraba y la migración no creaba | Bloqueante | Terminada |
+| F1-COR-002 | Otorgar la facultad de nombrar a la Secretaría Ejecutiva y construir el área de gestión que la ejerce | Bloqueante | Terminada |
+| F1-COR-003 | Construir el guion de arranque de la primera Secretaría Ejecutiva | Alta | Terminada |
+| F1-COR-004 | Añadir `files.file.download_own` para que la titular de un archivo pueda abrirlo | Alta | Terminada |
+| F1-COR-005 | Impedir que un origen desconocido agote el cupo del límite de intentos de todo el sistema | Alta | Terminada |
+| F1-COR-006 | Conservar la sesión propia al cerrar las demás | Media | Terminada |
+| F1-COR-007 | Retirar la exención del actor raíz en el control de no elevación, inalcanzable pero latente | Media | Terminada |
+| F1-COR-008 | Sustituir el byte nulo literal del resumen de auditoría, que volvía binario el módulo para git | Media | Terminada |
+| F1-COR-009 | Reparar la puerta de calidad: el linter abortaba antes de revisar un solo archivo | Alta | Terminada |
+| F1-COR-010 | Corregir los falsos positivos del verificador en marcadores y en secretos versionados | Media | Terminada |
+| F1-COR-011 | Corregir la lectura de entrada del guion de arranque cuando no viene de un terminal | Media | Terminada |
 
 ---
 

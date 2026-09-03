@@ -172,3 +172,11 @@ Una variable no es obligatoria antes de la fase que la usa. `phase:verify` compr
 | §17.4 Archivos privados y firma de URL | §5 |
 | §17.5 Autenticación de trabajos programados | §9 |
 | §20.3 Secretos solo en entorno y separación de ambientes | §1, §10 |
+
+---
+
+## Variable opcional de desarrollo
+
+| Variable | Obligatoria | Ambiente | Para qué sirve |
+|---|---|---|---|
+| `SHADOW_DATABASE_URL` | No | Solo desarrollo | Base vacía y desechable donde `prisma migrate dev` y `prisma migrate diff` levantan una copia del esquema para compararla. En Neon no se puede crear una base al vuelo, de modo que hay que apuntarla a una base vacía preparada de antemano. Ni la aplicación ni el despliegue la necesitan: su ausencia no impide nada en producción. |

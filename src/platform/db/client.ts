@@ -27,6 +27,11 @@ export function db(): PrismaClient {
   return globalForPrisma.prismaClient;
 }
 
+/** Solo para pruebas: el cliente compartido actual, sin crearlo si no existe. */
+export function currentDbClientForTests(): PrismaClient | undefined {
+  return globalForPrisma.prismaClient;
+}
+
 /** Solo para pruebas: sustituye el cliente compartido. */
 export function setDbClientForTests(client: PrismaClient | undefined): void {
   globalForPrisma.prismaClient = client;

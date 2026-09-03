@@ -61,6 +61,23 @@ const allow = (fieldMask?: readonly string[]): Decision =>
 
 const deny = (reason: DenyReason): Decision => ({ allowed: false, reason });
 
+/**
+ * Permisos efectivos del actor, del MISMO origen que usa la decisión.
+ *
+ * La regla de no elevación —nadie otorga lo que no posee— necesita saber qué
+ * posee el actor. Derivarlo aquí, de `resolveGrants`, evita que la regla se
+ * calcule sobre una fuente distinta de la que decide: si un tipo de actor
+ * obtiene permisos por una vía que esta función no mirara, la regla dejaría de
+ * cubrirlo sin que nada lo advirtiera.
+ */
+export function effectiveGrantedPermissions(actor: ActorContext, now: Date = new Date()): ReadonlySet<string> {
+  const all = new Set<string>();
+  for (const grant of resolveGrants(actor, now)) {
+    for (const code of grant.permissions) all.add(code);
+  }
+  return all;
+}
+
 /** Un nombramiento es efectivo solo dentro de su vigencia (PRD §4.3). */
 export function isCurrentlyEffective(assignment: RoleAssignmentSnapshot, now: Date = new Date()): boolean {
   if (assignment.startsAt.getTime() > now.getTime()) return false;

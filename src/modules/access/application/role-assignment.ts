@@ -4,7 +4,7 @@ import { db } from '@/platform/db/client';
 import { transaction } from '@/platform/db/unit-of-work';
 import { errors } from '@/platform/errors/app-error';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
-import { can, explain, isCurrentlyEffective } from '@/platform/authz/policy';
+import { can, effectiveGrantedPermissions, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit, recordSecurity } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
@@ -39,16 +39,6 @@ export const assignRoleSchema = z.object({
 });
 
 export type AssignRoleInput = z.infer<typeof assignRoleSchema>;
-
-/** Permisos efectivos del actor, unión de sus nombramientos vigentes. */
-function effectivePermissions(actor: ActorContext): Set<string> {
-  const all = new Set<string>();
-  for (const assignment of actor.roles) {
-    if (!isCurrentlyEffective(assignment)) continue;
-    for (const code of assignment.permissions) all.add(code);
-  }
-  return all;
-}
 
 export async function assignRole(
   actor: ActorContext,
@@ -108,28 +98,31 @@ export async function assignRole(
   if (role === null) return fail(errors.notFound('el rol solicitado no existe en el catálogo'));
 
   // --- Control 2: nadie otorga lo que no posee ---------------------------
-  if (actor.actorKind !== 'ROOT_SUPERADMIN') {
-    const mine = effectivePermissions(actor);
-    const granting = role.permissions.map((link) => link.permission.code);
-    const excess = granting.filter((code) => !mine.has(code));
+  // Sin excepción por tipo de actor. La versión anterior eximía al Superadmin
+  // raíz; la exención era inalcanzable —`access.role.assign` no figura en su
+  // lista cerrada— pero habría abierto una vía de elevación en el instante en
+  // que alguien añadiera ese permiso a la lista, sin que ninguna prueba lo
+  // advirtiera. Una excepción que hoy no se ejecuta sigue siendo una excepción.
+  const mine = effectiveGrantedPermissions(actor);
+  const granting = role.permissions.map((link) => link.permission.code);
+  const excess = granting.filter((code) => !mine.has(code));
 
-    if (excess.length > 0) {
-      await transaction((tx) =>
-        recordSecurity(tx, {
-          kind: 'ACCESS_DENIED',
-          severity: 'CRITICAL',
-          actorId: actor.actorId,
-          detail: { permission: 'access.role.assign', reason: 'elevación de privilegios', excess },
-          correlationId: actor.correlationId,
-        }),
-      );
-      return fail(
-        errors.forbidden(
-          `intento de otorgar permisos que el actor no posee: ${excess.join(', ')}`,
-          'No puedes otorgar un rol que incluye permisos que tú no tienes.',
-        ),
-      );
-    }
+  if (excess.length > 0) {
+    await transaction((tx) =>
+      recordSecurity(tx, {
+        kind: 'ACCESS_DENIED',
+        severity: 'CRITICAL',
+        actorId: actor.actorId,
+        detail: { permission: 'access.role.assign', reason: 'elevación de privilegios', excess },
+        correlationId: actor.correlationId,
+      }),
+    );
+    return fail(
+      errors.forbidden(
+        `intento de otorgar permisos que el actor no posee: ${excess.join(', ')}`,
+        'No puedes otorgar un rol que incluye permisos que tú no tienes.',
+      ),
+    );
   }
 
   const target = await db().user.findUnique({ where: { id: data.userId }, select: { id: true, status: true } });

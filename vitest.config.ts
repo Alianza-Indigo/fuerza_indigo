@@ -7,7 +7,10 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 // que probar. Añadirlo antes sería una dependencia sin uso (PRD §0.1).
 export default defineConfig({
   resolve: {
-    alias: { '@': `${root}src` },
+    alias: {
+      '@': `${root}src`,
+      '@prisma-client': `${root}src/generated/prisma`,
+    },
   },
   test: {
     projects: [
@@ -33,6 +36,7 @@ export default defineConfig({
           testTimeout: 60_000,
           hookTimeout: 120_000,
           globalSetup: ['tests/integration/global-setup.ts'],
+          setupFiles: ['tests/integration/setup-env.ts'],
         },
       },
     ],

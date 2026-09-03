@@ -170,7 +170,7 @@ Se registran aquí para que la fase propietaria los atienda, no como defectos de
 
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | por registrar tras el commit de cierre |
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `a441aa733b5f7f0bc3ff1d964cec2ca8e0c5c423` |
 | 1 a 12 | — | — | No iniciadas | — |
 
 ---

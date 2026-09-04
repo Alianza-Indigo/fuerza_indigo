@@ -177,8 +177,8 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F3-PAG-008 | Implementar el procesamiento idempotente, transaccional y reintentable de eventos | Hecho |
 | F3-PAG-009 | Implementar los pagos manuales con evidencia y doble control | Hecho |
 | F3-PAG-010 | Implementar reembolsos con solicitud y aprobación por personas distintas | Hecho |
-| F3-LIB-001 | Implementar el libro auxiliar inmutable con asientos de reversión | Pendiente |
-| F3-LIB-002 | Implementar la conciliación por entidad y periodo con detección de diferencias | Pendiente |
+| F3-LIB-001 | Implementar el libro auxiliar inmutable con asientos de reversión | Hecho |
+| F3-LIB-002 | Implementar la conciliación por entidad y periodo con detección de diferencias | Hecho |
 | F3-LIB-003 | Implementar el registro patrimonial y sus movimientos con acuerdo habilitante | Pendiente |
 | F3-LIB-004 | Implementar los cortes y reportes semestrales de rendición de cuentas | Pendiente |
 | F3-LIB-005 | Implementar las exportaciones autorizadas con motivo, marca temporal y auditoría | Pendiente |

@@ -11,6 +11,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { logger } from '@/platform/observability/logger';
 import { stripe } from '@/platform/payments/stripe-port';
 import { parseAmountToMinor } from '@/platform/i18n';
+import { postRefundEntry } from './ledger';
 import type { RefundStatus } from '@prisma-client/enums';
 
 /**
@@ -231,6 +232,7 @@ export async function approveRefund(
         data: { status: 'SUCCEEDED', processedAt: new Date() },
       });
       await aplicarAlPago(tx, devolucion.payment.id, devolucion.payment.amountMinor);
+      await postRefundEntry(tx, actor, devolucion.id);
       await recordAudit(tx, actor, {
         action: AUDIT_ACTIONS.REFUND_SUCCEEDED,
         objectKind: 'Refund',
@@ -264,6 +266,7 @@ export async function approveRefund(
         },
       });
       await aplicarAlPago(tx, devolucion.payment.id, devolucion.payment.amountMinor);
+      await postRefundEntry(tx, actor, devolucion.id);
       await recordAudit(tx, actor, {
         action: AUDIT_ACTIONS.REFUND_SUCCEEDED,
         objectKind: 'Refund',

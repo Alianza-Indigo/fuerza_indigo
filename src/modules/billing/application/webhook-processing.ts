@@ -6,6 +6,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { systemActorId } from '@/platform/auth/superadmin';
 import { systemContext } from '@/platform/kernel/actor-context';
 import { newPublicId } from '@/platform/kernel/ids';
+import { postPaymentEntry } from './ledger';
 import type { PaymentStatus, SubscriptionStatus } from '@prisma-client/enums';
 
 /**
@@ -223,6 +224,9 @@ const sesionTerminada: Manejador = async ({ tx, objeto, correlationId, actorId }
   if (subscriptionId === null && texto(objeto, 'payment_status') === 'paid') {
     const movido = await marcarPagado(tx, pago.id, new Date(), referencia(objeto, 'payment_intent'));
     if (movido) {
+      // El asiento va en la **misma** transacción que la confirmación: no
+      // puede existir un cobro confirmado sin su asiento ni al revés.
+      await postPaymentEntry(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), pago.id);
       await recordAudit(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), {
         action: AUDIT_ACTIONS.PAYMENT_SUCCEEDED,
         objectKind: 'Payment',
@@ -251,6 +255,7 @@ const intencionPagada: Manejador = async ({ tx, objeto, correlationId, actorId }
 
   const movido = await marcarPagado(tx, pago.id, new Date(), null);
   if (movido) {
+    await postPaymentEntry(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), pago.id);
     await recordAudit(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), {
       action: AUDIT_ACTIONS.PAYMENT_SUCCEEDED,
       objectKind: 'Payment',
@@ -480,6 +485,8 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
     where: { id: suscripcion.id },
     data: { gracePeriodEndsAt: null },
   });
+
+  await postPaymentEntry(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), pago.id);
 
   await recordAudit(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), {
     action: AUDIT_ACTIONS.PAYMENT_SUCCEEDED,

@@ -11,6 +11,7 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { accountForLegalEntity } from '@/platform/payments/accounts';
 import { parseAmountToMinor } from '@/platform/i18n';
+import { postPaymentEntry } from './ledger';
 
 /**
  * Pagos recibidos fuera de la plataforma (PRD §11.3, F3-PAG-009).
@@ -225,6 +226,10 @@ export async function approveManualPayment(
       where: { id: pago.id, status: 'PENDING' },
       data: { status: 'SUCCEEDED', paidAt: new Date(), manualApprovedById: actor.userId },
     });
+
+    // Aprobarlo es lo que hace que el dinero cuente, así que es aquí y no al
+    // registrarlo donde entra al libro.
+    await postPaymentEntry(tx, actor, pago.id);
 
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.MANUAL_PAYMENT_APPROVED,

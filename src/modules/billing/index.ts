@@ -1,4 +1,13 @@
-/** Interfaz pública del módulo de finanzas. */
+/**
+ * Interfaz pública del módulo de finanzas.
+ *
+ * Solo casos de uso y consultas: lo que una pantalla o una ruta puede invocar.
+ * Las piezas que un caso de uso usa por dentro —asentar en el libro desde la
+ * transacción de un cobro, por ejemplo— **no** se exportan aquí, aunque otro
+ * archivo del módulo las importe. Exportarlas anunciaría una superficie que
+ * ninguna pantalla usa, y el control `C-F1-02` acusaría con razón que hay
+ * funciones sin sitio desde el que ejercerlas.
+ */
 export {
   createProduct,
   createPrice,
@@ -85,3 +94,23 @@ export {
   type ScholarshipRow,
 } from './application/discounts';
 export { priceFor, type AppliedPrice } from './application/pricing';
+export {
+  postAdjustment,
+  reverseEntry,
+  ledgerEntries,
+  postAdjustmentSchema,
+  reverseEntrySchema,
+  ACCOUNT_CODES,
+  type AccountCode,
+  type LedgerRow,
+  type LedgerTotals,
+} from './application/ledger';
+export {
+  runReconciliation,
+  closeReconciliation,
+  reconciliationList,
+  runReconciliationSchema,
+  closeReconciliationSchema,
+  type ReconciliationResult,
+  type ReconciliationRow,
+} from './application/reconciliation';

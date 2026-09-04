@@ -210,8 +210,14 @@ export async function startCheckout(
   });
 
   // Exención total: no se puede mandar a nadie a pagar cero. El cobro queda
-  // asentado como exento y no pasa por ninguna pasarela, que es lo que hace que
-  // el libro cuadre y que la persona vea su concepto cubierto.
+  // registrado como exento y no pasa por ninguna pasarela, que es lo que hace
+  // que la persona vea su concepto cubierto.
+  //
+  // **No deja asiento en el libro auxiliar**, y no por olvido: el libro
+  // registra movimientos de dinero, y aquí no se movió ninguno. Un asiento de
+  // cero no diría nada y uno por el importe perdonado inflaría los ingresos con
+  // dinero que nunca entró. Lo que la organización dejó de cobrar sí se
+  // informa, y se calcula comparando el precio vigente con lo cobrado.
   if (efectivo.finalMinor === 0n) {
     const exento = await transaction(async (tx) => {
       const fila = await tx.payment.create({

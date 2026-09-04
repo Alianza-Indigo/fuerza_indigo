@@ -700,3 +700,27 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Una exención total no manda a nadie a pagar cero.** Cuando el importe final es cero, el cobro se asienta como exento y no pasa por ninguna pasarela: no existe una página de pago de cero pesos, y sin el asiento el libro no cuadraría.
 
 **La justificación de una beca no va a la bitácora.** Dice por qué alguien no puede pagar. La bitácora general la leen más personas que la beca, así que la justificación se queda en su propia fila, bajo un permiso sensible.
+
+---
+
+## ADR-0060 · Un corte con diferencias se puede cerrar; lo que no se puede es callarlas
+
+**Contexto.** Un corte de conciliación puede terminar sin cuadrar. La regla obvia sería impedir cerrarlo hasta que cuadre.
+
+**Decisión.** Un corte con diferencias **sí** se cierra, con dos condiciones: cada diferencia queda nombrada como una excepción con su referencia y su importe, y quien cierra escribe qué se encontró y qué se va a hacer.
+
+**Por qué no se exige cuadrar.** Obligar a cuadrar antes de cerrar empuja a inventar un ajuste que cuadre. Un libro con un ajuste inventado es peor que un corte cerrado que dice la verdad: el primero miente y parece limpio, el segundo señala el problema y lo deja a la vista de quien tenga que resolverlo.
+
+**Lo que sí se cierra de verdad.** Después de cerrar, un asiento de ese periodo ya no se revierte dentro de él. La corrección se asienta en el periodo abierto, que es como se corrige un libro que no se puede reescribir.
+
+**La conciliación es idempotente por periodo.** Correrla dos veces sobre el mismo rango actualiza el corte abierto en vez de crear otro: dos cortes del mismo periodo harían imposible saber cuál vale. Las excepciones se recalculan enteras en cada corrida, porque conservarlas acumularía las de corridas anteriores y el corte hablaría de diferencias ya resueltas.
+
+---
+
+## ADR-0061 · Una exención no deja asiento en el libro
+
+**Contexto.** Cuando una beca cubre el cien por ciento, se registra un cobro exento de importe cero. La tentación es asentar en el libro el importe perdonado, para que se vea.
+
+**Decisión.** No se asienta. El libro auxiliar registra movimientos de dinero, y en una exención no se movió ninguno.
+
+**Por qué.** Un asiento de cero no dice nada. Y uno por el importe perdonado inflaría los ingresos con dinero que nunca entró, que es exactamente el descuadre que este libro existe para evitar. Lo que la organización dejó de cobrar sí se informa, y se calcula comparando el precio vigente con lo efectivamente cobrado: es un dato de rendición de cuentas, no un movimiento de caja.

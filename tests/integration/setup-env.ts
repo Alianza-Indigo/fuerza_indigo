@@ -1,17 +1,15 @@
-import { existsSync } from 'node:fs';
 import { hashPassword } from '@/platform/auth/password';
+import { loadLocalEnv } from '@/platform/config/local-env';
 
 /**
  * Preparación del entorno en cada proceso de trabajo.
  *
  * `globalSetup` se ejecuta en el proceso principal y las pruebas en otro: las
- * variables no cruzan solas. En desarrollo se toman de `.env.local`; en la CI ya
- * vienen puestas por el flujo de trabajo, y volver a cargarlas allí las pisaría
- * con valores de otra máquina.
+ * variables no cruzan solas. En desarrollo se toman de `.env.local` con el mismo
+ * cargador que usa el servidor; en la CI ya vienen puestas por el flujo de
+ * trabajo, y volver a cargarlas allí las pisaría con valores de otra máquina.
  */
-if (process.env['CI'] !== 'true' && existsSync('.env.local')) {
-  process.loadEnvFile('.env.local');
-}
+loadLocalEnv();
 
 /**
  * Contraseña del Superadmin raíz durante las pruebas.
@@ -23,7 +21,13 @@ if (process.env['CI'] !== 'true' && existsSync('.env.local')) {
  */
 export const ROOT_TEST_PASSWORD = 'clave de prueba del superadmin raiz';
 
-if ((process.env['SUPERADMIN_PASSWORD_HASH'] ?? '') === '') {
-  const { hash } = await hashPassword(ROOT_TEST_PASSWORD);
-  process.env['SUPERADMIN_PASSWORD_HASH'] = hash;
-}
+/**
+ * Se impone **siempre**, incluso si el entorno ya traía un hash.
+ *
+ * Las pruebas comprueban que esta contraseña abre y que otras no. Respetar el
+ * valor heredado haría que el resultado dependiera de la clave que cada quien
+ * tenga en su máquina o de la que la CI haya generado por su lado: la misma
+ * prueba pasaría aquí y fallaría allá sin que nada del código cambiara. Un
+ * hecho que se comprueba tiene que estar puesto por quien lo comprueba.
+ */
+process.env['SUPERADMIN_PASSWORD_HASH'] = (await hashPassword(ROOT_TEST_PASSWORD)).hash;

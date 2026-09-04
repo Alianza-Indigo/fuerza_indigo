@@ -24,6 +24,19 @@ export {
   type PublishedPage,
   type PublishedSummary,
   type EditorialPage,
+  searchPublished,
+  type SearchHit,
   type VersionHistoryEntry,
 } from './application/queries';
 export { publishDueContent } from './application/scheduled';
+export {
+  resolveRedirect,
+  createRedirect,
+  deleteRedirect,
+  listRedirects,
+  createRedirectSchema,
+  deleteRedirectSchema,
+  type CreateRedirectInput,
+  type RedirectRow,
+  type RedirectTarget,
+} from './application/redirects';

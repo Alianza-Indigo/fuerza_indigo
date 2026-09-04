@@ -2,6 +2,7 @@
 import { createInterface } from 'node:readline';
 import { stdin, stdout } from 'node:process';
 import { hashPassword, checkPasswordPolicy } from '../../src/platform/auth/password';
+import { envFileLine } from '../../src/platform/config/env-file';
 
 /**
  * Genera el hash Argon2id del Superadmin raíz (PRD §4.4).
@@ -77,8 +78,14 @@ async function main(): Promise<void> {
 
   const { hash, params } = await hashPassword(password);
 
-  console.log('\nCopie esta línea en su archivo de entorno o en el panel de Vercel:\n');
-  console.log(`SUPERADMIN_PASSWORD_HASH=${hash}\n`);
+  console.log('\nPara un archivo local (.env.local), copie ESTA línea tal cual:\n');
+  console.log(`${envFileLine('SUPERADMIN_PASSWORD_HASH', hash)}\n`);
+  console.log(
+    'Las contrabarras son necesarias: un hash Argon2id empieza por «$» y el cargador de\n' +
+      'entorno lo tomaría por el nombre de una variable, dejando el valor mutilado sin avisar.\n',
+  );
+  console.log('Para el panel de Vercel, donde no hay archivo ni expansión, pegue el valor crudo:\n');
+  console.log(`${hash}\n`);
   console.log(
     `Parámetros usados: Argon2id, memoria ${params.memoryCost} KiB, ${params.timeCost} iteraciones, paralelismo ${params.parallelism}.`,
   );

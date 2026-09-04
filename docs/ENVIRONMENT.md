@@ -11,6 +11,20 @@
 3. **Arranque fallido comprensible.** La ausencia de una variable obligatoria detiene el arranque con un mensaje que dice **qué** falta y **para qué** sirve, sin revelar el valor esperado (PRD §21).
 4. **Validación centralizada.** `src/platform/config` valida el conjunto con un esquema Zod al iniciar el proceso; ningún módulo lee `process.env` directamente.
 5. **Ambientes separados.** Desarrollo local, Vista previa y Producción tienen bases de datos, almacenes y claves distintos. Nunca se copian datos reales de producción a otro ambiente.
+6. **Un solo cargador de archivos.** Todo lo que lee `.env.local` fuera del servidor —migraciones, semillas, pruebas de integración— pasa por `loadLocalEnv()` (`src/platform/config/local-env.ts`), que usa el mismo cargador que la aplicación. El cargador nativo de Node lee el mismo archivo con otras reglas y da otro valor; usar los dos deja a las herramientas viendo una configuración distinta de la del servidor.
+
+### Cómo se escribe en un archivo un valor que lleva `$`
+
+El cargador de entorno **expande variables**. En un archivo, `$argon2id` se sustituye por el contenido de una variable llamada `argon2id`, que no existe, y el valor llega mutilado **sin ningún error a la vista**. Las comillas por sí solas no lo evitan.
+
+| Destino | Cómo se escribe |
+|---|---|
+| Archivo local (`.env.local`) | Entre comillas simples y con cada `$` escapado: `SUPERADMIN_PASSWORD_HASH='\$argon2id\$v=19\$m=19456,t=2,p=1\$...'` |
+| Panel de Vercel | El valor **crudo**, sin comillas ni contrabarras: ahí no hay archivo ni expansión |
+
+`npm run auth:hash-password` imprime las dos formas ya listas, cada una con su destino. La función que compone la línea es `envFileLine()` (`src/platform/config/env-file.ts`); se niega a escribir un valor que el formato no sepa representar sin pérdida —saltos de línea, comillas simples, contrabarra final— en lugar de escribirlo mal.
+
+El analizador desescapa **solo** `\$`. Las contrabarras, las comillas dobles y los acentos graves llegan tal cual. La prueba `tests/unit/config/env-file.test.ts` escribe cada caso, lo carga en un proceso nuevo con el cargador real y compara con el valor original.
 
 Leyenda de obligatoriedad: **Obl.** obligatoria en ese ambiente · **Opc.** opcional · **—** no aplica.
 
@@ -47,7 +61,7 @@ El hash se genera con el comando documentado del repositorio, disponible desde l
 npm run auth:hash-password
 ```
 
-Solicita la contraseña por entrada oculta, imprime únicamente el hash y no la escribe en el historial del intérprete, en archivos ni en registros.
+Solicita la contraseña por entrada oculta, no la escribe en el historial del intérprete, en archivos ni en registros, e imprime dos cosas: la línea escapada para pegar en `.env.local` y el valor crudo para el panel de Vercel. Un hash Argon2id empieza por `$` y lleva otros tres, de modo que es justo el valor que un archivo de entorno estropea si se pega sin escapar (véase §1).
 
 ---
 

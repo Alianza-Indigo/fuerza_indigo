@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { Client } from 'pg';
+
+import { loadLocalEnv } from '@/platform/config/local-env';
 
 /**
  * Preparación única de las pruebas de integración.
@@ -19,12 +20,6 @@ import { Client } from 'pg';
  */
 
 export const TEMPLATE_DATABASE = 'fuerza_test_template';
-
-/** Carga `.env.local` en desarrollo. En la CI las variables ya vienen puestas. */
-function loadLocalEnv(): void {
-  if (process.env['CI'] === 'true') return;
-  if (existsSync('.env.local')) process.loadEnvFile('.env.local');
-}
 
 /** Sustituye el nombre de la base en una cadena de conexión, sin tocar el resto. */
 export function withDatabaseName(connectionString: string, database: string): string {

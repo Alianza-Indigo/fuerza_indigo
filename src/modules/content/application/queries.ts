@@ -243,3 +243,62 @@ export async function versionHistory(
     })),
   );
 }
+
+export interface SearchHit {
+  readonly slug: string;
+  readonly kind: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly publishedAt: Date | null;
+}
+
+/**
+ * Buscador público (F2-UI-011).
+ *
+ * Busca **solo** en lo publicado y público. La búsqueda es el sitio donde un
+ * filtro de visibilidad mal puesto se nota más tarde: un borrador que aparece
+ * en resultados revela tanto como una página abierta.
+ *
+ * Es búsqueda léxica sobre título, resumen y cuerpo, con `ILIKE`. La búsqueda
+ * semántica con vectores es alcance de la Fase 10, donde vive el índice; traerla
+ * aquí obligaría a mantener dos índices y a decidir sin datos cuál gana.
+ */
+export async function searchPublished(query: string, limit = 30): Promise<SearchHit[]> {
+  const termino = query.trim();
+  // Menos de dos caracteres devuelve todo, que no es buscar.
+  if (termino.length < 2) return [];
+
+  const filas = await db().contentPage.findMany({
+    where: {
+      status: 'PUBLISHED',
+      accessLevel: 'PUBLIC',
+      archivedAt: null,
+      currentVersionId: { not: null },
+      currentVersion: {
+        OR: [
+          { title: { contains: termino, mode: 'insensitive' } },
+          { summary: { contains: termino, mode: 'insensitive' } },
+          { bodyMarkdown: { contains: termino, mode: 'insensitive' } },
+        ],
+      },
+    },
+    orderBy: [{ publishedAt: 'desc' }],
+    take: Math.min(limit, 50),
+    select: {
+      slug: true,
+      kind: true,
+      publishedAt: true,
+      currentVersion: { select: { title: true, summary: true } },
+    },
+  });
+
+  return filas
+    .filter((fila) => fila.currentVersion !== null)
+    .map((fila) => ({
+      slug: fila.slug,
+      kind: fila.kind,
+      title: fila.currentVersion!.title,
+      summary: fila.currentVersion!.summary,
+      publishedAt: fila.publishedAt,
+    }));
+}

@@ -1,6 +1,7 @@
 import { db } from '@/platform/db/client';
 import { env } from '@/platform/config/env';
 import { mailerCapability } from '@/platform/mail/mailer';
+import { stripeCapability } from '@/platform/payments';
 import { stuckJobs } from '@/platform/jobs/queue';
 import { GLOBAL_CHAIN, verifyAuditChain } from '@/platform/audit/audit-service';
 import { transaction } from '@/platform/db/unit-of-work';
@@ -112,6 +113,35 @@ export async function healthReport(): Promise<HealthReport> {
       const status =
         capability === 'DELIVERS' ? ('ok' as const) : capability === 'LOGS_ONLY' ? ('degraded' as const) : ('failed' as const);
       return Promise.resolve({ status, detail });
+    }),
+
+    timed('cobro', async () => {
+      // Igual que el correo: lo declara el propio adaptador, por cuenta. Un
+      // panel que diga «Stripe configurado» mientras una de las dos entidades no
+      // puede cobrar es un panel que engaña justo a quien va a investigar por
+      // qué nadie ha pagado.
+      const cuentas = stripeCapability();
+      const activas = await db().stripeAccountConfiguration.findMany({
+        where: { isActive: true },
+        select: { accountKey: true },
+      });
+
+      const encendidas = new Set(activas.map((fila) => fila.accountKey));
+      const problemas = [...encendidas].filter((cuenta) => cuentas[cuenta].capability !== 'CHARGES');
+
+      if (encendidas.size === 0) {
+        return {
+          status: 'degraded' as const,
+          detail: 'ninguna cuenta de cobro está activada: el sistema no puede cobrarle a nadie',
+        };
+      }
+      if (problemas.length > 0) {
+        return {
+          status: 'failed' as const,
+          detail: `activada(s) sin clave: ${problemas.join(', ')}`,
+        };
+      }
+      return { status: 'ok' as const, detail: `cuenta(s) de cobro operativas: ${[...encendidas].join(', ')}` };
     }),
 
     timed('firma_de_credenciales', () => {

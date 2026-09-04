@@ -470,3 +470,99 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Por qué enumerar y no omitir.** Un valor ausente en silencio se lee como un hueco y se rellena. Un valor ausente **declarado** dice qué falta y por qué, y obliga a que alguien con facultades cargue los estatutos antes de poner la versión en vigor.
 
 **Principio que queda, y es el más importante de esta fase.** Un número inventado en un sistema sindical no es un dato de relleno: es la regla con la que se convoca una asamblea y con la que se impugna. Cuando la fuente no dice un valor, el sistema no lo elige. Y una cita a una fuente es una afirmación comprobable: si se escribe «§9.4», ahí tiene que estar.
+
+---
+
+## ADR-0041 · Una redirección sobrevive a la página que la originó
+
+**Contexto.** Una dirección publicada es una promesa: alguien la escribió en un volante, la mandó por mensaje o la citó en un oficio. Cuando un contenido se muda o se archiva, esa dirección tiene que seguir llevando a alguna parte y con el código de estado correcto, para que los buscadores trasladen lo que ya tenían. La forma barata de resolverlo es un campo `slugAnterior` en la página.
+
+**Decisión.** Tabla propia `ContentRedirect`, con la dirección de origen única en toda la instalación y destino que puede ser una página del gestor o una ruta fija. La redirección **no** se borra cuando desaparece la página que la originó.
+
+**Por qué.** Un campo en la página solo admite una dirección anterior, y una página que ha cambiado tres veces de sitio tiene tres. Además, la dirección vieja tiene que seguir funcionando aunque la página se archive: si la redirección colgara de la página, archivarla rompería los enlaces justo cuando más circulan.
+
+**Lo que no hace.** No sigue cadenas: si el destino de una redirección es a su vez el origen de otra, se devuelve el primer salto. Seguirlas invitaría a un ciclo y a una petición que no termina; el precio es un salto extra en el navegador, que es barato y visible. Y un destino que no está publicado no es destino: se responde 404 directo en vez de mandar a la persona a un 404 detrás de una redirección.
+
+---
+
+## ADR-0042 · El actor raíz no tiene voz editorial
+
+**Contexto.** El PRD §16.1 dice que «el Superadmin y los roles de comunicación autorizados» gestionan los contenidos. La arquitectura del actor raíz lo impide: no tiene fila en `User`, y toda versión editorial exige autoría identificada.
+
+**Decisión.** El actor raíz no recibe ningún permiso del módulo `content`. Ni escritura, ni publicación, ni lectura.
+
+**Por qué la escritura no.** Firmar un comunicado del sindicato con un actor sin persona detrás deja sin respuesta la pregunta de quién lo publicó, que es exactamente la que se hace cuando un comunicado se discute.
+
+**Por qué tampoco la lectura.** Un borrador sobre un conflicto laboral es deliberación interna del sindicato. Diagnosticar por qué una página no aparece necesita su **estado** —publicada, programada, con versión vigente—, no su cuerpo, y eso lo da el panel de salud sin leer una sola línea de texto.
+
+**Principio que queda.** Cuando el PRD concede una facultad a un actor cuya arquitectura la vuelve imposible de ejercer con responsabilidad, la respuesta no es forzar la arquitectura ni conceder a medias: es no conceder, y decir por qué.
+
+---
+
+## ADR-0043 · Un solo cargador para los archivos de entorno
+
+**Contexto.** El repositorio leía `.env.local` con dos cargadores distintos: el de Next en la aplicación y el nativo de Node en las pruebas de integración. No coinciden. El de Next expande variables, de modo que `$argon2id` dentro de un valor se sustituye por el contenido de una variable inexistente y el hash del Superadmin llega mutilado; el nativo no expande nada y devuelve las contrabarras del escape tal cual. El valor más sensible del archivo es justo el que los dos estropean, cada uno de una forma distinta y ninguno con un error visible.
+
+**Decisión.** Todo lo que lee `.env.local` fuera del servidor —migraciones, semillas, pruebas— pasa por `loadLocalEnv()`, que usa el cargador de la aplicación. La línea del archivo la compone `envFileLine()`, con el único escape que ese analizador desescapa, y se niega a escribir un valor que el formato no represente sin pérdida en vez de escribirlo mal. Una prueba escribe cada caso, lo carga en un proceso nuevo con el cargador real y compara con el original.
+
+**Principio que queda.** Dos lectores del mismo archivo con reglas distintas no son redundancia: son dos verdades. Y cuando la discrepancia no produce un error sino un valor plausible pero equivocado, el fallo aparece lejos de su causa.
+
+---
+
+## ADR-0044 · La entrada pública amplía `SupportRequest`; no crea una tabla paralela
+
+**Contexto.** La Fase 2 contrata «formularios de contacto y entrada inicial». La primera versión de este trabajo creó una tabla `InboundInquiry` para lo que llega por la calle, razonando que un expediente de caso es otra cosa. Pero `docs/DATA_MODEL.md` §7 ya contrataba `SupportRequest` como entrada única de ayuda, con el mismo folio, los mismos datos de contacto y el mismo catálogo de doce tipos.
+
+**Decisión.** Se implementa el subconjunto de entrada de `SupportRequest`. Las columnas de clasificación, canalización y conversión a caso las escribe la Fase 6, sobre la misma tabla.
+
+**Por qué importa.** Dos tablas con el mismo propósito y distinto nombre no se quedan iguales: una recibe una corrección y la otra no, y al llegar la Fase 6 habría que decidir cuál es la buena, con datos reales en las dos. Un modelo de datos contratado es un compromiso, y apartarse de él sin decirlo es cómo se parte en dos.
+
+**Las desviaciones se declaran.** `consentId` pasa a ser nulo porque `Consent` cuelga de `Person` y la entrada puede iniciarse sin cuenta; se añaden `GENERAL_CONTACT` al catálogo y `HANDLED` a la máquina de estados. Las tres constan en `docs/DATA_MODEL.md` §7 con su motivo, no en un comentario del código.
+
+---
+
+## ADR-0045 · Sin aviso de privacidad publicado no se recaba ningún dato
+
+**Contexto.** El formulario público pide nombre, correo o teléfono y el relato de una situación que puede ser un conflicto laboral o una violencia. La Ley Federal de Protección de Datos Personales en Posesión de los Particulares exige un aviso de privacidad que identifique al responsable y señale su domicilio. El domicilio de las dos entidades consta «por definir» en la propia semilla: el registro sindical y el acta constitutiva todavía no lo aportan.
+
+**Decisión.** La semilla crea el aviso en **borrador**, con las partes que sí son hechos comprobables del programa —qué campos se guardan, para qué, quién los ve, cuánto duran, cómo se ejercen los derechos—, y enumera lo que solo la organización puede aportar. El caso de uso se niega a guardar nada mientras no haya un aviso **publicado** para la entidad, y la pantalla lo dice sin rodeos y ofrece el correo directo.
+
+**Por qué no redactarlo entero.** Un aviso de privacidad inventado no es un texto de relleno: es una declaración jurídica falsa firmada por la organización. Es el mismo error que inventar un valor estatutario (ADR-0040), con la diferencia de que este además la pone a incumplir.
+
+**Por qué el sistema lo impide y no solo lo advierte.** Una advertencia se ignora. Un sistema que permite recabar datos sin aviso vigente pone a la organización a incumplir sin que nadie se dé cuenta, que es la peor forma de incumplir.
+
+---
+
+## ADR-0046 · Los privilegios de las pruebas se leen de las migraciones
+
+**Contexto.** Cada archivo de prueba de integración clona una base plantilla, y el ayudante volvía a conceder privilegios al rol de la aplicación con una lista escrita a mano que repetía la de las migraciones. Al añadir una migración que retira `UPDATE` sobre una columna, las pruebas seguían corriendo con el privilegio puesto: daban por buena una inmutabilidad que solo existía en producción.
+
+**Decisión.** El ayudante lee los archivos de migración, extrae sus sentencias `GRANT` y `REVOKE` en orden y las aplica.
+
+**Comprobado quitándolo.** Con el replay desactivado, la prueba que verifica que el relato original no se puede alterar falla. Con él, pasa.
+
+**Principio que queda.** Una prueba que comprueba menos que la realidad es peor que ninguna, porque además tranquiliza. Y una lista copiada a mano de otra lista es una promesa que nadie renueva.
+
+---
+
+## ADR-0047 · Las páginas legales se distinguen por dirección, no por columna nueva
+
+**Contexto.** Fuerza Índigo y Alianza Índigo son personas morales distintas y cada una responde por su propio aviso de privacidad, sus términos y su vía para ejercer derechos de datos. La dirección de una página es única en toda la instalación, así que `legales/privacidad` solo puede pertenecer a una.
+
+**Decisión.** Convención sobre la dirección: `legales/<documento>` es el texto común y `legales/<documento>/<entidad>` el propio de cada una. La ruta pública muestra las versiones que existan con un selector.
+
+**Por qué no una columna.** Una columna paralela a la dirección obligaría a mantener dos fuentes de la misma verdad, y es cuestión de tiempo que discrepen. La dirección ya es única, ya se administra desde el panel editorial y ya la ve quien escribe el contenido.
+
+**Por qué un selector y no elegir por quien lee.** Alguien que trata con las dos entidades necesita saber qué dice cada una. Elegir en su lugar sería decidir por él sobre un texto que le obliga.
+
+---
+
+## ADR-0048 · Un permiso sin pantalla desde la que ejercerlo no se concede
+
+**Contexto.** ADR-0042 dejó al actor raíz `content.redirect.manage`, con el argumento de que una redirección es encaminamiento técnico y no voz institucional. Al construir la pantalla de redirecciones se vio que el área de gestión exige cuenta y el actor raíz no la tiene: no había forma de ejercerlo. Y sin lectura del gestor tampoco podría saber qué páginas existen ni comprobar que un destino sea el correcto.
+
+**Decisión.** Se retira de la lista cerrada. Las redirecciones las mantienen `COMMUNICATIONS` y `EXECUTIVE_SECRETARY`, que ven el gestor y publican el contenido cuya dirección se muda.
+
+**La alternativa que se descartó.** Duplicar la pantalla bajo `/superadmin`. Habría dado una segunda implementación del mismo caso de uso, y un actor que administra direcciones sin poder ver a qué apuntan.
+
+**Principio que queda.** Un permiso que nadie puede ejercer no es inofensivo por no usarse: figura en la lista de lo que el actor más poderoso del sistema puede hacer, y esa lista es lo que alguien lee para saber qué está en juego si esa credencial se pierde. Concederlo «por si acaso» ensucia justo el documento que tiene que estar limpio.

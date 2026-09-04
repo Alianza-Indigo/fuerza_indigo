@@ -141,7 +141,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F2-UI-007 | Implementar la navegación pública adaptable desde 360 px | Hecho |
 | F2-CMS-001 | Implementar el CMS con borrador, revisión, programación, publicación, archivo e historial | Hecho |
 | F2-CMS-002 | Implementar la reversión de versiones y el registro de cambios editoriales | Hecho |
-| F2-CMS-003 | Implementar redirecciones, metadatos y las páginas legales configurables por entidad | Pendiente |
+| F2-CMS-003 | Implementar redirecciones, metadatos y las páginas legales configurables por entidad | Hecho |
 | F2-UI-008 | Construir las páginas públicas institucionales del mapa funcional | Hecho |
 | F2-UI-009 | Construir las páginas públicas de CIAN, CENI y herramientas | Hecho |
 | F2-UI-010 | Construir el formulario de contacto y la entrada inicial de solicitudes | Hecho |

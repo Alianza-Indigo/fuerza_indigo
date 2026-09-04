@@ -205,7 +205,8 @@ export const SUPERADMIN_GRANTED: ReadonlySet<string> = new Set([
   'identity.person.read',
   'identity.person.merge',
   /**
-   * Del CMS, el actor raíz recibe **solo** el encaminamiento.
+   * Del CMS, el actor raíz **no recibe nada**. Ni escritura, ni lectura, ni
+   * encaminamiento.
    *
    * El PRD §16.1 dice que «el Superadmin y los roles de comunicación
    * autorizados» gestionan los contenidos, pero la arquitectura del actor raíz
@@ -219,9 +220,19 @@ export const SUPERADMIN_GRANTED: ReadonlySet<string> = new Set([
    * página no aparece necesita su **estado**, no su cuerpo: eso lo da el panel
    * de salud sin leer una sola línea de texto (ADR-0042).
    *
-   * Las redirecciones sí: son encaminamiento técnico, no voz institucional.
+   * `content.redirect.manage` sí estuvo aquí, con el argumento de que una
+   * redirección es encaminamiento técnico y no voz institucional. Se retiró al
+   * construir la pantalla que lo ejercería: el área de gestión exige cuenta y
+   * el actor raíz no la tiene, así que no había forma de usarlo; y sin lectura
+   * del gestor no puede saber qué páginas existen ni comprobar que un destino
+   * sea el correcto. Un permiso que solo se puede ejercer a ciegas, y que
+   * además no tiene pantalla, es una concesión decorativa: aparece en la lista
+   * de lo que el actor más poderoso del sistema puede hacer sin que nadie lo
+   * necesite (ADR-0048).
+   *
+   * Quien mantiene las direcciones es quien publica: las redirecciones las
+   * tienen `COMMUNICATIONS` y `EXECUTIVE_SECRETARY`, que sí ven el gestor.
    */
-  'content.redirect.manage',
 ]);
 
 /**

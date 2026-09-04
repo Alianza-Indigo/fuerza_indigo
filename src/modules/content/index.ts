@@ -40,3 +40,4 @@ export {
   type RedirectRow,
   type RedirectTarget,
 } from './application/redirects';
+export { publishedLegalDocuments, type LegalDocument } from './application/legal';

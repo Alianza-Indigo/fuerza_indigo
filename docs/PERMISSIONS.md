@@ -272,16 +272,25 @@ function resolveGrants(ctx: ActorContext): Grant[] {
 
 **Contenido de `SUPERADMIN_GRANTED`.** Exclusivamente permisos de configuración técnica y de operación del sistema:
 
+Concedidos hoy, con los módulos que existen:
+
 ```
-system.module.configure   system.job.manage        system.webhook.replay
-system.health.read        system.integration.configure
+system.module.configure   system.job.manage        system.health.read
+system.integration.configure
 access.permission.read    access.session.revoke_other
-billing.catalog.manage    ai.provider.configure    ai.prompt.publish
-content.page.publish      tools.tool.manage        tools.entitlement.grant
+institution.legal_entity.manage   institution.legal_entity.read
+territory.unit.read
 files.retention.manage    files.legalhold.manage
 audit.audit.read          audit.security.read
 identity.person.read      identity.person.merge
 ```
+
+Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), `billing.catalog.manage` (Fase 3), `ai.provider.configure` y `ai.prompt.publish` (Fase 15), `tools.tool.manage` y `tools.entitlement.grant` (Fase 7).
+
+**Dos permisos que esta lista tuvo y ya no tiene, con su motivo:**
+
+- **`content.page.publish`.** El PRD §16.1 dice que «el Superadmin y los roles de comunicación autorizados» gestionan los contenidos, pero el actor raíz no tiene fila en `User` y toda versión editorial exige autoría identificada. Firmar un comunicado del sindicato con un actor sin persona detrás deja sin respuesta la pregunta de quién lo publicó, que es justo la que se hace cuando un comunicado se discute. Tampoco recibe `content.page.read`: un borrador sobre un conflicto laboral es deliberación interna, y diagnosticar por qué una página no aparece necesita su **estado**, no su cuerpo (ADR-0042).
+- **`content.redirect.manage`.** Estuvo concedido con el argumento de que una redirección es encaminamiento técnico y no voz institucional. Se retiró al construir la pantalla que lo ejercería: el área de gestión exige cuenta, que el actor raíz no tiene, de modo que no había desde dónde usarlo; y sin lectura del gestor no puede saber qué páginas existen ni comprobar que un destino sea correcto. Lo tienen `COMMUNICATIONS` y `EXECUTIVE_SECRETARY`, que sí ven el gestor (ADR-0048).
 
 Todo lo demás le está **denegado por no figurar en la lista**: admisiones, resoluciones, votos, sanciones, certificaciones, autorización de pagos, expedientes de casos, notas clínicas, padrones y directorios.
 

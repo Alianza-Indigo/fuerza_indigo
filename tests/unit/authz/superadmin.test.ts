@@ -60,12 +60,16 @@ describe('lista cerrada de concesión', () => {
     }
   });
 
-  it('del CMS solo recibe el encaminamiento, nunca el contenido', () => {
+  it('del CMS no recibe nada: ni contenido ni encaminamiento', () => {
     // Admitir el módulo `content` en bloque abriría la puerta a que un permiso
     // editorial entrara sin que nada lo advirtiera. Un borrador de comunicado
     // sobre un conflicto laboral es deliberación interna del sindicato.
     const delCms = [...SUPERADMIN_GRANTED].filter((code) => code.startsWith('content.'));
-    expect(delCms).toEqual(['content.redirect.manage']);
+    // Ni una. Las redirecciones estuvieron en la lista y se retiraron: el área
+    // de gestión exige cuenta, que el actor raíz no tiene, así que no había
+    // pantalla desde la que ejercerlas; y sin lectura del gestor no podría
+    // comprobar que un destino sea el correcto (ADR-0048).
+    expect(delCms).toEqual([]);
   });
 });
 

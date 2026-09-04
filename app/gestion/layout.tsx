@@ -9,10 +9,18 @@ import { logoutAction } from '../(auth)/acceso/actions';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Cada sección declara el permiso que la abre.
+ *
+ * La navegación se construye a partir de lo que la persona puede alcanzar de
+ * verdad. Mostrar una pestaña que lleva a una denegación es hacerle perder el
+ * tiempo y, además, decirle que existe algo que no le corresponde.
+ */
 const SECCIONES = [
-  { href: '/gestion/nombramientos', label: 'Nombramientos' },
-  { href: '/gestion/personas', label: 'Invitar personas' },
-];
+  { href: '/gestion/nombramientos', label: 'Nombramientos', permiso: 'access.role.assign' },
+  { href: '/gestion/personas', label: 'Invitar personas', permiso: 'identity.user.invite' },
+  { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
+] as const;
 
 /**
  * Marco del área de gestión institucional.
@@ -30,13 +38,11 @@ export default async function GestionLayout({ children }: { children: ReactNode 
   if (!isAuthenticated(actor) || actor.userId === null) redirect('/acceso');
 
   const sondeo = { ...actor, reason: 'acceso al área de gestión' };
-  const alcanza =
-    can(sondeo, 'access.role.assign', { kind: 'RoleAssignment' }).allowed ||
-    can(sondeo, 'identity.user.invite', { kind: 'User' }).allowed;
+  const visibles = SECCIONES.filter((seccion) => can(sondeo, seccion.permiso, { kind: 'Gestion' }).allowed);
 
-  // Sin facultades no hay área de gestión: se devuelve a la persona a su
-  // portal, sin decirle qué existe detrás.
-  if (!alcanza) redirect('/mi/seguridad');
+  // Sin ninguna sección alcanzable no hay área de gestión: se devuelve a la
+  // persona a su portal, sin decirle qué existe detrás.
+  if (visibles.length === 0) redirect('/mi/seguridad');
 
   return (
     <div className="min-h-dvh">
@@ -57,11 +63,11 @@ export default async function GestionLayout({ children }: { children: ReactNode 
         </div>
         <nav aria-label="Secciones" className="mx-auto w-full max-w-6xl overflow-x-auto px-4 sm:px-6">
           <ul className="flex gap-1 pb-2">
-            {SECCIONES.map((seccion) => (
+            {visibles.map((seccion) => (
               <li key={seccion.href}>
                 <Link
                   href={seccion.href}
-                  className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium hover:bg-[var(--color-indigo-50)]"
+                  className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 py-2 font-medium hover:bg-[var(--color-accent-soft)]"
                 >
                   {seccion.label}
                 </Link>

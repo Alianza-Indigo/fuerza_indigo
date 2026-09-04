@@ -6,6 +6,7 @@
   "regions": ["iad1"],
   "crons": [
     { "path": "/api/v1/cron/dispatch", "schedule": "*/15 * * * *" },
+    { "path": "/api/v1/cron/content-schedule", "schedule": "*/5 * * * *" },
     { "path": "/api/v1/cron/health", "schedule": "0 * * * *" },
     { "path": "/api/v1/cron/retention", "schedule": "0 4 * * *" },
     { "path": "/api/v1/cron/role-expiry", "schedule": "0 3 * * *" }

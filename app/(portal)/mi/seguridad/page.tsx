@@ -32,7 +32,8 @@ export default async function SecurityPage() {
   const sondeo = { ...actor, reason: 'acceso al área de gestión' };
   const alcanzaGestion =
     can(sondeo, 'access.role.assign', { kind: 'RoleAssignment' }).allowed ||
-    can(sondeo, 'identity.user.invite', { kind: 'User' }).allowed;
+    can(sondeo, 'identity.user.invite', { kind: 'User' }).allowed ||
+    can(sondeo, 'content.page.read', { kind: 'ContentPage' }).allowed;
 
   const formatter = new Intl.DateTimeFormat('es-MX', {
     dateStyle: 'medium',
@@ -55,11 +56,11 @@ export default async function SecurityPage() {
           <Card>
             <h2 className="text-lg font-semibold">Gestión institucional</h2>
             <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-              Tienes facultades para nombrar personas y otorgar roles.
+              Tienes facultades de gestión institucional.
             </p>
             <p className="mt-3 text-sm">
-              <Link href="/gestion/nombramientos" className="underline underline-offset-4">
-                Ir a nombramientos
+              <Link href="/gestion" className="underline underline-offset-4">
+                Ir al área de gestión
               </Link>
             </p>
           </Card>

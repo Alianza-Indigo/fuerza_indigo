@@ -9,6 +9,16 @@ import type { RoleCode, ScopeKind } from '../../../src/generated/prisma/enums';
  * su módulo. Un rol sin permisos en esta fase **no** es un error: significa que
  * su alcance llega más adelante.
  */
+/**
+ * `scopeKind` describe el eje por el que se acota el nombramiento, y tiene
+ * consecuencias reales: al otorgar, un rol con permisos exige entidad jurídica
+ * y uno de alcance ORGANIZATION exige además organización.
+ *
+ * Los roles de afiliación son de entidad, no globales. Se afilia una a Fuerza
+ * Índigo o a Alianza Índigo, que son personas morales distintas; declararlos
+ * globales fue lo que permitió que un nombramiento cruzara las dos (`D-F1-012`).
+ * Solo quedan globales los dos roles sin permiso alguno.
+ */
 export interface RoleSeed {
   readonly code: RoleCode;
   readonly name: string;
@@ -31,7 +41,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     code: 'APPLICANT',
     name: 'Solicitante',
     description: 'Completar y consultar sus propias solicitudes.',
-    scopeKind: 'GLOBAL',
+    scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
       'files.file.download_own','files.file.upload'],
@@ -40,7 +50,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     code: 'PROTECTED_BENEFICIARY',
     name: 'Beneficiario protegido',
     description: 'Servicios, solicitudes y expedientes propios autorizados.',
-    scopeKind: 'GLOBAL',
+    scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
       'files.file.download_own','files.file.upload', 'consent.read'],
@@ -49,7 +59,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     code: 'HONORARY_AFFILIATE',
     name: 'Afiliado honorario',
     description: 'Membresía, beneficios y comunidad. Sin derechos electorales.',
-    scopeKind: 'GLOBAL',
+    scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
       'files.file.download_own','files.file.upload', 'consent.read'],
@@ -58,7 +68,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     code: 'UNION_MEMBER',
     name: 'Agremiado',
     description: 'Derechos sindicales, votación, directorio interno y representación.',
-    scopeKind: 'GLOBAL',
+    scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
       'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read'],

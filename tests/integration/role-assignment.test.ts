@@ -3,7 +3,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { assignRole, assignableRoles, liveAssignments, revokeRole } from '@/modules/access';
 import { can } from '@/platform/authz/policy';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
-import { contextoDe, crearPersonaConCuenta, nombrar, type PersonaDePrueba } from './helpers/fixtures';
+import {
+  contextoDe,
+  crearPersonaConCuenta,
+  entidadPrincipal,
+  nombrar,
+  type PersonaDePrueba,
+} from './helpers/fixtures';
 
 /**
  * Nombramientos (PRD §4.3, docs/PERMISSIONS.md §7 y §9).
@@ -18,6 +24,8 @@ let base: TestDatabase;
 let secretaria: PersonaDePrueba;
 let delegada: PersonaDePrueba;
 let sinRol: PersonaDePrueba;
+let entidadId: string;
+let otraEntidadId: string;
 
 beforeAll(async () => {
   base = await createTestDatabase('nombramientos');
@@ -27,15 +35,24 @@ beforeAll(async () => {
   delegada = await crearPersonaConCuenta(base.prisma, { givenName: 'Delegada', familyName: 'Territorial' });
   sinRol = await crearPersonaConCuenta(base.prisma, { givenName: 'Sin', familyName: 'Nombramiento' });
 
+  entidadId = await entidadPrincipal(base.prisma);
+  const otra = await base.prisma.legalEntity.findFirstOrThrow({
+    where: { code: { not: 'FUERZA_INDIGO' } },
+    select: { id: true },
+  });
+  otraEntidadId = otra.id;
+
   await nombrar(base.prisma, {
     userId: secretaria.userId,
     roleCode: 'EXECUTIVE_SECRETARY',
     grantedById: secretaria.userId,
+    legalEntityId: entidadId,
   });
   await nombrar(base.prisma, {
     userId: delegada.userId,
     roleCode: 'TERRITORIAL_DELEGATE',
     grantedById: secretaria.userId,
+    legalEntityId: entidadId,
   });
 }, 180_000);
 
@@ -68,6 +85,7 @@ describe('la facultad de nombrar existe y está en alguien', () => {
       userId: sinRol.userId,
       roleCode: 'UNION_MEMBER',
       reason: MOTIVO,
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -96,6 +114,7 @@ describe('prueba negativa 2 · escalamiento vertical', () => {
       userId: sinRol.userId,
       roleCode: 'AUDITOR',
       reason: MOTIVO,
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -114,6 +133,7 @@ describe('prueba negativa 2 · escalamiento vertical', () => {
       userId: sinRol.userId,
       roleCode: 'AUDITOR',
       reason: MOTIVO,
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -158,6 +178,7 @@ describe('prueba negativa 2 bis · autonombramiento', () => {
       userId: secretaria.userId,
       roleCode: 'UNION_MEMBER',
       reason: MOTIVO,
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -179,6 +200,7 @@ describe('prueba negativa 2 bis · autonombramiento', () => {
       userId: secretaria.userId,
       roleCode: 'EXECUTIVE_SECRETARY',
       reason: MOTIVO,
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -203,6 +225,7 @@ describe('quien no tiene la facultad', () => {
       userId: delegada.userId,
       roleCode: 'UNION_MEMBER',
       reason: MOTIVO,
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -222,6 +245,7 @@ describe('quien no tiene la facultad', () => {
       userId: sinRol.userId,
       roleCode: 'UNION_MEMBER',
       reason: 'porque sí',
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });
@@ -229,6 +253,63 @@ describe('quien no tiene la facultad', () => {
     if (resultado.ok) return;
     expect(resultado.error.code).toBe('VALIDATION');
     expect(resultado.error.details?.['reason']).toBeDefined();
+  });
+});
+
+describe('prueba negativa 1 bis · ningún nombramiento con permisos queda sin entidad', () => {
+  // El defecto `D-F1-012`. Un nombramiento sin entidad no alcanza ninguna, de
+  // modo que crearlo produce un cargo inservible; y antes de la corrección
+  // producía lo contrario, acceso a las dos personas morales del ecosistema. En
+  // los dos casos es un nombramiento mal hecho y se rechaza al crearlo.
+  it('otorgar sin entidad se rechaza y señala el campo', async () => {
+    const actor = await contextoDe(base.prisma, secretaria);
+    const resultado = await assignRole(actor, {
+      userId: sinRol.userId,
+      roleCode: 'UNION_MEMBER',
+      reason: MOTIVO,
+      territorialUnitIds: [],
+      includesDescendants: true,
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+    expect(resultado.error.code).toBe('VALIDATION');
+    expect(resultado.error.details?.['legalEntityId']).toBeDefined();
+    expect(JSON.stringify(resultado.error.details)).toContain('personas morales distintas');
+  });
+
+  it('no se crea ninguna fila cuando se rechaza', async () => {
+    const antes = await base.prisma.roleAssignment.count();
+    const actor = await contextoDe(base.prisma, secretaria);
+    await assignRole(actor, {
+      userId: sinRol.userId,
+      roleCode: 'UNION_MEMBER',
+      reason: MOTIVO,
+      territorialUnitIds: [],
+      includesDescendants: true,
+    });
+    expect(await base.prisma.roleAssignment.count()).toBe(antes);
+  });
+
+  it('un nombramiento de una entidad no alcanza los recursos de la otra', async () => {
+    const actor = await contextoDe(base.prisma, secretaria);
+    expect(actor.roles[0]?.legalEntityId).toBe(entidadId);
+
+    expect(can(actor, 'identity.person.read', { kind: 'Person', legalEntityId: entidadId }).allowed).toBe(true);
+    expect(can(actor, 'identity.person.read', { kind: 'Person', legalEntityId: otraEntidadId }).reason).toBe(
+      'FUERA_DE_ENTIDAD',
+    );
+  });
+
+  it('el catálogo no declara global ningún rol con permisos', async () => {
+    // Un rol global con permisos es la forma en que el defecto vuelve a
+    // aparecer: se nombra sin entidad porque su alcance dice que no la necesita.
+    const globales = await base.prisma.role.findMany({
+      where: { scopeKind: 'GLOBAL' },
+      select: { code: true, _count: { select: { permissions: true } } },
+    });
+    const conPermisos = globales.filter((rol) => rol._count.permissions > 0);
+    expect(conPermisos.map((rol) => rol.code)).toEqual([]);
   });
 });
 
@@ -241,6 +322,7 @@ describe('revocación', () => {
       userId: persona.userId,
       roleCode: 'UNION_MEMBER',
       grantedById: secretaria.userId,
+      legalEntityId: entidadId,
     });
   });
 
@@ -297,7 +379,7 @@ describe('guion de arranque de la primera Secretaría Ejecutiva', () => {
     let mensaje = '';
     try {
       execFileSync('npx', ['tsx', 'scripts/access/bootstrap-secretary.ts'], {
-        input: '\n',
+        input: 'otra@ejemplo.invalid\nOtra\nSecretaria\n\nFUERZA_INDIGO\n',
         encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, DIRECT_URL: process.env['DIRECT_URL'] ?? '' },

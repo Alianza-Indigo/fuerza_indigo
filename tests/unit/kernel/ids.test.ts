@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { maskEmail } from '@/platform/audit/audit-service';
 import {
   classifyUserAgent,
+  fingerprint,
   hashIp,
   hashToken,
   newCorrelationId,
@@ -125,5 +127,37 @@ describe('classifyUserAgent', () => {
     ['', 'UNKNOWN'],
   ])('clasifica %s como %s', (agente, esperado) => {
     expect(classifyUserAgent(agente)).toBe(esperado);
+  });
+});
+
+describe('fingerprint', () => {
+  it('el mismo identificador produce la misma huella', () => {
+    expect(fingerprint('persona@ejemplo.lat', 'sal')).toBe(fingerprint('persona@ejemplo.lat', 'sal'));
+  });
+
+  it('normaliza mayúsculas y espacios: es el mismo correo', () => {
+    expect(fingerprint('  Persona@Ejemplo.LAT ', 'sal')).toBe(fingerprint('persona@ejemplo.lat', 'sal'));
+  });
+
+  it('no colisiona donde la máscara sí colisiona', () => {
+    // Es la razón de existir de esta función. `maskEmail` reduce ambos correos a
+    // «pe…o@dominio.lat», de modo que usarla como clave del límite de intentos
+    // hacía que los fallos contra una cuenta bloquearan la otra (`D-F1-015`).
+    expect(maskEmail('pedro@dominio.lat')).toBe(maskEmail('pedrito@dominio.lat'));
+    expect(maskEmail('ana.perez@x.lat')).toBe(maskEmail('antonio.gomez@x.lat'));
+
+    expect(fingerprint('pedro@dominio.lat', 'sal')).not.toBe(fingerprint('pedrito@dominio.lat', 'sal'));
+    expect(fingerprint('ana.perez@x.lat', 'sal')).not.toBe(fingerprint('antonio.gomez@x.lat', 'sal'));
+  });
+
+  it('no conserva el identificador en claro', () => {
+    const huella = fingerprint('persona@ejemplo.lat', 'sal');
+    expect(huella).toMatch(/^[0-9a-f]{64}$/);
+    expect(huella).not.toContain('persona');
+    expect(huella).not.toContain('ejemplo');
+  });
+
+  it('la sal separa los espacios: la misma cuenta no se correlaciona entre propósitos', () => {
+    expect(fingerprint('persona@ejemplo.lat', 'sal-a')).not.toBe(fingerprint('persona@ejemplo.lat', 'sal-b'));
   });
 });

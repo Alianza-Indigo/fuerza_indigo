@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { can, effectiveGrantedPermissions, isCurrentlyEffective } from '@/platform/authz/policy';
-import { assignment, job, person, personWith, root } from '../../support/actors';
+import { assignment, ENTIDAD_POR_OMISION, job, person, personWith, root } from '../../support/actors';
 
 /**
  * Motor de decisión (docs/PERMISSIONS.md §5.1).
@@ -91,6 +91,81 @@ describe('can · comprobación 2 · entidad jurídica', () => {
       roles: [assignment({ permissions: new Set(['institution.legal_entity.read']), legalEntityId: 'entidad-fuerza' })],
     });
     expect(can(actor, 'institution.legal_entity.read', { kind: 'LegalEntity' }).allowed).toBe(true);
+  });
+});
+
+describe('can · comprobación 2 · un nombramiento SIN entidad no alcanza ninguna', () => {
+  // El defecto `D-F1-012`. El motor convertía la ausencia de entidad en «todas»,
+  // de modo que un nombramiento descuidado cruzaba las dos personas morales del
+  // ecosistema. La documentación decía justo lo contrario desde el principio, y
+  // ninguna prueba lo comprobaba porque las fixtures traían `null` por omisión.
+  const sinEntidad = person({
+    roles: [assignment({ permissions: new Set(['institution.legal_entity.read']), legalEntityId: null })],
+  });
+
+  it('no alcanza la entidad del sindicato', () => {
+    const decision = can(sinEntidad, 'institution.legal_entity.read', {
+      kind: 'LegalEntity',
+      legalEntityId: 'entidad-fuerza',
+    });
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe('FUERA_DE_ENTIDAD');
+  });
+
+  it('tampoco alcanza la de la asociación civil', () => {
+    expect(
+      can(sinEntidad, 'institution.legal_entity.read', { kind: 'LegalEntity', legalEntityId: 'entidad-alianza' })
+        .reason,
+    ).toBe('FUERA_DE_ENTIDAD');
+  });
+
+  it('el mismo permiso con entidad sí alcanza la suya: lo que deniega es la ausencia', () => {
+    const conEntidad = personWith(['institution.legal_entity.read']);
+    expect(
+      can(conEntidad, 'institution.legal_entity.read', { kind: 'LegalEntity', legalEntityId: ENTIDAD_POR_OMISION })
+        .allowed,
+    ).toBe(true);
+  });
+
+  it('sigue alcanzando los recursos que no pertenecen a ninguna entidad', () => {
+    // El catálogo de permisos, la salud del sistema o el árbol territorial no
+    // son de una entidad concreta. Denegarlos sería pasarse de largo.
+    expect(can(sinEntidad, 'institution.legal_entity.read', { kind: 'LegalEntity' }).allowed).toBe(true);
+  });
+
+  it('varios nombramientos suman sus entidades, no las anulan', () => {
+    const dosCargos = person({
+      roles: [
+        assignment({ permissions: new Set(['identity.person.read']), legalEntityId: 'entidad-fuerza' }),
+        assignment({
+          assignmentId: 'a2',
+          permissions: new Set(['identity.person.read']),
+          legalEntityId: 'entidad-alianza',
+        }),
+      ],
+    });
+    expect(can(dosCargos, 'identity.person.read', { kind: 'Person', legalEntityId: 'entidad-fuerza' }).allowed).toBe(true);
+    expect(can(dosCargos, 'identity.person.read', { kind: 'Person', legalEntityId: 'entidad-alianza' }).allowed).toBe(true);
+    expect(can(dosCargos, 'identity.person.read', { kind: 'Person', legalEntityId: 'entidad-tercera' }).reason).toBe(
+      'FUERA_DE_ENTIDAD',
+    );
+  });
+});
+
+describe('can · el alcance total existe, pero se declara', () => {
+  it('el actor raíz sí alcanza todas las entidades, por su rama explícita', () => {
+    // Su función es administrar la plataforma entera. La diferencia con el caso
+    // anterior es que aquí el alcance total está escrito, no es el efecto
+    // secundario de un campo vacío.
+    expect(can(root(), 'audit.audit.read', { kind: 'AuditEvent', legalEntityId: 'entidad-fuerza' }).allowed).toBe(true);
+    expect(can(root(), 'audit.audit.read', { kind: 'AuditEvent', legalEntityId: 'entidad-alianza' }).allowed).toBe(true);
+  });
+
+  it('un trabajo programado también, y por la misma razón', () => {
+    expect(
+      can(job('role-expiry'), 'access.role.revoke', { kind: 'RoleAssignment', legalEntityId: 'entidad-alianza' })
+        .allowed,
+    ).toBe(true);
   });
 });
 

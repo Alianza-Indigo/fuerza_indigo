@@ -64,22 +64,22 @@ beforeAll(async () => {
   delegada = await crearPersonaConCuenta(base.prisma, { givenName: 'Delegada' });
 
   secretaria = await crearPersonaConCuenta(base.prisma, { givenName: 'Secretaria' });
-  await nombrar(base.prisma, {
-    userId: propietaria.userId,
-    roleCode: 'UNION_MEMBER',
-    grantedById: secretaria.userId,
-  });
-  await nombrar(base.prisma, { userId: ajena.userId, roleCode: 'UNION_MEMBER', grantedById: secretaria.userId });
-  await nombrar(base.prisma, {
-    userId: delegada.userId,
-    roleCode: 'TERRITORIAL_DELEGATE',
-    grantedById: secretaria.userId,
-  });
-  await nombrar(base.prisma, {
-    userId: secretaria.userId,
-    roleCode: 'EXECUTIVE_SECRETARY',
-    grantedById: secretaria.userId,
-  });
+  // Todos los nombramientos van a la misma entidad que los archivos: es lo que
+  // hace que las denegaciones de estas pruebas se deban a lo que cada una mide
+  // —titularidad, compartimento, pase— y no al aislamiento por entidad.
+  for (const [userId, roleCode] of [
+    [propietaria.userId, 'UNION_MEMBER'],
+    [ajena.userId, 'UNION_MEMBER'],
+    [delegada.userId, 'TERRITORIAL_DELEGATE'],
+    [secretaria.userId, 'EXECUTIVE_SECRETARY'],
+  ] as const) {
+    await nombrar(base.prisma, {
+      userId,
+      roleCode,
+      grantedById: secretaria.userId,
+      legalEntityId: entidadId,
+    });
+  }
 
   archivoInterno = await crearArchivo({
     classification: 'INTERNAL',
@@ -214,6 +214,7 @@ describe('prueba negativa 13 · el pase no sustituye a la autorización', () => 
       userId: persona.userId,
       roleCode: 'TERRITORIAL_DELEGATE',
       grantedById: secretaria.userId,
+      legalEntityId: entidadId,
     });
 
     const archivo = await crearArchivo({ classification: 'INTERNAL', contextKind: 'GOVERNANCE' });

@@ -206,6 +206,27 @@ describe('bloqueo progresivo y límite de tasa', () => {
     expect(limitado).toBe(true);
   }, 60_000);
 
+  it('dos correos con la misma máscara no comparten cupo', async () => {
+    // El defecto `D-F1-015`. La clave era el correo enmascarado, y la máscara no
+    // es inyectiva: los fallos contra una cuenta bloqueaban otra distinta.
+    const una = await crearPersonaConCuenta(base.prisma, { email: 'pedro@colision.invalid' });
+    const otra = await crearPersonaConCuenta(base.prisma, { email: 'pedrito@colision.invalid' });
+
+    const { maskEmail } = await import('@/platform/audit/audit-service');
+    expect(maskEmail(una.email)).toBe(maskEmail(otra.email));
+
+    // Se agota el cupo de la primera.
+    for (let i = 0; i < RATE_LIMITS.loginByAccount.maxAttempts + 1; i += 1) {
+      await login({ email: una.email, password: 'incorrecta y larga' }, contexto(`ip-colision-${i}`));
+    }
+    const primera = await login({ email: una.email, password: PASSWORD }, contexto('ip-colision-final'));
+    expect(!primera.ok && primera.error.code).toBe('RATE_LIMITED');
+
+    // La segunda, con la misma máscara, entra sin problema.
+    const segunda = await login({ email: otra.email, password: PASSWORD }, contexto('ip-colision-otra'));
+    expect(segunda.ok, segunda.ok ? '' : `${segunda.error.code}: ${segunda.error.message}`).toBe(true);
+  }, 90_000);
+
   it('un origen desconocido no agota el cupo de todo el mundo', async () => {
     // Si la ausencia de origen omitiera el filtro, el recuento abarcaría los
     // fallos de TODO el sistema: bastaría un atacante sin origen identificable

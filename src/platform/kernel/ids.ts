@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, createHash, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 /**
  * Identificadores y utilidades criptográficas de uso general
@@ -48,6 +48,23 @@ export function hashToken(token: string): string {
 export function hashIp(ip: string | null, salt: string): string | null {
   if (ip === null || ip === '') return null;
   return createHash('sha256').update(`${salt}:${ip}`).digest('hex');
+}
+
+/**
+ * Huella estable de un identificador, para agrupar sin conservarlo en claro.
+ *
+ * Se usa como clave del límite de intentos. Antes se usaba el correo
+ * **enmascarado**, y la máscara no es inyectiva: `pedro@dominio` y
+ * `paula@dominio` producen los dos `pe…o@dominio`… y peor, cualquier par que
+ * comparta las dos primeras letras, la última y el dominio. Dos personas
+ * distintas compartían cupo, de modo que los intentos fallidos contra una cuenta
+ * bloqueaban otra, por accidente o a propósito (`D-F1-015`).
+ *
+ * La máscara sigue siendo la forma correcta de **mostrar** un correo en una
+ * bitácora. Lo que no puede es servir de clave.
+ */
+export function fingerprint(value: string, salt: string): string {
+  return createHmac('sha256', salt).update(value.trim().toLowerCase()).digest('hex');
 }
 
 /** Comparación en tiempo constante. Evita distinguir por duración. */

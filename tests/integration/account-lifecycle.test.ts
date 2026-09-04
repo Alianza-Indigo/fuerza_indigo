@@ -11,7 +11,14 @@ import {
 } from '@/modules/identity';
 import { resolveSession } from '@/platform/auth/session';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
-import { contextoDe, crearPersonaConCuenta, nombrar, PASSWORD, type PersonaDePrueba } from './helpers/fixtures';
+import {
+  contextoDe,
+  crearPersonaConCuenta,
+  entidadPrincipal,
+  nombrar,
+  PASSWORD,
+  type PersonaDePrueba,
+} from './helpers/fixtures';
 
 /**
  * Ciclo de vida de una cuenta: invitación, activación, sesiones y recuperación
@@ -39,6 +46,7 @@ beforeAll(async () => {
     userId: secretaria.userId,
     roleCode: 'EXECUTIVE_SECRETARY',
     grantedById: secretaria.userId,
+    legalEntityId: await entidadPrincipal(base.prisma),
   });
 }, 180_000);
 

@@ -1,4 +1,5 @@
 import type { SessionRevoke } from '@prisma-client/enums';
+import { env } from '@/platform/config/env';
 import { db } from '@/platform/db/client';
 import type { Tx } from '@/platform/db/unit-of-work';
 import { hashToken, newOpaqueToken } from '@/platform/kernel/ids';
@@ -97,6 +98,16 @@ export async function resolveSession(token: string): Promise<ResolvedSession | n
     // El incremento de `sessionVersion` en la cuenta invalida sus sesiones sin
     // tener que recorrer y actualizar cada fila.
     if (session.user.sessionVersion !== session.sessionVersion) return null;
+  }
+
+  // El actor raíz no tiene cuenta contra la que comparar: su versión vive en el
+  // entorno. Sin esta comprobación, `SUPERADMIN_SESSION_VERSION` era un número
+  // que se guardaba al abrir la sesión y no se volvía a mirar, de modo que
+  // rotarlo no invalidaba nada, aunque la documentación prometiera que sí
+  // (`D-F1-014`). Es el único mecanismo de expulsión inmediata que tiene quien
+  // sospeche que la credencial raíz se comprometió.
+  if (session.actorKind === 'ROOT_SUPERADMIN') {
+    if (session.sessionVersion !== env().SUPERADMIN_SESSION_VERSION) return null;
   }
 
   return {

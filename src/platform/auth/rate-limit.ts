@@ -34,12 +34,15 @@ export interface RateLimitVerdict {
 /**
  * Cuenta los eventos de fallo recientes que comparten discriminante.
  *
- * `subject` es siempre un valor ya seudonimizado —hash de IP o correo
- * enmascarado—: aquí no entra ningún dato personal en claro.
+ * Los dos discriminantes son valores ya seudonimizados —hash de la dirección de
+ * origen y huella HMAC del correo—: aquí no entra ningún dato personal en claro.
+ *
+ * `subjectKey` y no `subjectLabel`: la máscara de un correo no es inyectiva y
+ * hacía que dos personas distintas compartieran cupo (`D-F1-015`).
  */
 export async function checkRateLimit(
   kind: 'LOGIN_FAILURE' | 'PASSWORD_RESET_REQUESTED' | 'SUPERADMIN_LOGIN',
-  discriminator: { ipHash?: string | null; subjectLabel?: string | null },
+  discriminator: { ipHash?: string | null; subjectKey?: string | null },
   rule: RateLimitRule,
 ): Promise<RateLimitVerdict> {
   const since = new Date(Date.now() - rule.windowMs);
@@ -52,9 +55,9 @@ export async function checkRateLimit(
   // demás orígenes desconocidos, que es un cubo acotado y separado.
   const where: Record<string, unknown> = { kind, occurredAt: { gte: since } };
   if ('ipHash' in discriminator) where['ipHash'] = discriminator.ipHash ?? null;
-  if ('subjectLabel' in discriminator) where['subjectLabel'] = discriminator.subjectLabel ?? null;
+  if ('subjectKey' in discriminator) where['subjectKey'] = discriminator.subjectKey ?? null;
 
-  if (where['ipHash'] === undefined && where['subjectLabel'] === undefined) {
+  if (where['ipHash'] === undefined && where['subjectKey'] === undefined) {
     throw new Error(
       'checkRateLimit exige al menos un discriminante. Sin él, el recuento abarcaría todo el sistema.',
     );

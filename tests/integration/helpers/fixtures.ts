@@ -95,14 +95,34 @@ export async function crearPersonaConCuenta(
   return { actorId: actor.id, userId: user.id, personId: person.id, email };
 }
 
-/** Nombramiento vivo, con los permisos que el catálogo asigna al rol. */
+/**
+ * Entidad jurídica de las pruebas que no eligen una.
+ *
+ * Se resuelve de la base, de modo que la prueba use un identificador real.
+ */
+export async function entidadPrincipal(prisma: PrismaClient): Promise<string> {
+  const entidad = await prisma.legalEntity.findFirstOrThrow({
+    where: { code: 'FUERZA_INDIGO' },
+    select: { id: true },
+  });
+  return entidad.id;
+}
+
+/**
+ * Nombramiento vivo, con los permisos que el catálogo asigna al rol.
+ *
+ * `legalEntityId` es **obligatorio**. Serlo opcional dejaba que cualquier
+ * prueba creara sin querer un nombramiento sin entidad, que es el caso que el
+ * motor trataba como «todas» y que nadie comprobaba (`D-F1-012`). Una prueba que
+ * quiera ese caso lo pide explícitamente pasando `null`.
+ */
 export async function nombrar(
   prisma: PrismaClient,
   input: {
     userId: string;
     roleCode: RoleCode;
     grantedById: string;
-    legalEntityId?: string | null;
+    legalEntityId: string | null;
     territorialUnitIds?: string[];
     includesDescendants?: boolean;
     endsAt?: Date | null;

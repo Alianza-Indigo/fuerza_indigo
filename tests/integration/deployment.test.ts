@@ -105,6 +105,69 @@ describe('la semilla', () => {
   }, 120_000);
 });
 
+describe('las reglas estatutarias no se inventan', () => {
+  it('la versión sembrada es un borrador, sin fecha de entrada en vigor', async () => {
+    base = await createTestDatabase('normativa');
+    await base.seed();
+
+    const reglas = await base.prisma.normativeRuleSet.findFirstOrThrow({
+      select: { version: true, status: true, effectiveFrom: true, rules: true },
+    });
+
+    // Cuándo entran en vigor los estatutos es un hecho jurídico del acta
+    // constitutiva. Declararlo vigente desde una fecha inventada afirma algo que
+    // nadie ha aportado (`D-F1-013`).
+    expect(reglas.status).toBe('DRAFT');
+    expect(reglas.effectiveFrom).toBeNull();
+  });
+
+  it('no contiene ningún valor que el PRD remita a los estatutos', async () => {
+    base = await createTestDatabase('normativa_pendientes');
+    await base.seed();
+
+    const reglas = await base.prisma.normativeRuleSet.findFirstOrThrow({ select: { rules: true } });
+    const valores = reglas.rules as Record<string, unknown>;
+
+    for (const clave of [
+      'assemblyNoticeDaysOrdinary',
+      'assemblyNoticeDaysExtraordinary',
+      'extraordinaryAssemblyPetitionPercent',
+      'reelectionAllowed',
+      'statuteAmendmentMajority',
+      'dissolutionMajority',
+    ]) {
+      expect(valores[clave], `${clave} tiene un valor que el PRD no enuncia`).toBeUndefined();
+    }
+  });
+
+  it('las ausencias están declaradas, no en silencio', async () => {
+    base = await createTestDatabase('normativa_declarada');
+    await base.seed();
+
+    const reglas = await base.prisma.normativeRuleSet.findFirstOrThrow({ select: { rules: true } });
+    const pendientes = (reglas.rules as { _pendientesDeEstatutos?: string[] })._pendientesDeEstatutos;
+
+    expect(pendientes).toBeDefined();
+    expect(pendientes!.length).toBeGreaterThanOrEqual(6);
+    expect(pendientes!.join(' ')).toContain('convocatoria');
+  });
+
+  it('sí conserva los valores que el PRD enuncia de forma expresa', async () => {
+    base = await createTestDatabase('normativa_prd');
+    await base.seed();
+
+    const reglas = await base.prisma.normativeRuleSet.findFirstOrThrow({ select: { rules: true } });
+    const valores = reglas.rules as Record<string, unknown>;
+
+    expect(valores['executiveCommitteeTermMonths']).toBe(48);
+    expect(valores['oversightCommissionSeats']).toBe(3);
+    expect(valores['electoralCommissionSeats']).toBe(3);
+    expect(valores['firstCallQuorum']).toBe('HALF_PLUS_ONE');
+    expect(valores['secondCallQuorum']).toBe('THOSE_PRESENT');
+    expect(valores['ordinaryMajority']).toBe('SIMPLE');
+  });
+});
+
 describe('la verificación de salud', () => {
   it('responde correctamente sobre una base recién desplegada', async () => {
     base = await createTestDatabase('salud');
@@ -128,13 +191,13 @@ describe('el arranque de la primera Secretaría Ejecutiva', () => {
     await base.seed();
 
     const salida = execFileSync('npx', ['tsx', 'scripts/access/bootstrap-secretary.ts'], {
-      input: 'secretaria@ejemplo.invalid\nAna\nRuiz\n\n',
+      input: 'secretaria@ejemplo.invalid\nAna\nRuiz\n\nFUERZA_INDIGO\n',
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, DIRECT_URL: process.env['DIRECT_URL'] ?? '', APP_URL: 'https://ejemplo.invalid' },
     });
 
-    expect(salida).toContain('Secretaría Ejecutiva creada');
+    expect(salida).toContain('Secretaría Ejecutiva de Fuerza Índigo creada');
     expect(salida).toMatch(/https:\/\/ejemplo\.invalid\/activar\/[A-Za-z0-9_-]{43}/);
 
     const usuaria = await base.prisma.user.findUniqueOrThrow({
@@ -144,7 +207,9 @@ describe('el arranque de la primera Secretaría Ejecutiva', () => {
         status: true,
         mustChangePassword: true,
         credentials: { select: { id: true } },
-        roleAssignments: { select: { role: { select: { code: true } }, grantReason: true } },
+        roleAssignments: {
+          select: { role: { select: { code: true } }, grantReason: true, legalEntityId: true },
+        },
       },
     });
 
@@ -157,6 +222,14 @@ describe('el arranque de la primera Secretaría Ejecutiva', () => {
     expect(usuaria.roleAssignments).toHaveLength(1);
     expect(usuaria.roleAssignments[0]?.role.code).toBe('EXECUTIVE_SECRETARY');
     expect(usuaria.roleAssignments[0]?.grantReason).toContain('arranque');
+
+    // Queda acotada a la entidad que se eligió. Sin entidad no alcanzaría nada
+    // y el cargo nacería sin poder ejercerse (`D-F1-012`).
+    const entidad = await base.prisma.legalEntity.findFirstOrThrow({
+      where: { code: 'FUERZA_INDIGO' },
+      select: { id: true },
+    });
+    expect(usuaria.roleAssignments[0]?.legalEntityId).toBe(entidad.id);
 
     // Su actor de atribución existe desde el principio.
     const actor = await base.prisma.actor.findUnique({ where: { userId: usuaria.id }, select: { kind: true } });
@@ -196,7 +269,7 @@ describe('el arranque de la primera Secretaría Ejecutiva', () => {
     let mensaje = '';
     try {
       execFileSync('npx', ['tsx', 'scripts/access/bootstrap-secretary.ts'], {
-        input: 'no-es-un-correo\nAna\nRuiz\n\n',
+        input: 'no-es-un-correo\nAna\nRuiz\n\nFUERZA_INDIGO\n',
         encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, DIRECT_URL: process.env['DIRECT_URL'] ?? '' },

@@ -3,7 +3,13 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { transaction } from '@/platform/db/unit-of-work';
-import { issueSession, SUPERADMIN_COOKIE, sessionCookieOptions } from '@/platform/auth/session';
+import {
+  issueSession,
+  resolveSession,
+  revokeSession,
+  SUPERADMIN_COOKIE,
+  sessionCookieOptions,
+} from '@/platform/auth/session';
 import { currentRootSessionVersion, rootActorId, verifyRootCredentials } from '@/platform/auth/superadmin';
 import { checkRateLimit, RATE_LIMITS } from '@/platform/auth/rate-limit';
 import { maskEmail, recordSecurity } from '@/platform/audit/audit-service';
@@ -89,8 +95,37 @@ export async function rootLoginAction(_previous: RootLoginState, formData: FormD
   redirect('/superadmin');
 }
 
+/**
+ * Cierre de la sesión raíz.
+ *
+ * Revoca la fila en la base **antes** de borrar la cookie. Borrar solo la cookie
+ * dejaba el testigo válido hasta vencer: quien lo hubiera copiado —de un
+ * registro, de una captura, de un equipo compartido— seguía dentro después de
+ * que la persona creyera haber salido (`D-F1-014`). La cookie es la copia que
+ * tiene el navegador; la sesión es la fila.
+ */
 export async function rootLogoutAction(): Promise<void> {
   const cookieStore = await cookies();
+  const token = cookieStore.get(SUPERADMIN_COOKIE)?.value ?? null;
+
+  if (token !== null) {
+    const context = await requestContext();
+    const sesion = await resolveSession(token);
+    if (sesion !== null) {
+      await transaction(async (tx) => {
+        await revokeSession(tx, sesion.sessionId, 'LOGOUT');
+        await recordSecurity(tx, {
+          kind: 'SUPERADMIN_ACTION',
+          severity: 'WARNING',
+          detail: { accion: 'cierre de sesión raíz' },
+          subjectLabel: null,
+          ipHash: context.ipHash,
+          correlationId: context.correlationId,
+        });
+      });
+    }
+  }
+
   cookieStore.delete(SUPERADMIN_COOKIE);
   redirect('/superadmin/login');
 }

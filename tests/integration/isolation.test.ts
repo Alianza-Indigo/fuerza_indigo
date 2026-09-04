@@ -56,6 +56,7 @@ beforeAll(async () => {
     userId: delegadaJalisco.userId,
     roleCode: 'TERRITORIAL_DELEGATE',
     grantedById: quienNombra.userId,
+    legalEntityId: fuerzaId,
     territorialUnitIds: [unidadJalisco.id],
     includesDescendants: true,
   });
@@ -169,6 +170,7 @@ describe('aislamiento territorial', () => {
       userId: persona.userId,
       roleCode: 'TERRITORIAL_DELEGATE',
       grantedById: quienNombra.userId,
+      legalEntityId: fuerzaId,
       endsAt: new Date(Date.now() - 60_000),
     });
 

@@ -215,6 +215,8 @@ export async function verifyAuditChain(
 
 export interface SecurityInput {
   readonly kind: SecurityEventKind;
+  /** Huella estable para agrupar. Nunca el identificador en claro (ADR-0039). */
+  readonly subjectKey?: string | null;
   readonly severity?: SecuritySeverity;
   readonly actorId?: string | null;
   /** Nunca la dirección de correo completa en eventos de fallo. */
@@ -232,6 +234,7 @@ export async function recordSecurity(tx: Tx, input: SecurityInput): Promise<void
       severity: input.severity ?? 'INFO',
       actorId: input.actorId ?? null,
       subjectLabel: input.subjectLabel ?? null,
+      subjectKey: input.subjectKey ?? null,
       ipHash: input.ipHash ?? null,
       userAgentClass: input.userAgentClass ?? null,
       detail: sanitize(input.detail ?? {}) as Prisma.InputJsonValue,

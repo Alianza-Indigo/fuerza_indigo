@@ -62,7 +62,10 @@ model SecurityEvent {
   kind          SecurityEventKind
   actorId       String?           @db.Uuid
   /// Nunca la dirección de correo completa en eventos de fallo.
+  /// Para mostrar. Es el correo enmascarado y NO es único: no sirve de clave.
   subjectLabel  String?           @db.VarChar(120)
+  /// Para agrupar. Huella HMAC del identificador normalizado (ADR-0039).
+  subjectKey    String?           @db.VarChar(64)
   ipHash        String?           @db.VarChar(64)
   userAgentClass UserAgentClass?
   severity      SecuritySeverity  @default(INFO)
@@ -77,6 +80,7 @@ model SecurityEvent {
   @@index([severity])
   @@index([actorId])
   @@index([correlationId])
+  @@index([kind, subjectKey, occurredAt], map: "security_event_subject_key_idx")
   @@map("security_event")
 }
 

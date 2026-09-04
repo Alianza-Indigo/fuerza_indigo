@@ -100,7 +100,17 @@ function resolveGrants(actor: ActorContext, now: Date): Grant[] {
     case 'PERSON':
       return actor.roles.filter((assignment) => isCurrentlyEffective(assignment, now)).map((assignment) => ({
         permissions: assignment.permissions,
-        legalEntities: assignment.legalEntityId === null ? ('ALL' as const) : [assignment.legalEntityId],
+        // Un nombramiento SIN entidad no alcanza ninguna, no las alcanza todas.
+        //
+        // La versión anterior lo convertía en `ALL` y producía exactamente lo
+        // contrario de lo que docs/PERMISSIONS.md §6 promete: «un permiso sin
+        // entidad en el contexto no lee nada». Con dos entidades jurídicas
+        // separadas por diseño —el sindicato y la asociación civil—, un
+        // nombramiento descuidado concedía acceso transversal a las dos.
+        //
+        // El caso legítimo de alcance total existe, pero es de otros actores y
+        // se declara abajo de forma explícita, no por omisión de un campo.
+        legalEntities: assignment.legalEntityId === null ? [] : [assignment.legalEntityId],
         territories:
           assignment.territories.length === 0
             ? ('ALL' as const)
@@ -108,6 +118,15 @@ function resolveGrants(actor: ActorContext, now: Date): Grant[] {
                 path: scope.path,
                 includesDescendants: scope.includesDescendants,
               })),
+        // La organización se comporta distinto de la entidad jurídica, y la
+        // asimetría es deliberada. Las dos entidades son personas morales
+        // separadas y ningún nombramiento debe cruzarlas por descuido. Las
+        // organizaciones, en cambio, viven DENTRO de una entidad, y hay cargos
+        // —la coordinación del CENI— cuya función es precisamente verlas todas.
+        // Por eso aquí `null` sí significa «todas las de su entidad»: la
+        // comprobación de entidad ya se hizo y sigue acotando. Lo que impide el
+        // descuido es que un rol de alcance ORGANIZATION no pueda nombrarse sin
+        // organización, que se valida al otorgar.
         organizations: assignment.organizationId === null ? ('ALL' as const) : [assignment.organizationId],
       }));
 

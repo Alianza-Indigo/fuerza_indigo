@@ -7,7 +7,7 @@
 ## Situación actual
 
 - **Fase activa:** 1 — Infraestructura, datos, autenticación, permisos y Superadmin
-- **Estado:** `APPROVED`
+- **Estado:** `BLOCKED` — cierre revocado el 4 de septiembre de 2026 tras una revisión externa
 - **Autorizada por la persona usuaria:** 3 de septiembre de 2026
 - **Fecha de inicio:** 3 de septiembre de 2026
 - **Fecha de cierre:** 3 de septiembre de 2026
@@ -116,7 +116,7 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de l
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
 | 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-03 | `APPROVED` | `ac23003` |
+| 1 | 2026-09-03 | — | `BLOCKED` | cierre `ac23003` revocado |
 | 2 a 12 | — | — | No iniciadas | — |
 
 ---

@@ -1,0 +1,12 @@
+-- Una versión normativa en borrador no tiene fecha de entrada en vigor
+-- (docs/DECISIONS.md ADR-0038).
+--
+-- La columna era obligatoria, de modo que sembrar el conjunto de reglas
+-- estatutarias exigía inventar una fecha. Se inventó: `2026-01-01`, con estado
+-- `IN_FORCE`. Cuándo entran en vigor los estatutos de un sindicato es un hecho
+-- jurídico que consta en su acta constitutiva, no algo que un valor por omisión
+-- pueda suplir.
+--
+-- A partir de aquí, la fecha es opcional mientras la versión está en borrador y
+-- se exige al ponerla en vigor, que es cuando existe.
+ALTER TABLE "normative_rule_set" ALTER COLUMN "effectiveFrom" DROP NOT NULL;

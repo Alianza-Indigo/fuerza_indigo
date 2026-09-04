@@ -1,11 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { verifyRootCredentials, rootActorId, systemActorId } from '@/platform/auth/superadmin';
 import { resolveActor } from '@/platform/auth/actor-resolver';
-import { issueSession, SUPERADMIN_COOKIE, SESSION_COOKIE, SUPERADMIN_SESSION_TTL_MS, SESSION_TTL_MS, sessionCookieOptions } from '@/platform/auth/session';
+import {
+  issueSession,
+  resolveSession,
+  revokeSession,
+  SUPERADMIN_COOKIE,
+  SESSION_COOKIE,
+  SUPERADMIN_SESSION_TTL_MS,
+  SESSION_TTL_MS,
+  sessionCookieOptions,
+} from '@/platform/auth/session';
 import { transaction } from '@/platform/db/unit-of-work';
 import { can } from '@/platform/authz/policy';
 import { isAuthorizedCron } from '@/platform/http/cron-auth';
-import { env } from '@/platform/config/env';
+import { env, resetEnvCache } from '@/platform/config/env';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { crearPersonaConCuenta } from './helpers/fixtures';
 import { ROOT_TEST_PASSWORD } from './setup-env';
@@ -200,6 +209,66 @@ describe('entrar no le da facultades sindicales', () => {
 
     expect(resultado.ok).toBe(false);
     expect(!resultado.ok && resultado.error.code).toBe('FORBIDDEN');
+  }, 60_000);
+});
+
+describe('la sesión raíz se puede revocar de verdad', () => {
+  async function abrirSesionRaiz(version = env().SUPERADMIN_SESSION_VERSION) {
+    return transaction((tx) =>
+      issueSession(tx, {
+        userId: null,
+        actorKind: 'ROOT_SUPERADMIN',
+        sessionVersion: version,
+        ipHash: null,
+        userAgentSummary: null,
+      }),
+    );
+  }
+
+  it('rotar SUPERADMIN_SESSION_VERSION invalida las sesiones abiertas', async () => {
+    // Es el único mecanismo de expulsión inmediata de quien sospeche que la
+    // credencial raíz se comprometió. Antes se guardaba al abrir la sesión y no
+    // se volvía a mirar, de modo que rotarlo no invalidaba nada aunque la
+    // documentación prometiera que sí (`D-F1-014`).
+    const emitida = await abrirSesionRaiz();
+    expect(await resolveSession(emitida.token)).not.toBeNull();
+
+    const anterior = process.env['SUPERADMIN_SESSION_VERSION'];
+    try {
+      process.env['SUPERADMIN_SESSION_VERSION'] = String(env().SUPERADMIN_SESSION_VERSION + 1);
+      resetEnvCache();
+      expect(await resolveSession(emitida.token)).toBeNull();
+    } finally {
+      if (anterior === undefined) delete process.env['SUPERADMIN_SESSION_VERSION'];
+      else process.env['SUPERADMIN_SESSION_VERSION'] = anterior;
+      resetEnvCache();
+    }
+
+    // Y al volver la versión anterior, la sesión no resucita por sí sola porque
+    // el testigo siga existiendo: vuelve a coincidir, que es lo esperado.
+    expect(await resolveSession(emitida.token)).not.toBeNull();
+  }, 60_000);
+
+  it('una sesión abierta con una versión antigua no resuelve', async () => {
+    const emitida = await abrirSesionRaiz(env().SUPERADMIN_SESSION_VERSION - 1);
+    expect(await resolveSession(emitida.token)).toBeNull();
+  }, 60_000);
+
+  it('cerrar sesión revoca la fila, no solo la cookie del navegador', async () => {
+    // Borrar solo la cookie dejaba el testigo válido hasta vencer: quien lo
+    // hubiera copiado seguía dentro después de que la persona creyera salir.
+    const emitida = await abrirSesionRaiz();
+    expect(await resolveSession(emitida.token)).not.toBeNull();
+
+    await transaction((tx) => revokeSession(tx, emitida.sessionId, 'LOGOUT'));
+
+    expect(await resolveSession(emitida.token)).toBeNull();
+    const fila = await base.prisma.session.findUniqueOrThrow({
+      where: { id: emitida.sessionId },
+      select: { revokedAt: true, revokedReason: true },
+    });
+    expect(fila.revokedAt).not.toBeNull();
+    expect(fila.revokedReason).toBe('LOGOUT');
   }, 60_000);
 });
 

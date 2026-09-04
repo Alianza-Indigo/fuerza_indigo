@@ -111,7 +111,9 @@ enum TerritorialStatus {
 model NormativeRuleSet {
   id            String              @id @default(uuid(7)) @db.Uuid
   version       String              @unique @db.VarChar(30)
-  effectiveFrom DateTime            @db.Date
+  /// Nula mientras la versión está en borrador: la fecha de entrada en vigor
+  /// es un hecho jurídico del acta constitutiva, no un valor por omisión.
+  effectiveFrom DateTime?           @db.Date
   effectiveTo   DateTime?           @db.Date
   status        NormativeRuleStatus @default(DRAFT)
   /// Umbrales estatutarios: periodo del Comité, reelección, integrantes de las

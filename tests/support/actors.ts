@@ -12,12 +12,23 @@ import type { ActorContext, RoleAssignmentSnapshot } from '@/platform/kernel/act
 
 const HORA = 60 * 60 * 1000;
 
+/**
+ * Entidad jurídica por omisión de los actores de prueba.
+ *
+ * **No** es `null`. Serlo hacía que todas las pruebas corrieran con un actor sin
+ * entidad, que era justo el caso cuyo comportamiento nadie comprobaba: el motor
+ * lo trataba como «todas las entidades» y ninguna prueba lo desmintió
+ * (`D-F1-012`). El caso sin entidad ahora se pide de forma explícita, con
+ * `legalEntityId: null`, y tiene sus propias pruebas.
+ */
+export const ENTIDAD_POR_OMISION = 'entidad-fuerza';
+
 export function assignment(overrides: Partial<RoleAssignmentSnapshot> = {}): RoleAssignmentSnapshot {
   return {
     assignmentId: 'asignacion-1',
     role: 'ADMIN_NACIONAL' as RoleCode,
     permissions: new Set<string>(),
-    legalEntityId: null,
+    legalEntityId: ENTIDAD_POR_OMISION,
     organizationId: null,
     territories: [],
     startsAt: new Date(Date.now() - HORA),

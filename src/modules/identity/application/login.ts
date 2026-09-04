@@ -7,6 +7,8 @@ import { hashPassword, needsRehash, verifyPassword } from '@/platform/auth/passw
 import { issueSession, type IssuedSession } from '@/platform/auth/session';
 import { checkRateLimit, lockoutFor, RATE_LIMITS } from '@/platform/auth/rate-limit';
 import { maskEmail, recordSecurity } from '@/platform/audit/audit-service';
+import { fingerprint } from '@/platform/kernel/ids';
+import { env } from '@/platform/config/env';
 import type { Argon2Params } from '@/platform/auth/password';
 
 /**
@@ -61,17 +63,23 @@ export async function login(input: LoginInput, context: LoginContext): Promise<U
   }
 
   const { email, password } = parsed.data;
+
+  // La máscara es para que la bitácora sea legible; la huella es para agrupar.
+  // Usar la máscara como clave hacía que dos correos distintos compartieran cupo
+  // (`D-F1-015`).
   const masked = maskEmail(email);
+  const accountKey = fingerprint(email, env().AUTH_SECRET);
 
   // 1. Límite de tasa por origen y por cuenta.
   const byIp = await checkRateLimit('LOGIN_FAILURE', { ipHash: context.ipHash }, RATE_LIMITS.loginByIp);
-  const byAccount = await checkRateLimit('LOGIN_FAILURE', { subjectLabel: masked }, RATE_LIMITS.loginByAccount);
+  const byAccount = await checkRateLimit('LOGIN_FAILURE', { subjectKey: accountKey }, RATE_LIMITS.loginByAccount);
   if (!byIp.allowed || !byAccount.allowed) {
     await transaction((tx) =>
       recordSecurity(tx, {
         kind: 'RATE_LIMITED',
         severity: 'WARNING',
         subjectLabel: masked,
+        subjectKey: accountKey,
         ipHash: context.ipHash,
         detail: { scope: byIp.allowed ? 'account' : 'ip' },
         correlationId: context.correlationId,
@@ -113,6 +121,7 @@ export async function login(input: LoginInput, context: LoginContext): Promise<U
         kind: 'LOGIN_FAILURE',
         severity: 'INFO',
         subjectLabel: masked,
+        subjectKey: accountKey,
         ipHash: context.ipHash,
         // El motivo se guarda para poder investigar, pero NO se devuelve.
         detail: {
@@ -172,6 +181,7 @@ export async function login(input: LoginInput, context: LoginContext): Promise<U
       kind: 'LOGIN_SUCCESS',
       actorId: actor?.id ?? null,
       subjectLabel: masked,
+      subjectKey: accountKey,
       ipHash: context.ipHash,
       correlationId: context.correlationId,
     });

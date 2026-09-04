@@ -166,26 +166,56 @@ async function seedNormativeRules(actorId: string): Promise<void> {
   const existing = await prisma.normativeRuleSet.findUnique({ where: { version: '2026.1' } });
   if (existing !== null) return;
 
+  /**
+   * Conjunto de reglas estatutarias, en **borrador**.
+   *
+   * Aquí solo van los valores que el PRD enuncia de forma expresa. Los que el
+   * PRD remite a los estatutos —«anticipación mínima de convocatoria conforme a
+   * los estatutos vigentes», «el porcentaje estatutario de agremiados»,
+   * «posibilidad de reelección conforme a los estatutos vigentes»— **no se
+   * inventan**: quedan enumerados abajo como pendientes.
+   *
+   * La versión anterior de esta semilla traía quince días de convocatoria
+   * ordinaria, ocho de extraordinaria, un treinta y tres por ciento de firmas y
+   * la reelección permitida, todos atribuidos en un comentario al «PRD §9.3 y
+   * §9.4», que no los contiene. Un número inventado en un sistema sindical no es
+   * un dato de relleno: es la regla con la que se convoca una asamblea y con la
+   * que se impugna. Y el estado era `IN_FORCE` con fecha de vigencia inventada,
+   * que afirma un hecho jurídico que nadie ha aportado.
+   *
+   * Esta versión entra en vigor cuando alguien con facultades cargue los
+   * estatutos, complete los pendientes y la publique. Hasta entonces es un
+   * borrador, y así consta.
+   */
   await prisma.normativeRuleSet.create({
     data: {
       version: '2026.1',
-      effectiveFrom: new Date('2026-01-01'),
-      status: 'IN_FORCE',
-      // Valores del PRD §9.3 y §9.4. Se conservan por versión para que una
-      // reforma no altere retrospectivamente los actos ya celebrados.
+      // Sin fecha: la de entrada en vigor consta en el acta constitutiva.
+      effectiveFrom: null,
+      status: 'DRAFT',
       rules: {
-        executiveCommitteeTermMonths: 48,
-        reelectionAllowed: true,
-        oversightCommissionSeats: 3,
-        electoralCommissionSeats: 3,
-        assemblyNoticeDaysOrdinary: 15,
-        assemblyNoticeDaysExtraordinary: 8,
-        firstCallQuorum: 'HALF_PLUS_ONE',
-        secondCallQuorum: 'THOSE_PRESENT',
-        ordinaryMajority: 'SIMPLE',
-        statuteAmendmentMajority: 'QUALIFIED_TWO_THIRDS',
-        dissolutionMajority: 'QUALIFIED_TWO_THIRDS',
-        extraordinaryAssemblyPetitionPercent: 33,
+        // --- Enunciados de forma expresa en el PRD §9.3 y §9.4 -------------
+        executiveCommitteeTermMonths: 48, // «periodo de cuatro años»
+        oversightCommissionSeats: 3, // «integrada por tres agremiados»
+        electoralCommissionSeats: 3, // «integrada por tres agremiados»
+        firstCallQuorum: 'HALF_PLUS_ONE', // «la mitad más uno del padrón aplicable»
+        secondCallQuorum: 'THOSE_PRESENT', // «los agremiados presentes»
+        ordinaryMajority: 'SIMPLE', // «mayoría simple como regla general»
+        ordinaryAssemblyMinimumPerYear: 1, // «al menos una vez al año»
+
+        /**
+         * Valores que los estatutos deben aportar antes de poner en vigor esta
+         * versión. Se enumeran en vez de omitirse en silencio: quien lea las
+         * reglas encuentra la ausencia declarada y su motivo, y no un hueco.
+         */
+        _pendientesDeEstatutos: [
+          'assemblyNoticeDaysOrdinary: anticipación mínima de convocatoria ordinaria (PRD §9.4 remite a los estatutos)',
+          'assemblyNoticeDaysExtraordinary: anticipación mínima de convocatoria extraordinaria (ídem)',
+          'extraordinaryAssemblyPetitionPercent: porcentaje de agremiados que puede solicitarla (PRD §9.4: «el porcentaje estatutario»)',
+          'reelectionAllowed: si se admite la reelección (PRD §9.3: «conforme a los estatutos vigentes»)',
+          'statuteAmendmentMajority: fracción exacta de la mayoría calificada para reformar los estatutos',
+          'dissolutionMajority: fracción exacta de la mayoría calificada para la disolución',
+        ],
       },
       createdByActorId: actorId,
       updatedByActorId: actorId,

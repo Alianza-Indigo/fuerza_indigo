@@ -93,9 +93,39 @@ export async function assignRole(
 
   const role = await db().role.findUnique({
     where: { code: data.roleCode as RoleCode },
-    select: { id: true, code: true, permissions: { select: { permission: { select: { code: true } } } } },
+    select: {
+      id: true,
+      code: true,
+      scopeKind: true,
+      permissions: { select: { permission: { select: { code: true } } } },
+    },
   });
   if (role === null) return fail(errors.notFound('el rol solicitado no existe en el catálogo'));
+
+  // --- Control 3: ningún nombramiento con permisos queda sin entidad --------
+  //
+  // Un nombramiento sin entidad no alcanza ninguna (docs/PERMISSIONS.md §6), de
+  // modo que otorgarlo así produce un cargo que no puede ejercerse. Antes de
+  // esta comprobación producía lo contrario —acceso a todas— y ese fue el
+  // defecto `D-F1-012`. En cualquiera de los dos casos es un nombramiento mal
+  // hecho, y se rechaza en vez de crearse.
+  if (role.permissions.length > 0 && (data.legalEntityId ?? '') === '') {
+    return fail(
+      errors.validation({
+        legalEntityId: [
+          'Elige la entidad jurídica del nombramiento. Fuerza Índigo y Alianza Índigo son personas morales distintas, y un cargo pertenece a una de las dos.',
+        ],
+      }),
+    );
+  }
+
+  if (role.scopeKind === 'ORGANIZATION' && (data.organizationId ?? '') === '') {
+    return fail(
+      errors.validation({
+        organizationId: ['Este rol pertenece a una organización concreta: elige cuál.'],
+      }),
+    );
+  }
 
   // --- Control 2: nadie otorga lo que no posee ---------------------------
   // Sin excepción por tipo de actor. La versión anterior eximía al Superadmin

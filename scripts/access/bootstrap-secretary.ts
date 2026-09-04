@@ -47,8 +47,15 @@ async function pedirDatos(): Promise<{
   givenName: string;
   familyName: string;
   secondFamilyName: string;
+  legalEntityCode: string;
 }> {
-  const etiquetas = ['Correo electrónico: ', 'Nombre: ', 'Primer apellido: ', 'Segundo apellido (opcional): '];
+  const etiquetas = [
+    'Correo electrónico: ',
+    'Nombre: ',
+    'Primer apellido: ',
+    'Segundo apellido (opcional): ',
+    'Código de la entidad jurídica (FUERZA_INDIGO o ALIANZA_INDIGO): ',
+  ];
   let respuestas: string[];
 
   if (stdin.isTTY === true) {
@@ -69,8 +76,15 @@ async function pedirDatos(): Promise<{
     stdout.write(`${etiquetas.join('')}\n`);
   }
 
-  const [email = '', givenName = '', familyName = '', secondFamilyName = ''] = respuestas.map((valor) => valor.trim());
-  return { email: email.toLowerCase(), givenName, familyName, secondFamilyName };
+  const [email = '', givenName = '', familyName = '', secondFamilyName = '', legalEntityCode = ''] =
+    respuestas.map((valor) => valor.trim());
+  return {
+    email: email.toLowerCase(),
+    givenName,
+    familyName,
+    secondFamilyName,
+    legalEntityCode: legalEntityCode.toUpperCase(),
+  };
 }
 
 async function main(): Promise<void> {
@@ -79,15 +93,53 @@ async function main(): Promise<void> {
     throw new Error('El catálogo de roles no está sembrado. Ejecute primero `npm run db:seed`.');
   }
 
+  console.log('\nArranque de la primera Secretaría Ejecutiva.');
+  console.log('Se creará la cuenta y se imprimirá un enlace de activación de un solo uso.\n');
+
+  const entidades = await prisma.legalEntity.findMany({
+    where: { isActive: true },
+    orderBy: { code: 'asc' },
+    select: { id: true, code: true, shortName: true },
+  });
+  if (entidades.length === 0) {
+    throw new Error('No hay entidades jurídicas sembradas. Ejecute primero `npm run db:seed`.');
+  }
+
+  console.log('Entidades jurídicas disponibles:');
+  for (const entidad of entidades) console.log(`  ${entidad.code} — ${entidad.shortName}`);
+  console.log('');
+
+  const { email, givenName, familyName, secondFamilyName, legalEntityCode } = await pedirDatos();
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('El correo no tiene un formato válido.');
+  if (givenName === '' || familyName === '') throw new Error('El nombre y el primer apellido son obligatorios.');
+
+  // La Secretaría pertenece a una entidad jurídica concreta. Sin ella, el
+  // nombramiento no alcanzaría ningún recurso de ninguna entidad y el cargo
+  // quedaría sin poder ejercerse (docs/PERMISSIONS.md §6).
+  const entidad = entidades.find((candidata) => candidata.code === legalEntityCode);
+  if (entidad === undefined) {
+    throw new Error(
+      `«${legalEntityCode}» no es una entidad jurídica conocida. Use uno de estos códigos: ${entidades
+        .map((candidata) => candidata.code)
+        .join(', ')}.`,
+    );
+  }
+
+  // El bloqueo es POR ENTIDAD, no global: cada persona moral tiene su propia
+  // Secretaría Ejecutiva, y arrancar la de una no puede impedir arrancar la de
+  // la otra. Una vez que existe la de esta entidad, sus nombramientos ocurren
+  // dentro de la plataforma y este guion deja de tener justificación aquí.
   const ahora = new Date();
   const vigente = await prisma.roleAssignment.findFirst({
     where: {
       roleId: rol.id,
+      legalEntityId: entidad.id,
       revokedAt: null,
       startsAt: { lte: ahora },
       OR: [{ endsAt: null }, { endsAt: { gt: ahora } }],
     },
-    select: { id: true, user: { select: { email: true } } },
+    select: { user: { select: { email: true } } },
   });
 
   if (vigente !== null) {
@@ -95,19 +147,11 @@ async function main(): Promise<void> {
     const local = correo.slice(0, correo.indexOf('@'));
     const enmascarado = local.length <= 3 ? `${local[0] ?? ''}…` : `${local.slice(0, 2)}…${local.slice(-1)}`;
     throw new Error(
-      `Ya existe una Secretaría Ejecutiva vigente (${enmascarado}${correo.slice(correo.indexOf('@'))}). ` +
+      `Ya existe una Secretaría Ejecutiva vigente en ${entidad.shortName} (${enmascarado}${correo.slice(correo.indexOf('@'))}). ` +
         'Los nombramientos posteriores se realizan desde la plataforma, en Gestión → Nombramientos, ' +
         'donde quedan con motivo escrito y registro en la bitácora.',
     );
   }
-
-  console.log('\nArranque de la primera Secretaría Ejecutiva.');
-  console.log('Se creará la cuenta y se imprimirá un enlace de activación de un solo uso.\n');
-
-  const { email, givenName, familyName, secondFamilyName } = await pedirDatos();
-
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('El correo no tiene un formato válido.');
-  if (givenName === '' || familyName === '') throw new Error('El nombre y el primer apellido son obligatorios.');
 
   const duplicado = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (duplicado !== null) throw new Error('Ya existe una cuenta con ese correo.');
@@ -158,6 +202,7 @@ async function main(): Promise<void> {
       data: {
         userId: user.id,
         roleId: rol.id,
+        legalEntityId: entidad.id,
         grantedById: user.id,
         grantReason: 'Nombramiento de arranque de la primera Secretaría Ejecutiva, ejecutado desde la consola de operación.',
       },
@@ -167,13 +212,13 @@ async function main(): Promise<void> {
       data: {
         kind: 'PRIVILEGE_GRANTED',
         severity: 'CRITICAL',
-        detail: { origen: 'guion de arranque', rol: 'EXECUTIVE_SECRETARY' },
+        detail: { origen: 'guion de arranque', rol: 'EXECUTIVE_SECRETARY', entidad: entidad.code },
         correlationId: `arranque-${Date.now()}`,
       },
     });
   });
 
-  console.log('\nSecretaría Ejecutiva creada.');
+  console.log(`\nSecretaría Ejecutiva de ${entidad.shortName} creada.`);
   console.log('Enlace de activación, válido siete días y de un solo uso:\n');
   console.log(`  ${appUrl}/activar/${token}\n`);
   console.log('Entréguelo por un canal que no sea este registro y no vuelva a ejecutar este guion:');

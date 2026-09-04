@@ -11,3 +11,4 @@ export {
   type RedeemedFile,
 } from './file-service';
 export { applyRetention, type RetentionResult } from './retention';
+export { blobStore, blobStoreCapability, setBlobStoreForTests, type BlobStorePort } from './blob-store';

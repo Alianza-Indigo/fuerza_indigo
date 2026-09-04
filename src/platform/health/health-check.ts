@@ -1,6 +1,7 @@
 import { db } from '@/platform/db/client';
 import { env } from '@/platform/config/env';
 import { mailerCapability } from '@/platform/mail/mailer';
+import { blobStoreCapability } from '@/platform/files/blob-store';
 import { stripeCapability } from '@/platform/payments';
 import { stuckJobs } from '@/platform/jobs/queue';
 import { GLOBAL_CHAIN, verifyAuditChain } from '@/platform/audit/audit-service';
@@ -142,6 +143,18 @@ export async function healthReport(): Promise<HealthReport> {
         };
       }
       return { status: 'ok' as const, detail: `cuenta(s) de cobro operativas: ${[...encendidas].join(', ')}` };
+    }),
+
+    timed('almacen_de_archivos', () => {
+      // Por la misma razón que el correo y el cobro: lo declara el adaptador. Un
+      // panel que diga «almacén configurado» mientras los archivos viven en la
+      // memoria del proceso engaña a quien investigue por qué desapareció un
+      // documento tras un despliegue (`D-F4-008`).
+      const { capability, detail } = blobStoreCapability();
+      return Promise.resolve({
+        status: capability === 'PERSISTS' ? ('ok' as const) : ('degraded' as const),
+        detail,
+      });
     }),
 
     timed('firma_de_credenciales', () => {

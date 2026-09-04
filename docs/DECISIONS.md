@@ -886,3 +886,29 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Decisión.** El aviso de resultado se pinta **fuera** de la rama condicional que la propia acción modifica.
 
 **Cómo se encontró.** Conduciendo la pantalla en un navegador de verdad. Las pruebas de integración pasaban —la fusión funcionaba— y las de tipos también: el fallo solo existía para quien miraba la pantalla.
+
+---
+
+## ADR-0075 · La categoría de una calidad y sus derechos no se editan
+
+**Contexto.** El catálogo de calidades permite corregir nombre, resumen de beneficios, vigencia, concepto de cobro y si exige revisión o pago. La categoría y los tres derechos —voto, quórum, padrón ante la autoridad— quedaron fuera del formulario de edición.
+
+**Decisión.** Se fijan al crear y no se ofrecen después. Una calidad distinta es una calidad nueva.
+
+**Por qué.** Cambiar la categoría de un tipo con membresías vivas daría o quitaría el voto a todas ellas a la vez y hacia atrás, sin acto institucional que lo respalde y sin que nadie tuviera que enterarse. El PRD §24 Fase 4 pide que un afiliado honorario no obtenga voto **por error**, y un formulario de edición que ofrezca esa casilla es exactamente la clase de error que pide impedir.
+
+**Lo que sí queda abierto.** Archivar la calidad —`isActive` en falso— para que no admita solicitudes nuevas, sin tocar a quien ya la tiene. Es la vía honesta para dejar de usar una calidad: se cierra la puerta de entrada, no se cambia lo que ya se concedió.
+
+---
+
+## ADR-0076 · El almacén de archivos, por puerto con adaptadores
+
+**Contexto.** El correo tiene puerto con adaptadores (ADR-0016) y la pasarela también (ADR-0014). El almacén de archivos, no: `uploadFile` llamaba a Vercel Blob directamente.
+
+**El defecto que destapó.** Sin un token real, subir un archivo **se queda colgado** —en una máquina de desarrollo y en la integración continua por igual—. No se veía porque hasta la Fase 4 ninguna pantalla subía archivos, y porque las pruebas de la Fase 1 insertaban las filas a mano para esquivarlo: una prueba que no puede fallar acompañando a un código que nadie había ejecutado (defecto `D-F4-008`).
+
+**Decisión.** `BlobStorePort` con dos adaptadores: Vercel Blob y uno de memoria. La verificación de salud lee la capacidad que declara el adaptador vigente, igual que hace con el correo.
+
+**Cómo se elige, y por qué no con una variable nueva.** Por la forma del token. Un `BLOB_READ_WRITE_TOKEN` vacío o de relleno significa exactamente «aquí no hay almacén». Una variable aparte permitiría la combinación incoherente de siempre —token real con adaptador de memoria, o al revés— y habría que documentar cuál manda.
+
+**Lo que el adaptador de memoria promete y lo que no.** Guarda y devuelve dentro del proceso, y lo pierde todo al reiniciar. Lo declara como `IN_MEMORY` y el panel de salud lo dice con esas palabras: un almacén que pierde lo guardado no es un fallo mientras se anuncie; lo que sería un fallo es que pareciera persistente.

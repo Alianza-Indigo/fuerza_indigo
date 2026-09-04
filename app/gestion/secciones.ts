@@ -16,6 +16,8 @@ export const SECCIONES = [
   { href: '/gestion/nombramientos', label: 'Nombramientos', permiso: 'access.role.assign' },
   { href: '/gestion/personas', label: 'Invitar personas', permiso: 'identity.user.invite' },
   { href: '/gestion/registro', label: 'Registro de personas', permiso: 'identity.person.read' },
+  { href: '/gestion/afiliacion/solicitudes', label: 'Solicitudes de afiliación', permiso: 'membership.application.read' },
+  { href: '/gestion/afiliacion/calidades', label: 'Calidades de membresía', permiso: 'membership.type.read' },
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
   { href: '/gestion/redirecciones', label: 'Redirecciones', permiso: 'content.redirect.manage' },

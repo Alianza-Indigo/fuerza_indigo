@@ -1,5 +1,4 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
-import { del, get, put } from '@vercel/blob';
 import type { FileClassification, FileContextKind } from '@prisma-client/enums';
 import { env } from '@/platform/config/env';
 import { db } from '@/platform/db/client';
@@ -11,6 +10,7 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { newPublicId, safeEquals } from '@/platform/kernel/ids';
 import { recordAudit, recordSecurity } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { blobStore } from './blob-store';
 
 /**
  * Servicio privado de archivos sobre Vercel Blob (PRD §17.4, ADR-0013).
@@ -117,12 +117,9 @@ export async function uploadFile(actor: ActorContext, input: UploadInput): Promi
   // Acceso PRIVADO. No es un detalle de configuración: es lo que impide que la
   // URL del almacén sirva por sí sola, con independencia de lo que haga la
   // aplicación (PRD §17.4).
-  const stored = await put(blobPathname, Buffer.from(input.content), {
-    access: 'private',
-    addRandomSuffix: false,
-    token: env().BLOB_READ_WRITE_TOKEN,
-    contentType: input.mimeType,
-  });
+  // Acceso PRIVADO, lo resuelva quien lo resuelva: el adaptador lo garantiza y
+  // este caso de uso ya no sabe de qué almacén se trata (ADR-0076).
+  const stored = await blobStore().put(blobPathname, input.content, input.mimeType);
 
   const retentionPolicy =
     input.retentionPolicyCode === undefined || input.retentionPolicyCode === null
@@ -353,14 +350,11 @@ export async function redeemDownload(
 
   // El objeto es privado: se lee con el token del almacén, nunca por una URL
   // pública. Sin este token, la ruta del objeto no entrega nada.
-  const stored = await get(file.currentVersion.blobPathname, {
-    access: 'private',
-    token: env().BLOB_READ_WRITE_TOKEN,
-  });
+  const stored = await blobStore().get(file.currentVersion.blobPathname);
   if (stored === null) return fail(errors.dependencyUnavailable('almacén de archivos'));
 
   return ok({
-    content: new Uint8Array(await new Response(stored.stream).arrayBuffer()),
+    content: stored,
     mimeType: file.mimeType,
     originalFileName: file.originalFileName,
     // El material sensible y clínico se descarga, nunca se previsualiza.
@@ -428,7 +422,7 @@ export async function deleteFile(
   // retención lo reintenta.
   for (const version of file.versions) {
     try {
-      await del(version.blobPathname, { token: env().BLOB_READ_WRITE_TOKEN });
+      await blobStore().delete(version.blobPathname);
     } catch {
       // Se reintenta desde el trabajo de retención.
     }

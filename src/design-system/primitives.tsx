@@ -166,17 +166,35 @@ const BUTTON_VARIANT: Record<ButtonVariant, string> = {
 const BUTTON_BASE =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] disabled:cursor-not-allowed disabled:opacity-60';
 
+/**
+ * Botón de envío.
+ *
+ * Admite `name` y `value` porque hay formularios con dos intenciones sobre los
+ * mismos campos —guardar un borrador o enviarlo— y partirlos en dos pantallas
+ * haría perder el hilo a quien captura frente a otra persona. El navegador manda
+ * el par del botón pulsado y solo el de ése, que es exactamente lo que hace
+ * falta para distinguirlas.
+ */
 export function SubmitButton({
   children,
   variant = 'primary',
   full = false,
+  name,
+  value,
 }: {
   children: ReactNode;
   variant?: ButtonVariant | undefined;
   full?: boolean | undefined;
+  name?: string | undefined;
+  value?: string | undefined;
 }) {
   return (
-    <button type="submit" className={`${BUTTON_BASE} ${BUTTON_VARIANT[variant]} ${full ? 'w-full' : ''}`}>
+    <button
+      type="submit"
+      {...(name === undefined ? {} : { name })}
+      {...(value === undefined ? {} : { value })}
+      className={`${BUTTON_BASE} ${BUTTON_VARIANT[variant]} ${full ? 'w-full' : ''}`}
+    >
       {children}
     </button>
   );

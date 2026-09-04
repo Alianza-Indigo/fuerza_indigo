@@ -20,6 +20,7 @@ export const dynamic = 'force-dynamic';
  * puerta cerrada, se le ahorra la puerta.
  */
 const SECCIONES_DEL_PORTAL = [
+  { href: '/mi/afiliacion', label: 'Mi afiliación' },
   { href: '/mi/pagos', label: 'Mis pagos' },
   { href: '/mi/seguridad', label: 'Seguridad y sesiones' },
 ] as const;

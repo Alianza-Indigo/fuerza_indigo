@@ -39,8 +39,15 @@ jobs:
           POSTGRES_DB: fuerza_ci
         ports:
           - 5432:5432
+        # `-d fuerza_ci` no es cosmético: sin la base, `pg_isready` la busca con el
+        # nombre del rol, no la encuentra y deja un `FATAL: database "fuerza"
+        # does not exist` cada cinco segundos en el registro. El contenedor
+        # acaba dándose por sano igual —el servidor responde, que es lo que la
+        # herramienta comprueba—, así que el efecto es peor que un fallo:
+        # veinte líneas de alarma falsa delante de quien viene a investigar un
+        # fallo de verdad.
         options: >-
-          --health-cmd "pg_isready -U fuerza"
+          --health-cmd "pg_isready -U fuerza -d fuerza_ci"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20

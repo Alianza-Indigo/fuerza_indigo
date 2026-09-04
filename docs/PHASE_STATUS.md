@@ -215,7 +215,7 @@ Los cuatro últimos son defectos **de los controles**, no del producto, y se reg
 
 ## Decisiones
 
-Veintiuna decisiones, de ADR-0041 a ADR-0061 en [`DECISIONS.md`](DECISIONS.md):
+Veintitrés decisiones, de ADR-0041 a ADR-0063 en [`DECISIONS.md`](DECISIONS.md):
 
 | ADR | Decisión |
 |---|---|
@@ -240,6 +240,8 @@ Veintiuna decisiones, de ADR-0041 a ADR-0061 en [`DECISIONS.md`](DECISIONS.md):
 | 0059 | Una beca gana al descuento y no se acumulan |
 | 0060 | Un corte con diferencias se puede cerrar; lo que no se puede es callarlas |
 | 0061 | Una exención no deja asiento en el libro |
+| 0062 | Rendir cuentas es un derecho; exportar el libro es una facultad |
+| 0063 | Lo que se dejó de cobrar se informa, aunque no esté en el libro |
 
 El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 

@@ -179,9 +179,9 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F3-PAG-010 | Implementar reembolsos con solicitud y aprobación por personas distintas | Hecho |
 | F3-LIB-001 | Implementar el libro auxiliar inmutable con asientos de reversión | Hecho |
 | F3-LIB-002 | Implementar la conciliación por entidad y periodo con detección de diferencias | Hecho |
-| F3-LIB-003 | Implementar el registro patrimonial y sus movimientos con acuerdo habilitante | Pendiente |
-| F3-LIB-004 | Implementar los cortes y reportes semestrales de rendición de cuentas | Pendiente |
-| F3-LIB-005 | Implementar las exportaciones autorizadas con motivo, marca temporal y auditoría | Pendiente |
+| F3-LIB-003 | Implementar el registro patrimonial y sus movimientos con acuerdo habilitante | Hecho |
+| F3-LIB-004 | Implementar los cortes y reportes semestrales de rendición de cuentas | Hecho |
+| F3-LIB-005 | Implementar las exportaciones autorizadas con motivo, marca temporal y auditoría | Hecho |
 | F3-OPS-001 | Implementar las alertas de eventos sin conciliar y de fallos de cobro | Hecho |
 | F3-CMS-001 | Implementar las plantillas de comprobante y su emisión | Pendiente |
 | F3-UI-001 | Construir el panel de finanzas y la vista de pagos de la persona | Pendiente |

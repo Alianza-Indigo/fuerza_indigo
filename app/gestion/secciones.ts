@@ -22,4 +22,6 @@ export const SECCIONES = [
   { href: '/gestion/finanzas/pagos', label: 'Pagos y devoluciones', permiso: 'billing.payment.read' },
   { href: '/gestion/finanzas/apoyos', label: 'Descuentos y becas', permiso: 'billing.discount.read' },
   { href: '/gestion/finanzas/libro', label: 'Libro y conciliación', permiso: 'billing.ledger.read' },
+  { href: '/gestion/finanzas/patrimonio', label: 'Patrimonio', permiso: 'billing.asset.read' },
+  { href: '/gestion/finanzas/rendicion', label: 'Rendición de cuentas', permiso: 'billing.accountability.read' },
 ] as const;

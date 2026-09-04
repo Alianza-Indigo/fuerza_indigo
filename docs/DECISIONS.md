@@ -724,3 +724,29 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Decisión.** No se asienta. El libro auxiliar registra movimientos de dinero, y en una exención no se movió ninguno.
 
 **Por qué.** Un asiento de cero no dice nada. Y uno por el importe perdonado inflaría los ingresos con dinero que nunca entró, que es exactamente el descuadre que este libro existe para evitar. Lo que la organización dejó de cobrar sí se informa, y se calcula comparando el precio vigente con lo efectivamente cobrado: es un dato de rendición de cuentas, no un movimiento de caja.
+
+---
+
+## ADR-0062 · Rendir cuentas es un derecho; exportar el libro es una facultad
+
+**Contexto.** Las dos cosas informan sobre el mismo dinero. La tentación es tratarlas igual.
+
+**Decisión.** El reporte de rendición de cuentas lo alcanza **cualquier persona afiliada** (`billing.accountability.read`, sensibilidad normal): totales por cuenta y por semestre, sin un solo dato de una persona identificable. La exportación del libro con el detalle de cada asiento exige `billing.report.export`, es crítica y pide motivo escrito.
+
+**Por qué la asimetría.** Saber en qué se gasta el dinero de las cuotas es un derecho de quien las paga, y ponerle un permiso de administración delante lo convertiría en una concesión. El detalle es otra cosa: identifica movimientos concretos y sale del sistema en un archivo que ya nadie controla, así que tiene que constar quién se lo llevó y para qué.
+
+**El asiento de auditoría se escribe antes de entregar el archivo.** Al revés, un fallo entre las dos cosas dejaría datos financieros fuera del sistema sin ninguna constancia de que salieron.
+
+**No hay dirección de descarga reutilizable.** El archivo viaja en la respuesta de la acción. Una dirección con identificador se copia, se comparte y acaba entregando el libro a quien nadie autorizó, sin rastro de esa segunda entrega.
+
+---
+
+## ADR-0063 · Lo que se dejó de cobrar se informa, aunque no esté en el libro
+
+**Contexto.** Las becas y las exenciones no dejan asiento (ADR-0061): no hubo movimiento de dinero. Un reporte que solo sume el libro no las menciona nunca.
+
+**Decisión.** El reporte de rendición de cuentas informa aparte cuánto se dejó de cobrar, calculado comparando el precio vigente del concepto con lo que la persona pagó.
+
+**Por qué.** El esfuerzo social de la organización —a cuánta gente atendió sin cobrarle— es parte de lo que hay que rendir, y es justo lo que un libro de movimientos de caja no puede mostrar. Callarlo daría una imagen de la organización más pobre y menos verdadera que la real. Y ponerlo dentro del libro sería peor: inflaría los ingresos con dinero que nunca entró.
+
+**Presentado como lo que es.** No es un gasto ni un ingreso: es dinero que la organización decidió no cobrar, y la pantalla lo dice con esas palabras.

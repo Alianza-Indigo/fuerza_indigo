@@ -243,6 +243,18 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     sensitivity: 'CRITICAL',
     requiresReason: true,
   }),
+  /**
+   * Consultar el registro patrimonial es un permiso aparte de administrarlo.
+   *
+   * `asset.manage` exige motivo escrito, porque mover un bien del patrimonio lo
+   * exige. Usar ese mismo permiso para **leer** la lista obligaría a justificar
+   * por escrito cada consulta, que es lo que hace que nadie pueda contestar una
+   * pregunta por teléfono (misma razón que en `payment.read`).
+   *
+   * Es sensible y no normal porque el registro dice en manos de quién está cada
+   * bien, y eso es un dato de una persona identificable.
+   */
+  define('billing.asset.read', 'Consultar el registro patrimonial', { sensitivity: 'SENSITIVE' }),
   define('billing.report.export', 'Exportar reportes financieros', {
     sensitivity: 'CRITICAL',
     requiresReason: true,

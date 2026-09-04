@@ -3,9 +3,10 @@ import type { NextConfig } from 'next';
 /**
  * Cabeceras de seguridad del PRD §20 y `docs/SECURITY.md` §7.
  *
- * La política de contenido no admite `unsafe-inline` en scripts. Next.js inyecta
- * un `nonce` en sus propias etiquetas cuando la cabecera lo declara, de modo que
- * ningún script en línea sin nonce se ejecuta.
+ * Aquí van las que tienen el mismo valor en toda petición. La política de
+ * contenido **no** está aquí: necesita un `nonce` distinto cada vez y por eso se
+ * emite en `proxy.ts`. Este comentario describía una política con nonces que no
+ * existía en ninguna parte (`D-F1-016`).
  */
 const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },

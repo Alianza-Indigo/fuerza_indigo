@@ -973,7 +973,13 @@ stateDiagram-v2
 
 ## 17. Datos semilla (no sensibles)
 
-La semilla es idempotente, versionada y libre de datos personales reales (PRD §24 Fase 1): dos `LegalEntity`; el árbol `TerritorialUnit` nacional con entidades federativas; los 19 `Role` con su conjunto de `Permission`; el `NormativeRuleSet` inicial con los valores estatutarios de §9.3 y §9.4; los `MembershipType` de agremiado y afiliación honoraria; las `ConsentVersion` iniciales por entidad; las `RetentionPolicy` base; los `DocumentTemplate` mínimos; las tres `ToolDefinition` (NeuroPlan, ADIA, NEXO); el `SpecialtyCatalog` inicial de oficios, profesiones y disciplinas clínicas; y las filas de `Actor` del Superadmin raíz y de cada tipo de trabajo programado. Las personas de prueba solo existen en el entorno de pruebas, con datos manifiestamente ficticios.
+La semilla es idempotente, versionada y libre de datos personales reales (PRD §24 Fase 1).
+
+**Lo que siembra hoy, en la Fase 1:** dos `LegalEntity`; el árbol `TerritorialUnit` nacional con entidades federativas; los 19 `Role` con su conjunto de `Permission`; el `NormativeRuleSet` inicial **en borrador**, con los valores que el PRD §9.3 y §9.4 enuncian de forma expresa y con la lista declarada de los que remite a los estatutos; las `RetentionPolicy` base; las `NotificationTemplate` de la fase; el `SpecialtyCatalog` inicial de oficios, profesiones y disciplinas clínicas; y las filas de `Actor` del Superadmin raíz, de migración y de cada tipo de trabajo programado.
+
+**Lo que sembrará al habilitarse su módulo:** los `MembershipType` de agremiado y afiliación honoraria y las `ConsentVersion` iniciales por entidad, en la Fase 4; los `DocumentTemplate` mínimos, en la Fase 2; y las tres `ToolDefinition` —NeuroPlan, ADIA y NEXO—, en la Fase 7. Esta separación no es un detalle de redacción: la versión anterior de este apartado enumeraba todo junto como si ya existiera, y describía una semilla que el repositorio no tenía (`D-F1-018`).
+
+La semilla **no** crea ninguna persona ni ninguna cuenta. Las personas de prueba solo existen en el entorno de pruebas, con datos manifiestamente ficticios.
 
 ---
 

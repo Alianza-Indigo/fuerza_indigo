@@ -1,5 +1,6 @@
 import { db } from '@/platform/db/client';
 import { env } from '@/platform/config/env';
+import { mailerCapability } from '@/platform/mail/mailer';
 import { stuckJobs } from '@/platform/jobs/queue';
 import { GLOBAL_CHAIN, verifyAuditChain } from '@/platform/audit/audit-service';
 import { transaction } from '@/platform/db/unit-of-work';
@@ -103,14 +104,14 @@ export async function healthReport(): Promise<HealthReport> {
     }),
 
     timed('correo', () => {
-      const provider = env().EMAIL_PROVIDER;
-      if (provider === 'console') {
-        return Promise.resolve({
-          status: 'degraded' as const,
-          detail: 'adaptador de consola: los mensajes no salen del servidor',
-        });
-      }
-      return Promise.resolve({ status: 'ok' as const, detail: `adaptador ${provider} configurado` });
+      // Lo declara el propio adaptador. Antes esta comprobación tenía su lista
+      // aparte y daba por sano todo lo que no fuera la consola, incluido SMTP,
+      // que lanza al primer envío: el panel decía que el correo funcionaba
+      // mientras ninguna invitación salía (`D-F1-017`).
+      const { capability, detail } = mailerCapability();
+      const status =
+        capability === 'DELIVERS' ? ('ok' as const) : capability === 'LOGS_ONLY' ? ('degraded' as const) : ('failed' as const);
+      return Promise.resolve({ status, detail });
     }),
 
     timed('firma_de_credenciales', () => {

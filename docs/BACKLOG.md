@@ -117,6 +117,14 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F1-COR-009 | Reparar la puerta de calidad: el linter abortaba antes de revisar un solo archivo | Alta | Terminada |
 | F1-COR-010 | Corregir los falsos positivos del verificador en marcadores y en secretos versionados | Media | Terminada |
 | F1-COR-011 | Corregir la lectura de entrada del guion de arranque cuando no viene de un terminal | Media | Terminada |
+| F1-COR-012 | Un nombramiento sin entidad jurídica no alcanza ninguna, y ningún rol con permisos puede otorgarse sin ella | Bloqueante | Terminada |
+| F1-COR-013 | Retirar de la semilla los valores estatutarios inventados y sembrar el conjunto en borrador | Bloqueante | Terminada |
+| F1-COR-014 | Comparar la versión de la sesión raíz al resolverla y revocar la fila al cerrar sesión | Alta | Terminada |
+| F1-COR-015 | Agrupar el límite de intentos por huella estable y no por el correo enmascarado | Alta | Terminada |
+| F1-COR-016 | Emitir la política de contenido con nonce por petición | Media | Terminada |
+| F1-COR-017 | Ejecutar la semilla en el despliegue y derivar la salud del correo del propio adaptador | Media | Terminada |
+| F1-COR-018 | Alinear la documentación del entorno y de la semilla con lo que el código hace | Media | Terminada |
+| F1-COR-019 | Retirar de la vista el campo de periodo de cargo, que nada hace cumplir hasta la Fase 5 | Baja | Terminada |
 
 ---
 

@@ -7,11 +7,11 @@
 ## Situación actual
 
 - **Fase activa:** 1 — Infraestructura, datos, autenticación, permisos y Superadmin
-- **Estado:** `BLOCKED` — cierre revocado el 4 de septiembre de 2026 tras una revisión externa
+- **Estado:** `APPROVED` — reabierta el 4 de septiembre de 2026 tras una revisión externa, corregida y cerrada de nuevo
 - **Autorizada por la persona usuaria:** 3 de septiembre de 2026
 - **Fecha de inicio:** 3 de septiembre de 2026
 - **Fecha de cierre:** 3 de septiembre de 2026
-- **SHA del punto de control:** `ac23003`
+- **SHA del punto de control:** se registra en el commit de cierre definitivo
 - **Fase anterior:** 0 — `APPROVED`, cerrada en `7fecd6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 2 — Sistema de diseño, PWA, CMS y sitio público, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -37,7 +37,7 @@ Criterios específicos del PRD §24 Fase 1:
 |---|---|---|---|
 | 1 | Un Superadmin puede iniciar sesión sin existir como miembro | Cumplido | `tests/integration/superadmin.test.ts`: entra con las credenciales del entorno sobre una base con cero personas y cero cuentas |
 | 2 | Un administrador ordinario no puede asignarse permisos superiores | Cumplido | `tests/integration/role-assignment.test.ts`: los dos controles —autonombramiento y no elevación— probados en negativo, sin excepción por tipo de actor |
-| 3 | El aislamiento por entidad y territorio funciona en consultas y mutaciones | Cumplido | `tests/integration/isolation.test.ts`: el visor recorta en la consulta y no al pintar; pedir la entidad ajena por filtro tampoco la devuelve |
+| 3 | El aislamiento por entidad y territorio funciona en consultas y mutaciones | Cumplido | `tests/integration/isolation.test.ts` y `role-assignment.test.ts`: el visor recorta en la consulta y no al pintar; pedir la entidad ajena por filtro tampoco la devuelve; y un nombramiento sin entidad no alcanza ninguna, que es el defecto por el que este criterio se declaró cumplido antes de tiempo (`D-F1-012`) |
 | 4 | Un archivo privado no puede abrirse mediante su URL persistente sin autorización | Cumplido | `tests/integration/file-access.test.ts`: el canje reevalúa la política, de modo que revocar un nombramiento invalida un pase ya emitido |
 | 5 | Las migraciones corren desde el repositorio sobre una base vacía | Cumplido | `tests/integration/migrations.test.ts` y `deployment.test.ts`: la base de todas las pruebas se construye con `prisma migrate deploy` sobre una base vacía |
 | 6 | No existe ninguna dependencia del proveedor prohibido | Cumplido | Control `C-REPO-03`: cero coincidencias fuera del propio control de cumplimiento |
@@ -65,11 +65,11 @@ Las 38 tareas contratadas de la Fase 1 y las once correcciones de defectos halla
 
 | Nivel | Archivos | Casos | Resultado |
 |---|---|---|---|
-| Unitarias | 7 | 123 | En verde |
-| Integración contra PostgreSQL real | 10 | 135 | En verde |
-| **Total** | **17** | **258** | **En verde** |
+| Unitarias | 7 | 135 | En verde |
+| Integración contra PostgreSQL real | 10 | 149 | En verde |
+| **Total** | **17** | **284** | **En verde** |
 
-Controles del verificador de fase: **28 aprobados, 0 fallidos, 2 no aplicables**.
+Controles del verificador de fase: **31 aprobados, 0 fallidos, 2 no aplicables**.
 
 Siete de las trece pruebas negativas obligatorias de [`PERMISSIONS.md`](PERMISSIONS.md) §9 están escritas y en verde: las números 1, 2, 3, 9, 10, 11 y 13. Las seis restantes —compartimento clínico de extremo a extremo, organización CENI ajena, consentimiento ausente, afiliación honoraria y voto, y nombramiento vencido sobre `OfficeTerm`— dependen de entidades que las fases 5 a 9 introducen; sus mecanismos sí están probados hoy en el motor de decisión, en `tests/unit/authz/`.
 
@@ -92,6 +92,21 @@ Ninguno. Los once defectos hallados durante la construcción se corrigieron dent
 | D-F1-009 | Alta | `npm run lint` abortaba antes de revisar un solo archivo, de modo que la puerta de calidad estaba en verde sin haber revisado nada | Corregido en `F1-COR-009` (ADR-0031). Reveló 23 defectos reales |
 | D-F1-010 | Media | El verificador daba falsos positivos con la palabra española «TODO» y con un `.env.local` que git nunca vio | Corregido en `F1-COR-010` |
 | D-F1-011 | Media | El guion de arranque perdía la entrada cuando no venía de un terminal | Corregido en `F1-COR-011` |
+
+### Segunda tanda: defectos de la revisión externa del 4 de septiembre
+
+El cierre anterior fue revocado. Los dos primeros invalidaban criterios de aceptación que yo había declarado cumplidos.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+| D-F1-012 | Bloqueante | El motor convertía un nombramiento sin entidad jurídica en alcance a **todas**, lo contrario de lo que `PERMISSIONS.md` §6 promete. El guion de arranque creaba así la primera Secretaría Ejecutiva, de modo que quedaba con acceso transversal a las dos personas morales. Ninguna prueba lo detectaba porque las fixtures traían ese caso por omisión | Corregido en `F1-COR-012` (ADR-0038). Control `C-F1-08` y pruebas negativas propias |
+| D-F1-013 | Bloqueante | La semilla inventaba cuatro valores estatutarios —días de convocatoria, porcentaje de firmas, reelección— y los atribuía a secciones del PRD que los remiten a los estatutos; y declaraba la versión en vigor desde una fecha igualmente inventada | Corregido en `F1-COR-013` (ADR-0040). Control `C-F1-09` |
+| D-F1-014 | Alta | Rotar `SUPERADMIN_SESSION_VERSION` no invalidaba nada, y cerrar la sesión raíz solo borraba la cookie: un testigo copiado seguía sirviendo | Corregido en `F1-COR-014`. Probado en `superadmin.test.ts` |
+| D-F1-015 | Alta | El límite de intentos agrupaba por el correo enmascarado, que no es inyectivo: los fallos contra una cuenta bloqueaban otra | Corregido en `F1-COR-015` (ADR-0039) |
+| D-F1-016 | Media | `SECURITY.md` declaraba una política de contenido que ninguna ruta emitía, y un comentario en la configuración la describía con nonces | Corregido en `F1-COR-016`. Control `C-F1-10`, verificado contra el servidor en ejecución |
+| D-F1-017 | Media | La salud daba por sano el adaptador SMTP, que lanza al primer envío; y el despliegue migraba sin sembrar, dejando una instalación nueva sin roles ni permisos | Corregido en `F1-COR-017`. Control `C-F1-10` |
+| D-F1-018 | Media | `DATA_MODEL.md` §17 enumeraba como sembrados tipos de membresía, consentimientos, plantillas y herramientas que la semilla no crea; `ENVIRONMENT.md` decía que `AUTH_SECRET` firma las sesiones, cuando solo seudonimiza el origen | Corregido en `F1-COR-018` |
+| D-F1-019 | Baja | `requiresOfficeTerm` viajaba a la vista sin que nada lo hiciera cumplir: `OfficeTerm` es entidad de la Fase 5 | Corregido en `F1-COR-019` |
 
 ---
 
@@ -116,7 +131,7 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de l
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
 |---|---|---|---|---|
 | 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | — | `BLOCKED` | cierre `ac23003` revocado |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | cierre `ac23003` revocado; cierre definitivo abajo |
 | 2 a 12 | — | — | No iniciadas | — |
 
 ---

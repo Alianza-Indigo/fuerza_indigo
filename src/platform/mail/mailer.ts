@@ -26,6 +26,17 @@ export interface SendMailResult {
 
 export interface MailerPort {
   readonly name: string;
+  /**
+   * Qué puede hacer este adaptador de verdad.
+   *
+   * Lo declara el propio adaptador y lo lee la verificación de salud. Antes la
+   * salud tenía su propia lista y daba por sano cualquier proveedor que no fuera
+   * la consola, incluido el de SMTP, que lanza al primer envío: el panel decía
+   * «adaptador smtp configurado» mientras ninguna invitación salía (`D-F1-017`).
+   */
+  readonly capability: 'DELIVERS' | 'LOGS_ONLY' | 'UNAVAILABLE';
+  /** Motivo, cuando no entrega. Se muestra en el panel de salud. */
+  readonly capabilityDetail: string;
   send(input: { to: string; subject: string; body: string; correlationId: string }): Promise<{ providerMessageId: string | null }>;
 }
 
@@ -38,6 +49,8 @@ export interface MailerPort {
  * No escribe el cuerpo, que puede contener enlaces de un solo uso.
  */
 const consoleAdapter: MailerPort = {
+  capability: 'LOGS_ONLY',
+  capabilityDetail: 'adaptador de consola: los mensajes se registran y no salen del servidor',
   name: 'console',
   send: ({ to, subject, correlationId }) => {
     logger.info('Correo no enviado (adaptador de consola)', {
@@ -51,6 +64,8 @@ const consoleAdapter: MailerPort = {
 
 const resendAdapter: MailerPort = {
   name: 'resend',
+  capability: 'DELIVERS',
+  capabilityDetail: 'adaptador Resend configurado',
   send: async ({ to, subject, body, correlationId }) => {
     const config = env();
     const response = await fetch('https://api.resend.com/emails', {
@@ -73,6 +88,9 @@ const resendAdapter: MailerPort = {
 
 const smtpAdapter: MailerPort = {
   name: 'smtp',
+  capability: 'UNAVAILABLE',
+  capabilityDetail:
+    'el adaptador SMTP no está implementado: ningún mensaje saldrá. Use EMAIL_PROVIDER=resend o console.',
   send: () => {
     // El adaptador SMTP institucional se configura cuando la organización decida
     // usar su propio servidor. Declararlo sin implementarlo sería un botón sin
@@ -95,6 +113,12 @@ function adapter(): MailerPort {
 }
 
 let override: MailerPort | null = null;
+
+/** Lo que el adaptador vigente puede hacer. Lo consulta la verificación de salud. */
+export function mailerCapability(): { capability: MailerPort['capability']; detail: string; name: string } {
+  const port = override ?? adapter();
+  return { capability: port.capability, detail: port.capabilityDetail, name: port.name };
+}
 
 /** Solo para pruebas: captura los mensajes sin salida real. */
 export function setMailerForTests(port: MailerPort | null): void {

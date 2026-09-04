@@ -434,3 +434,39 @@ La aplicación se conecta durante las pruebas con el rol **sin** privilegios de 
 **Contexto.** El límite de intentos omitía el filtro cuando la petición no traía origen identificable. El recuento pasaba entonces a abarcar los fallos de **todo** el sistema: bastaba un atacante sin IP reconocible para agotar el cupo y dejar fuera a las personas legítimas. Una medida contra el abuso convertida en el abuso mismo.
 
 **Decisión.** Un discriminante ausente se cuenta como el valor nulo y agrupa los orígenes desconocidos entre sí, que es un cubo acotado y separado del de cada origen conocido. Un recuento sin ningún discriminante **lanza** en vez de contar todo: es un error de programación, y fallar ruidosamente es preferible a aplicar un límite global sin que nadie lo pretendiera.
+
+---
+
+## ADR-0038 · Un alcance total se declara; nunca se hereda de un campo vacío
+
+**Contexto.** El motor de políticas convertía un nombramiento sin entidad jurídica en alcance a **todas** las entidades. [`PERMISSIONS.md`](PERMISSIONS.md) §6 decía desde el principio lo contrario: «un permiso sin entidad en el contexto no lee nada». Con dos personas morales separadas por diseño, y con el guion de arranque creando la primera Secretaría Ejecutiva sin entidad, la primera persona operadora quedaba con acceso transversal a las dos (defecto `D-F1-012`).
+
+Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` como valor por omisión: todas corrían con el caso defectuoso, y ninguna comprobaba qué debía ocurrir con él.
+
+**Decisión.** Un nombramiento sin entidad no alcanza ninguna. El alcance total sigue existiendo para el actor raíz y para los trabajos programados, pero se declara de forma explícita en su propia rama de `resolveGrants`, no por omisión de un campo. Al otorgar, un rol con permisos exige entidad jurídica, y uno de alcance `ORGANIZATION` exige además organización.
+
+**La asimetría con las organizaciones es deliberada.** Las dos entidades son personas morales distintas y ningún nombramiento debe cruzarlas por descuido. Las organizaciones viven **dentro** de una entidad, y hay cargos —la coordinación del CENI— cuya función es verlas todas. Ahí `null` sí significa «todas las de su entidad», porque la comprobación de entidad ya acotó antes. Lo que evita el descuido es que un rol de alcance `ORGANIZATION` no pueda nombrarse sin ella.
+
+**Principio que queda.** Un valor por omisión que amplía el acceso es un permiso que nadie concedió. Cuando la ausencia de un dato tenga que significar algo, que signifique lo restrictivo.
+
+---
+
+## ADR-0039 · La máscara es para mostrar; para agrupar hace falta una huella
+
+**Contexto.** El límite de intentos agrupaba por `subjectLabel`, que es el correo enmascarado. La máscara no es inyectiva: conserva las dos primeras letras, la última y el dominio, de modo que `pedro@dominio` y `pedrito@dominio` producen la misma. Dos personas distintas compartían cupo, y los intentos fallidos contra una cuenta bloqueaban otra, por accidente o a propósito (defecto `D-F1-015`).
+
+**Decisión.** El recuento se agrupa por `subjectKey`, una huella HMAC del correo normalizado con `AUTH_SECRET`. Agrupa sin colisionar y sin conservar el correo en claro. `subjectLabel` se queda para lo único que siempre debió hacer, que es mostrarse en la bitácora.
+
+**Principio que queda.** Un valor pensado para ser legible por una persona está pensado para perder información. Usarlo como clave hace que dos cosas distintas se traten como la misma, y en un control de seguridad eso se convierte en una vía de denegación de servicio contra terceros.
+
+---
+
+## ADR-0040 · Los valores normativos no se rellenan: se declaran ausentes
+
+**Contexto.** La semilla creaba el conjunto de reglas estatutarias con quince días de anticipación para la asamblea ordinaria, ocho para la extraordinaria, un treinta y tres por ciento de firmas para convocarla y la reelección permitida. Un comentario los atribuía a «los valores del PRD §9.3 y §9.4». El PRD no los contiene: dice «anticipación mínima de convocatoria **conforme a los estatutos vigentes**», «el **porcentaje estatutario** de agremiados» y «posibilidad de reelección **conforme a los estatutos vigentes**». Los cuatro estaban inventados, y citados como si tuvieran fuente. Además la versión se declaraba `IN_FORCE` desde el 1 de enero de 2026, una fecha de entrada en vigor que tampoco aportó nadie (defecto `D-F1-013`).
+
+**Decisión.** El conjunto se siembra en **borrador**, sin fecha de vigencia —que pasa a ser opcional en el modelo, porque un borrador no la tiene—, y contiene solo los valores que el PRD enuncia de forma expresa. Los que remite a los estatutos se enumeran en `_pendientesDeEstatutos`, con el motivo de cada ausencia.
+
+**Por qué enumerar y no omitir.** Un valor ausente en silencio se lee como un hueco y se rellena. Un valor ausente **declarado** dice qué falta y por qué, y obliga a que alguien con facultades cargue los estatutos antes de poner la versión en vigor.
+
+**Principio que queda, y es el más importante de esta fase.** Un número inventado en un sistema sindical no es un dato de relleno: es la regla con la que se convoca una asamblea y con la que se impugna. Cuando la fuente no dice un valor, el sistema no lo elige. Y una cita a una fuente es una afirmación comprobable: si se escribe «§9.4», ahí tiene que estar.

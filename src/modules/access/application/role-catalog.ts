@@ -15,12 +15,19 @@ import { maskEmail } from '@/platform/audit/audit-service';
  * que la pantalla y la decisión no pueden discrepar.
  */
 
+/**
+ * `requiresOfficeTerm` **no** viaja hasta aquí.
+ *
+ * El catálogo lo declara, pero nada lo hace cumplir: `OfficeTerm` es entidad de
+ * la Fase 5, y hasta que exista no hay periodo de cargo contra el que validar.
+ * Exponerlo en una vista lo convierte en un dato que alguien leerá como si se
+ * respetara. Vuelve cuando la Fase 5 lo haga valer (`D-F1-019`).
+ */
 export interface RoleOption {
   readonly code: string;
   readonly name: string;
   readonly description: string;
   readonly scopeKind: string;
-  readonly requiresOfficeTerm: boolean;
   readonly permissionCount: number;
 }
 
@@ -43,7 +50,6 @@ export async function assignableRoles(actor: ActorContext): Promise<UseCaseResul
       name: true,
       description: true,
       scopeKind: true,
-      requiresOfficeTerm: true,
       permissions: { select: { permission: { select: { code: true } } } },
     },
   });
@@ -55,7 +61,6 @@ export async function assignableRoles(actor: ActorContext): Promise<UseCaseResul
       name: rol.name,
       description: rol.description,
       scopeKind: rol.scopeKind,
-      requiresOfficeTerm: rol.requiresOfficeTerm,
       permissionCount: rol.permissions.length,
     }));
 

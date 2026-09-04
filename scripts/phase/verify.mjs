@@ -974,7 +974,140 @@ const CHECKS = [
         : ok(['Accesibilidad estructural verificada. La validación con motor de reglas es alcance de la Fase 2.']);
     },
   },
+  {
+    id: 'C-F1-08',
+    title: 'Fase 1: ningún alcance se concede por omisión de un campo',
+    phases: [1],
+    run() {
+      // El defecto `D-F1-012`. El motor convertía «sin entidad» en «todas las
+      // entidades», justo lo contrario de lo que la documentación prometía, y
+      // ninguna prueba lo desmentía porque las fixtures traían el caso
+      // defectuoso por omisión. Un alcance total legítimo existe; lo que no
+      // puede es ser el efecto secundario de un campo vacío.
+      const problems = [];
+
+      const motor = read('src/platform/authz/policy.ts');
+      if (motor === null) return fail(['No se encontró el motor de políticas.']);
+
+      if (/legalEntityId === null \? \('ALL'/.test(motor)) {
+        problems.push(
+          "policy.ts convierte un nombramiento sin entidad en alcance 'ALL'. Sin entidad no se alcanza ninguna (docs/PERMISSIONS.md §6).",
+        );
+      }
+
+      // Y el caso debe estar probado, no solo corregido.
+      const pruebas = walk()
+        .filter((file) => file.startsWith('tests/') && file.endsWith('.test.ts'))
+        .map((file) => read(file) ?? '')
+        .join('\n');
+      if (!/legalEntityId: null/.test(pruebas)) {
+        problems.push('Ninguna prueba ejercita el caso de un nombramiento sin entidad jurídica.');
+      }
+
+      // Un rol global con permisos es la vía por la que el defecto reaparece:
+      // se nombra sin entidad porque su alcance declara que no la necesita.
+      const semilla = read('prisma/seed/data/roles.ts') ?? '';
+      for (const match of semilla.matchAll(/code: '(\w+)',[\s\S]*?scopeKind: 'GLOBAL'[\s\S]*?permissions: \[([\s\S]*?)\]/g)) {
+        const permisos = (match[2] ?? '').split("'").length - 1;
+        if (permisos > 0) {
+          problems.push(`El rol ${match[1]} declara alcance GLOBAL y tiene permisos: no podría acotarse a una entidad.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Ningún alcance se concede por omitir un campo, y el caso está probado.']);
+    },
+  },
+  {
+    id: 'C-F1-09',
+    title: 'Fase 1: ningún valor normativo se inventa',
+    phases: [1],
+    run() {
+      // El defecto `D-F1-013`. La semilla traía días de convocatoria,
+      // porcentajes de firmas y la reelección permitida, atribuidos a secciones
+      // del PRD que no los contienen porque las remite a los estatutos. Un
+      // número inventado aquí es la regla con la que se convoca una asamblea.
+      const semilla = read('prisma/seed/index.ts');
+      if (semilla === null) return fail(['No se encontró la semilla.']);
+
+      const problems = [];
+
+      // La lista de pendientes nombra esas mismas claves a propósito, dentro de
+      // cadenas. Se retira antes de buscar, para que declarar una ausencia no se
+      // confunda con rellenarla.
+      const sinPendientes = semilla.replace(/_pendientesDeEstatutos:\s*\[[\s\S]*?\],/, '');
+
+      const remitidosAEstatutos = [
+        'assemblyNoticeDaysOrdinary',
+        'assemblyNoticeDaysExtraordinary',
+        'extraordinaryAssemblyPetitionPercent',
+        'reelectionAllowed',
+        'statuteAmendmentMajority',
+        'dissolutionMajority',
+      ];
+
+      for (const clave of remitidosAEstatutos) {
+        // Vale enumerarlo como pendiente; no vale asignarle un valor.
+        if (new RegExp(`\\b${clave}\\s*:`).test(sinPendientes)) {
+          problems.push(
+            `La semilla asigna un valor a "${clave}", que el PRD §9.3 y §9.4 remiten a los estatutos vigentes.`,
+          );
+        }
+      }
+
+      if (!/status: 'DRAFT'/.test(semilla)) {
+        problems.push('El conjunto de reglas estatutarias no se siembra en borrador.');
+      }
+      if (!/effectiveFrom: null/.test(semilla)) {
+        problems.push('El conjunto de reglas estatutarias declara una fecha de entrada en vigor que nadie ha aportado.');
+      }
+      if (!/_pendientesDeEstatutos/.test(semilla)) {
+        problems.push('Las ausencias normativas no están declaradas: quedarían como huecos silenciosos.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['La semilla normativa solo contiene lo que el PRD enuncia, y declara lo que falta.']);
+    },
+  },
+  {
+    id: 'C-F1-10',
+    title: 'Fase 1: lo que la documentación promete del entorno y de la semilla existe',
+    phases: [1],
+    run() {
+      const problems = [];
+
+      // La política de contenido no puede quedarse en la documentación.
+      const seguridad = read('docs/SECURITY.md') ?? '';
+      if (/Content-Security-Policy/.test(seguridad)) {
+        const emisores = ['proxy.ts', 'next.config.ts']
+          .map((file) => read(file) ?? '')
+          .join('\n');
+        if (!/Content-Security-Policy/.test(emisores)) {
+          problems.push('docs/SECURITY.md declara una política de contenido que ninguna ruta emite (`D-F1-016`).');
+        }
+      }
+
+      // El despliegue tiene que dejar el sistema operable, no solo migrado.
+      const despliegue = read('vercel.json') ?? '';
+      if (/migrate deploy/.test(despliegue) && !/db seed/.test(despliegue)) {
+        problems.push('El despliegue migra pero no siembra: una instalación nueva quedaría sin roles ni permisos.');
+      }
+
+      // La salud del correo la declara el adaptador, no una lista aparte.
+      const salud = read('src/platform/health/health-check.ts') ?? '';
+      if (/EMAIL_PROVIDER/.test(salud) && !/mailerCapability/.test(salud)) {
+        problems.push('La verificación de salud del correo no consulta al adaptador y puede dar por sano uno que no entrega.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Lo que la documentación promete del entorno y del despliegue está implementado.']);
+    },
+  },
 ];
+
 
 
 

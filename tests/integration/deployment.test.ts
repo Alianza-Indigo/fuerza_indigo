@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma-client/client';
 import { healthReport } from '@/platform/health';
+import { resetEnvCache } from '@/platform/config/env';
 import { PERMISSIONS } from '@/platform/authz/permissions';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 
@@ -182,6 +183,36 @@ describe('la verificación de salud', () => {
 
     const baseDatos = informe.checks.find((control) => control.name.includes('base'));
     expect(baseDatos?.status).toBe('ok');
+  }, 120_000);
+
+  it('no da por sano un adaptador de correo que no entrega', async () => {
+    // El defecto `D-F1-017`: la salud daba por bueno cualquier proveedor que no
+    // fuera la consola, incluido SMTP, cuyo adaptador lanza al primer envío.
+    base = await createTestDatabase('salud_correo');
+
+    const anterior = process.env['EMAIL_PROVIDER'];
+    try {
+      process.env['EMAIL_PROVIDER'] = 'smtp';
+      resetEnvCache();
+
+      const informe = await healthReport();
+      const correo = informe.checks.find((control) => control.name === 'correo');
+      expect(correo?.status).toBe('failed');
+      expect(correo?.detail).toContain('no está implementado');
+      expect(informe.status).toBe('failed');
+    } finally {
+      if (anterior === undefined) delete process.env['EMAIL_PROVIDER'];
+      else process.env['EMAIL_PROVIDER'] = anterior;
+      resetEnvCache();
+    }
+  }, 120_000);
+
+  it('la consola queda como degradada, que es lo que es', async () => {
+    base = await createTestDatabase('salud_consola');
+    const informe = await healthReport();
+    const correo = informe.checks.find((control) => control.name === 'correo');
+    expect(correo?.status).toBe('degraded');
+    expect(correo?.detail).toContain('no salen del servidor');
   }, 120_000);
 });
 

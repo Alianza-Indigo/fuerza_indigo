@@ -21,7 +21,7 @@ Leyenda de obligatoriedad: **Obl.** obligatoria en ese ambiente · **Opc.** opci
 | Variable | Propósito | Formato | Desarrollo | Vista previa | Producción |
 |---|---|---|---|---|---|
 | `APP_URL` | URL absoluta y canónica de la instancia. Base de los enlaces de correo, los retornos de Stripe, las URL de verificación y los metadatos sociales. | URL sin barra final, p. ej. `https://fuerzaindigo.lat` | Obl. | Obl. | Obl. |
-| `AUTH_SECRET` | Firma de sesiones, testigos de lanzamiento de herramientas y tokens internos de corta duración. | 32 bytes aleatorios en base64url | Obl. | Obl. | Obl. |
+| `AUTH_SECRET` | Seudonimización de direcciones de origen, huella de agrupación del límite de intentos y firma de testigos internos de corta duración. **No** firma las sesiones: son testigos opacos aleatorios de los que la base guarda solo el resumen (ADR-0003). | 32 bytes aleatorios en base64url | Obl. | Obl. | Obl. |
 
 Generación de `AUTH_SECRET`:
 
@@ -130,7 +130,7 @@ Sin el identificador de clave, una sola rotación invalidaría de golpe todas la
 
 | Variable | Frecuencia sugerida | Efecto inmediato de la rotación |
 |---|---|---|
-| `AUTH_SECRET` | Ante sospecha de compromiso | Cierra todas las sesiones y anula los enlaces firmados en vuelo |
+| `AUTH_SECRET` | Ante sospecha de compromiso | Anula los enlaces firmados en vuelo y reinicia los recuentos del límite de intentos. **No** cierra las sesiones abiertas: como no las firma, rotarlo no las invalida. Para cerrarlas hay que revocarlas, y para las del actor raíz, subir `SUPERADMIN_SESSION_VERSION` |
 | `SUPERADMIN_PASSWORD_HASH` | Al cambiar la persona responsable o ante sospecha | Invalida la contraseña anterior |
 | `SUPERADMIN_SESSION_VERSION` | Ante sospecha o al concluir una intervención de soporte | Cierra todas las sesiones raíz |
 | `DATABASE_URL` / `DIRECT_URL` | Según política del proveedor | Requiere redespliegue |

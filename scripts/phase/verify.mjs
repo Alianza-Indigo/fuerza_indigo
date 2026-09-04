@@ -1368,6 +1368,287 @@ const CHECKS = [
         : ok(['Los umbrales se ejecutan en cada verificación y la medición no guarda nada personal.']);
     },
   },
+  {
+    id: 'C-F3-01',
+    title: 'Fase 3: ningún acceso se activa por la página de retorno del navegador',
+    phases: [3],
+    run() {
+      // El criterio 1 de la fase, y el que más caro sale ignorar: la dirección
+      // de retorno la abre cualquiera, sin haber pagado. Si el cobro se
+      // confirmara ahí, bastaría con visitarla para darse por pagado.
+      const problems = [];
+
+      const cobro = read('src/modules/billing/application/checkout.ts') ?? '';
+      if (!/REQUIRES_PAYMENT/.test(cobro)) {
+        problems.push('El cobro no nace sin confirmar: no se encuentra el estado inicial en `checkout.ts`.');
+      }
+
+      const retorno = read('app/(portal)/mi/pagos/[publicId]/page.tsx') ?? '';
+      if (retorno === '') {
+        problems.push('No existe la pantalla de retorno del cobro.');
+      } else {
+        if (/status:\s*'SUCCEEDED'/.test(retorno) || /paidAt/.test(retorno.replace(/pago\.data\.paidAt/g, ''))) {
+          problems.push('La pantalla de retorno escribe el estado del cobro: eso lo decide el webhook.');
+        }
+        if (!/confirmando/i.test(retorno)) {
+          problems.push('La pantalla de retorno no dice que el pago se está confirmando.');
+        }
+      }
+
+      // Y la comprobación de fondo: solo el manejador de webhooks mueve un
+      // pago a pagado.
+      //
+      // Se busca una **escritura sobre `payment`** que ponga ese estado, no la
+      // palabra suelta: la primera versión de este control acusaba a la cola de
+      // trabajos, donde `SUCCEEDED` es el estado de un trabajo, y a la
+      // conciliación, donde aparece dentro de un filtro de consulta. Un control
+      // que acusa de más enseña a ignorarlo (`D-F3-013`).
+      const escriben = walk().filter((file) => {
+        if (!/^(app|src)\//.test(file) || !/\.tsx?$/.test(file)) return false;
+        const contenido = read(file) ?? '';
+        return /\bpayment\.(update|updateMany|create)\(\s*\{[\s\S]{0,800}?status:\s*'SUCCEEDED'/.test(contenido);
+      });
+      const permitidos = [
+        'src/modules/billing/application/webhook-processing.ts',
+        'src/modules/billing/application/manual-payments.ts',
+        'src/modules/billing/application/checkout.ts',
+        'src/modules/billing/application/refunds.ts',
+      ];
+      for (const file of escriben) {
+        if (!permitidos.includes(file)) {
+          problems.push(`${file} marca un cobro como pagado, y eso solo lo deciden el webhook o la aprobación manual.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['El cobro nace sin confirmar y solo el webhook firmado o una aprobación con doble control lo mueven.']);
+    },
+  },
+  {
+    id: 'C-F3-02',
+    title: 'Fase 3: repetir un webhook no duplica movimientos',
+    phases: [3],
+    run() {
+      const problems = [];
+
+      const esquema = read('prisma/schema/finance.prisma') ?? '';
+      if (!/stripeEventId\s+String\s+@unique/.test(esquema)) {
+        problems.push('El identificador del evento de la pasarela no es único: un reenvío se guardaría dos veces.');
+      }
+      if (!/idempotencyKey\s+String\s+@unique/.test(esquema)) {
+        problems.push('Los cobros no tienen clave de idempotencia única: un reenvío podría duplicar un ingreso.');
+      }
+
+      const proceso = read('src/modules/billing/application/webhook-processing.ts') ?? '';
+      if (!/stripe:invoice:/.test(proceso)) {
+        problems.push('El ingreso de una renovación no se ancla al documento de la pasarela.');
+      }
+      if (!/updateMany/.test(proceso)) {
+        problems.push('Las transiciones de estado no son condicionales: un evento viejo podría pisar uno nuevo.');
+      }
+
+      const pruebas = read('tests/integration/billing-webhooks.test.ts') ?? '';
+      if (!/evento repetido/.test(pruebas)) {
+        problems.push('No hay prueba del evento repetido, que el PRD §24 contrata.');
+      }
+      if (!/fuera de orden/.test(pruebas)) {
+        problems.push('No hay prueba del evento fuera de orden, que el PRD §24 contrata.');
+      }
+      if (!/cuenta cruzada/.test(pruebas)) {
+        problems.push('No hay prueba de la cuenta cruzada, que el PRD §24 contrata.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['El reenvío no duplica: identificador único, clave de idempotencia y transiciones condicionales.']);
+    },
+  },
+  {
+    id: 'C-F3-03',
+    title: 'Fase 3: las dos entidades se cobran y se concilian por separado',
+    phases: [3],
+    run() {
+      const problems = [];
+
+      const esquema = read('prisma/schema/finance.prisma') ?? '';
+      // Las ocho tablas de dinero llevan entidad receptora obligatoria.
+      for (const modelo of ['Payment', 'LedgerEntry', 'Reconciliation', 'AssetRegister', 'BillingAccount']) {
+        const bloque = new RegExp(`model ${modelo}\\s*\\{[^}]*\\}`, 's').exec(esquema)?.[0] ?? '';
+        if (!/legalEntityId\s+String\s+@db\.Uuid/.test(bloque)) {
+          problems.push(`El modelo ${modelo} no exige entidad jurídica: dos personas morales acabarían mezcladas.`);
+        }
+      }
+
+      const cuentas = read('src/platform/payments/accounts.ts') ?? '';
+      if (!/FUERZA_INDIGO: 'FUERZA'/.test(cuentas) || !/ALIANZA_INDIGO: 'ALIANZA'/.test(cuentas)) {
+        problems.push('La correspondencia entre entidad y cuenta de cobro no está declarada en un solo sitio.');
+      }
+      if (!/null/.test(cuentas)) {
+        problems.push('Una entidad sin cuenta asignada no devuelve nulo: se supondría una cuenta.');
+      }
+
+      // Una dirección de webhook por cuenta, y no una compartida.
+      const ruta = walk().find((file) => /app\/api\/v1\/webhooks\/stripe\/.*route\.ts$/.test(file));
+      if (ruta === undefined) problems.push('No existe la ruta de webhooks por cuenta.');
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Cada entidad cobra por su cuenta, con su secreto y su dirección, y el modelo lo conserva en cada movimiento.']);
+    },
+  },
+  {
+    id: 'C-F3-04',
+    title: 'Fase 3: ningún importe es de coma flotante ni vive en una pantalla',
+    phases: [3],
+    run() {
+      const problems = [];
+
+      const esquema = read('prisma/schema/finance.prisma') ?? '';
+      for (const linea of esquema.split('\n')) {
+        if (/(amountMinor|ValueMinor|TotalMinor|differenceMinor)/.test(linea) && !/BigInt/.test(linea)) {
+          if (!/\/\/\//.test(linea)) {
+            problems.push(`Una columna de dinero no es entera: ${linea.trim()}`);
+          }
+        }
+        if (/\b(Float|Decimal)\b/.test(linea) && !/\/\/\//.test(linea)) {
+          problems.push(`El esquema financiero declara un tipo de coma flotante: ${linea.trim()}`);
+        }
+      }
+
+      // Ningún importe sembrado: una cuota la acuerda la organización.
+      const semilla = read('prisma/seed/index.ts') ?? '';
+      if (/catalogPrice\.(create|upsert)/.test(semilla)) {
+        problems.push('La semilla crea precios: una cuota sindical es una cantidad que acuerda la organización.');
+      }
+
+      // La conversión de pesos a centavos ocurre en un solo sitio.
+      //
+      // Se mira la **línea**, no el archivo, y solo cuando en ella hay dinero:
+      // la primera versión acusaba al indicador de progreso, que multiplica por
+      // cien para sacar un porcentaje (`D-F3-013`).
+      for (const file of walk()) {
+        if (!/^(app|src)\//.test(file) || !/\.tsx?$/.test(file)) continue;
+        if (/i18n\/format\.ts$/.test(file)) continue;
+
+        for (const linea of (read(file) ?? '').split('\n')) {
+          if (!/[*/]\s*100\b/.test(linea)) continue;
+          if (!/Minor|centavo|amount|importe/i.test(linea)) continue;
+          problems.push(`${file} convierte dinero por cien fuera de \`platform/i18n\`: ${linea.trim()}`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Todo importe es entero en unidades menores, ninguno viene sembrado y la conversión vive en un solo sitio.']);
+    },
+  },
+  {
+    id: 'C-F3-05',
+    title: 'Fase 3: lo que mueve dinero exige motivo, doble control y auditoría',
+    phases: [3],
+    run() {
+      const problems = [];
+
+      const permisos = read('src/platform/authz/permissions.ts') ?? '';
+      // Registrar y aprobar son dos permisos; pedir y aprobar también.
+      for (const par of [
+        ['billing.payment.register_manual', 'billing.payment.approve_manual'],
+        ['billing.refund.request', 'billing.refund.approve'],
+      ]) {
+        for (const permiso of par) {
+          if (!permisos.includes(`'${permiso}'`)) problems.push(`Falta el permiso ${permiso}.`);
+        }
+      }
+
+      // Y ninguna cartera de la semilla tiene los dos de un par.
+      const roles = read('prisma/seed/data/roles.ts') ?? '';
+      for (const bloque of roles.split('code: ').slice(1)) {
+        const nombre = /'([A-Z_]+)'/.exec(bloque)?.[1] ?? 'desconocido';
+        const cuerpo = bloque.split('},')[0] ?? '';
+        if (cuerpo.includes("'billing.payment.register_manual'") && cuerpo.includes("'billing.payment.approve_manual'")) {
+          problems.push(`El rol ${nombre} registra y aprueba pagos manuales: el doble control sería una casilla.`);
+        }
+        if (cuerpo.includes("'billing.refund.request'") && cuerpo.includes("'billing.refund.approve'")) {
+          problems.push(`El rol ${nombre} pide y aprueba devoluciones.`);
+        }
+      }
+
+      // La comprobación por persona, que es lo que protege cuando alguien
+      // acumula las dos carteras.
+      //
+      // Se busca el **motivo interno** de la denegación y no la comparación,
+      // porque la comparación también aparece en el listado —para no ofrecerle
+      // a alguien un botón que le van a rechazar— y el control pasaba mirando
+      // esa línea aunque se hubiera borrado la que de verdad impide el acto
+      // (`D-F3-013`). El motivo interno solo existe donde se deniega.
+      const manuales = read('src/modules/billing/application/manual-payments.ts') ?? '';
+      if (!/doble control: quien registra un pago manual no puede aprobarlo/.test(manuales)) {
+        problems.push('Quien registra un pago manual podría aprobarlo si acumulara los dos permisos.');
+      }
+      if (!/doble control: quien registra un pago manual no puede resolverlo/.test(manuales)) {
+        problems.push('Quien registra un pago manual podría rechazarlo si acumulara los dos permisos.');
+      }
+      const devoluciones = read('src/modules/billing/application/refunds.ts') ?? '';
+      if (!/doble control: quien pide una devolución no puede aprobarla/.test(devoluciones)) {
+        problems.push('Quien pide una devolución podría aprobarla si acumulara los dos permisos.');
+      }
+      if (!/doble control: quien pide una devolución no puede resolverla/.test(devoluciones)) {
+        problems.push('Quien pide una devolución podría rechazarla si acumulara los dos permisos.');
+      }
+
+      // Un ajuste del libro exige motivo escrito.
+      const libro = read('src/modules/billing/application/ledger.ts') ?? '';
+      if (!/reason:\s*z\s*\n?\s*\.string\(\)[\s\S]{0,200}min\(15/.test(libro) && !/min\(15/.test(libro)) {
+        problems.push('Un ajuste del libro no exige motivo escrito.');
+      }
+
+      // Y el libro no se puede editar ni borrar desde la aplicación.
+      const migraciones = walk().filter((file) => /^prisma\/migrations\/.*\/migration\.sql$/.test(file));
+      const sql = migraciones.map((file) => read(file) ?? '').join('\n');
+      if (!/REVOKE\s+UPDATE,\s*DELETE,\s*TRUNCATE\s+ON\s+TABLE\s+"ledger_entry"/.test(sql)) {
+        problems.push('Las migraciones no revocan la edición del libro auxiliar.');
+      }
+      if (!/REVOKE\s+UPDATE,\s*DELETE,\s*TRUNCATE\s+ON\s+TABLE\s+"asset_movement"/.test(sql)) {
+        problems.push('Las migraciones no revocan la edición de los movimientos patrimoniales.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Registrar y aprobar están separados por permiso y por persona, y el libro no se edita: lo impide el motor.']);
+    },
+  },
+  {
+    id: 'C-F3-06',
+    title: 'Fase 3: los cinco estados de un pago están probados de extremo a extremo',
+    phases: [3],
+    run() {
+      const pruebas = read('tests/integration/billing-payment-states.test.ts') ?? '';
+      if (pruebas === '') return fail(['No existe la suite de estados de pago que el PRD §24 contrata.']);
+
+      const problems = [];
+      for (const [estado, etiqueta] of [
+        ['pendiente', 'pendiente'],
+        ['exitoso', 'exitoso'],
+        ['fallido', 'fallido'],
+        ['reembolsado', 'reembolsado'],
+        ['disputado', 'disputado'],
+      ]) {
+        if (!new RegExp(`describe\\('${estado}`).test(pruebas)) {
+          problems.push(`Falta el escenario de pago ${etiqueta}.`);
+        }
+      }
+
+      // No basta con que el estado se guarde: la persona tiene que verlo.
+      if (!/comoLoVeLaPersona/.test(pruebas)) {
+        problems.push('Los escenarios no comprueban lo que la persona ve de su propio cobro.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Los cinco estados se recorren enteros y se comprueba lo que la persona ve de cada uno.']);
+    },
+  },
 ];
 
 

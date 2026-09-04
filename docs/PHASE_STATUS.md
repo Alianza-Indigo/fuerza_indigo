@@ -7,10 +7,11 @@
 ## Situación actual
 
 - **Fase activa:** 3 — Catálogo financiero, Stripe y libro auxiliar
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `IN_PROGRESS` — la construcción está terminada y la puerta pasa entera; la fase **no se declara aprobada** hasta que la persona usuaria lo autorice expresamente (PRD §23.3)
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
-- **SHA del punto de control:** se registra en el cierre
+- **Fecha de término de la construcción:** 4 de septiembre de 2026
+- **SHA del punto de control:** se registra al aprobarse
 - **Fase anterior:** 2 — `APPROVED`, cerrada en `0fedf6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 4 — Afiliación, padrones, directorios y credenciales, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -32,30 +33,54 @@ Criterios específicos del PRD §24 Fase 3:
 
 | # | Criterio | Estado |
 |---|---|---|
-| 1 | Ningún acceso se activa por la página de retorno de Stripe | En curso |
-| 2 | Repetir un webhook no duplica movimientos | En curso |
-| 3 | Fuerza Índigo y Alianza Índigo pueden conciliarse por separado | En curso |
-| 4 | Los importes usan moneda y unidades menores | En curso |
-| 5 | Los ajustes requieren motivo, actor y auditoría | En curso |
-| 6 | Los escenarios de pago exitoso, fallido, pendiente, reembolsado y disputado están probados | En curso |
+| 1 | Ningún acceso se activa por la página de retorno de Stripe | Cumplido — `C-F3-01` |
+| 2 | Repetir un webhook no duplica movimientos | Cumplido — `C-F3-02` |
+| 3 | Fuerza Índigo y Alianza Índigo pueden conciliarse por separado | Cumplido — `C-F3-03` |
+| 4 | Los importes usan moneda y unidades menores | Cumplido — `C-F3-04` |
+| 5 | Los ajustes requieren motivo, actor y auditoría | Cumplido — `C-F3-05` |
+| 6 | Los escenarios de pago exitoso, fallido, pendiente, reembolsado y disputado están probados | Cumplido — `C-F3-06` |
 
 ---
 
 ## Tareas completadas
 
-En curso. El detalle vive en la sección **Fase 3** de [`BACKLOG.md`](BACKLOG.md).
+Las veintidós tareas de la Fase 3 del backlog, de `F3-DAT-001` a `F3-DOC-001`. El detalle vive en la sección **Fase 3** de [`BACKLOG.md`](BACKLOG.md).
 
 ---
 
 ## Evidencias
 
-Se registran en el cierre.
+| Qué se afirma | Cómo se comprobó |
+|---|---|
+| El libro auxiliar no se puede editar ni borrar | Dos pruebas de integración lo intentan con el cliente de la aplicación y reciben `permission denied` del motor |
+| Los movimientos patrimoniales tampoco | Otras dos pruebas, del mismo modo |
+| Un asiento no se revierte dos veces | El segundo intento choca contra un índice único y devuelve conflicto |
+| Un reenvío de la pasarela no duplica el ingreso | Dos eventos distintos con la misma factura dejan un solo cobro, por su clave de idempotencia |
+| Volver del navegador no confirma nada | El cobro se queda sin confirmar y sin fecha de pago tras el retorno; lo mueve solo el webhook firmado |
+| La firma se verifica de verdad | Comprobado contra un servidor levantado: firma correcta aceptada, y rechazadas la ausente, la de la otra cuenta, la de marca de tiempo vieja y la de un cuerpo alterado en un byte |
+| Quien registra un pago manual no puede aprobarlo | Una prueba le da los dos roles a la misma persona y comprueba que sigue sin poder |
+| Una beca gana al descuento y no se acumulan | Con un descuento del diez por ciento y una beca del sesenta, se cobra el cuarenta |
+| El punto es siempre separador decimal | «150.005» se rechaza en vez de leerse como ciento cincuenta mil cinco |
+| Un importe grande no pierde precisión | Una prueba guarda y recupera un importe mayor que el entero seguro de JavaScript, y falla si se reintroduce el paso por coma flotante |
+| La política de contenido deja pagar | Comprobado en un navegador real: con `form-action 'self'` a secas, la redirección a la pasarela no llega a salir |
+| Cada plantilla que el código pide está sembrada | Una prueba recorre el código productivo buscando los códigos y exige que existan publicados |
+| Los seis controles de la fase miden algo | Cada uno se rompió a propósito y se comprobó que falla |
 
 ---
 
 ## Pruebas y resultados
 
-Se registran en el cierre.
+| Puerta | Resultado |
+|---|---|
+| Verificación de fase | 44 controles aprobados, 0 fallidos, 1 no aplicable |
+| Tipos y lint | Sin errores |
+| Pruebas unitarias | 312 |
+| Pruebas de integración | 354, contra PostgreSQL real |
+| Extremo a extremo, accesibilidad y rendimiento | 148 en móvil y escritorio |
+
+Lo que las pruebas de esta fase comprueban contra el motor y no contra el código: que el libro auxiliar y los movimientos patrimoniales **no se puedan editar ni borrar** desde la aplicación, que un asiento no se pueda revertir dos veces, y que un reenvío de la pasarela no cree un segundo ingreso.
+
+Los cinco estados de un pago —pendiente, exitoso, fallido, reembolsado y disputado— se recorren enteros, desde abrir el cobro hasta lo que la persona ve en su pantalla.
 
 ---
 
@@ -75,6 +100,7 @@ Se registran en el cierre.
 | `D-F3-010` | Alta | Con `form-action 'self'` a secas, Chromium bloquea la redirección a la pasarela: aplica la directiva a toda la cadena de redirección, no solo al primer destino. Quien intentara pagar se quedaría mirando una página que no hace nada, sin ningún error a la vista | Corregido enumerando los dos servidores de la pasarela. Comprobado en un navegador de verdad —con la directiva estrecha la petición no llega a salir— y fijado con una prueba de extremo a extremo sobre la cabecera que responde el servidor |
 | `D-F3-011` | Alta | El acuse de la entrada pública fallaba **siempre** desde la Fase 2: al renombrar `InboundInquiry` a `SupportRequest` (D-F2-003) se cambió el código de la plantilla en el caso de uso y no en la semilla. Nadie que escribiera por el formulario público recibía acuse, y no se notaba porque el envío va por la cola: el trabajo se reintentaba en silencio hasta agotarse | Corregido en la semilla. Se añadió una prueba que recorre el código productivo buscando los códigos de plantilla que pide y comprueba que todos estén sembrados; se comprobó que falla al romper lo que vigila |
 | `D-F3-012` | Media | El control `C-F1-02` solo leía exportaciones escritas una por línea, así que un `export { a, b } from '…'` en una sola línea pasaba sin revisar: daba verde por no haber mirado | Corregido: ahora lee las llaves de cada bloque `export { … }`. Al corregirlo encontró de inmediato dos casos que llevaba tiempo dejando pasar |
+| `D-F3-013` | Baja | Tres de los controles nuevos de la Fase 3 acusaban de más o miraban lo que no era: uno señalaba a la cola de trabajos, donde `SUCCEEDED` es el estado de un trabajo; otro al indicador de progreso, que multiplica por cien para sacar un porcentaje; y el tercero daba por buena la comprobación del doble control mirando una línea del listado que solo sirve para no ofrecer un botón | Corregidos los tres antes de darlos por buenos. Cada uno se probó rompiendo lo que vigila y comprobando que falla |
 
 ---
 

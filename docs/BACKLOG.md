@@ -185,9 +185,9 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F3-OPS-001 | Implementar las alertas de eventos sin conciliar y de fallos de cobro | Hecho |
 | F3-CMS-001 | Implementar las plantillas de comprobante y su emisión | Hecho |
 | F3-UI-001 | Construir el panel de finanzas y la vista de pagos de la persona | Hecho |
-| F3-QA-001 | Probar pago exitoso, fallido, pendiente, reembolsado y disputado | Pendiente |
+| F3-QA-001 | Probar pago exitoso, fallido, pendiente, reembolsado y disputado | Hecho |
 | F3-QA-002 | Probar firma inválida, evento repetido, evento fuera de orden y cuenta cruzada | Hecho |
-| F3-DOC-001 | Documentar el modelo financiero y actualizar el estado de la fase | Pendiente |
+| F3-DOC-001 | Documentar el modelo financiero y actualizar el estado de la fase | Hecho |
 
 ---
 

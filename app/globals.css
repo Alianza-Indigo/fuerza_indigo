@@ -1,67 +1,330 @@
 @import "tailwindcss";
 
 /*
- * Tokens base de la Fase 1.
+ * Sistema de diseño de Fuerza Índigo (PRD §5, Fase 2).
  *
- * El sistema de diseño completo es alcance de la Fase 2 (PRD §24). Aquí solo
- * vive lo mínimo para que las pantallas de autenticación y del panel técnico
- * cumplan contraste, foco visible y respeto por la reducción de movimiento.
+ * Tres capas, y el orden importa:
+ *
+ *  1. **Paleta**: valores crudos en OKLCH. Un espacio perceptual, de modo que
+ *     dos tonos con la misma L se ven igual de claros aunque cambie el matiz.
+ *     Con HSL eso no ocurre, y es la razón por la que los acentos por módulo
+ *     acaban desequilibrados.
+ *  2. **Semántica**: qué significa cada valor —superficie, tinta, línea,
+ *     peligro—. Es la única capa que el código de las pantallas usa.
+ *  3. **Preferencias**: densidad, tamaño de texto, movimiento y enfoque. Se
+ *     aplican como atributos en la raíz del documento y reescalan la capa
+ *     semántica sin que ningún componente tenga que enterarse.
+ *
+ * El contraste NO se afirma aquí: `tests/unit/design/contrast.test.ts` calcula
+ * la razón de cada par de texto y fondo en los dos temas y falla si baja del
+ * umbral. Un comentario que dijera «contraste verificado» no verifica nada.
  */
+
 @theme {
-  --color-indigo-50: oklch(0.97 0.02 285);
-  --color-indigo-100: oklch(0.93 0.04 285);
-  --color-indigo-500: oklch(0.55 0.19 285);
-  --color-indigo-600: oklch(0.48 0.19 285);
-  --color-indigo-700: oklch(0.41 0.17 285);
-  --color-indigo-900: oklch(0.26 0.10 285);
-  --color-surface: oklch(0.99 0.003 285);
-  --color-surface-raised: oklch(1 0 0);
-  --color-ink: oklch(0.22 0.02 285);
-  --color-ink-soft: oklch(0.45 0.02 285);
-  --color-line: oklch(0.90 0.01 285);
-  --color-danger: oklch(0.52 0.20 25);
-  --color-danger-soft: oklch(0.96 0.03 25);
-  --color-success: oklch(0.52 0.14 155);
+  /* ---------------------------------------------------------------------- */
+  /* Paleta · Índigo, la identidad del sindicato                             */
+  /* ---------------------------------------------------------------------- */
+  --color-indigo-50: oklch(0.972 0.017 286);
+  --color-indigo-100: oklch(0.936 0.036 286);
+  --color-indigo-200: oklch(0.876 0.068 286);
+  --color-indigo-300: oklch(0.790 0.110 286);
+  --color-indigo-400: oklch(0.680 0.155 286);
+  --color-indigo-500: oklch(0.585 0.183 286);
+  --color-indigo-600: oklch(0.488 0.186 286);
+  --color-indigo-700: oklch(0.408 0.164 286);
+  --color-indigo-800: oklch(0.338 0.132 286);
+  --color-indigo-900: oklch(0.268 0.098 286);
+  --color-indigo-950: oklch(0.190 0.068 286);
+
+  /* ---------------------------------------------------------------------- */
+  /* Paleta · Acentos por módulo                                            */
+  /*                                                                        */
+  /* Comparten luminosidad y croma con el índigo y solo cambian de matiz. Es */
+  /* lo que permite que cada módulo se reconozca sin que el ecosistema se    */
+  /* vea como cinco productos distintos (PRD §24 Fase 2).                    */
+  /* ---------------------------------------------------------------------- */
+  --color-alianza-500: oklch(0.585 0.150 35);   /* Alianza Índigo · acción social */
+  --color-alianza-600: oklch(0.488 0.150 35);
+  --color-alianza-50: oklch(0.972 0.016 35);
+
+  --color-cian-500: oklch(0.585 0.110 205);     /* CIAN · atención neurodivergente */
+  --color-cian-600: oklch(0.488 0.110 205);
+  --color-cian-50: oklch(0.972 0.014 205);
+
+  --color-ceni-500: oklch(0.585 0.130 85);      /* CENI · certificación de entornos */
+  --color-ceni-600: oklch(0.470 0.120 85);
+  --color-ceni-50: oklch(0.972 0.020 85);
+
+  --color-tools-500: oklch(0.585 0.140 150);    /* Herramientas tecnológicas */
+  --color-tools-600: oklch(0.470 0.130 150);
+  --color-tools-50: oklch(0.972 0.018 150);
+
+  /* ---------------------------------------------------------------------- */
+  /* Paleta · Neutros y señales                                             */
+  /* ---------------------------------------------------------------------- */
+  --color-slate-0: oklch(1 0 0);
+  --color-slate-25: oklch(0.990 0.003 286);
+  --color-slate-50: oklch(0.974 0.004 286);
+  --color-slate-100: oklch(0.945 0.006 286);
+  --color-slate-200: oklch(0.898 0.008 286);
+  --color-slate-300: oklch(0.828 0.010 286);
+  --color-slate-500: oklch(0.578 0.014 286);
+  --color-slate-600: oklch(0.470 0.016 286);
+  --color-slate-700: oklch(0.372 0.016 286);
+  --color-slate-800: oklch(0.272 0.014 286);
+  --color-slate-900: oklch(0.212 0.014 286);
+  --color-slate-950: oklch(0.160 0.012 286);
+
+  --color-danger-500: oklch(0.560 0.196 27);
+  --color-danger-600: oklch(0.478 0.184 27);
+  --color-danger-50: oklch(0.968 0.020 27);
+  --color-warning-500: oklch(0.640 0.140 70);
+  --color-warning-600: oklch(0.500 0.120 70);
+  --color-warning-50: oklch(0.972 0.028 70);
+  --color-success-500: oklch(0.560 0.126 155);
+  --color-success-600: oklch(0.455 0.110 155);
+  --color-success-50: oklch(0.968 0.024 155);
+
+  /* ---------------------------------------------------------------------- */
+  /* Tipografía                                                             */
+  /*                                                                        */
+  /* La escala se multiplica por `--pref-text-scale`, que la preferencia de  */
+  /* tamaño de texto ajusta. Al usar `rem`, la ampliación del navegador al   */
+  /* 200 % sigue funcionando encima, sin sumarse dos veces.                  */
+  /* ---------------------------------------------------------------------- */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --text-2xs: calc(0.6875rem * var(--pref-text-scale, 1));
+  --text-xs: calc(0.78125rem * var(--pref-text-scale, 1));
+  --text-sm: calc(0.875rem * var(--pref-text-scale, 1));
+  --text-base: calc(1rem * var(--pref-text-scale, 1));
+  --text-lg: calc(1.125rem * var(--pref-text-scale, 1));
+  --text-xl: calc(1.3125rem * var(--pref-text-scale, 1));
+  --text-2xl: calc(1.5625rem * var(--pref-text-scale, 1));
+  --text-3xl: calc(1.9375rem * var(--pref-text-scale, 1));
+  --text-4xl: calc(2.4375rem * var(--pref-text-scale, 1));
+  --text-5xl: calc(3.0625rem * var(--pref-text-scale, 1));
+
+  /* ---------------------------------------------------------------------- */
+  /* Espaciado, radio, sombra y movimiento                                  */
+  /* ---------------------------------------------------------------------- */
+  --spacing: calc(0.25rem * var(--pref-density-scale, 1));
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  --shadow-subtle: 0 1px 2px oklch(0.16 0.012 286 / 0.06), 0 1px 3px oklch(0.16 0.012 286 / 0.04);
+  --shadow-raised: 0 2px 4px oklch(0.16 0.012 286 / 0.06), 0 6px 16px oklch(0.16 0.012 286 / 0.08);
+  --shadow-overlay: 0 8px 24px oklch(0.16 0.012 286 / 0.14), 0 2px 6px oklch(0.16 0.012 286 / 0.08);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+
+  /* Ancho máximo de texto corrido: la lectura se degrada más allá de ~70 ch. */
+  --width-prose: 68ch;
 }
 
 @layer base {
+  /* ---------------------------------------------------------------------- */
+  /* Capa semántica · tema claro                                            */
+  /* ---------------------------------------------------------------------- */
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
+
+    --color-surface: var(--color-slate-25);
+    --color-surface-raised: var(--color-slate-0);
+    --color-surface-sunken: var(--color-slate-100);
+    --color-surface-accent: var(--color-indigo-50);
+
+    --color-ink: var(--color-slate-900);
+    --color-ink-soft: var(--color-slate-600);
+    --color-ink-faint: var(--color-slate-500);
+    --color-ink-inverse: var(--color-slate-0);
+
+    /*
+     * Dos papeles distintos, y la diferencia es normativa.
+     *
+     * `line` separa secciones: es decorativa y la norma no le exige umbral, de
+     * modo que puede ser discreta. `line-strong` es el borde de un campo, una
+     * casilla o cualquier control cuyo contorno sea lo ÚNICO que lo identifica:
+     * ahí rige el 3:1 de contraste de elementos no textuales, y se cumple.
+     *
+     * La primera versión usaba un solo gris claro para las dos cosas y daba
+     * 1.32:1. Lo encontró la prueba de contraste en su primera ejecución.
+     */
+    --color-line: oklch(0.855 0.010 286);
+    --color-line-strong: oklch(0.650 0.012 286);
+
+    --color-accent: var(--color-indigo-600);
+    --color-accent-hover: var(--color-indigo-700);
+    --color-accent-soft: var(--color-indigo-50);
+    --color-accent-ink: var(--color-indigo-700);
+
+    --color-danger: var(--color-danger-600);
+    --color-danger-soft: var(--color-danger-50);
+    --color-warning: var(--color-warning-600);
+    --color-warning-soft: var(--color-warning-50);
+    --color-success: var(--color-success-600);
+    --color-success-soft: var(--color-success-50);
+
+    /* Valores por omisión de las preferencias. */
+    --pref-text-scale: 1;
+    --pref-density-scale: 1;
   }
 
+  /* Tema oscuro por preferencia del sistema, salvo que se pida el claro. */
   @media (prefers-color-scheme: dark) {
-    :root {
-      --color-surface: oklch(0.19 0.015 285);
-      --color-surface-raised: oklch(0.24 0.018 285);
-      --color-ink: oklch(0.96 0.005 285);
-      --color-ink-soft: oklch(0.76 0.015 285);
-      --color-line: oklch(0.34 0.02 285);
-      --color-indigo-500: oklch(0.72 0.15 285);
-      --color-indigo-600: oklch(0.66 0.16 285);
-      --color-danger: oklch(0.70 0.17 25);
-      --color-danger-soft: oklch(0.28 0.06 25);
-    }
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --color-surface: var(--color-slate-950);
+      --color-surface-raised: var(--color-slate-900);
+      --color-surface-sunken: var(--color-slate-950);
+      --color-surface-accent: var(--color-indigo-950);
+
+      --color-ink: var(--color-slate-50);
+      --color-ink-soft: var(--color-slate-300);
+      --color-ink-faint: oklch(0.700 0.012 286);
+      --color-ink-inverse: var(--color-slate-950);
+
+      --color-line: oklch(0.335 0.014 286);
+      --color-line-strong: oklch(0.520 0.016 286);
+
+      --color-accent: var(--color-indigo-300);
+      --color-accent-hover: var(--color-indigo-200);
+      --color-accent-soft: oklch(0.280 0.070 286);
+      --color-accent-ink: var(--color-indigo-200);
+
+      --color-danger: oklch(0.760 0.140 27);
+      --color-danger-soft: oklch(0.280 0.070 27);
+      --color-warning: oklch(0.800 0.110 70);
+      --color-warning-soft: oklch(0.300 0.060 70);
+      --color-success: oklch(0.790 0.110 155);
+      --color-success-soft: oklch(0.280 0.060 155);
+  }
+  }
+
+  /* Tema oscuro pedido de forma explícita: gana sobre la preferencia del sistema. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-surface: var(--color-slate-950);
+    --color-surface-raised: var(--color-slate-900);
+    --color-surface-sunken: var(--color-slate-950);
+    --color-surface-accent: var(--color-indigo-950);
+
+    --color-ink: var(--color-slate-50);
+    --color-ink-soft: var(--color-slate-300);
+    --color-ink-faint: oklch(0.700 0.012 286);
+    --color-ink-inverse: var(--color-slate-950);
+
+    --color-line: oklch(0.335 0.014 286);
+    --color-line-strong: oklch(0.520 0.016 286);
+
+    --color-accent: var(--color-indigo-300);
+    --color-accent-hover: var(--color-indigo-200);
+    --color-accent-soft: oklch(0.280 0.070 286);
+    --color-accent-ink: var(--color-indigo-200);
+
+    --color-danger: oklch(0.760 0.140 27);
+    --color-danger-soft: oklch(0.280 0.070 27);
+    --color-warning: oklch(0.800 0.110 70);
+    --color-warning-soft: oklch(0.300 0.060 70);
+    --color-success: oklch(0.790 0.110 155);
+    --color-success-soft: oklch(0.280 0.060 155);
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Preferencias neuroinclusivas (PRD §5.3)                                */
+  /*                                                                        */
+  /* Se aplican como atributos en `<html>`, escritos por el servidor a partir*/
+  /* de la preferencia guardada. Nada parpadea al cargar porque nada se      */
+  /* decide en el navegador.                                                */
+  /* ---------------------------------------------------------------------- */
+  :root[data-text="grande"] { --pref-text-scale: 1.125; }
+  :root[data-text="mayor"] { --pref-text-scale: 1.25; }
+
+  :root[data-density="amplia"] { --pref-density-scale: 1.25; }
+  :root[data-density="compacta"] { --pref-density-scale: 0.875; }
+
+  /* Movimiento reducido por preferencia guardada, además de la del sistema. */
+  :root[data-motion="reducido"] *,
+  :root[data-motion="reducido"] *::before,
+  :root[data-motion="reducido"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /*
+   * Modo de enfoque: atenúa lo secundario en lugar de ocultarlo.
+   *
+   * Ocultarlo cambiaría la estructura de la página y desorientaría a quien
+   * navega con lector de pantalla o con teclado. Atenuar reduce la carga
+   * visual y deja el contenido donde estaba; al recibir el foco o el puntero,
+   * vuelve a plena opacidad.
+   */
+  :root[data-focus="activo"] [data-secondary] {
+    opacity: 0.55;
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+  :root[data-focus="activo"] [data-secondary]:hover,
+  :root[data-focus="activo"] [data-secondary]:focus-within {
+    opacity: 1;
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Base                                                                   */
+  /* ---------------------------------------------------------------------- */
+  html {
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-surface);
     color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    text-underline-offset: 0.2em;
+  }
+
+  h1, h2, h3, h4 {
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   /* Foco siempre visible: es requisito de accesibilidad, no una preferencia. */
   :focus-visible {
-    outline: 3px solid var(--color-indigo-500);
+    outline: 3px solid var(--color-accent);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
   }
 
-  /* Respeto por la reducción de movimiento (PRD §5.2). */
+  /* Respeto por la reducción de movimiento del sistema (PRD §5.2). */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+    }
+  }
+
+  /* Nada parpadea ni se reproduce solo (PRD §5.3). */
+  @media (prefers-reduced-motion: no-preference) {
+    :root {
+      scroll-behavior: smooth;
     }
   }
 }

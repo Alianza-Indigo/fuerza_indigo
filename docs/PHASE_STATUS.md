@@ -6,6 +6,88 @@
 
 ## Situación actual
 
+- **Fase activa:** 2 — Sistema de diseño, PWA, CMS y sitio público
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 4 de septiembre de 2026
+- **Fecha de inicio:** 4 de septiembre de 2026
+- **SHA del punto de control:** se registra al cerrar la fase
+- **Fase anterior:** 1 — `APPROVED`, cerrada en `e8daa0e` tras una reapertura. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 3 — Catálogo financiero, Stripe y libro auxiliar, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 2 contrata: tokens y componentes; temas claro y oscuro; preferencias neuroinclusivas; navegación pública; CMS versionado; páginas públicas del mapa funcional; formularios de contacto y entrada inicial; buscador público; SEO técnico; metadatos sociales; PWA; centro de accesibilidad; páginas legales configurables; y analítica respetuosa de la privacidad para eventos esenciales.
+
+**Lo que esta fase deliberadamente no hace.** El verificador público de credenciales y distintivos, que vive en `/verificar/*` dentro del mapa de rutas, es alcance de la Fase 4 (`F4-CRE-003`): construir aquí una pantalla que no puede verificar nada sería el botón sin acción que el PRD §0.3 prohíbe. Las páginas públicas de módulos posteriores —directorio, CIAN, CENI, herramientas, eventos— sí se construyen, con su contenido editorial real del CMS y con estado vacío genuino donde el dato aún no existe, nunca con contenido ficticio que aparente terminación.
+
+---
+
+## Criterios de aceptación
+
+Criterios específicos del PRD §24 Fase 2:
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Ninguna página usa contenido ficticio para aparentar terminación | En curso |
+| 2 | La identidad diferencia módulos sin fragmentar el ecosistema | En curso |
+| 3 | Todas las rutas principales tienen diseño móvil y escritorio verificado | En curso |
+| 4 | El CMS maneja borrador, revisión, publicación y reversión | En curso |
+| 5 | La PWA no almacena expedientes sensibles | En curso |
+| 6 | Rendimiento y accesibilidad alcanzan los umbrales de `TEST_PLAN.md` | En curso |
+
+---
+
+## Tareas completadas
+
+En curso. El detalle vive en la sección **Fase 2** de [`BACKLOG.md`](BACKLOG.md).
+
+---
+
+## Evidencias
+
+Se registran al cerrar la fase.
+
+---
+
+## Pruebas y resultados
+
+Se registran al cerrar la fase.
+
+---
+
+## Defectos abiertos
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+| — | — | Sin defectos registrados todavía en la Fase 2 | — |
+
+---
+
+## Decisiones
+
+Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0041.
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | — | `IN_PROGRESS` | — |
+| 3 a 12 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 1
+
+> Incluye el cierre revocado del 3 de septiembre, los diecinueve defectos con su corrección y el informe final del 4 de septiembre.
+
+### Situación al cerrar
+
 - **Fase activa:** 1 — Infraestructura, datos, autenticación, permisos y Superadmin
 - **Estado:** `APPROVED` — reabierta el 4 de septiembre de 2026 tras una revisión externa, corregida y cerrada de nuevo
 - **Autorizada por la persona usuaria:** 3 de septiembre de 2026
@@ -17,7 +99,7 @@
 
 ---
 
-## Alcance contratado
+### Alcance contratado
 
 El PRD §24 Fase 1 contrata: Next.js, TypeScript estricto y estructura modular; configuración de Vercel; Prisma y Neon; migración inicial completa de entidades base; conexión y salud de base de datos; autenticación ordinaria; acceso Superadmin por variables de entorno; sesiones, recuperación e invitaciones; roles, permisos y alcances; servicio de auditoría; servicio privado de Vercel Blob; validación central de variables; manejo uniforme de errores; trabajos programados base; pruebas y datos semilla no sensibles; y CI de calidad.
 
@@ -29,7 +111,7 @@ A ese alcance se suma, por la corrección `F0-COR-007` de la fase anterior, el p
 
 ---
 
-## Criterios de aceptación
+### Criterios de aceptación
 
 Criterios específicos del PRD §24 Fase 1:
 
@@ -44,13 +126,13 @@ Criterios específicos del PRD §24 Fase 1:
 
 ---
 
-## Tareas completadas
+### Tareas completadas
 
 Las 38 tareas contratadas de la Fase 1 y las once correcciones de defectos hallados durante la construcción. El detalle vive en la sección **Fase 1** de [`BACKLOG.md`](BACKLOG.md).
 
 ---
 
-## Evidencias
+### Evidencias
 
 - 32 tablas creadas por las migraciones del repositorio sobre una base vacía, con tres migraciones aplicadas y ninguna a medias.
 - 33 permisos en el catálogo, 19 roles sembrados y 33 unidades territoriales, con semilla idempotente comprobada por doble ejecución.
@@ -61,7 +143,7 @@ Las 38 tareas contratadas de la Fase 1 y las once correcciones de defectos halla
 
 ---
 
-## Pruebas y resultados
+### Pruebas y resultados
 
 | Nivel | Archivos | Casos | Resultado |
 |---|---|---|---|
@@ -75,7 +157,7 @@ Siete de las trece pruebas negativas obligatorias de [`PERMISSIONS.md`](PERMISSI
 
 ---
 
-## Defectos abiertos
+### Defectos abiertos
 
 Ninguno. Los once defectos hallados durante la construcción se corrigieron dentro de la fase y cada uno dejó tras de sí un control que lo habría detectado.
 
@@ -110,7 +192,7 @@ El cierre anterior fue revocado. Los dos primeros invalidaban criterios de acept
 
 ---
 
-## Decisiones
+### Decisiones
 
 Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de la ADR-0031 a la ADR-0037:
 
@@ -126,13 +208,6 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de l
 
 ---
 
-## Historial de fases
-
-| Fase | Inicio | Cierre | Estado | SHA del punto de control |
-|---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 a 12 | — | — | No iniciadas | — |
 
 ---
 

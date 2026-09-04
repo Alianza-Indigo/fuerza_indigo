@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import { currentPreferences } from '@/platform/preferences';
+import { preferenceAttributes } from '@/platform/preferences/preferences';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -18,13 +20,23 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Marco del documento.
+ *
+ * Las preferencias se resuelven en el servidor y se escriben como atributos de
+ * `<html>`, de modo que la primera pintura ya sale con el tema, el tamaño y la
+ * densidad que la persona eligió. Nada parpadea porque nada se decide en el
+ * navegador (PRD §5.3).
+ */
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const preferencias = await currentPreferences();
+
   return (
-    <html lang="es-MX">
+    <html lang="es-MX" {...preferenceAttributes(preferencias)}>
       <body className="min-h-dvh antialiased">
         <a
           href="#contenido"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--color-indigo-600)] focus:px-4 focus:py-2 focus:text-white"
+          className="sr-only rounded-md focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-[var(--color-accent)] focus:px-4 focus:py-2 focus:text-[var(--color-ink-inverse)]"
         >
           Saltar al contenido
         </a>

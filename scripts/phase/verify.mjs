@@ -99,13 +99,30 @@ function readActivePhase() {
     return { phase: null, state: null, error: 'No existe docs/PHASE_STATUS.md.' };
   }
   const phaseMatch = content.match(/^-\s*\*\*Fase activa:\*\*\s*(\d+)/m);
-  const stateMatch = content.match(/^-\s*\*\*Estado:\*\*\s*`?(IN_PROGRESS|BLOCKED|APPROVED)`?/m);
   if (!phaseMatch) {
     return { phase: null, state: null, error: 'docs/PHASE_STATUS.md no declara "- **Fase activa:** N".' };
   }
+
+  // Se toma el **primer** «Estado» del documento y se valida después, en vez de
+  // buscar directamente uno de los tres valores admitidos. La versión anterior
+  // hacía lo segundo, y al escribir un estado fuera del vocabulario la búsqueda
+  // seguía adelante hasta encontrar uno válido **en el archivo de una fase
+  // anterior**: el verificador informaba del estado de otra fase sin avisar de
+  // nada. Un dato equivocado en silencio es peor que un error.
+  const stateMatch = content.match(/^-\s*\*\*Estado:\*\*\s*`?([A-Z_]+)`?/m);
   if (!stateMatch) {
     return { phase: Number(phaseMatch[1]), state: null, error: 'docs/PHASE_STATUS.md no declara "- **Estado:** IN_PROGRESS|BLOCKED|APPROVED".' };
   }
+
+  const ESTADOS = ['IN_PROGRESS', 'BLOCKED', 'APPROVED'];
+  if (!ESTADOS.includes(stateMatch[1])) {
+    return {
+      phase: Number(phaseMatch[1]),
+      state: null,
+      error: `docs/PHASE_STATUS.md declara el estado "${stateMatch[1]}", que no existe. Los admitidos son ${ESTADOS.join(', ')}.`,
+    };
+  }
+
   return { phase: Number(phaseMatch[1]), state: stateMatch[1], error: null };
 }
 
@@ -679,6 +696,15 @@ const CHECKS = [
     id: 'C-F0-01',
     title: 'Fase 0: no se implementaron funciones de fases posteriores',
     phases: [0],
+    /**
+     * Exclusivo de su fase, y es el único de este tipo.
+     *
+     * No comprueba una garantía que deba seguir cumpliéndose, sino un «todavía
+     * no»: en la Fase 0 el repositorio no debe traer código de aplicación. En
+     * la Fase 1 ese código es justamente lo que hay que entregar, así que
+     * seguir comprobándolo después haría fallar la puerta por haber avanzado.
+     */
+    scope: 'exclusive',
     run() {
       const forbidden = ['app', 'src', 'prisma', 'public'];
       const present = forbidden.filter((dir) => existsSync(join(ROOT, dir)));
@@ -947,8 +973,27 @@ const CHECKS = [
 
         // Un `placeholder` sin etiqueta desaparece al escribir y deja a la
         // persona sin saber qué se le pedía.
-        if (/placeholder=/.test(content) && !/<label|aria-label/.test(content)) {
-          problems.push(`${file} usa texto de marcador sin etiqueta visible.`);
+        //
+        // Se mira **elemento por elemento** y no el archivo entero. La versión
+        // anterior acusaba a cualquier archivo que contuviera `placeholder=` y
+        // no contuviera `<label`, y eso marcaba como defecto el texto de la
+        // opción vacía de un `<Select>` cuya etiqueta la pinta la primitiva.
+        // Un control que acusa de más enseña a ignorarlo, y entonces deja de
+        // servir cuando acierta.
+        for (const elemento of content.split('<').slice(1)) {
+          const apertura = elemento.slice(0, elemento.indexOf('>') === -1 ? undefined : elemento.indexOf('>'));
+          if (!/placeholder=/.test(apertura)) continue;
+
+          // La etiqueta puede venir como propiedad de una primitiva del sistema
+          // de diseño, como atributo accesible, o como un `<label htmlFor>` en
+          // el mismo archivo apuntando al identificador de este elemento.
+          if (/\blabel=|aria-label=|aria-labelledby=/.test(apertura)) continue;
+
+          const identificador = /\bid="([^"]+)"/.exec(apertura)?.[1];
+          if (identificador !== undefined && content.includes(`htmlFor="${identificador}"`)) continue;
+
+          const nombre = /^[A-Za-z][A-Za-z0-9]*/.exec(apertura)?.[0] ?? 'elemento';
+          problems.push(`${file} usa texto de marcador sin etiqueta visible en <${nombre}>.`);
         }
         // 44 px son 11 unidades de la escala de espaciado.
         for (const match of content.matchAll(/min-h-(\d+)/g)) {
@@ -1115,6 +1160,204 @@ const CHECKS = [
         : ok(['Lo que la documentación promete del entorno y del despliegue está implementado.']);
     },
   },
+
+  /* ---------------------------------------------------------------- */
+  /* Fase 2 — Sistema de diseño, PWA, CMS y sitio público             */
+  /* ---------------------------------------------------------------- */
+
+  {
+    id: 'C-F2-01',
+    title: 'Fase 2: ninguna página usa contenido ficticio para aparentar terminación',
+    phases: [2],
+    run() {
+      // El barrido de «lorem ipsum», «próximamente» y los marcadores de trabajo
+      // inconcluso ya lo hace `C-UNI-04` sobre todo el repositorio. Este control
+      // no lo repite: comprueba lo que **solo** esta fase puede incumplir, que
+      // es llenar el sitio de contenido inventado para que se vea terminado.
+      const problems = [];
+
+      // La semilla no publica contenido editorial. Quién firma un comunicado del
+      // sindicato es una decisión de la organización, y sembrarlo aquí sería
+      // ponerle palabras en la boca (ADR-0040, ADR-0045).
+      const semilla = read('prisma/seed/index.ts') ?? '';
+      if (/contentPage\.(create|upsert)/.test(semilla)) {
+        problems.push(
+          'La semilla crea páginas del gestor de contenidos: el contenido editorial lo escribe la organización, no el repositorio.',
+        );
+      }
+
+      // La ruta comodín dice la verdad cuando no hay nada publicado.
+      const comodin = read('app/(publico)/[...slug]/page.tsx') ?? '';
+      if (!/Todav[íi]a no hay contenido publicado/.test(comodin)) {
+        problems.push('La ruta pública no declara el estado «sin contenido publicado» de forma explícita.');
+      }
+      if (!/notFound\(\)/.test(comodin)) {
+        problems.push('Una dirección inexistente no devuelve 404: una página de disculpa con código 200 miente a los buscadores.');
+      }
+
+      // Y el mapa del sitio no anuncia lo que todavía está vacío: hacerlo sería
+      // pedirle a un buscador que traiga gente a una pantalla sin contenido.
+      const mapa = read('app/sitemap.ts') ?? '';
+      if (!/publishedSitemapEntries/.test(mapa)) {
+        problems.push('El mapa del sitio no se compone de lo realmente publicado.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Ninguna pantalla finge estar terminada: lo que falta se dice, no se rellena ni se anuncia.']);
+    },
+  },
+  {
+    id: 'C-F2-02',
+    title: 'Fase 2: la identidad diferencia módulos sin fragmentar el ecosistema',
+    phases: [2],
+    run() {
+      const estilos = read('app/globals.css') ?? '';
+      const problems = [];
+
+      // Cada módulo tiene su acento, y todos comparten la misma luminosidad: es
+      // lo que hace que se distingan sin que ninguno parezca de otro sitio.
+      for (const modulo of ['indigo', 'alianza', 'cian', 'ceni', 'tools']) {
+        if (!new RegExp(`--color-${modulo}-500:`).test(estilos)) {
+          problems.push(`La paleta no declara el acento del módulo ${modulo}.`);
+        }
+      }
+
+      // La prueba que lo comprueba de verdad, calculando sobre los tokens.
+      const prueba = read('tests/unit/design/contrast.test.ts') ?? '';
+      if (!/misma luminosidad|comparten|luminosidad/i.test(prueba)) {
+        problems.push('Ninguna prueba comprueba que los acentos de módulo compartan luminosidad.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Cada módulo tiene acento propio y todos comparten la misma familia.']);
+    },
+  },
+  {
+    id: 'C-F2-03',
+    title: 'Fase 2: las rutas principales se verifican en móvil y en escritorio',
+    phases: [2],
+    run() {
+      const config = read('playwright.config.ts') ?? '';
+      const problems = [];
+
+      if (config === '') problems.push('No existe playwright.config.ts.');
+      if (!/name: 'movil'/.test(config)) problems.push('No hay perfil móvil declarado.');
+      if (!/name: 'escritorio'/.test(config)) problems.push('No hay perfil de escritorio declarado.');
+
+      const flujo = read('.github/workflows/calidad.yml') ?? '';
+      if (!/test:e2e/.test(flujo)) {
+        problems.push('La integración continua no ejecuta las pruebas de extremo a extremo: un umbral que solo se comprueba a mano no es un umbral.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Los dos perfiles están declarados y la integración continua los ejecuta.']);
+    },
+  },
+  {
+    id: 'C-F2-04',
+    title: 'Fase 2: el CMS maneja borrador, revisión, publicación y reversión',
+    phases: [2],
+    run() {
+      const indice = read('src/modules/content/index.ts') ?? '';
+      const faltan = ['createPage', 'editPage', 'submitForReview', 'reviewPage', 'publishPage', 'archivePage', 'revertPage'].filter(
+        (caso) => !indice.includes(caso),
+      );
+
+      const problems = faltan.map((caso) => `El módulo de contenidos no expone ${caso}.`);
+
+      // Publicar es un permiso distinto de escribir, y esa separación es lo que
+      // hace que la revisión exista de verdad en lugar de ser decorativa.
+      const permisos = read('src/platform/authz/permissions.ts') ?? '';
+      if (!/content\.page\.write/.test(permisos) || !/content\.page\.publish/.test(permisos)) {
+        problems.push('Escribir y publicar no son permisos separados: la revisión sería decorativa.');
+      }
+
+      // Y quien redacta no puede aprobarse a sí mismo.
+      const publicacion = read('src/modules/content/application/publishing.ts') ?? '';
+      if (!/authorId === actor\.userId/.test(publicacion)) {
+        problems.push('Nada impide que quien redacta apruebe su propio contenido.');
+      }
+
+      return problems.length ? fail(problems) : ok(['El ciclo editorial completo existe y la revisión no es decorativa.']);
+    },
+  },
+  {
+    id: 'C-F2-05',
+    title: 'Fase 2: la aplicación instalable no almacena expedientes sensibles',
+    phases: [2],
+    run() {
+      const trabajador = read('public/sw.js');
+      if (trabajador === null) return fail(['No existe public/sw.js: la aplicación instalable no tiene caché que auditar.']);
+
+      const problems = [];
+
+      for (const zona of ['/api/', '/gestion', '/superadmin', '/mi/', '/acceso', '/activar', '/recuperar']) {
+        if (!trabajador.includes(`'${zona}'`)) {
+          problems.push(`El trabajador de servicio no excluye la zona con sesión ${zona}.`);
+        }
+      }
+
+      if (!/set-cookie/i.test(trabajador)) {
+        problems.push('El trabajador de servicio no descarta las respuestas que traen cookie: son de alguien.');
+      }
+      if (!/no-store/.test(trabajador) || !/private/.test(trabajador)) {
+        problems.push('El trabajador de servicio no respeta las directivas de caché del servidor.');
+      }
+
+      const prueba = read('tests/unit/pwa/service-worker.test.ts');
+      if (prueba === null) {
+        problems.push('Ninguna prueba comprueba las reglas de la caché.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['La caché nunca guarda respuestas con sesión, con cookie ni marcadas como privadas.']);
+    },
+  },
+  {
+    id: 'C-F2-06',
+    title: 'Fase 2: los umbrales de accesibilidad y rendimiento se ejecutan, no se declaran',
+    phases: [2],
+    run() {
+      const problems = [];
+
+      const accesibilidad = read('tests/a11y/rutas-publicas.spec.ts');
+      if (accesibilidad === null) {
+        problems.push('No existe la suite de accesibilidad de las rutas públicas.');
+      } else {
+        if (!/critical|serious/.test(accesibilidad)) {
+          problems.push('La suite de accesibilidad no filtra por gravedad crítica o seria, que es el umbral contratado.');
+        }
+        if (!/colorScheme: 'dark'/.test(accesibilidad)) {
+          problems.push('La suite de accesibilidad no comprueba el tema oscuro.');
+        }
+      }
+
+      const rendimiento = read('tests/e2e/performance/rutas-publicas.spec.ts');
+      if (rendimiento === null) {
+        problems.push('No existe la suite de rendimiento de las rutas públicas.');
+      } else {
+        if (!/largest-contentful-paint/.test(rendimiento)) problems.push('No se mide el pintado del contenido principal.');
+        if (!/layout-shift/.test(rendimiento)) problems.push('No se mide la estabilidad visual.');
+        if (!/2500/.test(rendimiento)) problems.push('El umbral de 2.5 s de docs/TEST_PLAN.md §8 no aparece en la suite.');
+      }
+
+      // La medición del sitio no puede guardar nada que señale a una persona.
+      const medicion = read('prisma/schema/analytics.prisma') ?? '';
+      for (const prohibida of ['ipHash', 'personId', 'sessionId', 'correlationId']) {
+        if (new RegExp(`\\b${prohibida}\\b`).test(medicion)) {
+          problems.push(`La medición agregada declara la columna ${prohibida}: dejaría de ser agregada.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Los umbrales se ejecutan en cada verificación y la medición no guarda nada personal.']);
+    },
+  },
 ];
 
 
@@ -1124,8 +1367,25 @@ const CHECKS = [
 /* Ejecución                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Un control de una fase **ya cerrada sigue ejecutándose**.
+ *
+ * Antes solo corrían los de la fase activa, y eso convertía cada cierre en una
+ * amnistía: los diez controles de la Fase 1 —el aislamiento entre entidades, que
+ * ningún alcance se conceda por omisión, que no se invente un valor normativo—
+ * dejaban de comprobarse el día que empezaba la Fase 2, justo cuando el código
+ * que garantizan empieza a cambiar por razones ajenas. Una garantía que deja de
+ * verificarse deja de ser una garantía; pasa a ser una frase en un informe
+ * viejo.
+ *
+ * Los de fases **futuras** sí se saltan, y por una razón distinta: comprueban
+ * cosas que todavía no existen, así que fallarían sin que nadie pudiera
+ * arreglarlo.
+ */
 function applies(check, phase) {
-  return check.phases === 'all' || check.phases.includes(phase);
+  if (check.phases === 'all') return true;
+  if (check.scope === 'exclusive') return check.phases.includes(phase);
+  return check.phases.some((declarada) => declarada <= phase);
 }
 
 function main() {
@@ -1156,7 +1416,9 @@ function main() {
 
   const results = [];
   for (const check of CHECKS) {
-    const result = applies(check, active.phase) ? check.run() : skip('No aplica a la fase activa.');
+    const result = applies(check, active.phase)
+      ? check.run()
+      : skip('Corresponde a una fase posterior: comprueba algo que todavía no existe.');
     results.push({ id: check.id, title: check.title, ...result });
     const badge = result.status === 'PASS' ? 'OK  ' : result.status === 'SKIP' ? '--  ' : 'FALLA';
     lines.push(`  [${badge}] ${check.id}  ${check.title}`);

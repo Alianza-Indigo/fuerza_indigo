@@ -156,7 +156,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F2-ACC-001 | Verificar los umbrales de accesibilidad en todas las rutas públicas | Hecho |
 | F2-QA-001 | Configurar Playwright con perfiles móvil y escritorio, y las pruebas visuales | Hecho |
 | F2-QA-002 | Verificar los umbrales de rendimiento de las rutas públicas | Hecho |
-| F2-DOC-001 | Documentar el sistema de diseño y actualizar el estado de la fase | Pendiente |
+| F2-DOC-001 | Documentar el sistema de diseño y actualizar el estado de la fase | Hecho |
 
 **Qué significa «hecho» en F2-UI-008 y F2-UI-009.** Las páginas institucionales del mapa funcional existen: cada ruta contratada resuelve, tiene sus metadatos, es editable desde el gestor de contenidos y, mientras nadie haya publicado nada, dice con todas sus letras que aún no hay contenido en vez de mostrar relleno. Lo que **no** se entrega es el texto: un comunicado o una descripción del sindicato firmados por la organización los escribe la organización. Redactarlos aquí sería poner palabras en boca de Fuerza Índigo, que es la misma clase de error que inventar un valor estatutario. Los datos vivos de CIAN, CENI, herramientas, afiliación, directorio y eventos llegan con sus fases (8, 9, 7, 4, 4 y 11).
 

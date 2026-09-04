@@ -7,10 +7,10 @@
 ## Situación actual
 
 - **Fase activa:** 2 — Sistema de diseño, PWA, CMS y sitio público
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
-- **SHA del punto de control:** se registra al cerrar la fase
+- **SHA del punto de control:** se registra en el cierre
 - **Fase anterior:** 1 — `APPROVED`, cerrada en `e8daa0e` tras una reapertura. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 3 — Catálogo financiero, Stripe y libro auxiliar, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -30,44 +30,111 @@ Criterios específicos del PRD §24 Fase 2:
 
 | # | Criterio | Estado |
 |---|---|---|
-| 1 | Ninguna página usa contenido ficticio para aparentar terminación | En curso |
-| 2 | La identidad diferencia módulos sin fragmentar el ecosistema | En curso |
-| 3 | Todas las rutas principales tienen diseño móvil y escritorio verificado | En curso |
-| 4 | El CMS maneja borrador, revisión, publicación y reversión | En curso |
-| 5 | La PWA no almacena expedientes sensibles | En curso |
-| 6 | Rendimiento y accesibilidad alcanzan los umbrales de `TEST_PLAN.md` | En curso |
+| 1 | Ninguna página usa contenido ficticio para aparentar terminación | Cumplido · `C-F2-01` |
+| 2 | La identidad diferencia módulos sin fragmentar el ecosistema | Cumplido · `C-F2-02` |
+| 3 | Todas las rutas principales tienen diseño móvil y escritorio verificado | Cumplido · `C-F2-03` |
+| 4 | El CMS maneja borrador, revisión, publicación y reversión | Cumplido · `C-F2-04` |
+| 5 | La PWA no almacena expedientes sensibles | Cumplido · `C-F2-05` |
+| 6 | Rendimiento y accesibilidad alcanzan los umbrales de `TEST_PLAN.md` | Cumplido · `C-F2-06` |
+
+Los seis controles se comprobaron **a la inversa**: se rompió a propósito lo que cada uno vigila y se confirmó que el verificador acusa. Un control que solo se ha visto pasar no ha demostrado nada.
 
 ---
 
 ## Tareas completadas
 
-En curso. El detalle vive en la sección **Fase 2** de [`BACKLOG.md`](BACKLOG.md).
+Las veintiséis tareas de la sección **Fase 2** de [`BACKLOG.md`](BACKLOG.md), agrupadas en diez bloques:
+
+| Bloque | Contenido |
+|---|---|
+| A | Tokens en tres capas, temas claro y oscuro con contraste calculado, y las cinco preferencias neuroinclusivas |
+| B | Primitivas accesibles, patrones de estado obligatorios y formulario por pasos |
+| C | Gestor de contenidos con borrador, revisión, programación, publicación, archivo, historial y reversión |
+| D | Navegación pública sin JavaScript, sitio público, buscador y centro de accesibilidad |
+| E | Entrada única de ayuda y contacto, con acuse por folio y bandeja para el personal con facultades |
+| F | Redirecciones y páginas legales por entidad jurídica |
+| G | Aplicación instalable: manifiesto, iconos, caché acotada e indicación de conexión |
+| H | SEO técnico, metadatos sociales, datos estructurados y medición agregada |
+| I | Playwright en móvil y escritorio, umbrales de accesibilidad y de rendimiento, y pruebas visuales deterministas |
+| J | Controles `C-F2-*`, documentación del sistema de diseño y cierre |
+
+**Lo que esta fase deliberadamente no entrega, y por qué.** Las páginas institucionales del mapa funcional existen como rutas: cada una resuelve, tiene sus metadatos, es editable desde el gestor y, mientras nadie haya publicado nada, dice con todas sus letras que aún no hay contenido. Lo que **no** se entrega es el texto de esas páginas. Un comunicado o una descripción del sindicato firmados por la organización los escribe la organización; redactarlos aquí sería ponerle palabras en la boca, que es la misma clase de error que inventar un valor estatutario (ADR-0040). El control `C-F2-01` comprueba que la semilla no cree contenido editorial.
 
 ---
 
 ## Evidencias
 
-Se registran al cerrar la fase.
+| Qué se afirma | Cómo se comprobó |
+|---|---|
+| El sitio público se sirve de verdad | Servidor levantado y rutas consultadas: códigos de estado, contenido y rotación del *nonce* de la política de contenido entre peticiones |
+| Una dirección inexistente devuelve 404 | Comprobado sobre el servidor, no sobre el código |
+| Una redirección devuelve 308 al destino | Comprobado sobre el servidor |
+| El formulario público funciona de extremo a extremo | Playwright: se completa, se envía y devuelve folio, en móvil y escritorio |
+| El relato original no se puede alterar | La aplicación intenta el `UPDATE` y el motor lo deniega |
+| La caché no guarda nada con sesión | Se recorren zonas con sesión y se inspecciona la caché del navegador |
+| Sin red se cae en la pantalla de sin conexión | Se corta la red en el navegador y se navega |
+| Los umbrales de rendimiento miden algo | 516 ms de LCP en la portada con red lenta y 96 ms en el formulario; la medición de estabilidad detecta un salto provocado durante la carga |
+| Los seis controles de fase acusan | Se rompió lo que cada uno vigila y se confirmó el fallo |
 
 ---
 
 ## Pruebas y resultados
 
-Se registran al cerrar la fase.
+| Suite | Resultado |
+|---|---|
+| Puerta de fase (`npm run phase:verify`) | 38 controles aprobados, 0 fallidos |
+| Tipos (`npm run typecheck`) | Sin errores |
+| Lint (`npm run lint`) | Sin avisos |
+| Unitarias (`npm test`) | 264 en verde |
+| Integración contra PostgreSQL (`npm run test:integration`) | 211 en verde |
+| Navegador (`npm run test:e2e`), móvil y escritorio | 142 en verde, 8 omitidas (comparación de píxeles, opcional) |
+| Compilación (`npm run build`) | Correcta |
+
+Las omitidas son las comparaciones píxel a píxel, que se activan con `E2E_VISUAL=1`. La razón de que no estén en la puerta está escrita en `tests/e2e/visual/temas.spec.ts`: una imagen de referencia generada en una máquina y comparada en otra falla por cómo cada sistema suaviza la tipografía, no por el producto, y una suite que falla por razones sobre las que nadie puede actuar acaba desactivada.
 
 ---
 
 ## Defectos abiertos
 
-| Id | Severidad | Descripción | Estado y corrección |
+Ninguno abierto. Los que aparecieron durante la construcción se corrigieron en su momento y se dejan registrados porque cada uno enseñó algo:
+
+| Id | Severidad | Descripción | Corrección |
 |---|---|---|---|
-| — | — | Sin defectos registrados todavía en la Fase 2 | — |
+| `D-F2-001` | Alta | Dos cargadores leían `.env.local` con reglas opuestas y corrompían el hash del Superadmin en direcciones distintas, ninguna con error visible | Un solo cargador, el del servidor, y una función que se niega a escribir lo que el formato no representa (ADR-0043) |
+| `D-F2-002` | Alta | El ayudante de pruebas volvía a conceder privilegios con una lista copiada a mano de las migraciones: las pruebas daban por buena una inmutabilidad que solo existía en producción | Lee las migraciones (ADR-0046) |
+| `D-F2-003` | Alta | La entrada pública se construyó como tabla nueva, duplicando la `SupportRequest` que el modelo de datos contrata desde la Fase 0 | Reconciliada sobre la tabla contratada, con sus tres desviaciones documentadas (ADR-0044) |
+| `D-F2-004` | Media | Las pruebas de integración respetaban el hash heredado del entorno; el de la integración continua era otro, y dos pruebas habrían fallado allí sin que nada del código cambiara | Las pruebas imponen su propia credencial |
+| `D-F2-005` | Media | Una dirección inexistente devolvía una página de disculpa con código 200 | 404 real, con la pantalla en `not-found.tsx` del grupo público |
+| `D-F2-006` | Media | El Superadmin raíz tenía `content.redirect.manage` y ninguna pantalla desde la que ejercerlo | Retirado de la lista cerrada (ADR-0048) |
+| `D-F2-007` | Media | Next sustituye el bloque `openGraph` completo: tres pantallas se habían quedado sin imagen social, y eso solo se ve fuera del sitio | Una función común compone los metadatos, con una prueba por ruta |
+| `D-F2-008` | Media | El enlace de «saltar al contenido» medía 41,6 px al recibir el foco, por debajo del umbral contratado | Corregido y comprobado enfocado |
+| `D-F2-009` | Media | La suite de extremo a extremo no era repetible: al cuarto pase saltaba el límite de envíos del formulario y una prueba fallaba por su propio éxito anterior | La preparación deja la entrada en cero, sin tocar el límite |
+| `D-F2-010` | Media | `test.skip` con condición en el cuerpo de un `describe` saltaba **todas** las pruebas del bloque, y la suite visual entera se estaba omitiendo sin decirlo | La condición va dentro de la prueba |
+| `D-F2-011` | Media | Los controles de fases cerradas dejaban de ejecutarse al abrir la siguiente: cada cierre era una amnistía | Los controles acumulativos siguen corriendo; solo `C-F0-01` es exclusivo de su fase, y consta por qué |
+| `D-F2-012` | Baja | `C-F1-07` acusaba como defecto el texto de la opción vacía de un `Select` que sí tiene etiqueta visible | Ahora mira elemento por elemento |
+| `D-F2-013` | Baja | `C-COH-02` acusaba «para decidir» por contener «a decidir» | Límite de palabra al principio, y consta por qué no al final |
+| `D-F2-014` | Baja | La declaración de accesibilidad decía «en construcción» de un centro de preferencias que ya existía | Puesta al día y movida al grupo público |
+
+Los cuatro últimos son defectos **de los controles**, no del producto, y se registran igual: un control que acusa de más enseña a ignorarlo, y entonces deja de servir cuando acierta.
 
 ---
 
 ## Decisiones
 
-Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0041.
+Ocho decisiones, de ADR-0041 a ADR-0048 en [`DECISIONS.md`](DECISIONS.md):
+
+| ADR | Decisión |
+|---|---|
+| 0041 | Una redirección sobrevive a la página que la originó |
+| 0042 | El actor raíz no tiene voz editorial |
+| 0043 | Un solo cargador para los archivos de entorno |
+| 0044 | La entrada pública amplía `SupportRequest`; no crea una tabla paralela |
+| 0045 | Sin aviso de privacidad publicado no se recaba ningún dato |
+| 0046 | Los privilegios de las pruebas se leen de las migraciones |
+| 0047 | Las páginas legales se distinguen por dirección, no por columna nueva |
+| 0048 | Un permiso sin pantalla desde la que ejercerlo no se concede |
+
+El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 
 ---
 
@@ -77,7 +144,7 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a par
 |---|---|---|---|---|
 | 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
 | 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 | 2026-09-04 | — | `IN_PROGRESS` | — |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | se registra en el cierre |
 | 3 a 12 | — | — | No iniciadas | — |
 
 ---

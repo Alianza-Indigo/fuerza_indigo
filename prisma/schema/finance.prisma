@@ -1,0 +1,802 @@
+/// Catálogo financiero, cobro y libro auxiliar (PRD §11, docs/DATA_MODEL.md §8).
+///
+/// Cuatro invariantes gobiernan este archivo entero, y las cuatro son del PRD:
+///
+///  1. **La entidad receptora está en cada movimiento.** Fuerza Índigo y Alianza
+///     Índigo son personas morales distintas y rinden cuentas por separado. Aun
+///     operando una sola cuenta de Stripe al principio, la entidad ya consta, de
+///     modo que separar las cuentas después no obliga a reconstruir el
+///     historial (PRD §11.2).
+///  2. **Los importes son enteros en unidades menores.** Nunca coma flotante:
+///     `0.1 + 0.2` no es `0.3`, y en un libro de cuentas eso no es una curiosidad
+///     sino un descuadre que nadie sabe explicar.
+///  3. **La verdad viene del webhook, no del navegador.** El regreso de Stripe a
+///     la pantalla solo informa; ningún derecho se activa ahí (PRD §11.4).
+///  4. **Una corrección es un asiento nuevo.** El libro auxiliar no se edita.
+
+/// Configuración de cobro por entidad jurídica (PRD §11.2).
+///
+/// Las claves **nunca** se guardan aquí: `accountKey` selecciona el par de
+/// variables de entorno. Una clave secreta en la base es una clave que aparece
+/// en un respaldo, en una exportación y en la pantalla de quien depure una
+/// consulta.
+model StripeAccountConfiguration {
+  id                   String            @id @default(uuid(7)) @db.Uuid
+  legalEntityId        String            @unique @db.Uuid
+  accountKey           StripeAccountKey  @unique
+  stripeAccountId      String?           @db.VarChar(80)
+  /// `/api/v1/webhooks/stripe/{cuenta}`. Cada cuenta tiene su secreto propio.
+  webhookPath          String            @unique @db.VarChar(120)
+  defaultCurrency      String            @db.Char(3)
+  statementDescriptor  String            @db.VarChar(22)
+  customerPortalEnabled Boolean          @default(false)
+  isActive             Boolean           @default(false)
+  activatedAt          DateTime?         @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  @@map("stripe_account_configuration")
+}
+
+enum StripeAccountKey {
+  FUERZA
+  ALIANZA
+}
+
+/// Concepto cobrable versionado (PRD §11.1).
+///
+/// Los precios y conceptos no se codifican en ninguna pantalla: se administran
+/// aquí. Y no se siembran: una cuota sindical es una cantidad que acuerda la
+/// organización, no un valor por omisión del repositorio (ADR-0040).
+model CatalogProduct {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  code          String              @unique @db.VarChar(60)
+  name          String              @db.VarChar(160)
+  description   String              @db.VarChar(600)
+  legalEntityId String              @db.Uuid
+  kind          CatalogProductKind
+  stripeProductId String?           @db.VarChar(80)
+  billingMode   BillingMode
+  /// Qué derecho activa al pagarse. La activación en sí es de fases
+  /// posteriores; aquí solo consta la intención declarada del concepto.
+  moduleBinding ModuleBinding?
+  /// Las cuotas extraordinarias exigen acuerdo de asamblea. La tabla
+  /// `Resolution` llega en la Fase 5; hasta entonces la columna existe y el
+  /// caso de uso obliga a declarar el acuerdo por escrito.
+  requiresAuthorizingResolutionId String? @db.Uuid
+  /// Referencia textual del acuerdo mientras `Resolution` no existe. No es un
+  /// sustituto: es lo que impide que una cuota extraordinaria se cobre sin
+  /// dejar dicho de dónde sale.
+  authorizingResolutionNote String?   @db.VarChar(400)
+  isActive      Boolean             @default(true)
+  archivedAt    DateTime?           @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity    LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  createdByActor Actor       @relation("CatalogProductCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor       @relation("CatalogProductUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  prices    CatalogPrice[]
+  discounts DiscountGrantProduct[]
+
+  @@index([legalEntityId, isActive])
+  @@index([kind])
+  @@map("catalog_product")
+}
+
+enum CatalogProductKind {
+  ENROLLMENT_FEE
+  UNION_DUE_ORDINARY
+  UNION_DUE_EXTRAORDINARY
+  HONORARY_MEMBERSHIP
+  SERVICE_SUBSCRIPTION
+  COURSE
+  CIAN_SERVICE
+  CENI_PROGRAM
+  CENI_ASSESSMENT
+  CENI_CERTIFICATION
+  RENEWAL
+  DONATION
+}
+
+enum BillingMode {
+  ONE_TIME
+  RECURRING
+}
+
+enum ModuleBinding {
+  MEMBERSHIP
+  HONORARY_AFFILIATION
+  TOOL_ACCESS
+  CIAN_SERVICE
+  CENI_PROGRAM
+  EVENT_REGISTRATION
+  NONE
+}
+
+/// Precio vigente de un producto. Un pago conserva el precio con el que se cobró.
+model CatalogPrice {
+  id            String        @id @default(uuid(7)) @db.Uuid
+  productId     String        @db.Uuid
+  version       Int
+  /// Entero en unidades menores: centavos, no pesos. Nunca coma flotante.
+  amountMinor   BigInt
+  currency      String        @db.Char(3)
+  interval      PriceInterval?
+  stripePriceId String?       @unique @db.VarChar(80)
+  effectiveFrom DateTime      @db.Timestamptz(3)
+  effectiveTo   DateTime?     @db.Timestamptz(3)
+  isDefault     Boolean       @default(false)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+
+  product        CatalogProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdByActor Actor          @relation("CatalogPriceCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  payments      Payment[]
+  subscriptions Subscription[]
+
+  @@unique([productId, version])
+  @@index([productId, effectiveFrom])
+  @@map("catalog_price")
+}
+
+enum PriceInterval {
+  MONTH
+  QUARTER
+  SEMESTER
+  YEAR
+}
+
+/// Titular económico. Una persona u organización, siempre ante una entidad.
+model BillingAccount {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  holderKind       BillingHolderKind
+  personId         String?           @db.Uuid
+  organizationId   String?           @db.Uuid
+  legalEntityId    String            @db.Uuid
+  stripeCustomerId String?           @unique @db.VarChar(80)
+  billingEmail     String            @db.VarChar(254)
+  /// Datos para facturación externa. La plataforma vincula comprobantes; no
+  /// sustituye a un sistema contable autorizado (PRD §26).
+  taxProfile       Json?
+  status           BillingAccountStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  person       Person?      @relation(fields: [personId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalEntity  LegalEntity  @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+
+  payments      Payment[]
+  subscriptions Subscription[]
+
+  @@index([personId])
+  @@index([organizationId])
+  @@index([legalEntityId, status])
+  @@map("billing_account")
+}
+
+enum BillingHolderKind {
+  PERSON
+  ORGANIZATION
+}
+
+enum BillingAccountStatus {
+  ACTIVE
+  DELINQUENT
+  CLOSED
+}
+
+/// Suscripción recurrente.
+model Subscription {
+  id                   String             @id @default(uuid(7)) @db.Uuid
+  billingAccountId     String             @db.Uuid
+  catalogPriceId       String             @db.Uuid
+  stripeSubscriptionId String?            @unique @db.VarChar(80)
+  status               SubscriptionStatus @default(INCOMPLETE)
+  currentPeriodStart   DateTime           @db.Timestamptz(3)
+  currentPeriodEnd     DateTime           @db.Timestamptz(3)
+  /// Periodo de gracia configurable por producto (PRD §11.3). Mientras no
+  /// vence, el derecho sigue vivo aunque el cobro haya fallado.
+  gracePeriodEndsAt    DateTime?          @db.Timestamptz(3)
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?          @db.Timestamptz(3)
+  cancelReason         String?            @db.VarChar(400)
+  /// Se escriben en la Fase 4 y en la 7. Aquí existen para que aquellas fases
+  /// conecten sin reconstruir pagos históricos.
+  membershipId         String?            @db.Uuid
+  toolEntitlementId    String?            @db.Uuid
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  billingAccount BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Restrict)
+  catalogPrice   CatalogPrice   @relation(fields: [catalogPriceId], references: [id], onDelete: Restrict)
+
+  payments Payment[]
+
+  @@index([billingAccountId])
+  @@index([status, currentPeriodEnd])
+  @@map("subscription")
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  GRACE_PERIOD
+  CANCELED
+  UNPAID
+}
+
+/// Movimiento de cobro, con o sin Stripe.
+///
+/// `idempotencyKey` es único en toda la instalación: es lo que hace que un
+/// webhook repetido, un botón pulsado dos veces o un reintento de la cola no
+/// produzcan dos cobros.
+model Payment {
+  id                       String        @id @default(uuid(7)) @db.Uuid
+  /// Identificador que se le da a la persona. No es el interno.
+  publicId                 String        @unique @db.VarChar(24)
+  billingAccountId         String        @db.Uuid
+  legalEntityId            String        @db.Uuid
+  catalogPriceId           String?       @db.Uuid
+  stripeAccountKey         StripeAccountKey
+  stripePaymentIntentId    String?       @unique @db.VarChar(80)
+  stripeCheckoutSessionId  String?       @unique @db.VarChar(80)
+  subscriptionId           String?       @db.Uuid
+  amountMinor              BigInt
+  currency                 String        @db.Char(3)
+  netAmountMinor           BigInt?
+  feeAmountMinor           BigInt?
+  status                   PaymentStatus @default(REQUIRES_PAYMENT)
+  method                   PaymentMethod
+  paidAt                   DateTime?     @db.Timestamptz(3)
+  failureCode              String?       @db.VarChar(80)
+  discountGrantId          String?       @db.Uuid
+  scholarshipId            String?       @db.Uuid
+  /// Pagos manuales: evidencia y doble control. Quien registra no aprueba.
+  manualEvidenceFileId     String?       @db.Uuid
+  manualRegisteredById     String?       @db.Uuid
+  manualApprovedById       String?       @db.Uuid
+  /// A qué se aplica el cobro. La activación del derecho es de fases
+  /// posteriores; el vínculo se conserva desde el primer día.
+  appliesToKind            PaymentAppliesTo @default(NONE)
+  appliesToId              String?       @db.Uuid
+  idempotencyKey           String        @unique @db.VarChar(120)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String @db.Uuid
+  rowVersion Int @default(0)
+
+  billingAccount     BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Restrict)
+  legalEntity        LegalEntity    @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  catalogPrice       CatalogPrice?  @relation(fields: [catalogPriceId], references: [id], onDelete: Restrict)
+  subscription       Subscription?  @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  discountGrant      DiscountGrant? @relation(fields: [discountGrantId], references: [id], onDelete: Restrict)
+  scholarship        Scholarship?   @relation(fields: [scholarshipId], references: [id], onDelete: Restrict)
+  manualEvidenceFile FileObject?    @relation("PaymentManualEvidence", fields: [manualEvidenceFileId], references: [id], onDelete: Restrict)
+  manualRegisteredBy User?          @relation("PaymentManualRegisteredBy", fields: [manualRegisteredById], references: [id], onDelete: Restrict)
+  manualApprovedBy   User?          @relation("PaymentManualApprovedBy", fields: [manualApprovedById], references: [id], onDelete: Restrict)
+  createdByActor     Actor          @relation("PaymentCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  refunds        Refund[]
+  invoiceRefs    InvoiceReference[]
+  webhookEvents  StripeWebhookEvent[]
+
+  @@index([billingAccountId])
+  @@index([legalEntityId, status])
+  @@index([status])
+  @@index([paidAt])
+  @@index([subscriptionId])
+  @@map("payment")
+}
+
+/// Estados del pago (docs/DATA_MODEL.md §16.3).
+///
+/// `REQUIRES_PAYMENT` es el estado inicial y no significa «pendiente»: significa
+/// que todavía no hay ni sesión de cobro. La diferencia importa para saber si
+/// alguien abandonó antes o después de llegar a Stripe.
+enum PaymentStatus {
+  REQUIRES_PAYMENT
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+  DISPUTED
+}
+
+enum PaymentMethod {
+  STRIPE_CHECKOUT
+  STRIPE_SUBSCRIPTION
+  MANUAL_TRANSFER
+  MANUAL_CASH
+  EXEMPTION
+}
+
+enum PaymentAppliesTo {
+  NONE
+  MEMBERSHIP
+  HONORARY_AFFILIATION
+  TOOL_ENTITLEMENT
+  CIAN_SERVICE
+  CENI_PROGRAM
+  EVENT_REGISTRATION
+  DONATION
+}
+
+/// Devolución autorizada. Quien la solicita nunca es quien la aprueba.
+model Refund {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  paymentId      String       @db.Uuid
+  amountMinor    BigInt
+  currency       String       @db.Char(3)
+  reason         String       @db.Text
+  stripeRefundId String?      @unique @db.VarChar(80)
+  status         RefundStatus @default(REQUESTED)
+  requestedById  String       @db.Uuid
+  approvedById   String?      @db.Uuid
+  rejectedReason String?      @db.VarChar(400)
+  processedAt    DateTime?    @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  payment     Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  requestedBy User    @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy  User?   @relation("RefundApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([status])
+  @@map("refund")
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REJECTED
+}
+
+/// Vínculo con el comprobante fiscal externo.
+model InvoiceReference {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  paymentId      String        @db.Uuid
+  externalSystem String        @db.VarChar(80)
+  externalId     String        @db.VarChar(120)
+  series         String?       @db.VarChar(20)
+  folio          String?       @db.VarChar(40)
+  issuedAt       DateTime?     @db.Timestamptz(3)
+  fileObjectId   String?       @db.Uuid
+  status         InvoiceStatus @default(PENDING)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  payment    Payment     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  fileObject FileObject? @relation("InvoiceReferenceFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@unique([externalSystem, externalId])
+  @@index([paymentId])
+  @@map("invoice_reference")
+}
+
+enum InvoiceStatus {
+  PENDING
+  ISSUED
+  CANCELLED
+}
+
+/// Cupón, descuento o convenio aplicable.
+model DiscountGrant {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  code           String?           @unique @db.VarChar(40)
+  name           String            @db.VarChar(160)
+  legalEntityId  String            @db.Uuid
+  kind           DiscountKind
+  /// Porcentaje entero, o unidades menores en un descuento fijo. Qué significa
+  /// lo dice `kind`, y el caso de uso lo valida antes de aplicarlo.
+  value          Int
+  stripeCouponId String?           @db.VarChar(80)
+  maxRedemptions Int?
+  redemptions    Int               @default(0)
+  validFrom      DateTime          @db.Timestamptz(3)
+  validTo        DateTime?         @db.Timestamptz(3)
+  agreementDocumentId String?      @db.Uuid
+  authorizedById String            @db.Uuid
+  revokedAt      DateTime?         @db.Timestamptz(3)
+  revokeReason   String?           @db.VarChar(400)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  legalEntity       LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  authorizedBy      User        @relation("DiscountGrantAuthorizedBy", fields: [authorizedById], references: [id], onDelete: Restrict)
+  agreementDocument FileObject? @relation("DiscountGrantAgreement", fields: [agreementDocumentId], references: [id], onDelete: Restrict)
+
+  products DiscountGrantProduct[]
+  payments Payment[]
+
+  @@index([legalEntityId])
+  @@index([validFrom, validTo])
+  @@map("discount_grant")
+}
+
+enum DiscountKind {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FULL_WAIVER
+}
+
+/// A qué productos alcanza un descuento. Tabla de relación, no arreglo.
+model DiscountGrantProduct {
+  discountGrantId String @db.Uuid
+  productId       String @db.Uuid
+
+  discountGrant DiscountGrant  @relation(fields: [discountGrantId], references: [id], onDelete: Cascade)
+  product       CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([discountGrantId, productId])
+  @@index([productId])
+  @@map("discount_grant_product")
+}
+
+/// Beca o exención documentada.
+model Scholarship {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  personId        String            @db.Uuid
+  legalEntityId   String            @db.Uuid
+  programKind     ScholarshipProgram
+  /// Porcentaje entero de 1 a 100. Cien es exención total.
+  coveragePercent Int
+  justification   String            @db.Text
+  approvedById    String            @db.Uuid
+  approvedAt      DateTime          @db.Timestamptz(3)
+  validFrom       DateTime          @db.Timestamptz(3)
+  validTo         DateTime?         @db.Timestamptz(3)
+  revokedAt       DateTime?         @db.Timestamptz(3)
+  revokeReason    String?           @db.VarChar(400)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  person      Person      @relation("ScholarshipPerson", fields: [personId], references: [id], onDelete: Restrict)
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  approvedBy  User        @relation("ScholarshipApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  evidence ScholarshipEvidence[]
+  payments Payment[]
+
+  @@index([personId])
+  @@index([legalEntityId, programKind])
+  @@map("scholarship")
+}
+
+enum ScholarshipProgram {
+  MEMBERSHIP
+  CIAN_SERVICE
+  COURSE
+  TOOL_ACCESS
+}
+
+/// Evidencia documental de una beca. Una beca sin respaldo no es una beca.
+model ScholarshipEvidence {
+  scholarshipId String @db.Uuid
+  fileObjectId  String @db.Uuid
+  addedAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  fileObject  FileObject  @relation("ScholarshipEvidenceFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([scholarshipId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("scholarship_evidence")
+}
+
+/// Asiento del libro auxiliar. Inmutable (PRD §11.5).
+///
+/// Una corrección es un asiento nuevo con `reversalOfEntryId`, jamás una
+/// edición: un libro que se puede editar no sirve para rendir cuentas, porque
+/// lo que muestra hoy no demuestra lo que mostraba ayer.
+model LedgerEntry {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  legalEntityId  String          @db.Uuid
+  entryDate      DateTime        @db.Timestamptz(3)
+  direction      LedgerDirection
+  /// Catálogo auxiliar interno. No pretende ser un plan contable autorizado.
+  accountCode    String          @db.VarChar(40)
+  amountMinor    BigInt
+  currency       String          @db.Char(3)
+  sourceKind     LedgerSourceKind
+  sourceId       String          @db.Uuid
+  description    String          @db.VarChar(400)
+  /// Obligatorio en ajustes. El caso de uso lo exige; la columna es anulable
+  /// porque un asiento derivado de un pago no necesita motivo escrito.
+  reason         String?         @db.VarChar(600)
+  /// Un asiento puede originarlo el manejador de un webhook, no solo una
+  /// persona: por eso es un actor y no una cuenta.
+  createdByActorId String        @db.Uuid
+  /// El doble control exige personas, nunca el sistema.
+  reviewedById   String?         @db.Uuid
+  approvedById   String?         @db.Uuid
+  reconciliationId String?       @db.Uuid
+  reversalOfEntryId String?      @unique @db.Uuid
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  legalEntity    LegalEntity     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  createdByActor Actor           @relation("LedgerEntryCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  reviewedBy     User?           @relation("LedgerEntryReviewedBy", fields: [reviewedById], references: [id], onDelete: Restrict)
+  approvedBy     User?           @relation("LedgerEntryApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  reconciliation Reconciliation? @relation(fields: [reconciliationId], references: [id], onDelete: Restrict)
+  reversalOf     LedgerEntry?    @relation("LedgerReversal", fields: [reversalOfEntryId], references: [id], onDelete: Restrict)
+  reversedBy     LedgerEntry?    @relation("LedgerReversal")
+
+  @@index([legalEntityId, entryDate])
+  @@index([sourceKind, sourceId])
+  @@index([reconciliationId])
+  @@map("ledger_entry")
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerSourceKind {
+  PAYMENT
+  REFUND
+  MANUAL_ADJUSTMENT
+  ASSET_MOVEMENT
+  EXEMPTION
+}
+
+/// Corte de conciliación por entidad y periodo (criterio 3 de la fase).
+model Reconciliation {
+  id                 String               @id @default(uuid(7)) @db.Uuid
+  legalEntityId      String               @db.Uuid
+  periodStart        DateTime             @db.Timestamptz(3)
+  periodEnd          DateTime             @db.Timestamptz(3)
+  stripeAccountKey   StripeAccountKey
+  expectedTotalMinor BigInt
+  observedTotalMinor BigInt
+  differenceMinor    BigInt
+  status             ReconciliationStatus @default(OPEN)
+  closedById         String?              @db.Uuid
+  closedAt           DateTime?            @db.Timestamptz(3)
+  reportFileId       String?              @db.Uuid
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String @db.Uuid
+
+  legalEntity    LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  closedBy       User?       @relation("ReconciliationClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  reportFile     FileObject? @relation("ReconciliationReport", fields: [reportFileId], references: [id], onDelete: Restrict)
+  createdByActor Actor       @relation("ReconciliationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  entries    LedgerEntry[]
+  exceptions ReconciliationException[]
+
+  @@unique([legalEntityId, stripeAccountKey, periodStart, periodEnd])
+  @@index([status])
+  @@map("reconciliation")
+}
+
+enum ReconciliationStatus {
+  OPEN
+  BALANCED
+  WITH_DIFFERENCES
+  CLOSED
+}
+
+/// Diferencia detectada en un corte. Lo que no cuadra se nombra, no se redondea.
+model ReconciliationException {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  reconciliationId String   @db.Uuid
+  kind             ReconciliationExceptionKind
+  reference        String   @db.VarChar(160)
+  amountMinor      BigInt
+  detail           String   @db.VarChar(600)
+  resolvedAt       DateTime? @db.Timestamptz(3)
+  resolutionNote   String?  @db.VarChar(600)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  reconciliation Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+
+  @@index([reconciliationId])
+  @@map("reconciliation_exception")
+}
+
+enum ReconciliationExceptionKind {
+  /// Llegó dinero que ningún pago del sistema explica.
+  UNMATCHED_IN_STRIPE
+  /// Hay un pago que Stripe no confirma.
+  UNMATCHED_IN_LEDGER
+  /// El importe no coincide.
+  AMOUNT_MISMATCH
+  /// El evento quedó sin procesar.
+  UNPROCESSED_EVENT
+}
+
+/// Registro patrimonial (PRD §11.5).
+model AssetRegister {
+  id                   String        @id @default(uuid(7)) @db.Uuid
+  legalEntityId        String        @db.Uuid
+  assetKind            AssetKind
+  name                 String        @db.VarChar(200)
+  description          String        @db.VarChar(1000)
+  acquisitionMode      AcquisitionMode
+  acquiredOn           DateTime      @db.Date
+  documentedValueMinor BigInt
+  currency             String        @db.Char(3)
+  location             String?       @db.VarChar(300)
+  custodianPersonId    String?       @db.Uuid
+  status               AssetStatus   @default(ACTIVE)
+  /// `Resolution` llega en la Fase 5. Hasta entonces, el acuerdo se declara por
+  /// escrito y con documento adjunto: un acto que exige aprobación
+  /// institucional no se marca concluido sin ella.
+  authorizingResolutionId   String?  @db.Uuid
+  authorizingResolutionNote String?  @db.VarChar(400)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String @db.Uuid
+  rowVersion Int @default(0)
+
+  legalEntity      LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  custodianPerson  Person?     @relation("AssetCustodian", fields: [custodianPersonId], references: [id], onDelete: Restrict)
+  createdByActor   Actor       @relation("AssetRegisterCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  documents AssetDocument[]
+  movements AssetMovement[]
+
+  @@index([legalEntityId, status])
+  @@index([assetKind])
+  @@map("asset_register")
+}
+
+enum AssetKind {
+  REAL_ESTATE
+  VEHICLE
+  EQUIPMENT
+  FURNITURE
+  BANK_ACCOUNT
+  INTANGIBLE
+  OTHER
+}
+
+enum AcquisitionMode {
+  PURCHASE
+  DONATION
+  TRANSFER
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  IN_REPAIR
+  TRANSFERRED
+  DISPOSED
+  LOST
+}
+
+model AssetDocument {
+  assetId      String @db.Uuid
+  fileObjectId String @db.Uuid
+  addedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  asset      AssetRegister @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  fileObject FileObject    @relation("AssetDocumentFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([assetId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("asset_document")
+}
+
+/// Movimiento patrimonial. Inmutable.
+model AssetMovement {
+  id                        String            @id @default(uuid(7)) @db.Uuid
+  assetId                   String            @db.Uuid
+  movementKind              AssetMovementKind
+  occurredOn                DateTime          @db.Date
+  fromCustodianId           String?           @db.Uuid
+  toCustodianId             String?           @db.Uuid
+  amountMinor               BigInt?
+  authorizingResolutionId   String?           @db.Uuid
+  authorizingResolutionNote String?           @db.VarChar(400)
+  registeredById            String            @db.Uuid
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  asset         AssetRegister @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  fromCustodian Person?       @relation("AssetMovementFrom", fields: [fromCustodianId], references: [id], onDelete: Restrict)
+  toCustodian   Person?       @relation("AssetMovementTo", fields: [toCustodianId], references: [id], onDelete: Restrict)
+  registeredBy  User          @relation("AssetMovementRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
+
+  evidence AssetMovementEvidence[]
+
+  @@index([assetId, occurredOn])
+  @@map("asset_movement")
+}
+
+enum AssetMovementKind {
+  REGISTERED
+  REVALUED
+  TRANSFERRED
+  ASSIGNED
+  DISPOSED
+  WRITTEN_OFF
+}
+
+model AssetMovementEvidence {
+  movementId   String @db.Uuid
+  fileObjectId String @db.Uuid
+  addedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  movement   AssetMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  fileObject FileObject    @relation("AssetMovementEvidenceFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([movementId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("asset_movement_evidence")
+}
+
+/// Evento recibido de Stripe. Inmutable y anterior a cualquier procesamiento.
+///
+/// `stripeEventId` único es lo que garantiza la idempotencia: Stripe reenvía el
+/// mismo evento cuando no recibe confirmación, y sin esta restricción un
+/// reintento cobraría dos veces.
+model StripeWebhookEvent {
+  id                String                 @id @default(uuid(7)) @db.Uuid
+  stripeAccountKey  StripeAccountKey
+  stripeEventId     String                 @unique @db.VarChar(120)
+  eventType         String                 @db.VarChar(120)
+  apiVersion        String                 @db.VarChar(40)
+  /// Recibido íntegro, antes de mirarlo. Si el procesamiento falla, lo que
+  /// llegó sigue estando para reintentar y para auditar.
+  payload           Json
+  signatureVerified Boolean
+  receivedAt        DateTime               @default(now()) @db.Timestamptz(3)
+  processedAt       DateTime?              @db.Timestamptz(3)
+  processingStatus  WebhookProcessingStatus @default(RECEIVED)
+  attempts          Int                    @default(0)
+  lastError         String?                @db.VarChar(1000)
+  resultingPaymentId String?               @db.Uuid
+  /// Cuándo se avisó de que lleva demasiado sin conciliar.
+  alertedAt         DateTime?              @db.Timestamptz(3)
+
+  resultingPayment Payment? @relation(fields: [resultingPaymentId], references: [id], onDelete: Restrict)
+
+  @@index([stripeAccountKey, receivedAt])
+  @@index([eventType])
+  @@index([processingStatus, receivedAt])
+  @@map("stripe_webhook_event")
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+  UNRECONCILED
+}

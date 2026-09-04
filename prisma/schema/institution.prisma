@@ -35,6 +35,17 @@ model LegalEntity {
   contentPages ContentPage[]
   supportRequests SupportRequest[]
 
+  // Finanzas (Fase 3). La entidad receptora está en cada movimiento.
+  stripeAccountConfiguration StripeAccountConfiguration?
+  catalogProducts CatalogProduct[]
+  billingAccounts BillingAccount[]
+  payments        Payment[]
+  discountGrants  DiscountGrant[]
+  scholarships    Scholarship[]
+  ledgerEntries   LedgerEntry[]
+  reconciliations Reconciliation[]
+  assets          AssetRegister[]
+
   @@map("legal_entity")
 }
 

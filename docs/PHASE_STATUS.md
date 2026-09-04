@@ -6,6 +6,91 @@
 
 ## Situación actual
 
+- **Fase activa:** 3 — Catálogo financiero, Stripe y libro auxiliar
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 4 de septiembre de 2026
+- **Fecha de inicio:** 4 de septiembre de 2026
+- **SHA del punto de control:** se registra en el cierre
+- **Fase anterior:** 2 — `APPROVED`, cerrada en `0fedf6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 4 — Afiliación, padrones, directorios y credenciales, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 3 contrata: catálogo de productos y precios; entidades receptoras; dos configuraciones Stripe; Checkout; portal de cliente; pagos únicos y suscripciones; cupones, becas, exenciones y convenios; webhooks idempotentes; pagos manuales con evidencia; reembolsos; conciliación; libro auxiliar; registro patrimonial y movimientos de activos; reportes y exportaciones autorizadas; alertas de fallos; y plantillas de comprobante.
+
+**Lo que esta fase deliberadamente no hace.** No activa membresías ni derechos de servicio: el PRD §24 ordena resolver los pagos **antes** de conectar activaciones, y las membresías son de la Fase 4. El modelo deja preparadas las referencias —`Subscription.membershipId`, `Payment.appliesToKind`— sin escribirlas, de modo que la fase siguiente conecte sin reconstruir nada.
+
+**Lo que no se inventa.** El catálogo se administra desde una pantalla, no desde la semilla. Una cuota sindical es una cantidad que acuerda la organización, y sembrar un importe plausible sería el mismo error que inventar un valor estatutario (ADR-0040). La semilla deja la configuración de cobro por entidad, que es estructura, no dinero.
+
+---
+
+## Criterios de aceptación
+
+Criterios específicos del PRD §24 Fase 3:
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Ningún acceso se activa por la página de retorno de Stripe | En curso |
+| 2 | Repetir un webhook no duplica movimientos | En curso |
+| 3 | Fuerza Índigo y Alianza Índigo pueden conciliarse por separado | En curso |
+| 4 | Los importes usan moneda y unidades menores | En curso |
+| 5 | Los ajustes requieren motivo, actor y auditoría | En curso |
+| 6 | Los escenarios de pago exitoso, fallido, pendiente, reembolsado y disputado están probados | En curso |
+
+---
+
+## Tareas completadas
+
+En curso. El detalle vive en la sección **Fase 3** de [`BACKLOG.md`](BACKLOG.md).
+
+---
+
+## Evidencias
+
+Se registran en el cierre.
+
+---
+
+## Pruebas y resultados
+
+Se registran en el cierre.
+
+---
+
+## Defectos abiertos
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+| — | — | Sin defectos registrados todavía en la Fase 3 | — |
+
+---
+
+## Decisiones
+
+Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0049.
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | — | `IN_PROGRESS` | — |
+| 4 a 12 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 2
+
+> Sistema de diseño, PWA, CMS y sitio público. Cerrada el 4 de septiembre de 2026 en `0fedf6f`.
+
+## Situación actual
+
 - **Fase activa:** 2 — Sistema de diseño, PWA, CMS y sitio público
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
@@ -135,17 +220,6 @@ Ocho decisiones, de ADR-0041 a ADR-0048 en [`DECISIONS.md`](DECISIONS.md):
 | 0048 | Un permiso sin pantalla desde la que ejercerlo no se concede |
 
 El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
-
----
-
-## Historial de fases
-
-| Fase | Inicio | Cierre | Estado | SHA del punto de control |
-|---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
-| 3 a 12 | — | — | No iniciadas | — |
 
 ---
 

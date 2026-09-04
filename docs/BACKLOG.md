@@ -166,7 +166,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F3-DAT-001 | Migrar las entidades de finanzas con la entidad receptora presente en cada movimiento | Pendiente |
+| F3-DAT-001 | Migrar las entidades de finanzas con la entidad receptora presente en cada movimiento | Hecho |
 | F3-PAG-001 | Implementar el catálogo de productos y precios versionados con identificadores de Stripe | Pendiente |
 | F3-PAG-002 | Implementar la configuración de las dos cuentas de Stripe y su selección por entidad | Pendiente |
 | F3-PAG-003 | Implementar el Checkout alojado con clave de idempotencia | Pendiente |

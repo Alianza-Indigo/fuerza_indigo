@@ -41,6 +41,15 @@ model Actor {
   createdContentRedirects ContentRedirect[] @relation("ContentRedirectCreatedBy")
   handledSupportRequests SupportRequest[]  @relation("SupportRequestHandledBy")
 
+  // Finanzas (Fase 3). Un asiento puede originarlo el manejador de un webhook.
+  createdCatalogProducts CatalogProduct[] @relation("CatalogProductCreatedBy")
+  updatedCatalogProducts CatalogProduct[] @relation("CatalogProductUpdatedBy")
+  createdCatalogPrices   CatalogPrice[]   @relation("CatalogPriceCreatedBy")
+  createdPayments        Payment[]        @relation("PaymentCreatedBy")
+  createdLedgerEntries   LedgerEntry[]    @relation("LedgerEntryCreatedBy")
+  createdReconciliations Reconciliation[] @relation("ReconciliationCreatedBy")
+  createdAssetRegisters  AssetRegister[]  @relation("AssetRegisterCreatedBy")
+
   @@index([kind])
   @@map("actor")
 }
@@ -99,6 +108,13 @@ model Person {
   organizationUsers OrganizationUser[]
   consents          Consent[]          @relation("ConsentSubject")
   supportRequests   SupportRequest[]   @relation("SupportRequestPerson")
+
+  // Finanzas (Fase 3).
+  billingAccounts   BillingAccount[]
+  scholarships      Scholarship[]      @relation("ScholarshipPerson")
+  custodiedAssets   AssetRegister[]    @relation("AssetCustodian")
+  assetMovementsFrom AssetMovement[]   @relation("AssetMovementFrom")
+  assetMovementsTo   AssetMovement[]   @relation("AssetMovementTo")
   grantedConsents   Consent[]          @relation("ConsentGrantor")
   notifications     Notification[]
   ownedFiles        FileObject[]
@@ -150,6 +166,18 @@ model User {
   revokedRoles    RoleAssignment[]  @relation("RoleAssignmentRevoker")
   authoredContentVersions ContentVersion[] @relation("ContentVersionAuthor")
   reviewedContentVersions ContentVersion[] @relation("ContentVersionReviewer")
+
+  // Finanzas (Fase 3). El doble control exige personas, nunca el sistema.
+  registeredManualPayments Payment[]       @relation("PaymentManualRegisteredBy")
+  approvedManualPayments   Payment[]       @relation("PaymentManualApprovedBy")
+  requestedRefunds         Refund[]        @relation("RefundRequestedBy")
+  approvedRefunds          Refund[]        @relation("RefundApprovedBy")
+  authorizedDiscountGrants DiscountGrant[] @relation("DiscountGrantAuthorizedBy")
+  approvedScholarships     Scholarship[]   @relation("ScholarshipApprovedBy")
+  reviewedLedgerEntries    LedgerEntry[]   @relation("LedgerEntryReviewedBy")
+  approvedLedgerEntries    LedgerEntry[]   @relation("LedgerEntryApprovedBy")
+  closedReconciliations    Reconciliation[] @relation("ReconciliationClosedBy")
+  registeredAssetMovements AssetMovement[] @relation("AssetMovementRegisteredBy")
 
   @@index([status])
   @@map("user_account")
@@ -281,6 +309,9 @@ model Organization {
   @@index([taxId])
   @@index([territorialUnitId])
   @@map("organization")
+
+  // Finanzas (Fase 3). Una organización puede ser titular económico.
+  billingAccounts BillingAccount[]
 }
 
 enum OrganizationKind {

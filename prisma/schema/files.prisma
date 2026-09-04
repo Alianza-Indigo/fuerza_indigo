@@ -45,6 +45,15 @@ model FileObject {
   @@index([contextKind, contextId])
   @@index([legalHoldId])
   @@map("file_object")
+
+  // Finanzas (Fase 3). Evidencias, acuerdos y comprobantes.
+  paymentManualEvidence  Payment[]              @relation("PaymentManualEvidence")
+  invoiceReferences      InvoiceReference[]     @relation("InvoiceReferenceFile")
+  discountAgreements     DiscountGrant[]        @relation("DiscountGrantAgreement")
+  scholarshipEvidence    ScholarshipEvidence[]  @relation("ScholarshipEvidenceFile")
+  reconciliationReports  Reconciliation[]       @relation("ReconciliationReport")
+  assetDocuments         AssetDocument[]        @relation("AssetDocumentFile")
+  assetMovementEvidence  AssetMovementEvidence[] @relation("AssetMovementEvidenceFile")
 }
 
 enum FileClassification {

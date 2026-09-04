@@ -320,6 +320,57 @@ async function seedPublicIntakePrivacyNotice(): Promise<void> {
  */
 const VERSION_POR_ENTIDAD: Record<string, number> = { FUERZA_INDIGO: 1, ALIANZA_INDIGO: 2 };
 
+/**
+ * Configuración de cobro por entidad jurídica (PRD §11.2).
+ *
+ * Se siembra **estructura, no dinero**: qué entidad cobra por qué cuenta, con
+ * qué moneda y en qué dirección recibe sus webhooks. Los importes del catálogo
+ * no se siembran: una cuota sindical es una cantidad que acuerda la
+ * organización, y poner aquí un número plausible sería el mismo error que
+ * inventar un valor estatutario (ADR-0040).
+ *
+ * Las claves de Stripe **no** se guardan: `accountKey` selecciona el par de
+ * variables de entorno. Una clave secreta en la base es una clave que aparece
+ * en un respaldo, en una exportación y en la pantalla de quien depure una
+ * consulta.
+ *
+ * `isActive` empieza en falso. Activar el cobro es un acto de la organización,
+ * y una instalación nueva no debe poder cobrarle a nadie antes de que alguien
+ * con facultades lo decida.
+ */
+async function seedStripeAccounts(): Promise<void> {
+  const configuraciones = [
+    { code: 'FUERZA_INDIGO' as const, accountKey: 'FUERZA' as const, descriptor: 'FUERZA INDIGO' },
+    { code: 'ALIANZA_INDIGO' as const, accountKey: 'ALIANZA' as const, descriptor: 'ALIANZA INDIGO' },
+  ];
+
+  for (const configuracion of configuraciones) {
+    const entidad = await prisma.legalEntity.findUnique({
+      where: { code: configuracion.code },
+      select: { id: true },
+    });
+    if (entidad === null) continue;
+
+    await prisma.stripeAccountConfiguration.upsert({
+      where: { accountKey: configuracion.accountKey },
+      update: {},
+      create: {
+        legalEntityId: entidad.id,
+        accountKey: configuracion.accountKey,
+        webhookPath: `/api/v1/webhooks/stripe/${configuracion.accountKey.toLowerCase()}`,
+        // Peso mexicano: es la moneda en la que opera la organización, y no es
+        // un valor institucional en disputa sino un hecho del país.
+        defaultCurrency: 'MXN',
+        // Lo que la persona ve en su estado de cuenta. Veintidós caracteres es
+        // el máximo que admite Stripe.
+        statementDescriptor: configuracion.descriptor,
+        customerPortalEnabled: false,
+        isActive: false,
+      },
+    });
+  }
+}
+
 async function seedRetentionPolicies(): Promise<void> {
   const policies = [
     {
@@ -508,6 +559,7 @@ async function main(): Promise<void> {
   await seedSpecialties();
   await seedNotificationTemplates();
   await seedPublicIntakePrivacyNotice();
+  await seedStripeAccounts();
 
   const counts = {
     entidadesJuridicas: await prisma.legalEntity.count(),
@@ -518,6 +570,8 @@ async function main(): Promise<void> {
     especialidades: await prisma.specialtyCatalog.count(),
     plantillasDeMensaje: await prisma.notificationTemplate.count(),
     avisosDePrivacidadEnBorrador: await prisma.consentVersion.count({ where: { status: 'DRAFT' } }),
+    cuentasDeCobro: await prisma.stripeAccountConfiguration.count(),
+    productosDelCatalogo: await prisma.catalogProduct.count(),
     reglasNormativas: await prisma.normativeRuleSet.count(),
   };
   console.log('Semilla aplicada:', JSON.stringify(counts, null, 2));

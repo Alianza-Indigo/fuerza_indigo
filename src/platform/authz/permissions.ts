@@ -153,6 +153,65 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     sensitivity: 'SENSITIVE',
   }),
 
+  // billing — catálogo, cobro, libro auxiliar y patrimonio (PRD §11, Fase 3)
+  define('billing.catalog.manage', 'Administrar el catálogo de productos y precios', {
+    sensitivity: 'CRITICAL',
+  }),
+  /**
+   * Leer pagos es sensible y no crítico: hace falta para atender a quien
+   * pregunta por su cobro, y exigir motivo escrito en cada consulta haría que
+   * nadie pudiera contestar el teléfono.
+   */
+  define('billing.payment.read', 'Consultar pagos y su estado', { sensitivity: 'SENSITIVE' }),
+  /**
+   * Consultar **los propios** es un permiso distinto, por la misma razón que
+   * descargar un archivo propio lo es de descargar el ajeno (ADR-0035): la
+   * matriz de `docs/PERMISSIONS.md` §4 marca `O` para quien está afiliado, y un
+   * solo permiso les daría los pagos de todas las demás personas.
+   *
+   * Exige titularidad, no asignación, y no pide motivo escrito: nadie tiene que
+   * justificar por qué mira lo que pagó.
+   */
+  define('billing.payment.read_own', 'Consultar los pagos propios', { needsAssignment: true }),
+  /**
+   * Registrar y aprobar un pago manual son **dos permisos**, y esa separación
+   * es todo el doble control: con uno solo, quien registra aprueba, y el
+   * control se vuelve una casilla.
+   */
+  define('billing.payment.register_manual', 'Registrar un pago recibido fuera de la plataforma', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.payment.approve_manual', 'Aprobar un pago manual registrado por otra persona', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.refund.request', 'Solicitar una devolución', { sensitivity: 'CRITICAL', requiresReason: true }),
+  define('billing.refund.approve', 'Aprobar una devolución solicitada por otra persona', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.ledger.read', 'Consultar el libro auxiliar', { sensitivity: 'SENSITIVE' }),
+  define('billing.ledger.adjust', 'Asentar un ajuste en el libro auxiliar', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.reconciliation.close', 'Cerrar un corte de conciliación', { sensitivity: 'CRITICAL' }),
+  define('billing.asset.manage', 'Administrar el registro patrimonial y sus movimientos', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.report.export', 'Exportar reportes financieros', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  /**
+   * Normal a propósito: la rendición de cuentas es un derecho de quien está
+   * afiliado, no una facultad de la administración. Lo que muestra son totales
+   * agregados, nunca el pago de una persona identificable.
+   */
+  define('billing.accountability.read', 'Consultar los reportes de rendición de cuentas'),
+
   // audit
   define('audit.audit.read', 'Consultar la bitácora institucional', { sensitivity: 'CRITICAL' }),
   define('audit.security.read', 'Consultar la bitácora de seguridad', { sensitivity: 'CRITICAL' }),

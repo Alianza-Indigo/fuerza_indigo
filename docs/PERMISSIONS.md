@@ -83,7 +83,7 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `support` | `request.create`, `request.read`, `request.triage`, `request.route` | Sensible. `request.create` **no existe como permiso declarado**: crear una solicitud es lo que hace cualquiera desde el formulario público, sin cuenta y sin permiso, y un permiso que todo el mundo tiene invita a comprobarlo, que es como se acaba exigiendo sesión para pedir ayuda. `request.read` y `request.triage` existen desde la Fase 2; `request.route` desde la Fase 6, cuando haya canalización que confirmar |
 | `cases` | `case.read`, `case.assign`, `case.update`, `case.message`, `case.close`, `case.reopen`, `case.refer`, `case.read_reserved_notes`, `case.export` | Sensible · Crítica en `read_reserved_notes` y `export` (exigen motivo) |
 | `cian` | `intake.read`, `intake.triage`, `appointment.manage`, `episode.read`, `careplan.manage`, `clinicalnote.read`, `clinicalnote.write`, `outcome.read` | Crítica en todo lo clínico |
-| `billing` | `catalog.manage`, `payment.read`, `payment.register_manual`, `payment.approve_manual`, `refund.request`, `refund.approve`, `ledger.read`, `ledger.adjust`, `reconciliation.close`, `asset.manage`, `report.export`, `accountability.read` | Crítica; ajustes y exportaciones exigen motivo. `accountability.read` es Normal |
+| `billing` | `catalog.manage`, `payment.read`, `payment.read_own`, `payment.register_manual`, `payment.approve_manual`, `refund.request`, `refund.approve`, `ledger.read`, `ledger.adjust`, `reconciliation.close`, `asset.manage`, `report.export`, `accountability.read` | Crítica; ajustes y exportaciones exigen motivo. `accountability.read` es Normal, porque rendir cuentas es un derecho de quien está afiliado y no una facultad de la administración. `payment.read_own` se añadió en la Fase 3: la matriz §4 marca `O` para quien está afiliado, y un solo permiso de lectura les daría los pagos de todas las demás personas (mismo principio que ADR-0035) |
 | `tools` | `tool.manage`, `entitlement.grant`, `entitlement.revoke`, `tool.launch` | Sensible |
 | `ceni` | `organization.manage`, `engagement.manage`, `assessment.respond`, `assessment.review`, `finding.manage`, `plan.manage`, `certification.decide`, `certificate.revoke` | Crítica en `certification.decide` y `certificate.revoke` |
 | `content` | `page.create`, `page.review`, `page.publish`, `page.archive`, `redirect.manage` | Normal · Sensible en `publish` |
@@ -142,7 +142,8 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `clinicalnote.read` | — | — | — | — | — | — | — | — | — | — | A | A | — | — | — | — | — | — | — |
 | `clinicalnote.write` | — | — | — | — | — | — | — | — | — | — | A | — | — | — | — | — | — | — | — |
 | `catalog.manage` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P | — | — | P |
-| `payment.read` | — | O | O | O | O | — | L | P | — | — | — | L | O | — | L | P | — | L | — |
+| `payment.read` | — | — | — | — | — | — | L | P | — | — | — | L | — | — | L | P | — | L | — |
+| `payment.read_own` | — | O | O | O | O | — | O | — | — | — | — | — | O | — | — | O | — | — | — |
 | `payment.register_manual` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | P | — | — | — |
 | `payment.approve_manual` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `refund.approve` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
@@ -285,11 +286,12 @@ audit.audit.read          audit.security.read
 identity.person.read      identity.person.merge
 ```
 
-Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), `billing.catalog.manage` (Fase 3), `ai.provider.configure` y `ai.prompt.publish` (Fase 15), `tools.tool.manage` y `tools.entitlement.grant` (Fase 7).
+Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), `ai.provider.configure` y `ai.prompt.publish` (Fase 15), `tools.tool.manage` y `tools.entitlement.grant` (Fase 7).
 
 **Dos permisos que esta lista tuvo y ya no tiene, con su motivo:**
 
 - **`content.page.publish`.** El PRD §16.1 dice que «el Superadmin y los roles de comunicación autorizados» gestionan los contenidos, pero el actor raíz no tiene fila en `User` y toda versión editorial exige autoría identificada. Firmar un comunicado del sindicato con un actor sin persona detrás deja sin respuesta la pregunta de quién lo publicó, que es justo la que se hace cuando un comunicado se discute. Tampoco recibe `content.page.read`: un borrador sobre un conflicto laboral es deliberación interna, y diagnosticar por qué una página no aparece necesita su **estado**, no su cuerpo (ADR-0042).
+- **`billing.catalog.manage`.** Figuraba como contratado para cuando existiera el módulo. Al construirlo en la Fase 3 se resolvió que **no** se concede: decidir cuánto cobra el sindicato por una cuota es un acto institucional, no una tarea de administración de la plataforma, y el actor raíz no tiene nombramiento que lo respalde. Lo administra `FINANCE`, con alcance de entidad jurídica. Vale además la razón de ADR-0048: el actor raíz no tiene cuenta y no alcanza el área de gestión, de modo que tampoco tendría pantalla desde la que ejercerlo (ADR-0049).
 - **`content.redirect.manage`.** Estuvo concedido con el argumento de que una redirección es encaminamiento técnico y no voz institucional. Se retiró al construir la pantalla que lo ejercería: el área de gestión exige cuenta, que el actor raíz no tiene, de modo que no había desde dónde usarlo; y sin lectura del gestor no puede saber qué páginas existen ni comprobar que un destino sea correcto. Lo tienen `COMMUNICATIONS` y `EXECUTIVE_SECRETARY`, que sí ven el gestor (ADR-0048).
 
 Todo lo demás le está **denegado por no figurar en la lista**: admisiones, resoluciones, votos, sanciones, certificaciones, autorización de pagos, expedientes de casos, notas clínicas, padrones y directorios.

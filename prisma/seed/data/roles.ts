@@ -44,6 +44,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.payment.read_own',
       'files.file.download_own','files.file.upload'],
   },
   {
@@ -53,6 +54,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.payment.read_own',
       'files.file.download_own','files.file.upload', 'consent.read'],
   },
   {
@@ -62,6 +64,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.payment.read_own',
       'files.file.download_own','files.file.upload', 'consent.read'],
   },
   {
@@ -71,6 +74,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.accountability.read',
+      'billing.payment.read_own',
       'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read'],
   },
   {
@@ -80,6 +85,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'TERRITORIAL',
     requiresOfficeTerm: true,
     permissions: [
+      'billing.accountability.read',
       'files.file.download_own','identity.person.read', 'territory.unit.read', 'files.file.upload', 'files.file.download'],
   },
   {
@@ -96,6 +102,16 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'content.page.revert',
       'support.request.read',
       'support.request.triage',
+      // Aprobar, nunca registrar: quien registra un pago manual o pide una
+      // devolución es Finanzas, y quien lo autoriza es esta cartera. Tener las
+      // dos convertiría el doble control en una casilla que se marca sola.
+      'billing.payment.approve_manual',
+      'billing.refund.approve',
+      'billing.payment.read',
+      'billing.payment.read_own',
+      'billing.ledger.read',
+      'billing.asset.manage',
+      'billing.accountability.read',
       'files.file.download_own',
       'identity.person.read',
       'identity.person.update',
@@ -127,6 +143,12 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     requiresOfficeTerm: true,
     permissions: [
       'content.page.read',
+      // Revisión financiera **sin** facultades operativas: lee pagos, libro y
+      // rendición de cuentas, y no puede registrar, aprobar ni cerrar nada.
+      // La incompatibilidad está contratada en docs/PERMISSIONS.md §4.
+      'billing.payment.read',
+      'billing.ledger.read',
+      'billing.accountability.read',
       'files.file.download_own','identity.person.read', 'audit.audit.read', 'audit.security.read', 'audit.audit.export', 'territory.unit.read'],
   },
   {
@@ -165,6 +187,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.payment.read',
       'files.file.download_own','identity.person.read', 'identity.user.invite', 'files.file.upload', 'files.file.download'],
   },
   {
@@ -174,6 +197,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'ORGANIZATION',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.payment.read_own',
       'files.file.download_own','files.file.upload'],
   },
   {
@@ -192,6 +216,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.payment.read',
       'files.file.download_own','identity.person.read', 'identity.user.invite', 'files.file.download'],
   },
   {
@@ -201,6 +226,19 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'billing.catalog.manage',
+      'billing.payment.read',
+      'billing.payment.read_own',
+      // Registra el pago manual, pero **no** lo aprueba: aprobar es de la
+      // Secretaría Ejecutiva. Ahí está todo el doble control (PRD §11.3).
+      'billing.payment.register_manual',
+      'billing.refund.request',
+      'billing.ledger.read',
+      'billing.ledger.adjust',
+      'billing.reconciliation.close',
+      'billing.asset.manage',
+      'billing.report.export',
+      'billing.accountability.read',
       'files.file.download_own','institution.legal_entity.read', 'files.file.download'],
   },
   {
@@ -226,6 +264,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     requiresOfficeTerm: false,
     permissions: [
       'content.page.read',
+      // Solo lectura, como toda su cartera: ve el libro y los pagos para poder
+      // auditarlos, y no puede mover ninguno.
+      'billing.payment.read',
+      'billing.ledger.read',
+      'billing.accountability.read',
       'files.file.download_own','audit.audit.read', 'audit.security.read', 'audit.audit.export', 'identity.person.read'],
   },
   {

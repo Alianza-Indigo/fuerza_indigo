@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { currentPreferences } from '@/platform/preferences';
 import { preferenceAttributes } from '@/platform/preferences/preferences';
+import { ConnectionNotice, ServiceWorkerRegistration } from '@/platform/pwa';
+import { colorToken } from '@/design-system/tokens';
+import { env } from '@/platform/config/env';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -18,6 +21,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Nunca se bloquea la ampliación: es requisito de accesibilidad (PRD §5.2).
   maximumScale: 5,
+  // El color de la barra del sistema sigue al tema, y los dos valores salen de
+  // los mismos tokens que la interfaz, no de un hexadecimal escrito a mano.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: colorToken('--color-indigo-600') },
+    { media: '(prefers-color-scheme: dark)', color: colorToken('--color-indigo-950') },
+  ],
 };
 
 /**
@@ -40,7 +49,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Saltar al contenido
         </a>
+        <ConnectionNotice />
         {children}
+        <ServiceWorkerRegistration habilitado={env().NODE_ENV === 'production'} />
       </body>
     </html>
   );

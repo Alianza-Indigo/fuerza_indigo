@@ -48,6 +48,12 @@ function contentSecurityPolicy(nonce: string): string {
     "img-src 'self' blob: data:",
     "font-src 'self'",
     "connect-src 'self'",
+    // El trabajador de servicio y el manifiesto son del propio origen. Se
+    // declaran en vez de dejarlos caer en `default-src` porque un lector de la
+    // política tiene que poder ver que la aplicación instalable está prevista,
+    // y no deducirlo de una ausencia.
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

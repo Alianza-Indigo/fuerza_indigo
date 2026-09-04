@@ -49,6 +49,29 @@ function toLinearSrgb({ l, c, h }: Oklch): [number, number, number] {
 }
 
 /**
+ * OKLCH → `#rrggbb`.
+ *
+ * Existe porque hay sitios donde una variable CSS no llega: el manifiesto de la
+ * aplicación instalable, un archivo SVG que se rasteriza fuera del navegador,
+ * el color de la barra del sistema. En vez de escribir a mano un hexadecimal
+ * que se separaría del token en cuanto alguien ajustara la paleta, se calcula
+ * del mismo valor que usa la hoja de estilos.
+ *
+ * Los canales se recortan igual que al medir contraste: un OKLCH fuera del
+ * gamut de sRGB no tiene hexadecimal exacto, y el navegador también lo recorta.
+ */
+export function toHex(color: Oklch): string {
+  const canales = toLinearSrgb(color).map((canal) => {
+    const recortado = Math.min(1, Math.max(0, canal));
+    // Transferencia de sRGB: la misma que aplica el navegador al pintar.
+    const comprimido = recortado <= 0.0031308 ? recortado * 12.92 : 1.055 * recortado ** (1 / 2.4) - 0.055;
+    return Math.round(comprimido * 255);
+  });
+
+  return `#${canales.map((canal) => canal.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
  * Luminancia relativa (WCAG 2.2, definición 1.4.3).
  *
  * Los canales se recortan a [0, 1]: un OKLCH fuera del gamut de sRGB produce

@@ -23,6 +23,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed/index.ts",
     "auth:hash-password": "tsx scripts/auth/hash-password.ts",
+    "design:icons": "tsx scripts/design/icons.ts",
     "phase:verify": "node scripts/phase/verify.mjs",
     "phase:status": "node scripts/phase/verify.mjs --status",
     "access:bootstrap": "tsx scripts/access/bootstrap-secretary.ts"

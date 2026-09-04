@@ -674,3 +674,29 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Por qué la condición, además de la clave.** El índice único impide crear dos ingresos por la misma factura. La condición impide algo distinto: que un reenvío tardío de un evento viejo borre un estado posterior. Las dos cosas hacen falta, y ninguna sustituye a la otra.
 
 **Consecuencia probada.** Dos eventos distintos con la misma factura dejan un solo ingreso, y un `payment_intent.succeeded` que llega tarde no revierte una devolución ya asentada.
+
+---
+
+## ADR-0058 · El doble control se comprueba por persona, no solo por permiso
+
+**Contexto.** Registrar un pago manual y aprobarlo son dos permisos que en la semilla tienen dos carteras distintas. Parecería suficiente: quien registra no tiene el permiso de aprobar.
+
+**Decisión.** Además de los dos permisos, el caso de uso comprueba que **quien aprueba no sea quien registró**. Lo mismo con las devoluciones: quien pide no aprueba.
+
+**Por qué no basta con los permisos.** Un nombramiento puede acumularse. Alguien con las dos carteras —en una organización pequeña, o durante una suplencia— tendría los dos permisos y el control desaparecería sin que nadie cambiara una sola línea. La comprobación por persona es lo único que hace que la separación siga existiendo el día que los papeles se juntan. Hay una prueba que otorga los dos roles a la misma persona y comprueba que sigue sin poder aprobarse a sí misma.
+
+**Consecuencia en la pantalla.** A quien registró un pago se le dice por qué no puede aprobarlo, en vez de esconderle el botón. Un botón que desaparece parece un permiso que falta; la frase explica el control.
+
+---
+
+## ADR-0059 · Una beca gana al descuento y no se acumulan
+
+**Contexto.** Una persona puede tener a la vez una beca y un descuento aplicable. Sumarlos es aritméticamente posible y puede dejar el importe en negativo.
+
+**Decisión.** Si hay beca vigente para el programa del concepto, decide la beca y el descuento no interviene. Entre varios descuentos se elige **el más favorable a la persona**, no el primero que devuelva la consulta. El importe nunca baja de cero.
+
+**Por qué.** Una beca responde a que alguien no puede pagar; un descuento, a una condición comercial. Acumularlos haría que el motivo por el que alguien pagó menos dejara de ser una sola cosa explicable, y explicar cada cobro es precisamente lo que esta fase tiene que garantizar. Que el orden de las filas decidiera cuánto paga alguien sería, además, arbitrario.
+
+**Una exención total no manda a nadie a pagar cero.** Cuando el importe final es cero, el cobro se asienta como exento y no pasa por ninguna pasarela: no existe una página de pago de cero pesos, y sin el asiento el libro no cuadraría.
+
+**La justificación de una beca no va a la bitácora.** Dice por qué alguien no puede pagar. La bitácora general la leen más personas que la beca, así que la justificación se queda en su propia fila, bajo un permiso sensible.

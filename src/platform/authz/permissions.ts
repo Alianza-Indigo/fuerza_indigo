@@ -201,6 +201,34 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     requiresReason: true,
   }),
   define('billing.refund.request', 'Solicitar una devolución', { sensitivity: 'CRITICAL', requiresReason: true }),
+  /**
+   * Cupones, convenios y precios especiales.
+   *
+   * Otorgar un descuento es decidir a qué ingreso renuncia la organización, y
+   * eso no es una tarea de administración del catálogo: es un acto de la
+   * cartera que responde por las cuentas. Por eso `manage` y `read` son dos
+   * permisos: quien lleva las finanzas necesita **ver** qué descuentos existen
+   * para explicar un cobro, y no por ello puede crear uno.
+   */
+  define('billing.discount.manage', 'Otorgar o revocar un descuento, cupón o convenio', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.discount.read', 'Consultar los descuentos vigentes'),
+  /**
+   * Becas y exenciones.
+   *
+   * Leerlas es **sensible** y no normal: una beca dice que alguien no puede
+   * pagar, y eso es información sobre su situación económica. La justificación
+   * que la respalda lo es todavía más. Se lee para revisar las cuentas y para
+   * atender a quien pregunta, no para saber quién de la organización tiene
+   * dificultades.
+   */
+  define('billing.scholarship.manage', 'Aprobar o revocar una beca o exención', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('billing.scholarship.read', 'Consultar becas y exenciones otorgadas', { sensitivity: 'SENSITIVE' }),
   define('billing.refund.approve', 'Aprobar una devolución solicitada por otra persona', {
     sensitivity: 'CRITICAL',
     requiresReason: true,

@@ -13,6 +13,7 @@ import { logger } from '@/platform/observability/logger';
 import { stripe } from '@/platform/payments/stripe-port';
 import { accountForLegalEntity } from '@/platform/payments/accounts';
 import { currentPrice } from './catalog-queries';
+import { priceFor } from './pricing';
 
 /**
  * Cobro alojado y portal de cliente (PRD §11.3, F3-PAG-003 y F3-PAG-004).
@@ -124,6 +125,7 @@ export async function startCheckout(
       name: true,
       legalEntityId: true,
       billingMode: true,
+      kind: true,
       archivedAt: true,
       isActive: true,
       legalEntity: { select: { code: true, shortName: true } },
@@ -196,6 +198,59 @@ export async function startCheckout(
     );
   }
 
+  // Lo que la persona paga de verdad: la beca o el descuento que le
+  // corresponda, resuelto en un solo sitio (`pricing.ts`). Sin este paso, una
+  // beca aprobada sería una fila que no cambia nada.
+  const efectivo = await priceFor({
+    personId: actor.personId,
+    legalEntityId: producto.legalEntityId,
+    productId: producto.id,
+    productKind: producto.kind,
+    baseMinor: precio.amountMinor,
+  });
+
+  // Exención total: no se puede mandar a nadie a pagar cero. El cobro queda
+  // asentado como exento y no pasa por ninguna pasarela, que es lo que hace que
+  // el libro cuadre y que la persona vea su concepto cubierto.
+  if (efectivo.finalMinor === 0n) {
+    const exento = await transaction(async (tx) => {
+      const fila = await tx.payment.create({
+        data: {
+          publicId: newPublicId(20),
+          billingAccountId: cuenta.id,
+          legalEntityId: producto.legalEntityId,
+          catalogPriceId: precio.id,
+          stripeAccountKey: cuentaStripe,
+          amountMinor: 0n,
+          currency: precio.currency,
+          status: 'SUCCEEDED',
+          method: 'EXEMPTION',
+          paidAt: new Date(),
+          ...(efectivo.discountGrantId === null ? {} : { discountGrantId: efectivo.discountGrantId }),
+          ...(efectivo.scholarshipId === null ? {} : { scholarshipId: efectivo.scholarshipId }),
+          idempotencyKey: `exencion:${newPublicId(24)}`,
+          createdByActorId: actor.actorId,
+        },
+        select: { id: true, publicId: true },
+      });
+
+      if (efectivo.discountGrantId !== null) {
+        await tx.discountGrant.update({
+          where: { id: efectivo.discountGrantId },
+          data: { redemptions: { increment: 1 } },
+        });
+      }
+
+      return fila;
+    });
+
+    return ok({
+      url: `${env().APP_URL}/mi/pagos/${exento.publicId}`,
+      paymentPublicId: exento.publicId,
+      reused: false,
+    });
+  }
+
   // Se reutiliza la intención abierta en lugar de abrir otra. Con su misma
   // clave de idempotencia, Stripe devuelve la sesión que ya existe.
   const abierta = await db().payment.findFirst({
@@ -221,8 +276,10 @@ export async function startCheckout(
         legalEntityId: producto.legalEntityId,
         catalogPriceId: precio.id,
         stripeAccountKey: cuentaStripe,
-        amountMinor: precio.amountMinor,
+        amountMinor: efectivo.finalMinor,
         currency: precio.currency,
+        ...(efectivo.discountGrantId === null ? {} : { discountGrantId: efectivo.discountGrantId }),
+        ...(efectivo.scholarshipId === null ? {} : { scholarshipId: efectivo.scholarshipId }),
         // Nace en `REQUIRES_PAYMENT` y ahí se queda hasta que llegue el webhook
         // firmado. El regreso del navegador no lo mueve (PRD §11.4).
         status: 'REQUIRES_PAYMENT',
@@ -242,10 +299,14 @@ export async function startCheckout(
       mode: modo,
       lineItems: [
         {
-          stripePriceId: precio.stripePriceId,
-          amountMinor: precio.amountMinor,
+          // Con descuento aplicado se cobra el importe suelto y no el precio
+          // registrado en la pasarela: si se mandara el precio, cobraría el
+          // completo y la rebaja habría sido decorativa.
+          stripePriceId: efectivo.finalMinor === precio.amountMinor ? precio.stripePriceId : null,
+          amountMinor: efectivo.finalMinor,
           currency: precio.currency,
-          productName: producto.name,
+          productName:
+            efectivo.explanation === null ? producto.name : `${producto.name} — ${efectivo.explanation}`,
           quantity: 1,
         },
       ],
@@ -284,6 +345,15 @@ export async function startCheckout(
         ...(sesion.paymentIntentId === null ? {} : { stripePaymentIntentId: sesion.paymentIntentId }),
       },
     });
+
+    // El uso del descuento se cuenta al abrir la intención, no al reutilizarla:
+    // pulsar dos veces no puede gastar dos veces un cupón limitado.
+    if (abierta === null && efectivo.discountGrantId !== null) {
+      await tx.discountGrant.update({
+        where: { id: efectivo.discountGrantId },
+        data: { redemptions: { increment: 1 } },
+      });
+    }
   });
 
   return ok({ url: sesion.url, paymentPublicId: pago.publicId, reused: abierta !== null });

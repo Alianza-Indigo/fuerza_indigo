@@ -115,6 +115,13 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // dos convertiría el doble control en una casilla que se marca sola.
       'billing.payment.approve_manual',
       'billing.refund.approve',
+      // Un descuento y una beca son decisiones sobre a qué ingreso renuncia la
+      // organización. Las autoriza la cartera que responde por las cuentas, no
+      // quien administra el catálogo.
+      'billing.discount.manage',
+      'billing.discount.read',
+      'billing.scholarship.manage',
+      'billing.scholarship.read',
       'billing.payment.read',
       'billing.payment.read_own',
       // No es una facultad de la cartera: es que quien nombra no puede otorgar
@@ -162,6 +169,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // La incompatibilidad está contratada en docs/PERMISSIONS.md §4.
       'billing.payment.read',
       'billing.ledger.read',
+      'billing.discount.read',
+      'billing.scholarship.read',
       'billing.accountability.read',
       'files.file.download_own','identity.person.read', 'audit.audit.read', 'audit.security.read', 'audit.audit.export', 'territory.unit.read'],
   },
@@ -248,6 +257,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // Secretaría Ejecutiva. Ahí está todo el doble control (PRD §11.3).
       'billing.payment.register_manual',
       'billing.refund.request',
+      'billing.discount.read',
+      'billing.scholarship.read',
       'billing.ledger.read',
       'billing.ledger.adjust',
       'billing.reconciliation.close',
@@ -283,6 +294,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // auditarlos, y no puede mover ninguno.
       'billing.payment.read',
       'billing.ledger.read',
+      'billing.discount.read',
+      'billing.scholarship.read',
       'billing.accountability.read',
       'files.file.download_own','audit.audit.read', 'audit.security.read', 'audit.audit.export', 'identity.person.read'],
   },

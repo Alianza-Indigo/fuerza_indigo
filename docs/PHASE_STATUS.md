@@ -215,7 +215,7 @@ Los cuatro últimos son defectos **de los controles**, no del producto, y se reg
 
 ## Decisiones
 
-Diecisiete decisiones, de ADR-0041 a ADR-0057 en [`DECISIONS.md`](DECISIONS.md):
+Diecinueve decisiones, de ADR-0041 a ADR-0059 en [`DECISIONS.md`](DECISIONS.md):
 
 | ADR | Decisión |
 |---|---|
@@ -236,6 +236,8 @@ Diecisiete decisiones, de ADR-0041 a ADR-0057 en [`DECISIONS.md`](DECISIONS.md):
 | 0055 | El portal de cliente no se reconstruye |
 | 0056 | Un evento adelantado no es un error: queda sin conciliar y se reintenta |
 | 0057 | La idempotencia del ingreso se ancla en el documento de la pasarela |
+| 0058 | El doble control se comprueba por persona, no solo por permiso |
+| 0059 | Una beca gana al descuento y no se acumulan |
 
 El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 

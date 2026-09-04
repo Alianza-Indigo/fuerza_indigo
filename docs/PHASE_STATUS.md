@@ -10,7 +10,7 @@
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
-- **SHA del punto de control:** se registra en el cierre
+- **SHA del punto de control:** `0fedf6f`
 - **Fase anterior:** 1 — `APPROVED`, cerrada en `e8daa0e` tras una reapertura. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 3 — Catálogo financiero, Stripe y libro auxiliar, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -144,7 +144,7 @@ El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM
 |---|---|---|---|---|
 | 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
 | 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | se registra en el cierre |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 a 12 | — | — | No iniciadas | — |
 
 ---

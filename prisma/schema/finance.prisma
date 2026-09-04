@@ -71,6 +71,11 @@ model CatalogProduct {
   /// sustituto: es lo que impide que una cuota extraordinaria se cobre sin
   /// dejar dicho de dónde sale.
   authorizingResolutionNote String?   @db.VarChar(400)
+  /// Días que un derecho sobrevive a un cobro fallido (PRD §11.3). Se
+  /// configura por concepto porque no todos aguantan lo mismo: perder el
+  /// acceso a una herramienta por un cargo rechazado es un fastidio; perder la
+  /// afiliación sindical mientras el banco resuelve es perder derechos.
+  gracePeriodDays Int               @default(0)
   isActive      Boolean             @default(true)
   archivedAt    DateTime?           @db.Timestamptz(3)
 

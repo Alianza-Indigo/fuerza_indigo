@@ -604,3 +604,49 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Por qué no se guarda la cadena tal cual.** Una columna de texto con «2026-01-01» no se puede comparar con `effectiveFrom <= ahora` sin volver a decidir la zona en cada consulta, y esa decisión acabaría tomándose distinta en dos sitios.
 
 **Alcance.** Vale para toda fecha que una persona captura como día —vigencias, cortes, periodos de conciliación— y no para las marcas de tiempo que pone el sistema, que ya son instantes.
+
+---
+
+## ADR-0052 · Pagar lo propio es un permiso, no una comprobación de identidad
+
+**Contexto.** Iniciar un cobro a nombre propio parece no necesitar permiso: basta comprobar que quien paga es quien dice ser. Con esa lógica, cualquiera con cuenta vería un botón de pago.
+
+**Decisión.** Existe `billing.checkout.start`, con titularidad exigida. Lo tienen los roles de afiliación y de solicitud; **no** lo tiene `PROTECTED_BENEFICIARY`.
+
+**Por qué.** Un beneficiario protegido recibe apoyo sin pagar ni afiliarse (PRD §14). Ponerle delante un botón de cobro es lo contrario de lo que ese estatuto significa, y con una comprobación de identidad suelta esa exclusión no existiría en ninguna parte: sería una condición escrita en una pantalla, invisible en la matriz de permisos y fácil de perder en el siguiente rediseño. Como permiso, se ve, se audita y se hereda a quien nombre.
+
+**Consecuencia que no se anticipó.** La regla de no elevación impide otorgar un rol con permisos que quien nombra no tiene, así que la Secretaría Ejecutiva necesitó el permiso para poder seguir nombrando agremiados. Lo detectó la prueba de esa regla antes de llegar a ninguna parte, y le corresponde igual por derecho propio: quien ocupa la cartera también paga su cuota.
+
+---
+
+## ADR-0053 · Volver del navegador no prueba ningún pago
+
+**Contexto.** Al terminar en la pasarela, la persona vuelve a una dirección nuestra. Es tentador marcar el cobro como pagado ahí: es el momento en que se puede felicitar a alguien.
+
+**Decisión.** El pago nace en `REQUIRES_PAYMENT` y ahí se queda hasta que llega el webhook firmado. La página de regreso dice que se está confirmando, que es la verdad. El PRD §11.4 lo contrata con todas sus letras.
+
+**Por qué importa tanto.** Esa dirección la puede abrir cualquiera, las veces que quiera, sin haber pagado. Y aunque nadie la falsifique, un cargo autorizado todavía puede rechazarse después. Dar por bueno el regreso del navegador es como se acaban dando por cobrados pagos que el banco devolvió.
+
+**Lo que sí se guarda al volver.** El identificador de la sesión de cobro, que es lo que permite casar el webhook con la intención cuando llegue.
+
+---
+
+## ADR-0054 · La idempotencia del cobro se apoya en la intención abierta, no en una clave eterna
+
+**Contexto.** Pulsar dos veces «pagar» no puede abrir dos cobros. La solución evidente —una clave de idempotencia derivada de quién paga y qué paga— tiene un defecto que solo se ve más tarde: sería la misma cada mes, y quien vuelve a pagar su cuota en marzo recibiría la sesión de enero.
+
+**Decisión.** Cada intención de cobro nace con su propia clave aleatoria. Un segundo intento sobre el mismo concepto, dentro de dos horas y todavía sin pagar, **reutiliza esa intención y su clave**: la pasarela devuelve la misma sesión en lugar de crear otra. Pasado ese rato, un intento nuevo es un cobro nuevo.
+
+**Por qué dos horas.** Cubre de sobra a quien pulsa dos veces, vuelve atrás en el navegador o cierra la pestaña sin querer, y se queda muy por debajo de las veinticuatro horas que la pasarela conserva una clave, para que reutilizarla siga devolviendo la sesión y no un error por clave caducada.
+
+---
+
+## ADR-0055 · El portal de cliente no se reconstruye
+
+**Contexto.** Cambiar la tarjeta, descargar recibos y cancelar una suscripción son pantallas que la pasarela ya ofrece y que se podrían rehacer aquí.
+
+**Decisión.** Se abre el portal de la pasarela. Lo que la persona haga ahí vuelve por webhook, que es la fuente de verdad del estado financiero (PRD §11.4).
+
+**Por qué.** Rehacer esas pantallas significaría rehacer también sus errores, y sobre todo obligaría a que los datos de una tarjeta pasaran por esta plataforma. No pasan, y no deben: cada sistema por el que pasa un número de tarjeta es un sistema más que puede filtrarlo.
+
+**Lo que esto implica para la cancelación.** La política de cancelación —al final del periodo o inmediata— se configura en la cuenta de la pasarela, y su efecto llega aquí por webhook. La plataforma no ofrece un segundo camino para cancelar: dos formas de hacer lo mismo acaban divergiendo, y la que se use menos es la que se queda rota sin que nadie lo note.

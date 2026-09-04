@@ -45,6 +45,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     requiresOfficeTerm: false,
     permissions: [
       'billing.payment.read_own',
+      'billing.checkout.start',
       'files.file.download_own','files.file.upload'],
   },
   {
@@ -54,6 +55,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      // Sin `billing.checkout.start`, y no por olvido: un beneficiario
+      // protegido recibe apoyo sin pagar ni afiliarse (PRD §14). Ponerle
+      // delante un botón de cobro sería lo contrario de lo que ese estatuto
+      // significa. Conserva la lectura de sus pagos por si alguna vez pagó
+      // algo con otro rol.
       'billing.payment.read_own',
       'files.file.download_own','files.file.upload', 'consent.read'],
   },
@@ -65,6 +71,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     requiresOfficeTerm: false,
     permissions: [
       'billing.payment.read_own',
+      'billing.checkout.start',
       'files.file.download_own','files.file.upload', 'consent.read'],
   },
   {
@@ -76,6 +83,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     permissions: [
       'billing.accountability.read',
       'billing.payment.read_own',
+      'billing.checkout.start',
       'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read'],
   },
   {
@@ -109,6 +117,12 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'billing.refund.approve',
       'billing.payment.read',
       'billing.payment.read_own',
+      // No es una facultad de la cartera: es que quien nombra no puede otorgar
+      // un rol con permisos que no tiene (regla de no elevación), y todos los
+      // roles de afiliación llevan este. Sin él, la Secretaría Ejecutiva no
+      // podría nombrar a ningún agremiado. Además le corresponde por derecho
+      // propio: quien ocupa la cartera también paga su cuota.
+      'billing.checkout.start',
       'billing.ledger.read',
       'billing.asset.manage',
       'billing.accountability.read',
@@ -198,6 +212,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     requiresOfficeTerm: false,
     permissions: [
       'billing.payment.read_own',
+      'billing.checkout.start',
       'files.file.download_own','files.file.upload'],
   },
   {

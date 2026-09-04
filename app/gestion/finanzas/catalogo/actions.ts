@@ -46,6 +46,7 @@ export async function createProductAction(_previo: CatalogState, formData: FormD
     kind: textField(formData, 'kind') as never,
     billingMode: textField(formData, 'billingMode') as never,
     moduleBinding: (opcional(formData, 'moduleBinding') ?? 'NONE') as never,
+    gracePeriodDays: opcional(formData, 'gracePeriodDays') ?? 0,
     ...(opcional(formData, 'stripeProductId') === undefined
       ? {}
       : { stripeProductId: opcional(formData, 'stripeProductId') }),

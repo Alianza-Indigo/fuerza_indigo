@@ -1,11 +1,8 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Badge, Card, EmptyState, PageShell, ScrollableTable, SubmitButton } from '@/design-system/primitives';
+import { Badge, Card, EmptyState, PageShell, ScrollableTable } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { can } from '@/platform/authz/policy';
 import { isAuthenticated } from '@/platform/kernel/actor-context';
 import { myActiveSessions } from '@/modules/identity';
-import { logoutAction } from '../../../(auth)/acceso/actions';
 import { CloseOtherSessionsForm, CloseSessionButton } from './session-controls';
 
 export const metadata = { title: 'Seguridad y sesiones' };
@@ -26,15 +23,6 @@ export default async function SecurityPage() {
   const result = await myActiveSessions(actor);
   const sessions = result.ok ? result.data : [];
 
-  // El enlace al área de gestión solo existe para quien tiene facultades. A
-  // quien no las tiene no se le muestra una puerta cerrada: no se le muestra la
-  // puerta.
-  const sondeo = { ...actor, reason: 'acceso al área de gestión' };
-  const alcanzaGestion =
-    can(sondeo, 'access.role.assign', { kind: 'RoleAssignment' }).allowed ||
-    can(sondeo, 'identity.user.invite', { kind: 'User' }).allowed ||
-    can(sondeo, 'content.page.read', { kind: 'ContentPage' }).allowed;
-
   const formatter = new Intl.DateTimeFormat('es-MX', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -45,27 +33,8 @@ export default async function SecurityPage() {
     <PageShell
       title="Seguridad y sesiones"
       description="Aquí ves dónde tienes la cuenta abierta. Si algo no te suena, ciérralo y cambia tu contraseña."
-      actions={
-        <form action={logoutAction}>
-          <SubmitButton variant="secondary">Cerrar sesión</SubmitButton>
-        </form>
-      }
     >
       <div className="space-y-8">
-        {alcanzaGestion && (
-          <Card>
-            <h2 className="text-lg font-semibold">Gestión institucional</h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-              Tienes facultades de gestión institucional.
-            </p>
-            <p className="mt-3 text-sm">
-              <Link href="/gestion" className="underline underline-offset-4">
-                Ir al área de gestión
-              </Link>
-            </p>
-          </Card>
-        )}
-
         <Card>
           <h2 className="text-lg font-semibold">Sesiones abiertas</h2>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">

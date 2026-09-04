@@ -71,6 +71,19 @@ export const createProductSchema = z.object({
     .default('NONE'),
   stripeProductId: z.string().trim().max(80).optional(),
   authorizingResolutionNote: z.string().trim().max(400).optional(),
+  /**
+   * Días que el derecho sobrevive a un cobro fallido (PRD §11.3).
+   *
+   * Se configura por concepto porque no todos aguantan lo mismo: perder el
+   * acceso a una herramienta por un cargo rechazado es un fastidio; perder la
+   * afiliación sindical mientras el banco resuelve es perder derechos.
+   */
+  gracePeriodDays: z.coerce
+    .number()
+    .int({ error: () => 'Los días de gracia van en días enteros.' })
+    .min(0, { error: () => 'Los días de gracia no pueden ser negativos: adelantarían la pérdida del derecho.' })
+    .max(365, { error: () => 'Un año es el máximo. Más allá, la gracia deja de ser gracia y es gratuidad.' })
+    .default(0),
 });
 
 export type CreateProductInput = z.input<typeof createProductSchema>;
@@ -147,6 +160,19 @@ export async function createProduct(
     );
   }
 
+  // Un concepto de pago único no tiene periodo de gracia que dar: no hay
+  // renovación que falle. Aceptar el número y guardarlo sin efecto haría creer
+  // a quien lo capturó que configuró algo.
+  if (data.billingMode === 'ONE_TIME' && data.gracePeriodDays > 0) {
+    return fail(
+      errors.validation({
+        gracePeriodDays: [
+          'Un concepto de pago único no tiene periodo de gracia: no hay renovación que pueda fallar. Déjalo en cero o hazlo recurrente.',
+        ],
+      }),
+    );
+  }
+
   const existente = await db().catalogProduct.findUnique({ where: { code: data.code }, select: { id: true } });
   if (existente !== null) {
     return fail(errors.conflict('Ya existe un concepto con ese código.', 'código de producto duplicado'));
@@ -170,6 +196,7 @@ export async function createProduct(
         moduleBinding: data.moduleBinding,
         stripeProductId: data.stripeProductId ?? null,
         authorizingResolutionNote: data.authorizingResolutionNote ?? null,
+        gracePeriodDays: data.gracePeriodDays,
         createdByActorId: actor.actorId,
         updatedByActorId: actor.actorId,
       },
@@ -182,7 +209,12 @@ export async function createProduct(
       objectId: producto.id,
       outcome: 'SUCCESS',
       legalEntityId: data.legalEntityId,
-      metadata: { code: data.code, kind: data.kind, billingMode: data.billingMode },
+      metadata: {
+        code: data.code,
+        kind: data.kind,
+        billingMode: data.billingMode,
+        gracePeriodDays: data.gracePeriodDays,
+      },
     });
 
     return { productId: producto.id };

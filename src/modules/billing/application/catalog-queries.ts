@@ -29,6 +29,7 @@ export interface CatalogRow {
   readonly currentInterval: string | null;
   readonly priceVersions: number;
   readonly authorizingResolutionNote: string | null;
+  readonly gracePeriodDays: number;
 }
 
 export interface PriceRow {
@@ -96,6 +97,7 @@ export async function catalogList(
       isActive: true,
       archivedAt: true,
       authorizingResolutionNote: true,
+      gracePeriodDays: true,
       legalEntity: { select: { shortName: true } },
       prices: {
         where: {
@@ -128,6 +130,7 @@ export async function catalogList(
         currentInterval: vigente?.interval ?? null,
         priceVersions: fila._count.prices,
         authorizingResolutionNote: fila.authorizingResolutionNote,
+        gracePeriodDays: fila.gracePeriodDays,
       };
     }),
   );

@@ -95,6 +95,16 @@ export default async function ConceptoPage({ params }: { params: Promise<{ id: s
                 )}
               </dd>
             </div>
+            {concepto.billingMode === 'RECURRING' && (
+              <div>
+                <dt className="text-sm text-[var(--color-ink-soft)]">Gracia ante un cobro fallido</dt>
+                <dd>
+                  {concepto.gracePeriodDays === 0
+                    ? 'Ninguna: el derecho se pierde en cuanto el cargo falla'
+                    : `${String(concepto.gracePeriodDays)} ${concepto.gracePeriodDays === 1 ? 'día' : 'días'}`}
+                </dd>
+              </div>
+            )}
             {concepto.authorizingResolutionNote !== null && (
               <div className="sm:col-span-2">
                 <dt className="text-sm text-[var(--color-ink-soft)]">Acuerdo que la autoriza</dt>

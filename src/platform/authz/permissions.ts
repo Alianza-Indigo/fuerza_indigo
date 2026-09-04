@@ -174,6 +174,20 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
    */
   define('billing.payment.read_own', 'Consultar los pagos propios', { needsAssignment: true }),
   /**
+   * Iniciar el pago de lo propio.
+   *
+   * Es un permiso y no una comprobación suelta de identidad porque hay personas
+   * a las que la organización **no** quiere mandar a pagar: un beneficiario
+   * protegido recibe apoyo sin pagar ni afiliarse (PRD §14), y ponerle un botón
+   * de cobro delante sería exactamente lo contrario de lo que ese estatuto
+   * significa. Con el permiso en el catálogo, esa decisión se ve y se audita.
+   *
+   * Exige titularidad: se paga la cuenta de cobro propia, no la de nadie más.
+   */
+  define('billing.checkout.start', 'Pagar un concepto del catálogo a nombre propio', {
+    needsAssignment: true,
+  }),
+  /**
    * Registrar y aprobar un pago manual son **dos permisos**, y esa separación
    * es todo el doble control: con uno solo, quien registra aprueba, y el
    * control se vuelve una casilla.

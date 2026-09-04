@@ -145,6 +145,16 @@ export function ProductForm({ entidades }: { entidades: readonly { id: string; l
         {...(errores['moduleBinding'] === undefined ? {} : { errors: errores['moduleBinding'] })}
       />
 
+      <Field
+        name="gracePeriodDays"
+        type="number"
+        label="Días de gracia ante un cobro fallido (solo para conceptos recurrentes)"
+        hint="Días que el derecho sigue vivo mientras el cobro se resuelve. Cero significa que se pierde en cuanto el cargo falla. Un concepto de pago único va en cero: no hay renovación que pueda fallar."
+        inputMode="numeric"
+        defaultValue="0"
+        {...(errores['gracePeriodDays'] === undefined ? {} : { errors: errores['gracePeriodDays'] })}
+      />
+
       <TextArea
         name="authorizingResolutionNote"
         label="¿De qué acuerdo sale? (solo para una cuota extraordinaria)"

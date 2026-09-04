@@ -94,6 +94,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'content.page.review',
       'content.page.publish',
       'content.page.revert',
+      'support.request.read',
+      'support.request.triage',
       'files.file.download_own',
       'identity.person.read',
       'identity.person.update',
@@ -143,6 +145,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'ASSIGNMENT',
     requiresOfficeTerm: false,
     permissions: [
+      'support.request.read',
+      'support.request.triage',
       'files.file.download_own','identity.person.read', 'consent.grant', 'consent.read', 'files.file.upload', 'files.file.download'],
   },
   {

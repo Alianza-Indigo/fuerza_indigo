@@ -20,6 +20,7 @@ const SECCIONES = [
   { href: '/gestion/nombramientos', label: 'Nombramientos', permiso: 'access.role.assign' },
   { href: '/gestion/personas', label: 'Invitar personas', permiso: 'identity.user.invite' },
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
+  { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
 ] as const;
 
 /**

@@ -30,7 +30,7 @@ async function existe(consulta: string, parametros: unknown[] = []): Promise<boo
 }
 
 describe('instalación limpia', () => {
-  it('crea las 35 tablas de las fases 1 y 2', async () => {
+  it('crea las 36 tablas de las fases 1 y 2', async () => {
     const { rows } = await base.sql.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'
@@ -48,12 +48,13 @@ describe('instalación limpia', () => {
       'file_object', 'file_version', 'retention_policy', 'legal_hold',
       'background_job', 'outbox_message', 'outbox_delivery', 'webhook_event',
       'notification', 'notification_template', 'delivery_attempt',
-      // Fase 2 · CMS
+      // Fase 2 · CMS y entrada pública
       'content_page', 'content_version', 'content_redirect',
+      'support_request',
     ]) {
       expect(tablas, `falta la tabla ${esperada}`).toContain(esperada);
     }
-    expect(tablas).toHaveLength(35);
+    expect(tablas).toHaveLength(36);
   });
 
   it('deja registradas todas las migraciones del repositorio, ninguna a medias', async () => {

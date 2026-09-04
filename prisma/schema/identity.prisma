@@ -39,6 +39,7 @@ model Actor {
   createdContentPages    ContentPage[]      @relation("ContentPageCreatedBy")
   updatedContentPages    ContentPage[]      @relation("ContentPageUpdatedBy")
   createdContentRedirects ContentRedirect[] @relation("ContentRedirectCreatedBy")
+  handledSupportRequests SupportRequest[]  @relation("SupportRequestHandledBy")
 
   @@index([kind])
   @@map("actor")
@@ -97,6 +98,7 @@ model Person {
   user              User?
   organizationUsers OrganizationUser[]
   consents          Consent[]          @relation("ConsentSubject")
+  supportRequests   SupportRequest[]   @relation("SupportRequestPerson")
   grantedConsents   Consent[]          @relation("ConsentGrantor")
   notifications     Notification[]
   ownedFiles        FileObject[]

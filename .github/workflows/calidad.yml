@@ -109,3 +109,43 @@ jobs:
 
       - name: Compilación
         run: npm run build
+
+      # El navegador se instala después de compilar: si algo de lo anterior
+      # falla, no se han gastado doscientos megas de descarga para nada.
+      - name: Instalar el navegador de las pruebas de extremo a extremo
+        run: npx playwright install --with-deps chromium
+
+      # Las migraciones y la semilla las necesita el servidor que Playwright
+      # levanta: las pruebas de integración trabajan sobre bases efímeras y no
+      # dejan preparada la de la aplicación.
+      - name: Preparar la base de la aplicación
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      # El aviso de privacidad se publica aquí, no en la semilla. Publicarlo es
+      # un acto de la organización y la semilla lo deja en borrador a propósito;
+      # sin él, el formulario público se niega a recabar datos. Las pruebas de
+      # extremo a extremo necesitan que esté publicado; que sin él no se recabe
+      # nada lo comprueban las de integración, que trabajan sobre su propia base.
+      - name: Publicar el aviso de privacidad de la entrada pública
+        run: |
+          node -e "
+            const { Client } = require('pg');
+            const client = new Client({ connectionString: process.env.DIRECT_URL });
+            client.connect()
+              .then(() => client.query(\"UPDATE consent_version SET status = 'PUBLISHED' WHERE code = 'PRIVACY_NOTICE_PUBLIC_INTAKE'\"))
+              .then((r) => { console.log('avisos publicados:', r.rowCount); return client.end(); })
+              .catch((e) => { console.error(e); process.exit(1); });
+          "
+
+      - name: Pruebas de extremo a extremo
+        run: npm run test:e2e
+
+      - name: Guardar el informe de las pruebas de extremo a extremo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

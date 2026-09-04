@@ -223,6 +223,103 @@ async function seedNormativeRules(actorId: string): Promise<void> {
   });
 }
 
+/**
+ * Aviso de privacidad de la entrada pública, en **borrador**.
+ *
+ * El formulario público no acepta nada mientras no esté publicado, y no se
+ * publica aquí a propósito. La Ley Federal de Protección de Datos Personales en
+ * Posesión de los Particulares exige que el aviso identifique al responsable y
+ * señale su domicilio, y ese domicilio consta «por definir» en esta misma
+ * semilla: el registro sindical y el acta constitutiva todavía no lo aportan.
+ *
+ * Lo que sí se puede afirmar hoy con exactitud está escrito abajo, porque son
+ * hechos del programa y no de la organización: qué campos se guardan, para qué,
+ * quién los ve y cuánto duran. Eso se redacta a partir del código y se mantiene
+ * con él. Lo que falta se enumera en `_pendientesDeLaOrganizacion` en lugar de
+ * rellenarse con una fórmula plausible: un aviso de privacidad inventado es una
+ * declaración jurídica falsa, no un texto de relleno.
+ */
+async function seedPublicIntakePrivacyNotice(): Promise<void> {
+  const entidades = await prisma.legalEntity.findMany({ select: { id: true, code: true, shortName: true } });
+
+  for (const entidad of entidades) {
+    const version = VERSION_POR_ENTIDAD[entidad.code];
+    if (version === undefined) {
+      throw new Error(
+        `La entidad ${entidad.code} no tiene número de versión asignado para el aviso de privacidad de la entrada pública.`,
+      );
+    }
+
+    const existente = await prisma.consentVersion.findUnique({
+      where: { code_version: { code: 'PRIVACY_NOTICE_PUBLIC_INTAKE', version } },
+    });
+    if (existente !== null) continue;
+
+    await prisma.consentVersion.create({
+      data: {
+        code: 'PRIVACY_NOTICE_PUBLIC_INTAKE',
+        version,
+        legalEntityId: entidad.id,
+        title: `Aviso de privacidad de la entrada pública — ${entidad.shortName}`,
+        // Sin propósitos: un aviso informa, no otorga. Los consentimientos
+        // granulares se piden cuando se abre un caso, con su propio texto.
+        requiredFor: [],
+        // Sin fecha de vigencia: la pone quien lo publique, y publicarlo es un
+        // acto de la organización, no de la semilla.
+        effectiveFrom: new Date(0),
+        status: 'DRAFT',
+        bodyMarkdown: [
+          '## Qué datos recabamos',
+          '',
+          'Cuando escribes por el formulario público guardamos únicamente:',
+          '',
+          '- el nombre con el que pides que te llamemos;',
+          '- el correo electrónico o el teléfono que dejes, y cuál de los dos prefieres;',
+          '- el asunto y el texto de tu mensaje;',
+          '- el territorio que declares, si lo declaras;',
+          '- la fecha y hora del envío;',
+          '- una huella criptográfica del origen de la conexión, que no permite reconstruir tu dirección y sirve solo para limitar envíos automatizados.',
+          '',
+          'No te pedimos nombre legal, domicilio, identificación oficial ni ningún dato sensible. Si los escribes dentro del mensaje quedarán en él, porque el texto se guarda tal cual.',
+          '',
+          '## Para qué los usamos',
+          '',
+          'Para leer tu mensaje, contestarte y, si lo pides, iniciar la atención que corresponda. Para nada más. No se usan con fines publicitarios ni se transfieren a terceros.',
+          '',
+          '## Quién los ve',
+          '',
+          'Únicamente el personal con nombramiento vigente y facultad expresa para leer esta bandeja, y solo dentro de la entidad a la que dirigiste el mensaje. Cada lectura queda registrada en la bitácora institucional con la identidad de quien leyó y la fecha.',
+          '',
+          '## Cuánto tiempo los conservamos',
+          '',
+          'El mensaje se conserva mientras el asunto siga abierto y después conforme a la política de conservación aplicable. Tu texto original nunca se modifica: el sistema no tiene permiso para alterarlo.',
+          '',
+          '## Cómo ejerces tus derechos',
+          '',
+          'Puedes pedir acceso, rectificación, cancelación u oposición respecto de estos datos escribiendo al correo de contacto de la entidad y citando el folio que te dimos.',
+          '',
+          '## Qué no es este canal',
+          '',
+          'No es un canal de urgencias y no está atendido las veinticuatro horas. Si estás en peligro, llama al 911.',
+        ].join('\n'),
+        plainLanguageSummary: [
+          'Guardamos lo que escribas y la forma de contactarte, para leerte y contestarte.',
+          'Solo lo ve el personal autorizado de la entidad a la que escribiste, y queda registrado quién lo leyó.',
+          'No lo usamos para publicidad ni se lo damos a nadie más.',
+          'Puedes pedirnos ver, corregir o borrar tus datos escribiendo al correo de contacto con tu folio.',
+          'Si es una urgencia, llama al 911: aquí no contestamos a todas horas.',
+        ].join('\n'),
+      },
+    });
+  }
+}
+
+/**
+ * Cada entidad lleva su propio texto y `(code, version)` es único en toda la
+ * instalación, así que dos entidades no pueden compartir número de versión.
+ */
+const VERSION_POR_ENTIDAD: Record<string, number> = { FUERZA_INDIGO: 1, ALIANZA_INDIGO: 2 };
+
 async function seedRetentionPolicies(): Promise<void> {
   const policies = [
     {
@@ -351,6 +448,28 @@ async function seedNotificationTemplates(): Promise<void> {
       ].join('\n'),
       variables: ['changedAt', 'supportEmail'],
     },
+    {
+      code: 'INBOUND_INQUIRY_ACK',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'CASE' as const,
+      subject: 'Recibimos tu mensaje ({{folio}})',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'Recibimos tu mensaje en {{entityName}}. Su folio es {{folio}}.',
+        'Guárdalo: sirve para referirte a él cuando hablemos.',
+        '',
+        'Una persona lo va a leer y te contestará por el medio que pediste.',
+        'Este correo es solo el acuse de que llegó; no es todavía una respuesta.',
+        '',
+        'Si tu situación es una urgencia y necesitas ayuda inmediata, llama al 911.',
+        'Este buzón no está atendido las veinticuatro horas.',
+        '',
+        'Si necesitas agregar algo, responde a {{contactEmail}} citando tu folio.',
+      ].join('\n'),
+      variables: ['displayName', 'folio', 'entityName', 'contactEmail'],
+    },
   ];
 
   for (const template of templates) {
@@ -388,6 +507,7 @@ async function main(): Promise<void> {
   await seedRetentionPolicies();
   await seedSpecialties();
   await seedNotificationTemplates();
+  await seedPublicIntakePrivacyNotice();
 
   const counts = {
     entidadesJuridicas: await prisma.legalEntity.count(),
@@ -397,6 +517,7 @@ async function main(): Promise<void> {
     politicasDeRetencion: await prisma.retentionPolicy.count(),
     especialidades: await prisma.specialtyCatalog.count(),
     plantillasDeMensaje: await prisma.notificationTemplate.count(),
+    avisosDePrivacidadEnBorrador: await prisma.consentVersion.count({ where: { status: 'DRAFT' } }),
     reglasNormativas: await prisma.normativeRuleSet.count(),
   };
   console.log('Semilla aplicada:', JSON.stringify(counts, null, 2));

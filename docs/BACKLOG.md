@@ -132,31 +132,33 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F2-UI-001 | Definir los tokens de color, tipografía, espaciado, radio, sombra y movimiento | Pendiente |
-| F2-UI-002 | Construir las primitivas accesibles personalizadas a la identidad visual | Pendiente |
-| F2-UI-003 | Implementar tema claro y oscuro con contraste verificado | Pendiente |
-| F2-UI-004 | Implementar preferencias neuroinclusivas persistentes: densidad, movimiento, enfoque y tamaño de texto | Pendiente |
-| F2-UI-005 | Construir los patrones de estado: carga, vacío, sin resultados, error, autorización y sesión expirada | Pendiente |
-| F2-UI-006 | Construir el patrón de formulario por pasos con avance, guardado automático y resumen | Pendiente |
-| F2-UI-007 | Implementar la navegación pública adaptable desde 360 px | Pendiente |
-| F2-CMS-001 | Implementar el CMS con borrador, revisión, programación, publicación, archivo e historial | Pendiente |
-| F2-CMS-002 | Implementar la reversión de versiones y el registro de cambios editoriales | Pendiente |
+| F2-UI-001 | Definir los tokens de color, tipografía, espaciado, radio, sombra y movimiento | Hecho |
+| F2-UI-002 | Construir las primitivas accesibles personalizadas a la identidad visual | Hecho |
+| F2-UI-003 | Implementar tema claro y oscuro con contraste verificado | Hecho |
+| F2-UI-004 | Implementar preferencias neuroinclusivas persistentes: densidad, movimiento, enfoque y tamaño de texto | Hecho |
+| F2-UI-005 | Construir los patrones de estado: carga, vacío, sin resultados, error, autorización y sesión expirada | Hecho |
+| F2-UI-006 | Construir el patrón de formulario por pasos con avance, guardado automático y resumen | Hecho |
+| F2-UI-007 | Implementar la navegación pública adaptable desde 360 px | Hecho |
+| F2-CMS-001 | Implementar el CMS con borrador, revisión, programación, publicación, archivo e historial | Hecho |
+| F2-CMS-002 | Implementar la reversión de versiones y el registro de cambios editoriales | Hecho |
 | F2-CMS-003 | Implementar redirecciones, metadatos y las páginas legales configurables por entidad | Pendiente |
-| F2-UI-008 | Construir las páginas públicas institucionales del mapa funcional | Pendiente |
-| F2-UI-009 | Construir las páginas públicas de CIAN, CENI y herramientas | Pendiente |
-| F2-UI-010 | Construir el formulario de contacto y la entrada inicial de solicitudes | Pendiente |
-| F2-UI-011 | Implementar el buscador público con estados vacío y sin resultados diferenciados | Pendiente |
-| F2-UI-012 | Construir el centro de accesibilidad y la declaración correspondiente | Pendiente |
+| F2-UI-008 | Construir las páginas públicas institucionales del mapa funcional | Hecho |
+| F2-UI-009 | Construir las páginas públicas de CIAN, CENI y herramientas | Hecho |
+| F2-UI-010 | Construir el formulario de contacto y la entrada inicial de solicitudes | Hecho |
+| F2-UI-011 | Implementar el buscador público con estados vacío y sin resultados diferenciados | Hecho |
+| F2-UI-012 | Construir el centro de accesibilidad y la declaración correspondiente | Hecho |
 | F2-PWA-001 | Implementar manifiesto, iconos y comportamiento instalable | Pendiente |
 | F2-PWA-002 | Implementar caché segura que nunca almacena expedientes ni respuestas autenticadas | Pendiente |
 | F2-PWA-003 | Indicar con claridad las acciones que requieren conexión | Pendiente |
-| F2-ARQ-001 | Implementar los catálogos de mensajes y los formatos de fecha, número y moneda | Pendiente |
+| F2-ARQ-001 | Implementar los catálogos de mensajes y los formatos de fecha, número y moneda | Hecho |
 | F2-OPS-001 | Implementar SEO técnico, mapa del sitio, datos estructurados y metadatos sociales | Pendiente |
 | F2-OPS-002 | Implementar analítica respetuosa de la privacidad para eventos esenciales | Pendiente |
 | F2-ACC-001 | Verificar los umbrales de accesibilidad en todas las rutas públicas | Pendiente |
 | F2-QA-001 | Configurar Playwright con perfiles móvil y escritorio, y las pruebas visuales | Pendiente |
 | F2-QA-002 | Verificar los umbrales de rendimiento de las rutas públicas | Pendiente |
 | F2-DOC-001 | Documentar el sistema de diseño y actualizar el estado de la fase | Pendiente |
+
+**Qué significa «hecho» en F2-UI-008 y F2-UI-009.** Las páginas institucionales del mapa funcional existen: cada ruta contratada resuelve, tiene sus metadatos, es editable desde el gestor de contenidos y, mientras nadie haya publicado nada, dice con todas sus letras que aún no hay contenido en vez de mostrar relleno. Lo que **no** se entrega es el texto: un comunicado o una descripción del sindicato firmados por la organización los escribe la organización. Redactarlos aquí sería poner palabras en boca de Fuerza Índigo, que es la misma clase de error que inventar un valor estatutario. Los datos vivos de CIAN, CENI, herramientas, afiliación, directorio y eventos llegan con sus fases (8, 9, 7, 4, 4 y 11).
 
 ---
 

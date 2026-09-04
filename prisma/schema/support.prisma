@@ -1,0 +1,145 @@
+/// Entrada única de ayuda y contacto (PRD §10.1, docs/DATA_MODEL.md §7).
+///
+/// Es la puerta de la calle: cualquiera escribe sin cuenta y sin permiso. Lo
+/// que aquí se guarda **no** es un expediente ni una persona del padrón, sino
+/// el mensaje de alguien que todavía no es nadie en el sistema. El expediente
+/// de caso, la valoración humana y la canalización son de la Fase 6.
+///
+/// El modelo de datos contrata esta tabla desde la Fase 0. La Fase 2 implementa
+/// su **subconjunto de entrada**: lo que la persona declara, el acuse con folio
+/// y la bandeja donde se lee. Las columnas de clasificación, canalización y
+/// conversión a caso las añade la Fase 6, cuando exista lo que apuntan.
+///
+/// Dos desviaciones respecto de `docs/DATA_MODEL.md` §7, documentadas allí:
+///
+///  · `consentId` es **nulo** en esta fase. El documento lo contrataba
+///    obligatorio, pero `Consent` cuelga de `Person` y la misma entrada declara
+///    que puede iniciarse sin cuenta: exigirlo obligaría a crear una persona
+///    del padrón por cada mensaje recibido. Lo que sí consta es qué versión
+///    exacta del aviso de privacidad se aceptó y cuándo.
+///  · Se añaden `legalEntityId`, `preferredChannel`, `subject` y las columnas de
+///    atención, porque sin ellas la bandeja no sabría de quién es el mensaje,
+///    por dónde contestar ni si alguien ya se hizo cargo.
+model SupportRequest {
+  id     String @id @default(uuid(7)) @db.Uuid
+  /// Folio legible que se le da a quien escribe para referirse a su mensaje sin
+  /// exponer el identificador interno.
+  folio  String @unique @db.VarChar(20)
+
+  requestType SupportRequestType
+  /// Entidad a la que se dirige. Fuerza Índigo y Alianza Índigo son personas
+  /// morales distintas y atienden asuntos distintos.
+  legalEntityId String @db.Uuid
+
+  /// Persona del padrón, cuando quien escribe ya tiene registro. Nulo en la
+  /// Fase 2: la entrada pública no crea personas.
+  personId String? @db.Uuid
+
+  /// Cómo quiere que le llamen. No se pide nombre legal: no hace falta para
+  /// contestar un correo, y pedirlo de más es recabar de más.
+  contactName  String  @db.VarChar(120)
+  contactEmail String? @db.VarChar(254)
+  contactPhone String? @db.VarChar(30)
+  /// Medio por el que pide que le contesten, entre los que dejó.
+  preferredChannel SupportChannel
+
+  subject String @db.VarChar(200)
+  /// Lo que escribió, tal cual. No se edita nunca: el motor retira el
+  /// privilegio de actualización sobre esta columna.
+  narrative String @db.Text
+  /// Territorio que declaró en texto libre. Se convertirá en referencia a una
+  /// unidad territorial cuando exista el catálogo consultable (Fase 5).
+  territoryHint String? @db.VarChar(160)
+
+  /// Prioridad. La Fase 2 no la toca: la fija la valoración humana de la Fase 6.
+  /// Lo que la persona declaró vive en `requestType` y no se confunde con esto.
+  urgency SupportUrgency @default(ROUTINE)
+
+  status SupportRequestStatus @default(RECEIVED)
+  /// Quién se hizo cargo. Nulo mientras nadie lo ha hecho.
+  handledByActorId String?   @db.Uuid
+  handledAt        DateTime? @db.Timestamptz(3)
+  /// Nota interna de quien atendió. No se le muestra a quien escribió.
+  handlingNote     String?   @db.VarChar(1000)
+
+  /// Consentimiento granular, cuando hay persona a la que atarlo. Nulo en la
+  /// entrada pública anónima; lo exige la Fase 6 antes de canalizar.
+  consentId String? @db.Uuid
+  /// Versión exacta del aviso de privacidad aceptada al enviar. Un «sí» sin
+  /// decir a qué no prueba nada.
+  privacyNoticeVersionId String   @db.Uuid
+  acceptedAt             DateTime @default(now()) @db.Timestamptz(3)
+
+  /// Huella con clave del origen de la petición, para el límite de envíos.
+  /// No es la dirección: no se puede volver atrás desde ella (PRD §20.4).
+  originFingerprint String @db.VarChar(64)
+
+  receivedAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+  rowVersion Int      @default(0)
+
+  legalEntity          LegalEntity    @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  person               Person?        @relation("SupportRequestPerson", fields: [personId], references: [id], onDelete: Restrict)
+  handledByActor       Actor?         @relation("SupportRequestHandledBy", fields: [handledByActorId], references: [id], onDelete: Restrict)
+  consent              Consent?       @relation(fields: [consentId], references: [id], onDelete: Restrict)
+  privacyNoticeVersion ConsentVersion @relation(fields: [privacyNoticeVersionId], references: [id], onDelete: Restrict)
+
+  @@index([status, receivedAt])
+  @@index([legalEntityId, status])
+  @@index([requestType, status])
+  @@index([originFingerprint, receivedAt])
+  @@index([personId])
+  @@map("support_request")
+}
+
+/// Tipos de la entrada única de ayuda (PRD §10.1).
+///
+/// Son los doce del PRD, con los nombres que contrata `docs/DATA_MODEL.md` §7,
+/// más `GENERAL_CONTACT`: el formulario de contacto y el de solicitud de apoyo
+/// son el mismo acto —alguien escribe desde fuera— y separarlos en dos tablas
+/// haría que una de las dos se quedara atrás. Lo que cambia es qué tipos se
+/// ofrecen en cada pantalla.
+enum SupportRequestType {
+  GENERAL_CONTACT
+  INDIVIDUAL_LABOR_DISPUTE
+  COLLECTIVE_DISPUTE
+  DISCRIMINATION_OR_ADJUSTMENTS
+  EDUCATION_ACCESS
+  HEALTH_ACCESS
+  ACCESSIBILITY
+  FAMILY_GUIDANCE
+  CIAN_ATTENTION
+  PSYCHOSOCIAL_RISK
+  VIOLENCE_OR_URGENCY
+  TRAINING_OR_INSTITUTIONAL_SUPPORT
+  OTHER
+}
+
+enum SupportChannel {
+  EMAIL
+  PHONE
+}
+
+enum SupportUrgency {
+  ROUTINE
+  PRIORITY
+  URGENT
+}
+
+/// Estados contratados en `docs/DATA_MODEL.md` §7, más `HANDLED`.
+///
+/// `HANDLED` cubre lo que la Fase 2 puede hacer de verdad: alguien lo leyó,
+/// contestó y lo dejó anotado. Los tres estados de la Fase 6 —`TRIAGE`,
+/// `CONVERTED_TO_CASE` y `REFERRED_EXTERNALLY`— existen en el enumerado porque
+/// la máquina de estados está contratada, y ninguna ruta de esta fase los
+/// escribe: un estado que el sistema puede alcanzar sin código que lo alcance
+/// sería una promesa vacía.
+enum SupportRequestStatus {
+  RECEIVED
+  TRIAGE
+  CONVERTED_TO_CASE
+  REFERRED_EXTERNALLY
+  HANDLED
+  CLOSED_NO_ACTION
+  DUPLICATE
+}

@@ -327,6 +327,15 @@ export function TextArea({
 export interface Option {
   readonly value: string;
   readonly label: string;
+  /**
+   * Una línea que explica la opción. Solo la usa `RadioGroup`; `Select` no
+   * puede mostrarla porque un `<option>` nativo no admite contenido.
+   *
+   * Cuando las opciones no se distinguen por su nombre —«conflicto individual»
+   * frente a «conflicto colectivo»— la explicación no es un adorno: es lo que
+   * permite elegir sin saber el vocabulario de la institución (PRD §5.3).
+   */
+  readonly hint?: string | undefined;
 }
 
 export function Select({
@@ -376,6 +385,7 @@ export function RadioGroup({
   options,
   value,
   errors,
+  onChange,
 }: {
   name: string;
   legend: string;
@@ -383,10 +393,18 @@ export function RadioGroup({
   options: readonly Option[];
   value?: string | undefined;
   errors?: readonly string[] | undefined;
+  /**
+   * Se avisa del cambio sin tomar el control del campo: los `input` siguen
+   * siendo del navegador (`defaultChecked`), de modo que el formulario funciona
+   * igual sin JavaScript. Sirve para lo que **acompaña** a la elección —un
+   * aviso que aparece, una sección que se muestra—, nunca para lo que se envía.
+   */
+  onChange?: ((value: string) => void) | undefined;
 }) {
   const idAyuda = help === undefined ? undefined : `${name}-ayuda`;
   const idError = errors === undefined || errors.length === 0 ? undefined : `${name}-error`;
   const describedBy = [idAyuda, idError].filter((v) => v !== undefined).join(' ') || undefined;
+  const conExplicacion = options.some((opcion) => opcion.hint !== undefined);
 
   return (
     <fieldset aria-describedby={describedBy}>
@@ -396,20 +414,32 @@ export function RadioGroup({
           {help}
         </p>
       )}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className={conExplicacion ? 'mt-3 grid gap-2' : 'mt-3 flex flex-wrap gap-2'}>
         {options.map((opcion) => (
           <label
             key={opcion.value}
-            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-line-strong)] bg-[var(--color-surface-raised)] px-3 py-2 has-[:checked]:border-[var(--color-accent)] has-[:checked]:bg-[var(--color-accent-soft)] has-[:checked]:font-medium has-[:checked]:text-[var(--color-accent-ink)]"
+            className={`${conExplicacion ? 'flex items-start' : 'inline-flex items-center'} min-h-11 cursor-pointer gap-3 rounded-lg border border-[var(--color-line-strong)] bg-[var(--color-surface-raised)] px-3 py-2 has-[:checked]:border-[var(--color-accent)] has-[:checked]:bg-[var(--color-accent-soft)] has-[:checked]:font-medium has-[:checked]:text-[var(--color-accent-ink)]`}
           >
             <input
               type="radio"
               name={name}
               value={opcion.value}
               defaultChecked={value === opcion.value}
-              className="size-4 accent-[var(--color-accent)]"
+              aria-describedby={opcion.hint === undefined ? undefined : `${name}-${opcion.value}-detalle`}
+              onChange={onChange === undefined ? undefined : () => onChange(opcion.value)}
+              className={`size-4 shrink-0 accent-[var(--color-accent)] ${conExplicacion ? 'mt-1' : ''}`}
             />
-            <span>{opcion.label}</span>
+            <span>
+              {opcion.label}
+              {opcion.hint !== undefined && (
+                <span
+                  id={`${name}-${opcion.value}-detalle`}
+                  className="mt-0.5 block text-sm font-normal text-[var(--color-ink-soft)]"
+                >
+                  {opcion.hint}
+                </span>
+              )}
+            </span>
           </label>
         ))}
       </div>

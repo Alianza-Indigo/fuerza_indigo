@@ -131,6 +131,28 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   }),
   define('content.redirect.manage', 'Administrar redirecciones de direcciones antiguas'),
 
+  // support — entrada única de ayuda y contacto (PRD §10.1, Fase 2)
+  /**
+   * Leer la bandeja es sensible aunque los mensajes lleguen por un formulario
+   * abierto: quien escribe cuenta un conflicto laboral, una discriminación o
+   * una urgencia, y lo cuenta con su nombre y su correo. Que la puerta esté en
+   * la calle no hace pública la conversación.
+   *
+   * `request.create` no figura: crear una solicitud es lo que hace cualquiera
+   * desde el formulario público, sin cuenta y sin permiso. Un permiso que todo
+   * el mundo tiene no es un permiso, y declararlo invitaría a comprobarlo, que
+   * es como se acaba exigiendo sesión para pedir ayuda.
+   *
+   * `request.route` tampoco: canalizar es de la Fase 6 y exige confirmación
+   * humana sobre una propuesta que aquí todavía no se produce.
+   */
+  define('support.request.read', 'Consultar la entrada de solicitudes y contacto', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('support.request.triage', 'Hacerse cargo de una solicitud recibida y anotarla', {
+    sensitivity: 'SENSITIVE',
+  }),
+
   // audit
   define('audit.audit.read', 'Consultar la bitácora institucional', { sensitivity: 'CRITICAL' }),
   define('audit.security.read', 'Consultar la bitácora de seguridad', { sensitivity: 'CRITICAL' }),

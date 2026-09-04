@@ -80,7 +80,7 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `election` | `election.manage`, `slate.validate`, `incident.resolve`, `roster.publish` | Crítica |
 | `bargaining` | `file.manage`, `consultation.open`, `strike.file_open` | Crítica; `strike.file_open` exige acuerdo humano adjunto |
 | `discipline` | `case.open`, `case.read`, `evidence.manage`, `decision.issue`, `appeal.resolve` | Crítica; siempre reservado |
-| `support` | `request.create`, `request.read`, `request.triage`, `request.route` | Sensible |
+| `support` | `request.create`, `request.read`, `request.triage`, `request.route` | Sensible. `request.create` **no existe como permiso declarado**: crear una solicitud es lo que hace cualquiera desde el formulario público, sin cuenta y sin permiso, y un permiso que todo el mundo tiene invita a comprobarlo, que es como se acaba exigiendo sesión para pedir ayuda. `request.read` y `request.triage` existen desde la Fase 2; `request.route` desde la Fase 6, cuando haya canalización que confirmar |
 | `cases` | `case.read`, `case.assign`, `case.update`, `case.message`, `case.close`, `case.reopen`, `case.refer`, `case.read_reserved_notes`, `case.export` | Sensible · Crítica en `read_reserved_notes` y `export` (exigen motivo) |
 | `cian` | `intake.read`, `intake.triage`, `appointment.manage`, `episode.read`, `careplan.manage`, `clinicalnote.read`, `clinicalnote.write`, `outcome.read` | Crítica en todo lo clínico |
 | `billing` | `catalog.manage`, `payment.read`, `payment.register_manual`, `payment.approve_manual`, `refund.request`, `refund.approve`, `ledger.read`, `ledger.adjust`, `reconciliation.close`, `asset.manage`, `report.export`, `accountability.read` | Crítica; ajustes y exportaciones exigen motivo. `accountability.read` es Normal |
@@ -131,6 +131,7 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 | `discipline.case.open` | — | — | — | — | — | — | P | P | — | — | — | — | — | — | — | — | — | — | — |
 | `discipline.case.read` | — | — | — | — | O | — | A | A | — | — | — | — | — | — | — | — | — | L | — |
 | `decision.issue` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
+| `request.read` | — | — | — | — | — | P | P | — | — | P | — | P | — | — | — | — | — | L | — |
 | `request.triage` | — | — | — | — | — | P | P | — | — | P | — | P | — | — | — | — | — | — | — |
 | `cases.case.read` | — | — | O | O | O | A | A | — | — | A | A | A | — | — | — | — | — | L | — |
 | `cases.case.read_reserved_notes` | — | — | — | — | — | — | A | — | — | A | A | A | — | — | — | — | — | — | — |
@@ -194,6 +195,17 @@ Notas de lectura:
 | Comisión Electoral | `election.manage`, `slate.validate`, `roster.publish`, `vote.tally`, `vote.certify`, `incident.resolve` |
 
 Incompatibilidades verificadas por el dominio: quien integra la Comisión de Vigilancia no puede tener permisos operativos de Finanzas; quien integra la Comisión Electoral no puede ser candidato en el proceso que califica; ambas comisiones se integran por tres agremiados que no forman parte del Comité Ejecutivo Nacional (PRD §9.3).
+
+### Lo que la semilla otorga hoy y lo que la matriz contrata
+
+La matriz describe el estado final. La semilla otorga en cada fase solo lo que esa fase puede hacer cumplir, y la diferencia se declara aquí en vez de quedar como un hueco silencioso.
+
+De `support.request.read` y `support.request.triage`, que llegan con la Fase 2, la semilla otorga hoy a **EXECUTIVE_SECRETARY** y **SOCIAL_STAFF**, y **no** a los otros dos que la matriz contrata:
+
+- **TERRITORIAL_DELEGATE** tiene alcance territorial, y en la Fase 2 el territorio de una solicitud es todavía texto libre que escribió quien la envió: no hay unidad territorial a la que atarla. Concederlo ahora no daría «su territorio» sino toda la entidad, que es más de lo que la matriz dice. Se otorga en la Fase 5, cuando la solicitud apunte a una unidad del catálogo.
+- **CIAN_COORDINATION** se otorga en la Fase 8, con el módulo que atiende esas solicitudes.
+
+**COMMUNICATIONS** no figura en la matriz para este permiso y tampoco se le otorga: administra contenidos, y un conflicto laboral que alguien contó no es material editorial.
 
 ---
 

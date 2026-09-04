@@ -48,6 +48,14 @@ export const AUDIT_ACTIONS = {
   CONTENT_REDIRECT_CREATED: 'content.redirect.created',
   CONTENT_REDIRECT_DELETED: 'content.redirect.deleted',
 
+  // Entrada única de ayuda — Fase 2. El envío no se audita: quien escribe no
+  // ejecuta un acto institucional, y la fila con su fecha ya es el registro. Lo
+  // que sí es acto de la organización es leer lo que alguien contó y hacerse
+  // cargo de ello.
+  SUPPORT_REQUEST_READ: 'support.request.read',
+  SUPPORT_REQUEST_HANDLED: 'support.request.handled',
+  SUPPORT_REQUEST_DISCARDED: 'support.request.discarded',
+
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',
   MODULE_CONFIGURED: 'system.module.configured',

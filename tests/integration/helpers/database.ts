@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Client } from 'pg';
 import { PrismaClient } from '@prisma-client/client';
@@ -47,6 +49,48 @@ interface Instalada {
 }
 
 const pila: Instalada[] = [];
+
+/**
+ * Sentencias `GRANT` y `REVOKE` que declaran las migraciones, en su orden.
+ *
+ * Se leen del disco en vez de repetirse aquí. La versión anterior las copiaba a
+ * mano y esa copia era una promesa que nadie renovaba: al añadir una migración
+ * que retira `UPDATE` sobre una columna, las pruebas seguían corriendo con el
+ * privilegio puesto y daban por buena una inmutabilidad que en producción sí
+ * existía y aquí no. Una prueba que comprueba menos que la realidad es peor que
+ * ninguna, porque además tranquiliza.
+ *
+ * Los `GRANT` generales de arriba se aplican antes porque los privilegios por
+ * omisión no cruzan de una base a otra; estas sentencias van después para que
+ * las revocaciones tengan la última palabra, igual que en un despliegue.
+ */
+function privilegiosDeLasMigraciones(): string[] {
+  const raiz = path.join(process.cwd(), 'prisma', 'migrations');
+  const sentencias: string[] = [];
+
+  for (const carpeta of readdirSync(raiz).sort()) {
+    const archivo = path.join(raiz, carpeta, 'migration.sql');
+    if (!existsSync(archivo)) continue;
+
+    const sinComentarios = readFileSync(archivo, 'utf8')
+      .split('\n')
+      .filter((linea) => !linea.trimStart().startsWith('--'))
+      .join('\n');
+
+    for (const bruta of sinComentarios.split(';')) {
+      const sentencia = bruta.trim();
+      if (/^(GRANT|REVOKE)\b/i.test(sentencia)) sentencias.push(sentencia);
+    }
+  }
+
+  if (sentencias.length === 0) {
+    throw new Error(
+      'Ninguna migración declara privilegios. O se perdió la separación de roles, o este ayudante dejó de encontrarlas.',
+    );
+  }
+
+  return sentencias;
+}
 
 async function onAdmin(work: (client: Client) => Promise<void>): Promise<void> {
   const adminUrl = process.env['TEST_ADMIN_URL'];
@@ -138,9 +182,7 @@ export async function createTestDatabase(label: string): Promise<TestDatabase> {
   await owner.query(`GRANT USAGE ON SCHEMA public TO fuerza_app`);
   await owner.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO fuerza_app`);
   await owner.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO fuerza_app`);
-  await owner.query(`REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "audit_event" FROM fuerza_app`);
-  await owner.query(`REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "security_event" FROM fuerza_app`);
-  await owner.query(`REVOKE DELETE, TRUNCATE ON TABLE "outbox_message" FROM fuerza_app`);
+  for (const sentencia of privilegiosDeLasMigraciones()) await owner.query(sentencia);
   await owner.end();
 
   pila.push({

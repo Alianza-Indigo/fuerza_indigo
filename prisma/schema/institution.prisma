@@ -33,6 +33,7 @@ model LegalEntity {
   auditEvents       AuditEvent[]
   outboxMessages    OutboxMessage[]
   contentPages ContentPage[]
+  supportRequests SupportRequest[]
 
   @@map("legal_entity")
 }

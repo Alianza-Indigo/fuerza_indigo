@@ -53,6 +53,28 @@ const HANDLERS: Record<string, JobHandler> = {
     const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
     return { providerMessageId: sent.providerMessageId };
   },
+
+  /**
+   * Acuse de recibo de la entrada pública (PRD §10.1, Fase 2).
+   *
+   * El folio es la clave de negocio, de modo que reintentar no manda dos acuses
+   * por el mismo mensaje. Va por la cola y no en línea a propósito: si el
+   * proveedor de correo está caído, el mensaje ya está guardado y alguien lo va
+   * a leer igual; perder el mensaje por no poder acusarlo sería perder lo único
+   * que importa.
+   */
+  'support-request-acknowledge': async (job) => {
+    const to = textValue(job.payload, 'to');
+    const templateCode = textValue(job.payload, 'templateCode');
+    const variables = stringMap(job.payload, 'variables');
+
+    if (to === '' || templateCode === '') {
+      throw new Error('El acuse de la entrada pública no trae destinatario ni plantilla.');
+    }
+
+    const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
+    return { providerMessageId: sent.providerMessageId };
+  },
 };
 
 export async function runJob(job: ClaimedJob): Promise<JobResult> {

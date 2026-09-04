@@ -21,6 +21,7 @@ model ConsentVersion {
 
   legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
   consents    Consent[]
+  supportRequestNotices SupportRequest[]
 
   @@unique([code, version])
   @@index([code])
@@ -58,6 +59,8 @@ model Consent {
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  supportRequests SupportRequest[]
 
   person         Person         @relation("ConsentSubject", fields: [personId], references: [id], onDelete: Restrict)
   grantedBy      Person         @relation("ConsentGrantor", fields: [grantedById], references: [id], onDelete: Restrict)

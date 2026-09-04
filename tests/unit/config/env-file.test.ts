@@ -37,8 +37,8 @@ function cargarEnProcesoNuevo(directorio: string, nombres: readonly string[]): R
   // `SUPERADMIN_PASSWORD_HASH` —la integración continua lo hace— la prueba
   // dejaba de leer lo que el archivo decía y pasaba a leer lo de la máquina.
   // Fallaba allí y pasaba aquí, que es la peor forma de fallar.
-  const entorno: Record<string, string | undefined> = { ...process.env, NODE_ENV: 'production' };
-  for (const nombre of nombres) delete entorno[nombre];
+  const entorno = { ...process.env, NODE_ENV: 'production' as const };
+  for (const nombre of nombres) delete (entorno as Record<string, string | undefined>)[nombre];
 
   const salida = execFileSync(process.execPath, ['-e', CARGADOR, directorio, JSON.stringify(nombres)], {
     cwd: process.cwd(),
@@ -63,7 +63,7 @@ function cargarConVariableDeEntorno(
   const salida = execFileSync(process.execPath, ['-e', CARGADOR, directorio, JSON.stringify([nombre])], {
     cwd: process.cwd(),
     encoding: 'utf8',
-    env: { ...process.env, NODE_ENV: 'production', [nombre]: valorDelEntorno },
+    env: { ...process.env, NODE_ENV: 'production' as const, [nombre]: valorDelEntorno },
   });
   return (JSON.parse(salida) as Record<string, string | null>)[nombre] ?? null;
 }

@@ -3,17 +3,113 @@
 > Documento de seguimiento exigido por el PRD §23.1. Se actualiza durante toda la construcción. El verificador `npm run phase:verify` lee de aquí la fase activa y ejecuta los controles que le corresponden.
 
 ---
+## Situación actual
+
+- **Fase activa:** 4 — Afiliación, padrones, directorios y credenciales
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 4 de septiembre de 2026
+- **Fecha de inicio:** 4 de septiembre de 2026
+- **SHA del punto de control:** se registra al aprobarse
+- **Fase anterior:** 3 — `APPROVED`, cerrada en `85cf196`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 5 — Estructura territorial, gobierno, asambleas y elecciones, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 4 contrata: registro maestro de persona; solicitud de agremiado; afiliación honoraria activa; alta de beneficiario protegido; relaciones familiares y de cuidado; revisión y resolución; documentación; pagos y activación; membresías y vigencias; bajas, suspensiones y conversiones; padrón sindical; padrón honorario; padrón protegido; directorio interno; directorio público opt-in; preferencias de indexación; credenciales y QR; preparación de altas y bajas para obligaciones laborales; y panel personal moderno.
+
+**Qué cierra esta fase.** La Fase 3 dejó resuelto el dinero y deliberadamente sin conectar los derechos: `Subscription.membershipId` y `Payment.appliesToKind` quedaron declarados y sin escribir. Aquí se escriben. Una membresía se activa cuando un webhook firmado confirma el cobro, nunca antes y nunca desde el regreso del navegador.
+
+**Lo que esta fase deliberadamente no hace.** No convoca asambleas ni celebra elecciones: eso es la Fase 5. Lo que sí hace es dejar dicho, en el propio dato, quién vota y quién no —`MembershipType.grantsPoliticalRights` y `countsForQuorum`—, de modo que la fase siguiente lea una respuesta en vez de inventarla. Tampoco abre expedientes de caso: un beneficiario protegido se da de alta aquí con su origen, su necesidad inicial y su nivel de urgencia, y la atención empieza en la Fase 6.
+
+**Lo que no se inventa.** No se siembra ninguna cuota ni ningún importe: el catálogo se administra desde la pantalla de finanzas (ADR-0040). Los tipos de membresía sí se siembran, porque son estructura estatutaria y no dinero: qué calidades existen, cuál concede derechos políticos y cuál no. Ninguno lleva precio.
+
+---
+
+## Criterios de aceptación
+
+Criterios específicos del PRD §24 Fase 4:
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Una misma persona puede tener varias relaciones sin duplicarse | Pendiente |
+| 2 | Un beneficiario recibe atención sin afiliación ni pago | Pendiente |
+| 3 | Un afiliado honorario nunca obtiene voto por error | Pendiente |
+| 4 | Solo agremiados elegibles aparecen en el padrón sindical correspondiente | Pendiente |
+| 5 | Retirar consentimiento elimina la publicación pública y la indexación controlada | Pendiente |
+| 6 | Una credencial revocada se refleja inmediatamente en el verificador | Pendiente |
+| 7 | Todos los estados y transiciones están auditados | Pendiente |
+
+---
+
+## Tareas completadas
+
+Las veinticuatro tareas de la Fase 4 del backlog, de `F4-DAT-001` a `F4-DOC-001`. El detalle vive en la sección **Fase 4** de [`BACKLOG.md`](BACKLOG.md).
+
+---
+
+## Evidencias
+
+| Qué se afirma | Cómo se comprobó |
+|---|---|
+| — | Se completa al cerrar la fase |
+
+---
+
+## Pruebas y resultados
+
+| Puerta | Resultado |
+|---|---|
+| — | Se completa al cerrar la fase |
+
+---
+
+## Defectos abiertos
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+| `D-F4-001` | Alta | La semilla deja el aviso de privacidad de la entrada pública en borrador y **no existe ninguna pantalla ni caso de uso que lo publique**. El formulario público de contacto exige uno publicado, así que en cualquier instalación real falla siempre; solo la prueba de integración lo publica, con una escritura directa. Viene de la Fase 2 | Abierto. Se corrige en el bloque H, junto con el consentimiento de publicación en directorio, que necesita lo mismo |
+| `D-F4-002` | Alta | `ACTIVE_PHASE` seguía en `1` desde la Fase 1. La Fase 3 cerró sin subirlo, de modo que las seis variables de Stripe nunca pasaron a ser obligatorias: una instalación productiva arrancaba con las claves vacías y lo descubría en el primer cobro | Corregido. `ACTIVE_PHASE = 4`, con los valores de prueba declarados en la integración continua y en la preparación de las pruebas. `ENVIRONMENT.md` §11 dice ahora que la constante se sube **al abrir** cada fase, no al cerrarla |
+| `D-F4-003` | Alta | `identity.user.disable` estaba declarado desde la Fase 1 sin titular, sin caso de uso y sin pantalla: una cuenta invitada por error o la de quien dejó la organización no se podía cerrar desde ninguna parte | Corregido. `disableAccount` y `reenableAccount`, con titular `EXECUTIVE_SECRETARY` —quien invita, cierra— y pantalla en `/gestion/personas` (ADR-0072) |
+| `D-F4-005` | Alta | Tras avisar de una posible duplicidad, el formulario aparecía **en blanco**: React vacía los campos de un formulario al terminar una acción, así que quien acababa de teclear quince campos los perdía justo en el momento en que se le pedía revisarlos y volver a enviar | Corregido. La acción devuelve lo escrito y el formulario lo repinta; hizo falta además una clave de remontaje, porque un `defaultValue` solo se aplica al montar y cambiarlo después no repinta nada. Encontrado conduciendo la pantalla en un navegador real |
+| `D-F4-006` | Media | Fusionar dos registros funcionaba y **no lo decía**: el aviso de éxito vivía dentro de la lista de candidatas, y una fusión correcta deja esa lista vacía. La pantalla cambiaba sola y quien acababa de fusionar no sabía si lo había hecho | Corregido. El aviso se pinta fuera de la lista. La regla que queda: un mensaje de resultado nunca va dentro de la rama que la propia acción hace desaparecer |
+| `D-F4-004` | Media | `identity.person.merge` tampoco lo tenía ningún rol: la pantalla de fusión de duplicados no la habría podido usar nadie. Lo detectó una prueba de integración al fallar con `FORBIDDEN` | Corregido. Lo recibe `EXECUTIVE_SECRETARY`, que es quien lleva el padrón, y la matriz de `PERMISSIONS.md` §4 registra la fila que le faltaba |
+
+---
+
+## Decisiones
+
+Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0064.
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | — | `IN_PROGRESS` | — |
+| 5 a 12 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 3
+
+> Catálogo financiero, Stripe y libro auxiliar. Cerrada el 4 de septiembre de 2026 en `85cf196`.
 
 ## Situación actual
 
 - **Fase activa:** 3 — Catálogo financiero, Stripe y libro auxiliar
-- **Estado:** `IN_PROGRESS` — la construcción está terminada y la puerta pasa entera; la fase **no se declara aprobada** hasta que la persona usuaria lo autorice expresamente (PRD §23.3)
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
-- **Fecha de término de la construcción:** 4 de septiembre de 2026
-- **SHA del punto de control:** se registra al aprobarse
+- **SHA del punto de control:** `85cf196`
 - **Fase anterior:** 2 — `APPROVED`, cerrada en `0fedf6f`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
-- **Fase siguiente:** 4 — Afiliación, padrones, directorios y credenciales, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+- **Fase siguiente:** 4 — Afiliación, padrones, directorios y credenciales, autorizada por la persona usuaria el 4 de septiembre de 2026
 
 ---
 
@@ -107,18 +203,6 @@ Los cinco estados de un pago —pendiente, exitoso, fallido, reembolsado y dispu
 ## Decisiones
 
 Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0049.
-
----
-
-## Historial de fases
-
-| Fase | Inicio | Cierre | Estado | SHA del punto de control |
-|---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
-| 3 | 2026-09-04 | — | `IN_PROGRESS` | — |
-| 4 a 12 | — | — | No iniciadas | — |
 
 ---
 

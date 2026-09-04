@@ -4,9 +4,11 @@ import {
   closeOtherSessions,
   closeOwnSession,
   completePasswordReset,
+  disableAccount,
   inviteUser,
   login,
   myActiveSessions,
+  reenableAccount,
   requestPasswordReset,
 } from '@/modules/identity';
 import { resolveSession } from '@/platform/auth/session';
@@ -316,4 +318,124 @@ describe('sesiones propias', () => {
     });
     expect(await resolveSession(abierta.data.token)).toBeNull();
   }, 90_000);
+});
+
+describe('cerrar y reabrir una cuenta (defecto `D-F4-003`)', () => {
+  async function cuentaActiva() {
+    const quien = await crearPersonaConCuenta(base.prisma);
+    await nombrar(base.prisma, {
+      userId: quien.userId,
+      roleCode: 'UNION_MEMBER',
+      grantedById: secretaria.userId,
+      legalEntityId: await entidadPrincipal(base.prisma),
+    });
+    await base.prisma.session.create({
+      data: {
+        userId: quien.userId,
+        actorKind: 'PERSON',
+        tokenHash: `hash-${quien.userId.slice(0, 24)}`,
+        expiresAt: new Date(Date.now() + 3_600_000),
+      },
+    });
+    return quien;
+  }
+
+  it('cerrar revoca sesiones y nombramientos, y sube la versión de sesión', async () => {
+    const quien = await cuentaActiva();
+    const antes = await base.prisma.user.findUniqueOrThrow({
+      where: { id: quien.userId },
+      select: { sessionVersion: true },
+    });
+
+    const actor = await contextoDe(base.prisma, secretaria);
+    const cerrada = await disableAccount(actor, {
+      userId: quien.userId,
+      reason: 'La persona dejó la organización el mes pasado.',
+    });
+
+    expect(cerrada.ok, cerrada.ok ? '' : JSON.stringify(cerrada.error)).toBe(true);
+    if (!cerrada.ok) return;
+    expect(cerrada.data.revokedSessions).toBe(1);
+    expect(cerrada.data.revokedAssignments).toBe(1);
+
+    const despues = await base.prisma.user.findUniqueOrThrow({
+      where: { id: quien.userId },
+      select: { status: true, sessionVersion: true },
+    });
+    expect(despues.status).toBe('DISABLED');
+    expect(despues.sessionVersion).toBe(antes.sessionVersion + 1);
+  });
+
+  it('exige motivo escrito', async () => {
+    const quien = await cuentaActiva();
+    const actor = await contextoDe(base.prisma, secretaria);
+    const sinMotivo = await disableAccount(actor, { userId: quien.userId, reason: 'porque sí' });
+    expect(sinMotivo.ok).toBe(false);
+    if (!sinMotivo.ok) expect(sinMotivo.error.code).toBe('VALIDATION');
+  });
+
+  it('nadie cierra su propia cuenta', async () => {
+    const actor = await contextoDe(base.prisma, secretaria);
+    const propia = await disableAccount(actor, {
+      userId: secretaria.userId,
+      reason: 'Quiero irme de vacaciones sin que nadie me escriba.',
+    });
+    expect(propia.ok).toBe(false);
+    if (!propia.ok) expect(propia.error.code).toBe('RULE_VIOLATION');
+  });
+
+  it('sin la facultad no se cierra ninguna cuenta', async () => {
+    const quien = await cuentaActiva();
+    const otra = await crearPersonaConCuenta(base.prisma);
+    const sinFacultad = await contextoDe(base.prisma, otra);
+    const intento = await disableAccount(sinFacultad, {
+      userId: quien.userId,
+      reason: 'Me apetece cerrar esta cuenta ajena.',
+    });
+    expect(intento.ok).toBe(false);
+    if (!intento.ok) expect(intento.error.code).toBe('FORBIDDEN');
+  });
+
+  it('quien tiene la cuenta cerrada no entra, aunque la contraseña siga siendo correcta', async () => {
+    const quien = await crearPersonaConCuenta(base.prisma);
+    const actor = await contextoDe(base.prisma, secretaria);
+    await disableAccount(actor, { userId: quien.userId, reason: 'Cierre por reorganización del área.' });
+
+    const intento = await login({ email: quien.email, password: PASSWORD }, contextoLogin);
+    expect(intento.ok).toBe(false);
+  });
+
+  it('reabrir no devuelve los nombramientos: eso es un acto aparte', async () => {
+    const quien = await cuentaActiva();
+    const actor = await contextoDe(base.prisma, secretaria);
+    await disableAccount(actor, { userId: quien.userId, reason: 'Cierre temporal mientras se aclara un asunto.' });
+
+    const reabierta = await reenableAccount(actor, {
+      userId: quien.userId,
+      reason: 'El asunto quedó aclarado y la persona vuelve.',
+    });
+    expect(reabierta.ok, reabierta.ok ? '' : JSON.stringify(reabierta.error)).toBe(true);
+
+    const vivos = await base.prisma.roleAssignment.count({
+      where: { userId: quien.userId, revokedAt: null },
+    });
+    expect(vivos).toBe(0);
+  });
+
+  it('no se reabre la cuenta de un registro fusionado', async () => {
+    const quien = await crearPersonaConCuenta(base.prisma);
+    const actor = await contextoDe(base.prisma, secretaria);
+    await disableAccount(actor, { userId: quien.userId, reason: 'Duplicidad detectada en el padrón.' });
+    await base.prisma.person.update({
+      where: { id: quien.personId },
+      data: { mergedIntoPersonId: secretaria.personId, archivedAt: new Date() },
+    });
+
+    const intento = await reenableAccount(actor, {
+      userId: quien.userId,
+      reason: 'Quiero devolverle el acceso a esta cuenta.',
+    });
+    expect(intento.ok).toBe(false);
+    if (!intento.ok) expect(intento.error.code).toBe('RULE_VIOLATION');
+  });
 });

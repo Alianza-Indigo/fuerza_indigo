@@ -3,6 +3,7 @@ import { currentActor } from '@/platform/http/request-context';
 import { territoryOptions } from '@/modules/access';
 import { listAdministrablePeople } from '@/modules/admin';
 import { can } from '@/platform/authz/policy';
+import { AccountForm } from './account-form';
 import { InviteForm } from './invite-form';
 
 export const metadata = { title: 'Invitar personas', robots: { index: false, follow: false } };
@@ -18,6 +19,9 @@ export const dynamic = 'force-dynamic';
 export default async function PeopleManagementPage() {
   const actor = await currentActor();
   const puedeInvitar = can(actor, 'identity.user.invite', { kind: 'User' }).allowed;
+  const puedeCerrar = can({ ...actor, reason: 'administración de cuentas' }, 'identity.user.disable', {
+    kind: 'User',
+  }).allowed;
 
   const [personas, territorios] = await Promise.all([listAdministrablePeople(actor), territoryOptions(actor)]);
 
@@ -58,6 +62,7 @@ export default async function PeopleManagementPage() {
                   <th scope="col" className="p-3 font-medium">Estado</th>
                   <th scope="col" className="p-3 font-medium">Último acceso</th>
                   <th scope="col" className="p-3 font-medium">Nombramientos</th>
+                  {puedeCerrar && <th scope="col" className="p-3 font-medium">Acceso</th>}
                 </tr>
               </thead>
               <tbody>
@@ -77,6 +82,21 @@ export default async function PeopleManagementPage() {
                         ? 'Ninguno'
                         : persona.assignments.map((nombramiento) => nombramiento.role).join(', ')}
                     </td>
+                    {puedeCerrar && (
+                      <td className="p-3">
+                        {persona.userId === actor.userId ? (
+                          <span className="text-xs text-[var(--color-ink-soft)]">
+                            Es tu cuenta: no puedes cerrarla tú
+                          </span>
+                        ) : (
+                          <AccountForm
+                            userId={persona.userId}
+                            displayName={persona.displayName}
+                            cerrada={persona.status === 'DISABLED'}
+                          />
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

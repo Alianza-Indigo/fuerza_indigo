@@ -25,3 +25,31 @@ export {
   closeOtherSessions,
   logout,
 } from './application/sessions';
+export {
+  registerPerson,
+  updatePerson,
+  mergePeople,
+  findDuplicates,
+  personRecord,
+  searchPeople,
+  registerPersonSchema,
+  updatePersonSchema,
+  mergePeopleSchema,
+  type RegisterPersonInput,
+  type UpdatePersonInput,
+  type MergePeopleInput,
+  type RegisteredPerson,
+  type DuplicateCandidate,
+  type MergeResult,
+  type PersonRecord,
+  type PersonSummary,
+} from './application/person-registry';
+export {
+  disableAccount,
+  reenableAccount,
+  disableAccountSchema,
+  reenableAccountSchema,
+  type DisableAccountInput,
+  type ReenableAccountInput,
+  type AccountChange,
+} from './application/account-lifecycle';

@@ -50,6 +50,22 @@ model Actor {
   createdReconciliations Reconciliation[] @relation("ReconciliationCreatedBy")
   createdAssetRegisters  AssetRegister[]  @relation("AssetRegisterCreatedBy")
 
+  // Afiliación, padrones y credenciales (Fase 4).
+  createdApplications         MembershipApplication[] @relation("ApplicationCreatedBy")
+  updatedApplications         MembershipApplication[] @relation("ApplicationUpdatedBy")
+  createdMemberships          Membership[]            @relation("MembershipCreatedBy")
+  updatedMemberships          Membership[]            @relation("MembershipUpdatedBy")
+  membershipStatusEvents      MembershipStatusEvent[] @relation("MembershipStatusEventActor")
+  createdBeneficiaries        ProtectedBeneficiary[]  @relation("BeneficiaryCreatedBy")
+  updatedBeneficiaries        ProtectedBeneficiary[]  @relation("BeneficiaryUpdatedBy")
+  createdCareRelationships    CareRelationship[]      @relation("CareRelationshipCreatedBy")
+  updatedCareRelationships    CareRelationship[]      @relation("CareRelationshipUpdatedBy")
+  createdProfessionalProfiles ProfessionalProfile[]   @relation("ProfessionalProfileCreatedBy")
+  updatedProfessionalProfiles ProfessionalProfile[]   @relation("ProfessionalProfileUpdatedBy")
+  createdDirectoryPreferences DirectoryPreference[]   @relation("DirectoryPreferenceCreatedBy")
+  createdCredentials          MemberCredential[]      @relation("CredentialCreatedBy")
+  updatedCredentials          MemberCredential[]      @relation("CredentialUpdatedBy")
+
   @@index([kind])
   @@map("actor")
 }
@@ -87,6 +103,14 @@ model Person {
   /// Preferencias sensoriales persistentes por persona (PRD §5.3).
   accessibilityPreferences Json     @default("{}")
   deceasedAt         DateTime?      @db.Timestamptz(3)
+  /// Clave de comparación de nombres, calculada por el motor (ADR-0070).
+  ///
+  /// Es una columna generada: minúsculas y sin acentos, para que «Muñoz» y
+  /// «Munoz» —la misma persona escrita por dos personas distintas— se
+  /// encuentren. La calcula PostgreSQL en cada escritura, de modo que vale
+  /// también para las filas que crea una semilla, una prueba o cualquier código
+  /// futuro que nadie se acuerde de actualizar.
+  matchKey           String?        @db.Text
   /// Resolución de duplicidad sin borrar historial (PRD §3.1).
   mergedIntoPersonId String?        @db.Uuid
   archivedAt         DateTime?      @db.Timestamptz(3)
@@ -119,7 +143,21 @@ model Person {
   notifications     Notification[]
   ownedFiles        FileObject[]
 
+  // Afiliación, padrones, directorios y credenciales (Fase 4). Una sola
+  // persona, muchas calidades: nada de esto la duplica (PRD §3.1).
+  applications           MembershipApplication[]
+  memberships            Membership[]
+  beneficiaryRecords     ProtectedBeneficiary[] @relation("BeneficiaryPerson")
+  representedBeneficiaries ProtectedBeneficiary[] @relation("BeneficiaryResponsible")
+  careRelationshipsFrom  CareRelationship[]     @relation("CareRelationshipFrom")
+  careRelationshipsTo    CareRelationship[]     @relation("CareRelationshipTo")
+  professionalProfile    ProfessionalProfile?
+  directoryPreferences   DirectoryPreference[]
+  directoryPublications  DirectoryPublication[]
+  credentials            MemberCredential[]
+
   @@index([familyName, givenName])
+  @@index([matchKey])
   @@index([territorialUnitId])
   @@index([primaryEmail])
   @@map("person")
@@ -178,6 +216,15 @@ model User {
   approvedLedgerEntries    LedgerEntry[]   @relation("LedgerEntryApprovedBy")
   closedReconciliations    Reconciliation[] @relation("ReconciliationClosedBy")
   registeredAssetMovements AssetMovement[] @relation("AssetMovementRegisteredBy")
+
+  // Afiliación (Fase 4). Quien revisa, quien resuelve y quien verifica son
+  // personas con cuenta, nunca el sistema.
+  resolvedApplications     MembershipApplication[] @relation("ApplicationResolvedBy")
+  applicationReviews       ApplicationReview[]     @relation("ApplicationReviewer")
+  reviewedApplicationDocuments ApplicationDocument[] @relation("ApplicationDocumentReviewedBy")
+  membershipStatusChanges  MembershipStatusEvent[] @relation("MembershipStatusActor")
+  registeredBeneficiaries  ProtectedBeneficiary[]  @relation("BeneficiaryRegisteredBy")
+  verifiedProfessionalProfiles ProfessionalProfile[] @relation("ProfessionalProfileVerifiedBy")
 
   @@index([status])
   @@map("user_account")
@@ -378,6 +425,9 @@ model SpecialtyCatalog {
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  applications          MembershipApplication[]
+  professionalProfiles  ProfessionalSpecialty[]
 
   @@index([kind])
   @@map("specialty_catalog")

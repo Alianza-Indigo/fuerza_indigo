@@ -46,6 +46,13 @@ model LegalEntity {
   reconciliations Reconciliation[]
   assets          AssetRegister[]
 
+  // Afiliación y padrones (Fase 4). Cada padrón es de una entidad: el sindical
+  // de Fuerza Índigo y el de personas beneficiarias de quien las atiende.
+  membershipTypes MembershipType[]
+  applications    MembershipApplication[]
+  memberships     Membership[]
+  beneficiaries   ProtectedBeneficiary[]
+
   @@map("legal_entity")
 }
 
@@ -96,6 +103,12 @@ model TerritorialUnit {
   auditEvents      AuditEvent[]
   contentPages ContentPage[]
 
+  // Afiliación y padrones (Fase 4).
+  applications        MembershipApplication[]
+  memberships         Membership[]           @relation("MembershipTerritory")
+  sectionMemberships  Membership[]           @relation("MembershipSection")
+  beneficiaries       ProtectedBeneficiary[]
+
   @@index([parentId])
   @@index([type])
   @@index([status])
@@ -142,6 +155,11 @@ model NormativeRuleSet {
 
   createdByActor Actor @relation("NormativeRuleSetCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor Actor @relation("NormativeRuleSetUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  /// Solicitudes que aceptaron esta versión del estatuto (PRD §8.1.7). Se
+  /// conserva la versión aceptada, no la vigente hoy: lo que obliga a alguien
+  /// es lo que leyó al firmar.
+  acceptedByApplications MembershipApplication[]
 
   @@index([status])
   @@map("normative_rule_set")

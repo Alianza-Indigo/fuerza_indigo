@@ -65,14 +65,17 @@ Una persona acumula roles: un agremiado puede ser además delegado, profesional 
 
 Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilidad y si exige motivo capturado por la persona.
 
+Los sufijos `_own` no son una variante cómoda del permiso general: son permisos distintos, con `needsAssignment` verdadero, y significan «solo sobre lo propio» —la `O` de la matriz del §4—. Existen porque consultar la solicitud propia y consultar la de otra persona no son la misma facultad ni dejan el mismo rastro, y porque sin ellos la única forma de que alguien viera su expediente sería darle el permiso de ver los de todas.
+
 | Módulo | Permisos | Sensibilidad |
 |---|---|---|
 | `identity` | `person.read`, `person.update`, `person.merge`, `person.read_sensitive` | Normal · Crítica en `merge` y `read_sensitive` |
 | `access` | `role.assign`, `role.revoke`, `permission.read`, `session.revoke_other` | Crítica |
-| `membership` | `application.create`, `application.read`, `application.review`, `application.resolve`, `membership.read`, `membership.suspend`, `membership.terminate`, `roster.export` | Sensible · Crítica en `resolve`, `terminate`, `roster.export` (exige motivo) |
-| `beneficiary` | `beneficiary.create`, `beneficiary.read`, `beneficiary.update`, `beneficiary.close` | Sensible |
-| `directory` | `directory.read_internal`, `directory.publish`, `directory.withdraw`, `directory.export` | Sensible · `export` exige motivo |
-| `credentialing` | `credential.issue`, `credential.revoke`, `credential.read` | Crítica en `issue` y `revoke` |
+| `membership` | `type.manage`, `type.read`, `application.create`, `application.create_own`, `application.read`, `application.read_own`, `application.review`, `application.resolve`, `record.read`, `record.read_own`, `record.suspend`, `record.terminate`, `roster.read`, `roster.export` | Sensible · Crítica en `type.manage`, `resolve`, `record.suspend`, `record.terminate` y `roster.export`; las cuatro últimas exigen motivo escrito |
+| `membership` (beneficiarias) | `beneficiary.create`, `beneficiary.create_own`, `beneficiary.read`, `beneficiary.read_own`, `beneficiary.update`, `relationship.read`, `relationship.read_own`, `relationship.manage`, `relationship.manage_own` | Sensible |
+| `directory` | `internal.read`, `internal.export`, `publication.manage`, `publication.manage_own` | Sensible · Crítica en `internal.export`, que exige motivo, y en `publication.manage` |
+| `credentialing` | `credential.issue`, `credential.revoke`, `credential.read`, `credential.read_own` | Crítica en `issue` y `revoke`; `revoke` exige motivo |
+| `consent` | `grant`, `revoke`, `read`, `version.manage` | Sensible · Crítica en `version.manage` |
 | `territory` | `unit.create`, `unit.update`, `unit.dissolve`, `unit.read` | Normal · Crítica en `dissolve` |
 | `governance` | `body.manage`, `office.appoint`, `office.end`, `power.grant`, `power.revoke` | Crítica |
 | `assembly` | `assembly.convene`, `assembly.freeze_roster`, `attendance.register`, `quorum.declare`, `resolution.record`, `minutes.publish` | Crítica en `freeze_roster`, `quorum.declare`, `minutes.publish` |
@@ -104,6 +107,8 @@ Formato del código: `modulo.recurso.accion`. Cada permiso declara su sensibilid
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `person.read` | — | O | O | O | O | P | P | L | L | A | A | P | — | — | — | L | — | L | P |
 | `person.read_sensitive` | — | — | O | O | O | — | P | — | — | A | A | P | — | — | — | — | — | L | — |
+| `person.merge` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
+| `user.invite` · `user.disable` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `application.create` | — | O | O | O | O | P | P | — | — | P | — | — | — | — | — | — | — | — | — |
 | `application.review` | — | — | — | — | — | P | P | — | — | — | — | — | — | — | — | — | — | L | — |
 | `application.resolve` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |

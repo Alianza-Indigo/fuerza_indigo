@@ -443,6 +443,95 @@ async function seedSpecialties(): Promise<void> {
   }
 }
 
+/**
+ * Calidades de membresía (PRD §3.2, §3.3).
+ *
+ * Se siembra **estructura estatutaria, no dinero ni plazos inventados**: qué
+ * calidades existen y cuál concede derechos políticos. Eso lo dice el estatuto y
+ * no lo decide quien administra la plataforma.
+ *
+ * Lo que **no** se siembra, porque lo acuerda la organización y se administra
+ * desde la pantalla de calidades:
+ *
+ *  · `catalogProductId` y `requiresPayment`. Una cuota de inscripción es una
+ *    cantidad acordada; sembrar un importe plausible sería el mismo error que
+ *    inventar un valor estatutario (ADR-0040).
+ *  · `durationMonths`. El PRD dice que la afiliación honoraria tiene vigencia,
+ *    no cuánto dura. Nulo aquí significa «vigente mientras no se dé de baja»,
+ *    que es un punto de partida honesto; el plazo real lo fija quien puede.
+ *
+ * La restricción `membership_type_honoraria_sin_derechos_politicos` de la base
+ * impide que la calidad honoraria conceda voto, compute para el quórum o
+ * aparezca en el padrón que se remite a la autoridad laboral, aquí y en
+ * cualquier otro sitio desde el que alguien intente escribirla.
+ */
+async function seedMembershipTypes(): Promise<void> {
+  const fuerza = await prisma.legalEntity.findUnique({
+    where: { code: 'FUERZA_INDIGO' },
+    select: { id: true },
+  });
+  if (fuerza === null) {
+    throw new Error('No existe la entidad FUERZA_INDIGO: las calidades de membresía cuelgan de ella.');
+  }
+
+  const calidades = [
+    {
+      code: 'AGREMIADO',
+      name: 'Agremiado',
+      category: 'UNION_MEMBER' as const,
+      grantsPoliticalRights: true,
+      countsForQuorum: true,
+      appearsInAuthorityRoster: true,
+      benefitsSummary: [
+        'Voz y voto en asambleas mientras se esté en pleno goce de derechos.',
+        'Elegibilidad a cargos conforme a las reglas vigentes.',
+        'Credencial sindical, representación y defensa.',
+        'Capacitación, certificaciones y herramientas autorizadas.',
+        'Consulta de cuotas e historial propio.',
+      ].join(' '),
+    },
+    {
+      code: 'AFILIADO_HONORARIO',
+      name: 'Afiliado honorario',
+      category: 'HONORARY_AFFILIATE' as const,
+      grantsPoliticalRights: false,
+      countsForQuorum: false,
+      appearsInAuthorityRoster: false,
+      benefitsSummary: [
+        'Membresía con vigencia y credencial diferenciada.',
+        'Acceso a comunidad, programas y herramientas autorizadas.',
+        'Consulta de documentos e historial de pagos propios.',
+        'Sin derechos electorales sindicales: no vota, no computa para el quórum',
+        'y no aparece como agremiado ante autoridades.',
+      ].join(' '),
+    },
+  ];
+
+  for (const calidad of calidades) {
+    await prisma.membershipType.upsert({
+      where: { code: calidad.code },
+      update: {
+        name: calidad.name,
+        grantsPoliticalRights: calidad.grantsPoliticalRights,
+        countsForQuorum: calidad.countsForQuorum,
+        appearsInAuthorityRoster: calidad.appearsInAuthorityRoster,
+        benefitsSummary: calidad.benefitsSummary,
+      },
+      create: {
+        ...calidad,
+        legalEntityId: fuerza.id,
+        requiresHumanReview: true,
+        requiresPayment: false,
+        renewable: true,
+        // Época cero: la vigencia real la fija quien publique la calidad, igual
+        // que en las reglas normativas (ADR-0033). Una fecha plausible aquí
+        // sería una fecha inventada.
+        effectiveFrom: new Date(0),
+      },
+    });
+  }
+}
+
 async function seedNotificationTemplates(): Promise<void> {
   const templates = [
     {
@@ -615,6 +704,7 @@ async function main(): Promise<void> {
   await seedNormativeRules(actorId);
   await seedRetentionPolicies();
   await seedSpecialties();
+  await seedMembershipTypes();
   await seedNotificationTemplates();
   await seedPublicIntakePrivacyNotice();
   await seedStripeAccounts();
@@ -626,6 +716,7 @@ async function main(): Promise<void> {
     roles: await prisma.role.count(),
     politicasDeRetencion: await prisma.retentionPolicy.count(),
     especialidades: await prisma.specialtyCatalog.count(),
+    calidadesDeMembresia: await prisma.membershipType.count(),
     plantillasDeMensaje: await prisma.notificationTemplate.count(),
     avisosDePrivacidadEnBorrador: await prisma.consentVersion.count({ where: { status: 'DRAFT' } }),
     cuentasDeCobro: await prisma.stripeAccountConfiguration.count(),

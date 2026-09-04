@@ -750,3 +750,139 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Por qué.** El esfuerzo social de la organización —a cuánta gente atendió sin cobrarle— es parte de lo que hay que rendir, y es justo lo que un libro de movimientos de caja no puede mostrar. Callarlo daría una imagen de la organización más pobre y menos verdadera que la real. Y ponerlo dentro del libro sería peor: inflaría los ingresos con dinero que nunca entró.
 
 **Presentado como lo que es.** No es un gasto ni un ingreso: es dinero que la organización decidió no cobrar, y la pantalla lo dice con esas palabras.
+
+---
+
+## ADR-0064 · La categoría se copia en la solicitud y en la membresía
+
+**Contexto.** El PRD §8.1 exige campos distintos según se solicite la afiliación sindical o la honoraria, y el defecto `D-F0-004` fijó qué es obligatorio y qué debe ser nulo en cada caso. La categoría vive en `MembershipType`, no en la solicitud, y una comprobación de PostgreSQL no puede consultar otra tabla.
+
+**Decisión.** `MembershipApplication` y `Membership` llevan su propia columna `category`, atada al catálogo por una clave foránea **compuesta** contra `MembershipType (id, category)`.
+
+**Por qué la copia no miente.** Una copia suelta se desincroniza; ésta no puede: la clave foránea compuesta exige que el par `(membershipTypeId, category)` exista en el catálogo, de modo que la copia y el original son el mismo dato visto dos veces. Cambiar la categoría de un tipo con solicitudes vivas queda impedido por la propia clave.
+
+**Qué habilita.** Dos cosas que sin la copia solo existirían en el código de la aplicación: la comprobación de campos condicionales, y el índice único parcial de una sola membresía activa por persona y categoría.
+
+**Alternativa descartada.** Comprobarlo con un disparador que consulte `membership_type` en cada escritura. Funciona y cuesta una consulta por fila; peor aún, esconde una regla estructural dentro de código imperativo, donde nadie la lee al mirar la tabla.
+
+---
+
+## ADR-0065 · Un disparador para lo que los privilegios por columna no saben decir
+
+**Contexto.** El PRD §8.1.9 exige que la revisión no altere la solicitud original. La instalación resuelve la inmutabilidad con privilegios por columna: se retira `UPDATE` sobre la tabla y se devuelve columna por columna. Aquí no sirve: la solicitud nace en borrador y su resumen se escribe **al enviarla**, así que quitar el privilegio impediría también el único momento en que debe escribirse.
+
+**Decisión.** Un disparador `BEFORE UPDATE` sobre `membership_application` rechaza cualquier cambio de `originalSummary` cuando ya tiene valor. Es el primer disparador del repositorio.
+
+**Por qué en el motor y no en el caso de uso.** La promesa es fuerte —quien revisa no puede tocar lo que la persona envió— y una promesa así no se apoya en que nadie escriba mañana un `update` distraído desde otro sitio.
+
+**Detalle que costó una prueba.** La primera versión lanzaba la excepción con `ERRCODE = 'restrict_violation'` y el controlador la traducía a «clave foránea violada», que dice lo contrario de lo que ocurrió y manda a quien la lea a buscar una relación que está bien. Se dejó el código por omisión, `raise_exception`, que sí deja pasar el mensaje escrito.
+
+**Regla general que queda.** Los privilegios por columna saben decir «nunca». Cuando lo que hace falta es «una sola vez», la herramienta es un disparador, y solo entonces.
+
+---
+
+## ADR-0066 · Una membresía nace activa, y por eso siempre tiene número
+
+**Contexto.** `docs/DATA_MODEL.md` §5 declaraba `memberNumber` anulable, con la nota de que solo se asigna al activar. Con las dos tablas separadas —`MembershipApplication` para el trámite y `Membership` para la relación viva—, no existe ningún momento en que haya membresía sin activación: antes de activarse lo que hay es una solicitud.
+
+**Decisión.** `memberNumber` es obligatorio y único. La columna anulable desaparece.
+
+**Por qué importa.** Un número de miembro repartido a quien todavía no lo es acaba impreso en una credencial que alguien enseña. Y una columna anulable que en la práctica nunca es nula enseña a leer el esquema con desconfianza: obliga a comprobar en el código lo que la tabla ya podría estar afirmando.
+
+**Consecuencia.** `docs/DATA_MODEL.md` §5 se corrige para decir lo mismo que la tabla.
+
+---
+
+## ADR-0067 · Los permisos de la Fase 4 no llevan compartimento
+
+**Contexto.** El esquema tiene compartimentos (`UNION`, `SOCIAL`, `CLINICAL`, `DISCIPLINARY`) y el motor de permisos los comprueba. Era tentador marcar los padrones como `UNION` y el registro de personas beneficiarias como `SOCIAL`.
+
+**Decisión.** Ningún permiso de esta fase declara compartimento.
+
+**Por qué.** Contradiría la matriz contratada en `docs/PERMISSIONS.md` §4. El PRD §8.3 dice que un agremiado —cuyo rol solo alcanza el compartimento `UNION`— puede dar de alta a una persona beneficiaria, que es atención social; y da lectura de personas beneficiarias a la delegación territorial, que tampoco tiene `SOCIAL`. Un permiso que la matriz concede y el compartimento niega es un permiso que nadie puede ejercer, y de los peores: parece concedido.
+
+**Dónde sí corresponde.** El compartimento separa **expedientes** entre el sindicato y la asociación civil (PRD §10.3), y los expedientes llegan con los casos, en la Fase 6. Allí es donde la separación tiene contenido.
+
+**Qué protege entonces el padrón sindical.** No un compartimento sino el dato: la consulta filtra por `MembershipType.appearsInAuthorityRoster` y por el estado de la membresía, y la restricción del motor impide que una calidad honoraria ponga esa bandera en verdadero.
+
+---
+
+## ADR-0068 · Permisos `_own` como permisos distintos
+
+**Contexto.** La matriz del §4 usa `O` —solo sobre lo propio— en casi todas las filas de afiliación: consultar la solicitud propia, la membresía propia, la credencial propia, decidir la aparición propia en el directorio.
+
+**Decisión.** Cada `O` de la matriz es un permiso declarado aparte, con el sufijo `_own` y `needsAssignment` verdadero, en vez de una comprobación dentro del caso de uso sobre el permiso general.
+
+**Por qué.** Sin ellos, la única forma de que alguien viera su propio expediente sería darle el permiso de ver los de todas. Ya ocurrió en la Fase 3 con `billing.payment.read_own` (ADR-0035) y la razón no ha cambiado. Además, consultar lo propio y consultar lo ajeno no dejan el mismo rastro en la bitácora, y con un solo permiso serían indistinguibles.
+
+**Coste aceptado.** El catálogo crece: la Fase 4 declara veintiséis permisos, de los cuales nueve son `_own`. Es un catálogo más largo y una matriz más honesta.
+
+---
+
+## ADR-0069 · La medición del verificador se guarda por hora, y lo exige la tabla
+
+**Contexto.** El PRD §7.4 pide registrar de forma agregada las consultas al verificador «sin crear perfiles invasivos de quien escanea». `CredentialVerification` guarda la hora truncada, sin dirección ni identificador.
+
+**Decisión.** Una comprobación de la tabla exige `occurredAtHour = date_trunc('hour', occurredAtHour)`.
+
+**Por qué no basta con truncar en el código.** Porque el día que alguien guarde el instante exacto «solo por ahora, para depurar», el registro agregado se convierte en un rastro de quién miró qué credencial y cuándo, y nadie lo notará hasta que ese rastro se pida en un juicio. La comprobación convierte el descuido en un error inmediato.
+
+---
+
+## ADR-0070 · La clave de comparación de nombres la escribe el motor
+
+**Contexto.** «Guadalupe Muñoz» y «Guadalupe Munoz» son la misma persona escrita por dos personas distintas, y el padrón no puede tener dos filas por una diferencia de teclado. La detección de duplicidad necesita comparar sin acentos y sin mayúsculas.
+
+**Decisión.** `Person.matchKey` guarda el nombre normalizado, y lo escribe un **disparador** `BEFORE INSERT OR UPDATE`, no la aplicación.
+
+**Por qué no la aplicación.** Porque valdría solo para las filas que pasan por el caso de uso que se acordó de escribirla. La semilla, las pruebas, una importación futura y cualquier código que nadie revise dejarían la clave vacía justo en las filas que producen duplicados.
+
+**Por qué no una columna generada.** `GENERATED ALWAYS AS (...) STORED` habría sido más directo y se probó. El comparador de esquemas de Prisma la lee como una columna con valor por omisión y propone quitárselo en cada ejecución. Un aviso de deriva que hay que ignorar cada vez es un aviso que se acaba ignorando siempre, incluido el día en que la deriva sea de verdad —que es exactamente lo que ya pasa con el índice de prefijo territorial, y no conviene tener dos—.
+
+**Coste.** Hay dos implementaciones de la misma normalización, una en PL/pgSQL y otra en TypeScript, porque la búsqueda tiene que construir el prefijo que va a comparar. Una prueba de integración las enfrenta contra la misma lista de nombres: si se separan, falla ahí y no en producción.
+
+---
+
+## ADR-0071 · Fusionar traslada lo operativo y retira lo publicado
+
+**Contexto.** Al resolver una duplicidad hay que decidir qué pasa con lo que cuelga del registro que se va.
+
+**Decisión.** Las membresías, solicitudes, expedientes, archivos, consentimientos y cuentas de cobro **se trasladan** al registro que se conserva. Las publicaciones de directorio **se retiran** y las credenciales **se revocan**.
+
+**Por qué la diferencia.** Lo operativo es del ser humano, y la premisa de la fusión es que se trata del mismo: su expediente tiene que quedar completo en un solo sitio. Lo publicado y lo acreditado, en cambio, dice algo **sobre un registro concreto**: una credencial lleva impreso un nombre y un código firmado, y reapuntarla a otro registro cambiaría lo que el QR afirma sin cambiar el QR. La preferencia de directorio, además, no se edita ni se traspasa: se otorga, y el motor lo impide por diseño. Quien queda vuelve a decidir su aparición pública, que es de quien es esa decisión.
+
+**Lo que la fusión se niega a hacer.** Fusionar dos registros que tienen una membresía viva de la misma categoría. Eso no es un error de captura: es una situación que alguien tiene que resolver dando de baja una, con su motivo. El caso de uso lo dice con esas palabras en vez de elegir por su cuenta cuál sobrevive.
+
+---
+
+## ADR-0072 · Quien invita, cierra
+
+**Contexto.** `identity.user.disable` estaba declarado desde la Fase 1 y no lo tenía ningún rol, no lo ejercía ningún caso de uso y no había pantalla desde la que usarlo (defecto `D-F4-003`). Lo destapó la fusión de duplicados, que necesita cerrar la cuenta del registro que se va.
+
+**Decisión.** Lo recibe `EXECUTIVE_SECRETARY`, la misma cartera que invita, y se ejerce desde la misma pantalla.
+
+**Por qué no el actor raíz.** Por la razón de ADR-0048: no tiene cuenta y no alcanza el área de gestión, de modo que tendría un permiso sin sitio desde el que ejercerlo. Y por la de fondo: separar invitar de cerrar dejaría a quien invita sin poder deshacer su propio error.
+
+**Qué significa cerrar.** No borrar. La fila permanece con su historial y su auditoría; lo que se acaba es el acceso —estado `DISABLED`, sesiones revocadas y `sessionVersion` incrementado, que invalida cualquier testigo emitido— y los nombramientos vivos, porque un cargo que nadie puede ejercer no es un cargo. Reabrir **no** los devuelve: volver a nombrar es un acto institucional aparte, con su motivo y su fecha.
+
+---
+
+## ADR-0073 · Un formulario devuelve lo que la persona escribió
+
+**Contexto.** React vacía los campos de un formulario no controlado cuando termina la acción que lo envía. En la pantalla de alta del registro maestro eso significaba que el aviso de posible duplicidad —que es un aviso **para leerlo y volver a enviar**— llegaba con el formulario en blanco: quince campos tecleados, perdidos, justo en el momento en que se pedía revisarlos (defecto `D-F4-005`).
+
+**Decisión.** Las acciones de formulario devuelven en su estado los valores recibidos, y el formulario los repinta. Hace falta además una clave de remontaje: un `defaultValue` solo se aplica al montar, así que cambiarlo sin remontar no repinta nada.
+
+**Por qué importa más de lo que parece.** El PRD §5.3 contrata recuperación de borrador por accesibilidad cognitiva. Un aviso que castiga leerlo es un aviso que la gente aprende a esquivar, y el que se esquiva aquí es precisamente el que impide duplicar a una persona.
+
+**Regla que queda.** Cualquier formulario que pueda volver con un error debe devolver lo escrito. No es una mejora opcional del formulario: es parte de que el error sea corregible.
+
+---
+
+## ADR-0074 · El resultado no se pinta dentro de lo que el resultado hace desaparecer
+
+**Contexto.** El aviso de «registros fusionados» vivía dentro de la lista de candidatas a fusión. Una fusión correcta deja esa lista vacía, así que el mensaje desaparecía en el mismo instante en que había algo que decir: la pantalla cambiaba sola y quien acababa de fusionar dos registros no sabía si lo había hecho (defecto `D-F4-006`).
+
+**Decisión.** El aviso de resultado se pinta **fuera** de la rama condicional que la propia acción modifica.
+
+**Cómo se encontró.** Conduciendo la pantalla en un navegador de verdad. Las pruebas de integración pasaban —la fusión funcionaba— y las de tipos también: el fallo solo existía para quien miraba la pantalla.

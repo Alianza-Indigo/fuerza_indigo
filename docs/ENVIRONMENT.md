@@ -161,13 +161,15 @@ Sin el identificador de clave, una sola rotación invalidaría de golpe todas la
 
 ## 11. Configuración por fase
 
-Una variable no es obligatoria antes de la fase que la usa. `phase:verify` comprueba que **estén documentadas y presentes en la plantilla** desde la Fase 0; la obligatoriedad de tener un **valor** se activa con la fase correspondiente:
+Una variable no es obligatoria antes de la fase que la usa. `phase:verify` comprueba que **estén documentadas y presentes en la plantilla** desde la Fase 0; la obligatoriedad de tener un **valor** se activa con la fase correspondiente.
+
+La fase que manda es la constante `ACTIVE_PHASE` de `src/platform/config/env.ts`, y **se sube al abrir cada fase, no al cerrarla**. Quedarse corta no da un aviso: da un arranque limpio con las claves vacías y un fallo en el primer cobro (defecto `D-F4-002`).
 
 | Fase | Variables que pasan a ser obligatorias |
 |---|---|
 | 1 | `APP_URL`, `AUTH_SECRET`, `SUPERADMIN_*`, `DATABASE_URL`, `DIRECT_URL`, `BLOB_READ_WRITE_TOKEN`, `FILE_URL_SIGNING_SECRET`, `CRON_SECRET`, `EMAIL_PROVIDER`, `EMAIL_FROM` |
 | 3 | `STRIPE_*` de ambas cuentas |
-| 4 | `QR_SIGNING_SECRET` |
+| 4 | `QR_SIGNING_SECRET`, que en realidad se exige desde el primer arranque: un llavero de firma vacío no tiene valor por omisión razonable, así que su formato se valida siempre |
 | 10 | `GEMINI_API_KEY`, `GEMINI_DEFAULT_MODEL` |
 | 11 | `EMAIL_API_KEY` con un proveedor real |
 

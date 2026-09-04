@@ -195,8 +195,8 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F4-DAT-001 | Migrar las entidades de membresías, padrones, relaciones y credenciales | Pendiente |
-| F4-AFI-001 | Implementar el registro maestro de persona con detección y resolución de duplicidad | Pendiente |
+| F4-DAT-001 | Migrar las entidades de membresías, padrones, relaciones y credenciales | Hecho |
+| F4-AFI-001 | Implementar el registro maestro de persona con detección y resolución de duplicidad | Hecho |
 | F4-AFI-002 | Implementar la solicitud de agremiado con sus catorce pasos y el resumen inmutable | Pendiente |
 | F4-AFI-003 | Implementar la afiliación honoraria con sus tres perfiles y su credencial diferenciada | Pendiente |
 | F4-AFI-004 | Implementar el alta de beneficiario protegido desde los siete orígenes previstos | Pendiente |

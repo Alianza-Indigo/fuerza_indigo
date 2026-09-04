@@ -92,6 +92,9 @@ model CatalogProduct {
   prices    CatalogPrice[]
   discounts DiscountGrantProduct[]
 
+  /// Calidades que se cobran con este concepto (Fase 4).
+  membershipTypes MembershipType[]
+
   @@index([legalEntityId, isActive])
   @@index([kind])
   @@map("catalog_product")
@@ -218,9 +221,11 @@ model Subscription {
   cancelAtPeriodEnd    Boolean            @default(false)
   canceledAt           DateTime?          @db.Timestamptz(3)
   cancelReason         String?            @db.VarChar(400)
-  /// Se escriben en la Fase 4 y en la 7. Aquí existen para que aquellas fases
-  /// conecten sin reconstruir pagos históricos.
+  /// La membresía que esta suscripción sostiene. Declarada en la Fase 3 sin
+  /// destino y convertida en clave foránea en la Fase 4, cuando la tabla
+  /// existe: los pagos históricos no hubo que reconstruirlos.
   membershipId         String?            @db.Uuid
+  /// Se escribe en la Fase 7, cuando exista el derecho de acceso a herramientas.
   toolEntitlementId    String?            @db.Uuid
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
@@ -228,10 +233,12 @@ model Subscription {
 
   billingAccount BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Restrict)
   catalogPrice   CatalogPrice   @relation(fields: [catalogPriceId], references: [id], onDelete: Restrict)
+  membership     Membership?    @relation(fields: [membershipId], references: [id], onDelete: Restrict)
 
   payments Payment[]
 
   @@index([billingAccountId])
+  @@index([membershipId])
   @@index([status, currentPeriodEnd])
   @@map("subscription")
 }
@@ -301,6 +308,9 @@ model Payment {
   refunds        Refund[]
   invoiceRefs    InvoiceReference[]
   webhookEvents  StripeWebhookEvent[]
+
+  /// Solicitud cuya cuota de inscripción cubre este cobro (Fase 4).
+  applications   MembershipApplication[] @relation("ApplicationPayment")
 
   @@index([billingAccountId])
   @@index([legalEntityId, status])

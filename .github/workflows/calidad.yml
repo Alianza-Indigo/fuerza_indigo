@@ -68,6 +68,15 @@ jobs:
       EMAIL_FROM: 'Fuerza Indigo <no-responder@ejemplo.invalid>'
       CRON_SECRET: Y2ktc2VjcmV0by1kZS10YXJlYXMtcHJvZ3JhbWFkYXMtcHJ1ZWJh
       QR_SIGNING_SECRET: k1:Y2ktZmlybWEtZGUtY29kaWdvcy12ZXJpZmljYWJsZXMtcQ
+      # Claves de Stripe: obligatorias desde la Fase 3 (ENVIRONMENT.md §11).
+      # Son cadenas de prueba con el prefijo que la plataforma espera; no
+      # corresponden a ninguna cuenta y no pueden cobrarle nada a nadie.
+      STRIPE_FUERZA_SECRET_KEY: sk_test_ci_fuerza_no_es_una_cuenta_real
+      STRIPE_FUERZA_WEBHOOK_SECRET: whsec_ci_fuerza_no_es_una_cuenta_real
+      NEXT_PUBLIC_STRIPE_FUERZA_PUBLISHABLE_KEY: pk_test_ci_fuerza_no_es_una_cuenta_real
+      STRIPE_ALIANZA_SECRET_KEY: sk_test_ci_alianza_no_es_una_cuenta_real
+      STRIPE_ALIANZA_WEBHOOK_SECRET: whsec_ci_alianza_no_es_una_cuenta_real
+      NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY: pk_test_ci_alianza_no_es_una_cuenta_real
 
     steps:
       - name: Obtener el repositorio

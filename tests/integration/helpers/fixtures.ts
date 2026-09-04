@@ -255,3 +255,54 @@ export async function contextoRaiz(extras: Partial<ActorContext> = {}): Promise<
     ...extras,
   };
 }
+
+/**
+ * Membresía viva de una persona, con número de miembro válido.
+ *
+ * El número lo genera el ayudante y no cada prueba: `memberNumber` es único y
+ * cabe en treinta caracteres, y las dos cosas se olvidan por igual. Cuando cada
+ * prueba lo componía a mano, unas chocaban entre sí y otras se pasaban de largo,
+ * y en los dos casos el fallo hablaba de una columna sin decir cuál.
+ */
+export async function crearMembresia(
+  prisma: PrismaClient,
+  input: {
+    personId: string;
+    legalEntityId: string;
+    typeCode: 'AGREMIADO' | 'AFILIADO_HONORARIO';
+    status?: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+    startedAt?: Date;
+    expiresAt?: Date | null;
+    territorialUnitId?: string | null;
+  },
+): Promise<{ id: string; memberNumber: string }> {
+  const autor = await actorDeMigracion(prisma);
+  const tipo = await prisma.membershipType.findUniqueOrThrow({
+    where: { code: input.typeCode },
+    select: { id: true, category: true },
+  });
+
+  secuencia += 1;
+  const memberNumber = `FI-${tipo.category === 'UNION_MEMBER' ? 'A' : 'H'}-${secuencia}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+
+  const creada = await prisma.membership.create({
+    data: {
+      publicId: newPublicId(),
+      memberNumber,
+      personId: input.personId,
+      membershipTypeId: tipo.id,
+      category: tipo.category,
+      legalEntityId: input.legalEntityId,
+      status: input.status ?? 'ACTIVE',
+      startedAt: input.startedAt ?? new Date(),
+      expiresAt: input.expiresAt ?? null,
+      territorialUnitId: input.territorialUnitId ?? null,
+      createdByActorId: autor,
+      updatedByActorId: autor,
+    },
+    select: { id: true, memberNumber: true },
+  });
+  return creada;
+}

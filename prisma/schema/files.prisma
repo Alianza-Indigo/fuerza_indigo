@@ -54,6 +54,13 @@ model FileObject {
   reconciliationReports  Reconciliation[]       @relation("ReconciliationReport")
   assetDocuments         AssetDocument[]        @relation("AssetDocumentFile")
   assetMovementEvidence  AssetMovementEvidence[] @relation("AssetMovementEvidenceFile")
+
+  // Afiliación y credenciales (Fase 4).
+  applicationDocuments    ApplicationDocument[]    @relation("ApplicationDocumentFile")
+  membershipStatusEvidence MembershipStatusEvent[] @relation("MembershipStatusEvidence")
+  careRelationshipEvidence CareRelationship[]      @relation("CareRelationshipEvidence")
+  credentialPhotos        MemberCredential[]       @relation("CredentialPhoto")
+  renderedCredentials     MemberCredential[]       @relation("CredentialRendered")
 }
 
 enum FileClassification {

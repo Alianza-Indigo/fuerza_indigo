@@ -8,8 +8,16 @@ import { z } from 'zod';
  * PARA QUÉ sirve, **sin revelar el valor esperado**.
  */
 
-/** Fase activa del producto. Determina qué variables son obligatorias. */
-const ACTIVE_PHASE = 1;
+/**
+ * Fase activa del producto. Determina qué variables son obligatorias.
+ *
+ * Se sube al abrir cada fase, no al cerrarla. Quedó en `1` durante toda la
+ * Fase 3 y el efecto fue que las claves de Stripe nunca llegaron a ser
+ * obligatorias: una instalación productiva arrancaba con las claves vacías y
+ * descubría el problema en el primer cobro, que es el peor momento posible
+ * (defecto `D-F4-002`).
+ */
+const ACTIVE_PHASE = 4;
 
 /** 32 bytes en base64url producen 43 caracteres. Se exige ese mínimo. */
 const secret = (purpose: string) =>

@@ -1,0 +1,699 @@
+// Membresías, padrones, relaciones, directorios y credenciales (PRD §3, §7, §8;
+// docs/DATA_MODEL.md §5).
+//
+// Cuatro invariantes gobiernan este archivo entero, y las cuatro son del PRD:
+//
+//  1. **Una persona, muchas calidades.** `Person` no se duplica por ser a la vez
+//     agremiada, familiar y beneficiaria. Todo lo que hay aquí cuelga de un
+//     único registro maestro (PRD §3.1).
+//  2. **El honorario no vota.** No es una regla que compruebe una pantalla: el
+//     motor rechaza un tipo honorario que conceda derechos políticos, compute
+//     para el quórum o aparezca en el padrón que se remite a la autoridad
+//     (PRD §3.3).
+//  3. **La solicitud original no se altera.** Quien revisa anota, requiere y
+//     resuelve; lo que la persona envió queda como lo envió (PRD §8.1.9).
+//  4. **Publicar es consecuencia de consentir.** Ninguna fila del directorio
+//     público existe sin una preferencia vigente que la respalde, y retirar el
+//     consentimiento la retira (PRD §7.3).
+
+/// Catálogo de calidades y de los derechos que cada una concede (PRD §3.2, §3.3).
+///
+/// `grantsPoliticalRights`, `countsForQuorum` y `appearsInAuthorityRoster` no son
+/// adornos descriptivos: son la respuesta que leerá la Fase 5 cuando calcule un
+/// quórum o abra una votación. Dejar que un tipo honorario los ponga en verdadero
+/// sería, literalmente, dar el voto por error.
+model MembershipType {
+  id                      String             @id @default(uuid(7)) @db.Uuid
+  code                    String             @unique @db.VarChar(60)
+  name                    String             @db.VarChar(160)
+  category                MembershipCategory
+  legalEntityId           String             @db.Uuid
+  grantsPoliticalRights   Boolean            @default(false)
+  countsForQuorum         Boolean            @default(false)
+  appearsInAuthorityRoster Boolean           @default(false)
+  requiresHumanReview     Boolean            @default(true)
+  requiresPayment         Boolean            @default(false)
+  /// Meses de vigencia. Nulo significa vigencia indefinida mientras no se dé de baja.
+  durationMonths          Int?
+  renewable               Boolean            @default(true)
+  /// Concepto del catálogo financiero con el que se cobra el alta o la
+  /// renovación. Nulo cuando la calidad no tiene costo.
+  catalogProductId        String?            @db.Uuid
+  benefitsSummary         String             @db.Text
+  effectiveFrom           DateTime           @db.Date
+  effectiveTo             DateTime?          @db.Date
+  isActive                Boolean            @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  legalEntity    LegalEntity     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  catalogProduct CatalogProduct? @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
+
+  applications MembershipApplication[]
+  memberships  Membership[]
+
+  /// Sostiene la clave foránea compuesta con la que la solicitud y la membresía
+  /// copian la categoría: la copia no puede contradecir al catálogo.
+  @@unique([id, category])
+  @@index([legalEntityId])
+  @@index([category, isActive])
+  @@map("membership_type")
+}
+
+enum MembershipCategory {
+  UNION_MEMBER
+  HONORARY_AFFILIATE
+}
+
+/// Solicitud de afiliación, sindical u honoraria (PRD §8.1, §8.2).
+///
+/// `category` es una copia de la del tipo, atada a él por una clave foránea
+/// compuesta. Se copia porque las comprobaciones del motor no pueden consultar
+/// otra tabla: sin la copia, la regla de campos condicionales del PRD §8.1
+/// solo viviría en el código de la aplicación.
+model MembershipApplication {
+  id                   String              @id @default(uuid(7)) @db.Uuid
+  folio                String              @unique @db.VarChar(30)
+  personId             String              @db.Uuid
+  membershipTypeId     String              @db.Uuid
+  category             MembershipCategory
+  legalEntityId        String              @db.Uuid
+  status               ApplicationStatus   @default(DRAFT)
+  submittedAt          DateTime?           @db.Timestamptz(3)
+  territorialUnitId    String?             @db.Uuid
+
+  // Campos de la vía sindical. Obligatorios para `UNION_MEMBER`, nulos para la
+  // honoraria: una persona neurodivergente, un familiar o una persona cuidadora
+  // no tiene que justificar un vínculo laboral con la neurodivergencia.
+  occupationSpecialtyId          String?              @db.Uuid
+  workRelationKind               WorkRelationKind?
+  neurodivergentContactStatement String?              @db.Text
+  otherUnionMembership           OtherUnionMembership?
+  otherUnionClarification        String?              @db.Text
+
+  // Campo de la vía honoraria. Obligatorio para `HONORARY_AFFILIATE`, nulo para
+  // la sindical.
+  honoraryProfile      HonoraryProfile?
+
+  acceptedRuleSetId    String              @db.Uuid
+  /// Instantánea de lo enviado. Se escribe una vez, al enviar, y el motor
+  /// impide cambiarla después: es lo que hace verdadera la frase «la revisión
+  /// no altera la solicitud original».
+  originalSummary      Json?
+  /// Borrador recuperable mientras la solicitud sigue en `DRAFT` (PRD §5.3).
+  autosavedDraft       Json?
+  clarificationDueAt   DateTime?           @db.Timestamptz(3)
+  resolutionAt         DateTime?           @db.Timestamptz(3)
+  resolutionReason     String?             @db.Text
+  resolvedById         String?             @db.Uuid
+  paymentId            String?             @db.Uuid
+  archivedAt           DateTime?           @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person          Person            @relation(fields: [personId], references: [id], onDelete: Restrict)
+  membershipType  MembershipType    @relation(fields: [membershipTypeId, category], references: [id, category], onDelete: Restrict)
+  legalEntity     LegalEntity       @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  territorialUnit TerritorialUnit?  @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  occupation      SpecialtyCatalog? @relation(fields: [occupationSpecialtyId], references: [id], onDelete: Restrict)
+  acceptedRuleSet NormativeRuleSet  @relation(fields: [acceptedRuleSetId], references: [id], onDelete: Restrict)
+  resolvedBy      User?             @relation("ApplicationResolvedBy", fields: [resolvedById], references: [id], onDelete: Restrict)
+  payment         Payment?          @relation("ApplicationPayment", fields: [paymentId], references: [id], onDelete: Restrict)
+  createdByActor  Actor             @relation("ApplicationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor             @relation("ApplicationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  documents  ApplicationDocument[]
+  reviews    ApplicationReview[]
+  membership Membership?
+
+  @@index([personId])
+  @@index([membershipTypeId])
+  @@index([status])
+  @@index([territorialUnitId])
+  @@index([legalEntityId, status])
+  @@map("membership_application")
+}
+
+/// Estados de la solicitud (docs/DATA_MODEL.md §16.1).
+///
+/// Cubren el tramo anterior a la membresía. `ACTIVATED` es terminal y significa
+/// que esta solicitud ya produjo una membresía viva: impide resolverla dos veces.
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  DOCUMENTATION_PENDING
+  UNDER_REVIEW
+  CLARIFICATION_REQUIRED
+  APPROVED
+  PENDING_PAYMENT
+  ACTIVATED
+  REJECTED
+  WITHDRAWN
+}
+
+enum WorkRelationKind {
+  SUBORDINATE
+  INDEPENDENT
+  AUTONOMOUS
+  SELF_EMPLOYED
+}
+
+enum OtherUnionMembership {
+  NONE
+  SAME_TRADE
+  DIFFERENT_TRADE
+}
+
+enum HonoraryProfile {
+  NEURODIVERGENT_PERSON
+  FAMILY_MEMBER
+  CAREGIVER
+}
+
+/// Evidencia adjunta a una solicitud, con revisión documento por documento.
+model ApplicationDocument {
+  id            String                    @id @default(uuid(7)) @db.Uuid
+  applicationId String                    @db.Uuid
+  fileObjectId  String                    @db.Uuid
+  documentKind  ApplicationDocumentKind
+  status        ApplicationDocumentStatus @default(SUBMITTED)
+  reviewNote    String?                   @db.Text
+  reviewedById  String?                   @db.Uuid
+  reviewedAt    DateTime?                 @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  application MembershipApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  fileObject  FileObject            @relation("ApplicationDocumentFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  reviewedBy  User?                 @relation("ApplicationDocumentReviewedBy", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@index([status])
+  @@map("application_document")
+}
+
+enum ApplicationDocumentKind {
+  IDENTITY
+  WORK_PROOF
+  CERTIFICATE
+  REFERENCE
+  STATEMENT
+  CLARIFICATION
+  OTHER
+}
+
+enum ApplicationDocumentStatus {
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  SUPERSEDED
+}
+
+/// Actuación de revisión humana. Inmutable una vez creada (PRD §3.2).
+///
+/// Siempre hay al menos una antes de resolver: la admisión requiere revisión
+/// humana y resolución registrable, no una casilla marcada por un proceso.
+model ApplicationReview {
+  id            String                  @id @default(uuid(7)) @db.Uuid
+  applicationId String                  @db.Uuid
+  reviewerId    String                  @db.Uuid
+  action        ApplicationReviewAction
+  /// Fundamento y motivo. Una resolución sin motivo no es una resolución.
+  rationale     String                  @db.Text
+  dueAt         DateTime?               @db.Timestamptz(3)
+  createdAt     DateTime                @default(now()) @db.Timestamptz(3)
+
+  application MembershipApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  reviewer    User                  @relation("ApplicationReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@index([reviewerId])
+  @@map("application_review")
+}
+
+enum ApplicationReviewAction {
+  ASSIGNED
+  INFORMATION_REQUESTED
+  INTERVIEW_SCHEDULED
+  RECOMMENDED_APPROVAL
+  RECOMMENDED_REJECTION
+  APPROVED
+  REJECTED
+}
+
+/// Relación viva de la persona con la entidad (PRD §3.6).
+model Membership {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  publicId          String             @unique @db.VarChar(22)
+  /// Serie por categoría. Una membresía nace activa —antes de activarse lo que
+  /// hay es una solicitud, no una membresía—, así que siempre tiene número. Un
+  /// número repartido a quien todavía no es miembro acaba en una credencial que
+  /// alguien enseña.
+  memberNumber      String             @unique @db.VarChar(30)
+  personId          String             @db.Uuid
+  membershipTypeId  String             @db.Uuid
+  category          MembershipCategory
+  legalEntityId     String             @db.Uuid
+  applicationId     String?            @unique @db.Uuid
+  status            MembershipStatus   @default(ACTIVE)
+  startedAt         DateTime           @db.Timestamptz(3)
+  expiresAt         DateTime?          @db.Timestamptz(3)
+  territorialUnitId String?            @db.Uuid
+  sectionId         String?            @db.Uuid
+  /// Suspensión de derechos políticos por proceso disciplinario o por mora.
+  /// Distinta de la suspensión de la membresía: se puede seguir siendo
+  /// agremiado y no poder votar.
+  politicalRightsSuspendedUntil DateTime? @db.Timestamptz(3)
+  endedAt           DateTime?          @db.Timestamptz(3)
+  endReason         MembershipEndReason?
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person          Person                 @relation(fields: [personId], references: [id], onDelete: Restrict)
+  membershipType  MembershipType         @relation(fields: [membershipTypeId, category], references: [id, category], onDelete: Restrict)
+  legalEntity     LegalEntity            @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  application     MembershipApplication? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  territorialUnit TerritorialUnit?       @relation("MembershipTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  section         TerritorialUnit?       @relation("MembershipSection", fields: [sectionId], references: [id], onDelete: Restrict)
+  createdByActor  Actor                  @relation("MembershipCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor                  @relation("MembershipUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  statusEvents  MembershipStatusEvent[]
+  credentials   MemberCredential[]
+  subscriptions Subscription[]
+
+  @@index([personId])
+  @@index([legalEntityId, status])
+  @@index([expiresAt])
+  @@index([territorialUnitId])
+  @@index([sectionId])
+  @@map("membership")
+}
+
+/// Estados de la membresía viva (docs/DATA_MODEL.md §16.1).
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  DISCIPLINARY_PROCESS
+  VOLUNTARY_WITHDRAWAL
+  STATUS_LOSS
+  DECEASED
+  CANCELLED_DUPLICATE
+}
+
+enum MembershipEndReason {
+  VOLUNTARY_WITHDRAWAL
+  EXPULSION
+  INACTIVITY
+  DECEASED
+  ADMIN_CORRECTION
+  DUPLICATE
+}
+
+/// Bitácora de transición de estado. Inmutable (PRD §3.6).
+///
+/// Todo cambio de estado exige motivo, actor y fecha. Los estados con efectos
+/// jurídicos no se alcanzan editando la fila: se alcanzan asentando aquí.
+model MembershipStatusEvent {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  membershipId    String            @db.Uuid
+  fromStatus      MembershipStatus?
+  toStatus        MembershipStatus
+  reason          String            @db.Text
+  actorUserId     String?           @db.Uuid
+  actorId         String            @db.Uuid
+  evidenceFileId  String?           @db.Uuid
+  occurredAt      DateTime          @default(now()) @db.Timestamptz(3)
+
+  membership   Membership  @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  actorUser    User?       @relation("MembershipStatusActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  actor        Actor       @relation("MembershipStatusEventActor", fields: [actorId], references: [id], onDelete: Restrict)
+  evidenceFile FileObject? @relation("MembershipStatusEvidence", fields: [evidenceFileId], references: [id], onDelete: Restrict)
+
+  @@index([membershipId, occurredAt])
+  @@index([occurredAt])
+  @@map("membership_status_event")
+}
+
+/// Calidad de beneficiario protegido: atención sin afiliación ni cuota (PRD §3.4).
+///
+/// No concede derechos electorales, no genera cuota, no entra en el padrón que
+/// se remite a autoridades, puede existir sin cuenta digital y convive con
+/// cualquier otra calidad de la misma persona.
+model ProtectedBeneficiary {
+  id                  String             @id @default(uuid(7)) @db.Uuid
+  publicId            String             @unique @db.VarChar(22)
+  personId            String             @db.Uuid
+  legalEntityId       String             @db.Uuid
+  originKind          BeneficiaryOrigin
+  registeredById      String?            @db.Uuid
+  initialNeed         String             @db.Text
+  urgencyLevel        BeneficiaryUrgency @default(ROUTINE)
+  territorialUnitId   String?            @db.Uuid
+  responsiblePersonId String?            @db.Uuid
+  hasDigitalAccount   Boolean            @default(false)
+  status              BeneficiaryStatus  @default(REGISTERED)
+  /// Reforzado por omisión para personas menores de edad. La privacidad no se
+  /// decide por descuido.
+  privacyLevel        PrivacyLevel       @default(REINFORCED)
+  closedAt            DateTime?          @db.Timestamptz(3)
+  closeReason         String?            @db.Text
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person            Person           @relation("BeneficiaryPerson", fields: [personId], references: [id], onDelete: Restrict)
+  legalEntity       LegalEntity      @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  registeredBy      User?            @relation("BeneficiaryRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
+  territorialUnit   TerritorialUnit? @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  responsiblePerson Person?          @relation("BeneficiaryResponsible", fields: [responsiblePersonId], references: [id], onDelete: Restrict)
+  createdByActor    Actor            @relation("BeneficiaryCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor    Actor            @relation("BeneficiaryUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@index([legalEntityId, status])
+  @@index([territorialUnitId])
+  @@index([privacyLevel])
+  @@map("protected_beneficiary")
+}
+
+enum BeneficiaryOrigin {
+  SELF
+  FAMILY_OR_CAREGIVER
+  UNION_MEMBER
+  DELEGATE
+  SOCIAL_STAFF
+  CIAN
+  EXTERNAL_REFERRAL
+}
+
+enum BeneficiaryUrgency {
+  ROUTINE
+  PRIORITY
+  URGENT
+}
+
+enum BeneficiaryStatus {
+  REGISTERED
+  IN_ATTENTION
+  REFERRED
+  CLOSED
+  ARCHIVED
+}
+
+enum PrivacyLevel {
+  STANDARD
+  REINFORCED
+}
+
+/// Relación familiar o de cuidado, muchos a muchos (PRD §3.5).
+///
+/// Invariante que no se negocia: **una relación familiar no otorga por sí sola
+/// acceso a expedientes**. El alcance dice a qué llegaría, y el consentimiento
+/// vigente dice si llega. Sin consentimiento, el alcance es papel mojado.
+model CareRelationship {
+  id            String               @id @default(uuid(7)) @db.Uuid
+  fromPersonId  String               @db.Uuid
+  toPersonId    String               @db.Uuid
+  kind          CareRelationshipKind
+  /// Módulos y expedientes que la relación alcanzaría, si además hay
+  /// consentimiento vigente que lo permita.
+  scope         Json                 @default("{}")
+  consentId     String?              @db.Uuid
+  evidenceFileId String?             @db.Uuid
+  startsAt      DateTime             @default(now()) @db.Timestamptz(3)
+  endsAt        DateTime?            @db.Timestamptz(3)
+  revokedAt     DateTime?            @db.Timestamptz(3)
+  revokeReason  String?              @db.Text
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  fromPerson   Person      @relation("CareRelationshipFrom", fields: [fromPersonId], references: [id], onDelete: Restrict)
+  toPerson     Person      @relation("CareRelationshipTo", fields: [toPersonId], references: [id], onDelete: Restrict)
+  consent      Consent?    @relation("CareRelationshipConsent", fields: [consentId], references: [id], onDelete: Restrict)
+  evidenceFile FileObject? @relation("CareRelationshipEvidence", fields: [evidenceFileId], references: [id], onDelete: Restrict)
+  createdByActor Actor     @relation("CareRelationshipCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor     @relation("CareRelationshipUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  representedConsents Consent[] @relation("ConsentRepresentation")
+
+  @@index([fromPersonId])
+  @@index([toPersonId])
+  @@index([kind])
+  @@index([revokedAt])
+  @@map("care_relationship")
+}
+
+enum CareRelationshipKind {
+  PARENT_OR_GUARDIAN
+  CHILD
+  SPOUSE_OR_PARTNER
+  RELATIVE
+  PRIMARY_CAREGIVER
+  SECONDARY_CAREGIVER
+  AUTHORIZED_REPRESENTATIVE
+  EMERGENCY_CONTACT
+  RESPONSIBLE_PROFESSIONAL
+}
+
+/// Perfil profesional para el directorio interno, el público y, más adelante,
+/// CIAN y CENI (PRD §7.2).
+model ProfessionalProfile {
+  id                 String                   @id @default(uuid(7)) @db.Uuid
+  personId           String                   @unique @db.Uuid
+  headline           String                   @db.VarChar(200)
+  credentialsSummary String?                  @db.Text
+  yearsOfExperience  Int?
+  serviceModes       ServiceMode[]
+  availability       ProfessionalAvailability @default(UNAVAILABLE)
+  professionalEmail  String?                  @db.VarChar(320)
+  professionalPhone  String?                  @db.VarChar(40)
+  /// Habilidades y certificaciones verificadas por la plataforma. Lo que no
+  /// está verificado no se guarda aquí: el directorio no reparte credibilidad.
+  verifiedSkills     Json                     @default("[]")
+  verifiedById       String?                  @db.Uuid
+  verifiedAt         DateTime?                @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person         Person @relation(fields: [personId], references: [id], onDelete: Restrict)
+  verifiedBy     User?  @relation("ProfessionalProfileVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
+  createdByActor Actor  @relation("ProfessionalProfileCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor  @relation("ProfessionalProfileUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  specialties ProfessionalSpecialty[]
+
+  @@index([availability])
+  @@map("professional_profile")
+}
+
+enum ServiceMode {
+  IN_PERSON
+  REMOTE
+}
+
+enum ProfessionalAvailability {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
+}
+
+/// Especialidad declarada de un perfil profesional. Tabla de relación en vez de
+/// un arreglo de texto libre (defecto `D-F0-003`).
+model ProfessionalSpecialty {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  profileId   String    @db.Uuid
+  specialtyId String    @db.Uuid
+  isPrimary   Boolean   @default(false)
+  /// Verificada por separado del perfil: una persona puede tener acreditada una
+  /// disciplina y declarada otra, y el directorio no debe presentarlas igual.
+  verifiedAt  DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  profile   ProfessionalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  specialty SpecialtyCatalog    @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+
+  @@unique([profileId, specialtyId])
+  @@index([specialtyId])
+  @@map("professional_specialty")
+}
+
+/// Consentimiento granular de aparición pública (PRD §7.3).
+///
+/// Por omisión `HIDDEN`. Cada preferencia queda atada a la versión del
+/// consentimiento que se aceptó: si mañana cambia el texto, lo que esta persona
+/// autorizó sigue siendo lo que leyó.
+model DirectoryPreference {
+  id                        String             @id @default(uuid(7)) @db.Uuid
+  personId                  String             @db.Uuid
+  visibility                DirectoryVisibility @default(HIDDEN)
+  showPhoto                 Boolean            @default(false)
+  showProfessionalContact   Boolean            @default(false)
+  allowSearchEngineIndexing Boolean            @default(false)
+  consentVersionId          String             @db.Uuid
+  grantedAt                 DateTime           @default(now()) @db.Timestamptz(3)
+  revokedAt                 DateTime?          @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+
+  person         Person         @relation(fields: [personId], references: [id], onDelete: Restrict)
+  consentVersion ConsentVersion @relation("DirectoryPreferenceConsent", fields: [consentVersionId], references: [id], onDelete: Restrict)
+  createdByActor Actor          @relation("DirectoryPreferenceCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  publications DirectoryPublication[]
+
+  @@index([personId, grantedAt])
+  @@index([revokedAt])
+  @@map("directory_preference")
+}
+
+enum DirectoryVisibility {
+  HIDDEN
+  NAME_AND_TERRITORY
+  PROFESSIONAL_PROFILE
+}
+
+/// Instantánea publicada, derivada exclusivamente de una preferencia vigente.
+///
+/// Al revocarse el consentimiento se marca `withdrawnAt`, se invalida la caché y
+/// se emite la señal de no indexación. La fila permanece como evidencia de qué
+/// estuvo publicado y cuándo: borrarla dejaría a la organización sin poder
+/// demostrar que retiró lo que dijo que retiraría.
+model DirectoryPublication {
+  id                  String    @id @default(uuid(7)) @db.Uuid
+  personId            String    @db.Uuid
+  slug                String    @unique @db.VarChar(140)
+  /// Únicamente los campos autorizados por la preferencia de origen.
+  publishedFields     Json
+  indexable           Boolean   @default(false)
+  publishedAt         DateTime  @default(now()) @db.Timestamptz(3)
+  withdrawnAt         DateTime? @db.Timestamptz(3)
+  sourcePreferenceId  String    @db.Uuid
+
+  person           Person              @relation(fields: [personId], references: [id], onDelete: Restrict)
+  sourcePreference DirectoryPreference @relation(fields: [sourcePreferenceId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@index([withdrawnAt])
+  @@map("directory_publication")
+}
+
+/// Credencial digital e imprimible con código QR (PRD §7.4).
+///
+/// El código es opaco y firmado: no lleva datos personales. `signingKeyId`
+/// permite rotar la clave sin invalidar de golpe todas las credenciales
+/// emitidas (defecto `D-F0-012`).
+model MemberCredential {
+  id                     String                 @id @default(uuid(7)) @db.Uuid
+  publicCode             String                 @unique @db.VarChar(40)
+  signingKeyId           String                 @db.VarChar(40)
+  signature              String                 @db.VarChar(120)
+  membershipId           String?                @db.Uuid
+  personId               String                 @db.Uuid
+  credentialKind         CredentialKind
+  displayName            String                 @db.VarChar(200)
+  photoFileId            String?                @db.Uuid
+  territoryLabel         String?                @db.VarChar(160)
+  status                 MemberCredentialStatus @default(ACTIVE)
+  issuedAt               DateTime               @default(now()) @db.Timestamptz(3)
+  expiresAt              DateTime?              @db.Timestamptz(3)
+  revokedAt              DateTime?              @db.Timestamptz(3)
+  revokeReason           String?                @db.Text
+  replacedByCredentialId String?                @unique @db.Uuid
+  renderedFileId         String?                @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  membership     Membership?       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  person         Person            @relation(fields: [personId], references: [id], onDelete: Restrict)
+  photoFile      FileObject?       @relation("CredentialPhoto", fields: [photoFileId], references: [id], onDelete: Restrict)
+  renderedFile   FileObject?       @relation("CredentialRendered", fields: [renderedFileId], references: [id], onDelete: Restrict)
+  replacedBy     MemberCredential? @relation("CredentialReplacement", fields: [replacedByCredentialId], references: [id], onDelete: Restrict)
+  replaces       MemberCredential? @relation("CredentialReplacement")
+  createdByActor Actor             @relation("CredentialCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor             @relation("CredentialUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  verifications CredentialVerification[]
+
+  @@index([personId])
+  @@index([membershipId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([signingKeyId])
+  @@map("member_credential")
+}
+
+enum CredentialKind {
+  UNION_MEMBER
+  HONORARY_AFFILIATE
+  OFFICE_OR_REPRESENTATION
+  AUTHORIZED_PROFESSIONAL
+}
+
+enum MemberCredentialStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+  EXPIRED
+  REPLACED
+}
+
+/// Registro agregado de consultas al verificador. Inmutable (PRD §7.4).
+///
+/// No se guardan la dirección ni ningún identificador de quien escanea, y la
+/// hora se trunca: la medición sirve para saber cuánto se usa el verificador, no
+/// para saber quién anduvo mirando la credencial de quién.
+model CredentialVerification {
+  id              String                       @id @default(uuid(7)) @db.Uuid
+  credentialId    String?                      @db.Uuid
+  /// El código tal como se consultó, exista o no: sin él no se puede distinguir
+  /// una errata de un intento sistemático de adivinar códigos.
+  queriedCode     String                       @db.VarChar(40)
+  result          CredentialVerificationResult
+  occurredAtHour  DateTime                     @db.Timestamptz(3)
+  countryCodeHint String?                      @db.Char(2)
+  userAgentClass  UserAgentClass?
+
+  credential MemberCredential? @relation(fields: [credentialId], references: [id], onDelete: Restrict)
+
+  @@index([credentialId])
+  @@index([occurredAtHour])
+  @@index([result])
+  @@map("credential_verification")
+}
+
+enum CredentialVerificationResult {
+  VALID
+  SUSPENDED
+  EXPIRED
+  REVOKED
+  NOT_FOUND
+}

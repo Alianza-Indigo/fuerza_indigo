@@ -266,6 +266,138 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
    */
   define('billing.accountability.read', 'Consultar los reportes de rendición de cuentas'),
 
+  // membership — afiliación, membresías y padrones (PRD §3, §8; Fase 4)
+  /**
+   * El catálogo de calidades no lleva compartimento, y ninguna de las de esta
+   * fase lo lleva. El compartimento sirve para separar expedientes entre el
+   * sindicato y la asociación civil (PRD §10.3), y esa separación llega con los
+   * casos, en la Fase 6. Ponerlo aquí contradiría la matriz contratada: el PRD
+   * §8.3 dice que un agremiado —compartimento `UNION`— puede dar de alta a una
+   * persona beneficiaria, que es atención social. Un permiso que la matriz
+   * concede y el compartimento niega es un permiso que nadie puede ejercer.
+   */
+  define('membership.type.manage', 'Administrar el catálogo de calidades de membresía', {
+    sensitivity: 'CRITICAL',
+  }),
+  define('membership.type.read', 'Consultar las calidades de membresía y sus derechos'),
+  /**
+   * Crear la solicitud propia y crearla por otra persona son facultades
+   * distintas. La primera la tiene cualquiera que se esté afiliando; la segunda
+   * es asistir a alguien que no puede hacerlo solo, y deja un rastro distinto en
+   * la bitácora.
+   */
+  define('membership.application.create_own', 'Iniciar la solicitud de afiliación propia', {
+    needsAssignment: true,
+  }),
+  define('membership.application.create', 'Iniciar una solicitud de afiliación asistida', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('membership.application.read_own', 'Consultar las solicitudes propias', { needsAssignment: true }),
+  define('membership.application.read', 'Consultar solicitudes de afiliación', { sensitivity: 'SENSITIVE' }),
+  define('membership.application.review', 'Revisar una solicitud, requerir aclaración y recomendar', {
+    sensitivity: 'SENSITIVE',
+  }),
+  /**
+   * Resolver exige motivo escrito porque el PRD §8.1.11 exige fundamento y
+   * motivo. Una negativa sin motivo no se puede recurrir, que es tanto como
+   * decir que no se puede discutir.
+   */
+  define('membership.application.resolve', 'Aprobar o rechazar una solicitud con fundamento', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('membership.record.read_own', 'Consultar la membresía propia', { needsAssignment: true }),
+  define('membership.record.read', 'Consultar membresías', { sensitivity: 'SENSITIVE' }),
+  define('membership.record.suspend', 'Suspender o reactivar una membresía', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('membership.record.terminate', 'Dar de baja una membresía', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('membership.roster.read', 'Consultar los padrones', { sensitivity: 'SENSITIVE' }),
+  /**
+   * Exportar un padrón saca los datos de la plataforma y de su bitácora. Quien
+   * lo hace deja dicho para qué: es lo único que después permite distinguir una
+   * remisión a la autoridad de una copia que alguien se llevó.
+   */
+  define('membership.roster.export', 'Exportar un padrón', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  /**
+   * El PRD §8.3 abre siete orígenes para el alta de una persona beneficiaria, y
+   * el primero es la propia persona. Por eso hay dos permisos: pedir ayuda para
+   * uno mismo no es lo mismo que registrar a otra persona, y lo segundo se
+   * audita distinto.
+   */
+  define('membership.beneficiary.create_own', 'Registrarse como persona beneficiaria protegida', {
+    needsAssignment: true,
+  }),
+  define('membership.beneficiary.create', 'Dar de alta a una persona beneficiaria protegida', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('membership.beneficiary.read', 'Consultar el registro de personas beneficiarias', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('membership.beneficiary.read_own', 'Consultar el registro propio de beneficiaria', {
+    needsAssignment: true,
+  }),
+  define('membership.beneficiary.update', 'Actualizar o cerrar el registro de una persona beneficiaria', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('membership.relationship.read_own', 'Consultar las relaciones propias', { needsAssignment: true }),
+  define('membership.relationship.manage_own', 'Registrar o revocar una relación propia', {
+    needsAssignment: true,
+  }),
+  define('membership.relationship.read', 'Consultar relaciones familiares y de cuidado', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('membership.relationship.manage', 'Registrar o revocar una relación familiar o de cuidado', {
+    sensitivity: 'SENSITIVE',
+  }),
+
+  // directory — directorio interno y publicación pública (PRD §7.2, §7.3)
+  define('directory.internal.read', 'Consultar el directorio interno', { sensitivity: 'SENSITIVE' }),
+  define('directory.internal.export', 'Exportar el directorio interno', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  /**
+   * Publicar lo propio no es un favor que se concede: es el consentimiento de
+   * la persona sobre sus propios datos. Por eso no exige motivo y sí exige que
+   * sea suyo.
+   */
+  define('directory.publication.manage_own', 'Decidir la propia aparición en el directorio público', {
+    needsAssignment: true,
+  }),
+  define('directory.publication.manage', 'Publicar o retirar una ficha del directorio público', {
+    sensitivity: 'CRITICAL',
+  }),
+
+  // credentialing — credenciales y verificación (PRD §7.4)
+  define('credentialing.credential.issue', 'Emitir una credencial', { sensitivity: 'CRITICAL' }),
+  define('credentialing.credential.revoke', 'Revocar una credencial', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('credentialing.credential.read', 'Consultar credenciales emitidas', { sensitivity: 'SENSITIVE' }),
+  define('credentialing.credential.read_own', 'Consultar y descargar la credencial propia', {
+    needsAssignment: true,
+  }),
+
+  // consent — publicación de avisos y textos de consentimiento (PRD §7.3)
+  /**
+   * Sin este permiso no había forma de publicar un aviso desde la plataforma: la
+   * semilla los deja en borrador y el formulario público exige uno publicado,
+   * así que la entrada pública de la Fase 2 no podía funcionar en ninguna
+   * instalación real (defecto `D-F4-001`).
+   */
+  define('consent.version.manage', 'Redactar y publicar versiones de avisos y consentimientos', {
+    sensitivity: 'CRITICAL',
+  }),
+
   // audit
   define('audit.audit.read', 'Consultar la bitácora institucional', { sensitivity: 'CRITICAL' }),
   define('audit.security.read', 'Consultar la bitácora de seguridad', { sensitivity: 'CRITICAL' }),

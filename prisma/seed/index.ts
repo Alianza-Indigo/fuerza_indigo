@@ -500,7 +500,13 @@ async function seedNotificationTemplates(): Promise<void> {
       variables: ['changedAt', 'supportEmail'],
     },
     {
-      code: 'INBOUND_INQUIRY_ACK',
+      // El código lo fija `src/modules/support/application/intake.ts`. Se llamó
+      // `INBOUND_INQUIRY_ACK` mientras el modelo tenía ese nombre; al
+      // renombrarlo a `SupportRequest` (D-F2-003) se cambió el código en el
+      // caso de uso y **no** aquí, de modo que el acuse fallaba siempre: la
+      // plantilla que buscaba no existía. Ahora coinciden, y hay una prueba que
+      // recorre los códigos que el código pide y comprueba que estén sembrados.
+      code: 'SUPPORT_REQUEST_ACK',
       version: 1,
       channel: 'EMAIL' as const,
       category: 'CASE' as const,
@@ -520,6 +526,58 @@ async function seedNotificationTemplates(): Promise<void> {
         'Si necesitas agregar algo, responde a {{contactEmail}} citando tu folio.',
       ].join('\n'),
       variables: ['displayName', 'folio', 'entityName', 'contactEmail'],
+    },
+    {
+      /**
+       * Comprobante de un cobro (PRD §11.3, F3-CMS-001).
+       *
+       * **No es una factura.** La plataforma vincula comprobantes; no sustituye
+       * a un sistema de facturación autorizado (PRD §26), y decirlo aquí evita
+       * que alguien lo presente como lo que no es.
+       *
+       * El importe llega ya formateado: quien manda el correo lo convierte una
+       * sola vez, con las mismas reglas que la pantalla, en vez de dejar que
+       * una plantilla haga aritmética con dinero.
+       */
+      code: 'PAYMENT_RECEIPT',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'PAYMENT' as const,
+      subject: 'Comprobante de tu pago ({{reference}})',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'Recibimos tu pago de {{amount}} por {{concept}}, a nombre de {{entityName}}.',
+        'Fecha: {{paidAt}}.',
+        'Referencia: {{reference}}.',
+        '',
+        'Guarda esta referencia: es el dato que te vamos a pedir si nos escribes por este pago.',
+        'Puedes consultarlo cuando quieras en tus pagos: {{paymentUrl}}',
+        '',
+        'Este comprobante acredita que el pago se recibió. No es una factura fiscal:',
+        'si necesitas una, escríbenos a {{contactEmail}} y te decimos cómo tramitarla.',
+      ].join('\n'),
+      variables: ['displayName', 'amount', 'concept', 'entityName', 'paidAt', 'reference', 'paymentUrl', 'contactEmail'],
+    },
+    {
+      /** Aviso de que un cobro periódico falló y cuánto tiempo hay para resolverlo. */
+      code: 'PAYMENT_FAILED_NOTICE',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'PAYMENT' as const,
+      subject: 'No pudimos cobrar tu {{concept}}',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'El banco no autorizó el cobro de {{amount}} por {{concept}}.',
+        'No se te ha cobrado nada y no hace falta que hagas nada de inmediato.',
+        '',
+        '{{graceNotice}}',
+        '',
+        'Puedes actualizar tu forma de pago o intentarlo otra vez desde tus pagos: {{paymentUrl}}',
+        'Si crees que hay un error o necesitas ayuda, escríbenos a {{contactEmail}}: lo resolvemos contigo.',
+      ].join('\n'),
+      variables: ['displayName', 'amount', 'concept', 'graceNotice', 'paymentUrl', 'contactEmail'],
     },
   ];
 

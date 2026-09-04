@@ -75,6 +75,41 @@ const HANDLERS: Record<string, JobHandler> = {
     const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
     return { providerMessageId: sent.providerMessageId };
   },
+
+  /**
+   * Comprobante de un cobro confirmado (PRD §11.3, F3-CMS-001).
+   *
+   * El identificador del pago es la clave de negocio: reintentarlo no manda dos
+   * comprobantes por el mismo cobro. Va por la cola porque el pago ya está
+   * confirmado y asentado: perderlo por no poder acusarlo sería perder lo único
+   * que importa.
+   */
+  'payment-receipt': async (job) => {
+    const to = textValue(job.payload, 'to');
+    const templateCode = textValue(job.payload, 'templateCode');
+    const variables = stringMap(job.payload, 'variables');
+
+    if (to === '' || templateCode === '') {
+      throw new Error('El comprobante no trae destinatario ni plantilla.');
+    }
+
+    const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
+    return { providerMessageId: sent.providerMessageId };
+  },
+
+  /** Aviso de que un cobro periódico falló y de cuánto tiempo hay para resolverlo. */
+  'payment-failed-notice': async (job) => {
+    const to = textValue(job.payload, 'to');
+    const templateCode = textValue(job.payload, 'templateCode');
+    const variables = stringMap(job.payload, 'variables');
+
+    if (to === '' || templateCode === '') {
+      throw new Error('El aviso de cobro fallido no trae destinatario ni plantilla.');
+    }
+
+    const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
+    return { providerMessageId: sent.providerMessageId };
+  },
 };
 
 export async function runJob(job: ClaimedJob): Promise<JobResult> {

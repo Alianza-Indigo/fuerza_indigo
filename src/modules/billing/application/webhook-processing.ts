@@ -7,6 +7,7 @@ import { systemActorId } from '@/platform/auth/superadmin';
 import { systemContext } from '@/platform/kernel/actor-context';
 import { newPublicId } from '@/platform/kernel/ids';
 import { postPaymentEntry } from './ledger';
+import { issueReceipt, noticeFailedCharge } from './receipts';
 import type { PaymentStatus, SubscriptionStatus } from '@prisma-client/enums';
 
 /**
@@ -138,7 +139,15 @@ interface Contexto {
   readonly actorId: string;
 }
 
-type Manejador = (contexto: Contexto) => Promise<ProcessOutcome & { paymentId?: string }>;
+type Manejador = (contexto: Contexto) => Promise<
+  ProcessOutcome & {
+    paymentId?: string;
+    /** Cobro que quedó confirmado en esta pasada y hay que acusar. */
+    receiptFor?: string;
+    /** Suscripción cuyo cobro falló y hay que avisar. */
+    noticeFor?: string;
+  }
+>;
 
 /**
  * La sesión de cobro terminó.
@@ -235,7 +244,12 @@ const sesionTerminada: Manejador = async ({ tx, objeto, correlationId, actorId }
         metadata: { origen: 'checkout.session.completed' },
       });
     }
-    return { kind: 'PROCESSED', detail: 'cobro único confirmado', paymentId: pago.id };
+    return {
+      kind: 'PROCESSED',
+      detail: 'cobro único confirmado',
+      paymentId: pago.id,
+      ...(movido ? { receiptFor: pago.id } : {}),
+    };
   }
 
   return { kind: 'PROCESSED', detail: 'sesión de cobro registrada', paymentId: pago.id };
@@ -269,6 +283,7 @@ const intencionPagada: Manejador = async ({ tx, objeto, correlationId, actorId }
     kind: 'PROCESSED',
     detail: movido ? 'cobro confirmado' : `el cobro ya estaba en ${pago.status}`,
     paymentId: pago.id,
+    ...(movido ? { receiptFor: pago.id } : {}),
   };
 };
 
@@ -497,7 +512,12 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
     metadata: { origen: 'invoice.payment_succeeded', factura: facturaId },
   });
 
-  return { kind: 'PROCESSED', detail: 'ingreso de renovación registrado', paymentId: pago.id };
+  return {
+    kind: 'PROCESSED',
+    detail: 'ingreso de renovación registrado',
+    paymentId: pago.id,
+    receiptFor: pago.id,
+  };
 };
 
 /** Una factura de renovación falló. Abre el periodo de gracia si el concepto lo tiene. */
@@ -538,7 +558,11 @@ const facturaFallida: Manejador = async ({ tx, objeto, correlationId, actorId })
     metadata: { concepto: suscripcion.catalogPrice.product.name, diasDeGracia: dias },
   });
 
-  return { kind: 'PROCESSED', detail: gracia === null ? 'suscripción vencida' : 'periodo de gracia abierto' };
+  return {
+    kind: 'PROCESSED',
+    detail: gracia === null ? 'suscripción vencida' : 'periodo de gracia abierto',
+    noticeFor: suscripcion.id,
+  };
 };
 
 const MANEJADORES: Record<string, Manejador> = {
@@ -614,6 +638,12 @@ export async function processWebhookEvent(eventRowId: string, correlationId: str
         ...(resultado.paymentId === undefined ? {} : { resultingPaymentId: resultado.paymentId }),
       },
     });
+
+    // El acuse va **fuera** de la transacción a propósito: el cobro ya está
+    // confirmado y asentado, y perderlo porque el proveedor de correo falló
+    // sería perder lo único que importa. La cola reintenta.
+    if (resultado.receiptFor !== undefined) await issueReceipt(resultado.receiptFor, correlationId);
+    if (resultado.noticeFor !== undefined) await noticeFailedCharge(resultado.noticeFor, correlationId);
 
     logger.info('Evento de cobro procesado', {
       module: 'billing',

@@ -93,7 +93,7 @@ export {
   type DiscountRow,
   type ScholarshipRow,
 } from './application/discounts';
-export { priceFor, type AppliedPrice } from './application/pricing';
+export { type AppliedPrice } from './application/pricing';
 export {
   postAdjustment,
   reverseEntry,

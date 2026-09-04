@@ -12,6 +12,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { accountForLegalEntity } from '@/platform/payments/accounts';
 import { parseAmountToMinor } from '@/platform/i18n';
 import { postPaymentEntry } from './ledger';
+import { issueReceipt } from './receipts';
 
 /**
  * Pagos recibidos fuera de la plataforma (PRD §11.3, F3-PAG-009).
@@ -245,6 +246,9 @@ export async function approveManualPayment(
       },
     });
   });
+
+  // Fuera de la transacción: el pago ya está aprobado y asentado.
+  await issueReceipt(pago.id, actor.correlationId);
 
   return ok({ paymentId: pago.id });
 }

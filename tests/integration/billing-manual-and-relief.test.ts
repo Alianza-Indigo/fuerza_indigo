@@ -8,7 +8,6 @@ import {
   discountList,
   grantDiscount,
   pendingManualPayments,
-  priceFor,
   registerManualPayment,
   rejectManualPayment,
   rejectRefund,
@@ -18,6 +17,11 @@ import {
   scholarshipList,
   startCheckout,
 } from '@/modules/billing';
+// `priceFor` es una pieza interna del módulo: la usa el cobro para saber cuánto
+// pagar de verdad, y ninguna pantalla la invoca. Se importa por su ruta para
+// probarla sin anunciarla en la interfaz pública, que es lo que el control
+// `C-F1-02` vigila con razón.
+import { priceFor } from '@/modules/billing/application/pricing';
 import { setStripeForTests, type StripePort } from '@/platform/payments/stripe-port';
 import { newPublicId } from '@/platform/kernel/ids';
 import { createTestDatabase, type TestDatabase } from './helpers/database';

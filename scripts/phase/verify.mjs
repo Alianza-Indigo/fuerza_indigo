@@ -782,16 +782,26 @@ const CHECKS = [
         const content = read(file);
         if (content === null) continue;
 
-        for (const match of content.matchAll(/^\s{2}([a-z][A-Za-z0-9]*),?$/gm)) {
-          const nombre = match[1];
-          if (nombre === undefined) continue;
-          // Los esquemas de validación no son casos de uso: se exportan para que
-          // quien llama pueda validar antes, y no tienen por qué invocarse desde
-          // una pantalla. Lo que este control persigue son funciones de negocio
-          // que quedaron sin superficie.
-          if (nombre.endsWith('Schema')) continue;
-          if (!new RegExp(`\\b${nombre}\\b`).test(invocado)) {
-            problems.push(`${file} exporta "${nombre}" y ninguna pantalla, ruta o guion lo invoca.`);
+        // Se leen las llaves de cada bloque `export { ... }`, en vez de las
+        // líneas que parecen un nombre suelto. La versión anterior solo miraba
+        // exportaciones escritas una por línea, de modo que un
+        // `export { a, b } from '...'` en una sola línea pasaba sin revisar: el
+        // control daba verde por no haber mirado, que es peor que fallar
+        // (`D-F3-011`).
+        for (const bloque of content.matchAll(/export\s*\{([^}]*)\}\s*from/g)) {
+          const lista = bloque[1] ?? '';
+          for (const bruto of lista.split(',')) {
+            const nombre = bruto.replace(/\/\*[\s\S]*?\*\//g, '').trim().split(/\s+as\s+/)[0]?.trim() ?? '';
+            // Los tipos no son casos de uso: no se invocan, se anotan.
+            if (nombre === '' || nombre.startsWith('type ') || !/^[a-z][A-Za-z0-9]*$/.test(nombre)) continue;
+            // Los esquemas de validación tampoco: se exportan para que quien
+            // llama pueda validar antes, y no tienen por qué invocarse desde
+            // una pantalla. Lo que este control persigue son funciones de
+            // negocio que quedaron sin superficie.
+            if (nombre.endsWith('Schema')) continue;
+            if (!new RegExp(`\\b${nombre}\\b`).test(invocado)) {
+              problems.push(`${file} exporta "${nombre}" y ninguna pantalla, ruta o guion lo invoca.`);
+            }
           }
         }
       }

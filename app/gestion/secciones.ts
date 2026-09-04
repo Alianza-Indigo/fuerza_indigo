@@ -18,6 +18,7 @@ export const SECCIONES = [
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
   { href: '/gestion/redirecciones', label: 'Redirecciones', permiso: 'content.redirect.manage' },
+  { href: '/gestion/finanzas', label: 'Finanzas', permiso: 'billing.payment.read' },
   { href: '/gestion/finanzas/catalogo', label: 'Catálogo de cobros', permiso: 'billing.catalog.manage' },
   { href: '/gestion/finanzas/pagos', label: 'Pagos y devoluciones', permiso: 'billing.payment.read' },
   { href: '/gestion/finanzas/apoyos', label: 'Descuentos y becas', permiso: 'billing.discount.read' },

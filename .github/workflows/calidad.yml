@@ -139,7 +139,10 @@ jobs:
               .catch((e) => { console.error(e); process.exit(1); });
           "
 
-      - name: Pruebas de extremo a extremo
+      # Incluye las de accesibilidad y las de rendimiento: el mismo comando las
+      # ejecuta porque `playwright.config.ts` las declara juntas. Un umbral que
+      # solo se comprueba a mano no es un umbral.
+      - name: Pruebas de extremo a extremo, accesibilidad y rendimiento
         run: npm run test:e2e
 
       - name: Guardar el informe de las pruebas de extremo a extremo

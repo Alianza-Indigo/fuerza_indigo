@@ -81,9 +81,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es-MX" {...preferenceAttributes(preferencias)}>
       <body className="min-h-dvh antialiased">
+        {/*
+          Al recibir el foco tiene que alcanzar los 44 px que exige
+          docs/TEST_PLAN.md §7. Con solo el relleno vertical se quedaba en
+          41,6 px: quien navega con el teclado lo veía, pero quien lo pulsa en
+          una pantalla táctil tenía un objetivo por debajo del umbral.
+        */}
         <a
           href="#contenido"
-          className="sr-only rounded-md focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-[var(--color-accent)] focus:px-4 focus:py-2 focus:text-[var(--color-ink-inverse)]"
+          className="sr-only rounded-md focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:bg-[var(--color-accent)] focus:px-4 focus:text-[var(--color-ink-inverse)]"
         >
           Saltar al contenido
         </a>

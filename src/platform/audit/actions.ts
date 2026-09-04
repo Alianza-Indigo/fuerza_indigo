@@ -37,6 +37,17 @@ export const AUDIT_ACTIONS = {
   LEGAL_HOLD_PLACED: 'files.legal_hold.placed',
   LEGAL_HOLD_RELEASED: 'files.legal_hold.released',
 
+  CONTENT_DRAFTED: 'content.page.drafted',
+  CONTENT_SUBMITTED: 'content.page.submitted_for_review',
+  CONTENT_RETURNED: 'content.page.returned_to_author',
+  CONTENT_APPROVED: 'content.page.approved',
+  CONTENT_SCHEDULED: 'content.page.scheduled',
+  CONTENT_PUBLISHED: 'content.page.published',
+  CONTENT_ARCHIVED: 'content.page.archived',
+  CONTENT_REVERTED: 'content.page.reverted',
+  CONTENT_REDIRECT_CREATED: 'content.redirect.created',
+  CONTENT_REDIRECT_DELETED: 'content.redirect.deleted',
+
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',
   MODULE_CONFIGURED: 'system.module.configured',

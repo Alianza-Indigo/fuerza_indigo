@@ -39,7 +39,16 @@ describe('lista cerrada de concesión', () => {
   it('la lista contiene solo permisos de configuración y operación, ninguno de vida sindical', () => {
     // El criterio es explícito para que ampliarla exija justificarlo: si alguien
     // añade un permiso de otro módulo, esta prueba lo detiene.
-    const modulosPermitidos = new Set(['system', 'access', 'institution', 'territory', 'files', 'audit', 'identity']);
+    const modulosPermitidos = new Set([
+      'system',
+      'access',
+      'institution',
+      'territory',
+      'files',
+      'audit',
+      'identity',
+      'content',
+    ]);
     const accionesSindicalesProhibidas = ['vote', 'membership', 'discipline', 'cian', 'ceni', 'assembly'];
 
     for (const code of SUPERADMIN_GRANTED) {
@@ -49,6 +58,14 @@ describe('lista cerrada de concesión', () => {
         expect(code.includes(prohibida), `${code} es una acción de vida sindical`).toBe(false);
       }
     }
+  });
+
+  it('del CMS solo recibe el encaminamiento, nunca el contenido', () => {
+    // Admitir el módulo `content` en bloque abriría la puerta a que un permiso
+    // editorial entrara sin que nada lo advirtiera. Un borrador de comunicado
+    // sobre un conflicto laboral es deliberación interna del sindicato.
+    const delCms = [...SUPERADMIN_GRANTED].filter((code) => code.startsWith('content.'));
+    expect(delCms).toEqual(['content.redirect.manage']);
   });
 });
 

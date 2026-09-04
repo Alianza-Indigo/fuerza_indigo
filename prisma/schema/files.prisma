@@ -37,6 +37,7 @@ model FileObject {
   updatedByActor  Actor            @relation("FileObjectUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
 
   versions FileVersion[] @relation("ObjectVersions")
+  contentVersions ContentVersion[]
 
   @@index([legalEntityId])
   @@index([ownerPersonId])

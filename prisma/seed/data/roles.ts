@@ -89,6 +89,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: true,
     permissions: [
+      'content.page.read',
+      'content.page.write',
+      'content.page.review',
+      'content.page.publish',
+      'content.page.revert',
       'files.file.download_own',
       'identity.person.read',
       'identity.person.update',
@@ -119,6 +124,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: true,
     permissions: [
+      'content.page.read',
       'files.file.download_own','identity.person.read', 'audit.audit.read', 'audit.security.read', 'audit.audit.export', 'territory.unit.read'],
   },
   {
@@ -200,6 +206,12 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'content.page.read',
+      'content.page.write',
+      'content.page.review',
+      'content.page.publish',
+      'content.page.revert',
+      'content.redirect.manage',
       'files.file.download_own','files.file.upload', 'files.file.download'],
   },
   {
@@ -209,6 +221,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [
+      'content.page.read',
       'files.file.download_own','audit.audit.read', 'audit.security.read', 'audit.audit.export', 'identity.person.read'],
   },
   {

@@ -36,6 +36,9 @@ model Actor {
   updatedFileObjects     FileObject[]       @relation("FileObjectUpdatedBy")
   uploadedFileVersions   FileVersion[]      @relation("FileVersionUploadedBy")
   createdOutboxMessages  OutboxMessage[]    @relation("OutboxCreatedBy")
+  createdContentPages    ContentPage[]      @relation("ContentPageCreatedBy")
+  updatedContentPages    ContentPage[]      @relation("ContentPageUpdatedBy")
+  createdContentRedirects ContentRedirect[] @relation("ContentRedirectCreatedBy")
 
   @@index([kind])
   @@map("actor")
@@ -143,6 +146,8 @@ model User {
   roleAssignments RoleAssignment[]  @relation("RoleAssignmentSubject")
   grantedRoles    RoleAssignment[]  @relation("RoleAssignmentGrantor")
   revokedRoles    RoleAssignment[]  @relation("RoleAssignmentRevoker")
+  authoredContentVersions ContentVersion[] @relation("ContentVersionAuthor")
+  reviewedContentVersions ContentVersion[] @relation("ContentVersionReviewer")
 
   @@index([status])
   @@map("user_account")

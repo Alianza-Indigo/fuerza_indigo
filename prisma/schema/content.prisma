@@ -1,0 +1,131 @@
+/// Contenidos editoriales del sitio público (PRD §16.1, Fase 2).
+
+model ContentPage {
+  id                String            @id @default(uuid(7)) @db.Uuid
+  slug              String            @unique @db.VarChar(160)
+  kind              ContentKind
+  legalEntityId     String?           @db.Uuid
+  territorialUnitId String?           @db.Uuid
+  /// Versión que el público ve. Nula mientras nunca se ha publicado.
+  currentVersionId  String?           @unique @db.Uuid
+  /// Versión sobre la que se está trabajando. Puede ser posterior a la vigente.
+  draftVersionId    String?           @unique @db.Uuid
+  status            ContentStatus     @default(DRAFT)
+  publishedAt       DateTime?         @db.Timestamptz(3)
+  scheduledFor      DateTime?         @db.Timestamptz(3)
+  accessLevel       ContentAccess     @default(PUBLIC)
+  /// Orden dentro de su listado. Menor aparece antes.
+  sortOrder         Int               @default(0)
+  archivedAt        DateTime?         @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity     LegalEntity?     @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  territorialUnit TerritorialUnit? @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  currentVersion  ContentVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  draftVersion    ContentVersion?  @relation("DraftVersion", fields: [draftVersionId], references: [id], onDelete: Restrict)
+  createdByActor  Actor            @relation("ContentPageCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor            @relation("ContentPageUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  versions  ContentVersion[]  @relation("PageVersions")
+  redirects ContentRedirect[]
+
+  @@index([kind, status, publishedAt])
+  @@index([status, scheduledFor])
+  @@index([legalEntityId])
+  @@index([territorialUnitId])
+  @@map("content_page")
+}
+
+/// Versión editorial. Inmutable una vez publicada: revertir crea una nueva.
+model ContentVersion {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  pageId          String   @db.Uuid
+  version         Int
+  title           String   @db.VarChar(200)
+  summary         String   @db.VarChar(400)
+  bodyMarkdown    String   @db.Text
+  seoTitle        String?  @db.VarChar(70)
+  seoDescription  String?  @db.VarChar(200)
+  socialImageFileId String? @db.Uuid
+  /// Nota de cambios que escribe quien edita. Es lo que se lee en el historial.
+  changeNote      String?  @db.VarChar(400)
+  /// Versión de la que se copió al revertir. Deja el rastro de la reversión.
+  revertedFromVersionId String? @db.Uuid
+
+  authorId     String    @db.Uuid
+  reviewedById String?   @db.Uuid
+  reviewedAt   DateTime? @db.Timestamptz(3)
+  publishedAt  DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
+  page                ContentPage     @relation("PageVersions", fields: [pageId], references: [id], onDelete: Cascade)
+  author              User            @relation("ContentVersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  reviewedBy          User?           @relation("ContentVersionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  socialImage         FileObject?     @relation(fields: [socialImageFileId], references: [id], onDelete: Restrict)
+  revertedFromVersion ContentVersion? @relation("VersionRevert", fields: [revertedFromVersionId], references: [id], onDelete: Restrict)
+  revertedInto        ContentVersion[] @relation("VersionRevert")
+
+  currentOfPage ContentPage? @relation("CurrentVersion")
+  draftOfPage   ContentPage? @relation("DraftVersion")
+
+  @@unique([pageId, version])
+  @@index([pageId, createdAt])
+  @@map("content_version")
+}
+
+/// Redirección de una dirección antigua a la vigente.
+///
+/// Tabla propia y no un arreglo en la página: la dirección de origen tiene que
+/// ser única en todo el sitio —dos páginas no pueden reclamar la misma— y una
+/// columna de arreglo no puede expresar esa unicidad. Además, una redirección
+/// sobrevive a la página que la originó (ADR-0041).
+model ContentRedirect {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  fromSlug   String   @unique @db.VarChar(160)
+  toPageId   String?  @db.Uuid
+  /// Destino externo o ruta fija cuando no apunta a una página del CMS.
+  toPath     String?  @db.VarChar(400)
+  permanent  Boolean  @default(true)
+  /// Cuántas veces se siguió. Sirve para retirar las que ya nadie usa.
+  hitCount   Int      @default(0)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String @db.Uuid
+
+  toPage         ContentPage? @relation(fields: [toPageId], references: [id], onDelete: Cascade)
+  createdByActor Actor        @relation("ContentRedirectCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  @@index([toPageId])
+  @@map("content_redirect")
+}
+
+enum ContentKind {
+  PAGE
+  NEWS
+  STATEMENT
+  RESOURCE
+  FAQ
+  CALL_FOR_APPLICATIONS
+  BANNER
+  LEGAL
+  DELEGATION_PROFILE
+  PROTOCOL
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContentAccess {
+  PUBLIC
+  MEMBERS
+  INTERNAL
+}

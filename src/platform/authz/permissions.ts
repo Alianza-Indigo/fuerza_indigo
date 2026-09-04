@@ -111,6 +111,26 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     requiresReason: true,
   }),
 
+  // content — CMS del sitio público (PRD §16.1)
+  define('content.page.read', 'Consultar contenidos del CMS, incluidos los no publicados'),
+  define('content.page.write', 'Crear y editar borradores de contenido'),
+  define('content.page.review', 'Revisar un contenido enviado y aprobarlo o devolverlo', {
+    sensitivity: 'SENSITIVE',
+  }),
+  /**
+   * Publicar es un permiso aparte de escribir, y la separación no es burocracia:
+   * es lo que hace que exista una revisión de verdad. Con un solo permiso,
+   * quien redacta publica, y el paso de revisión se vuelve decorativo.
+   */
+  define('content.page.publish', 'Publicar, programar o archivar un contenido', {
+    sensitivity: 'CRITICAL',
+  }),
+  define('content.page.revert', 'Revertir un contenido a una versión anterior', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('content.redirect.manage', 'Administrar redirecciones de direcciones antiguas'),
+
   // audit
   define('audit.audit.read', 'Consultar la bitácora institucional', { sensitivity: 'CRITICAL' }),
   define('audit.security.read', 'Consultar la bitácora de seguridad', { sensitivity: 'CRITICAL' }),
@@ -162,6 +182,24 @@ export const SUPERADMIN_GRANTED: ReadonlySet<string> = new Set([
   'audit.security.read',
   'identity.person.read',
   'identity.person.merge',
+  /**
+   * Del CMS, el actor raíz recibe **solo** el encaminamiento.
+   *
+   * El PRD §16.1 dice que «el Superadmin y los roles de comunicación
+   * autorizados» gestionan los contenidos, pero la arquitectura del actor raíz
+   * lo impide en la parte editorial: no tiene fila en `User`, y toda versión
+   * exige autoría identificada. Firmar un comunicado del sindicato con un actor
+   * sin persona detrás dejaría sin respuesta la pregunta de quién lo publicó,
+   * que es justo la que se hace cuando un comunicado se discute.
+   *
+   * Tampoco recibe la lectura. Un borrador de comunicado sobre un conflicto
+   * laboral es deliberación interna del sindicato, y diagnosticar por qué una
+   * página no aparece necesita su **estado**, no su cuerpo: eso lo da el panel
+   * de salud sin leer una sola línea de texto (ADR-0042).
+   *
+   * Las redirecciones sí: son encaminamiento técnico, no voz institucional.
+   */
+  'content.redirect.manage',
 ]);
 
 /**
@@ -173,4 +211,5 @@ export const JOB_GRANTS: Readonly<Record<string, ReadonlySet<string>>> = {
   retention: new Set(['files.file.delete', 'files.retention.manage']),
   dispatch: new Set<string>(),
   health: new Set(['system.health.read']),
+  'content-schedule': new Set(['content.page.publish']),
 };

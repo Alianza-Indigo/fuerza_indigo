@@ -32,6 +32,7 @@ model LegalEntity {
   fileObjects       FileObject[]
   auditEvents       AuditEvent[]
   outboxMessages    OutboxMessage[]
+  contentPages ContentPage[]
 
   @@map("legal_entity")
 }
@@ -81,6 +82,7 @@ model TerritorialUnit {
   organizations    Organization[]
   territorialScopes TerritorialScope[]
   auditEvents      AuditEvent[]
+  contentPages ContentPage[]
 
   @@index([parentId])
   @@index([type])

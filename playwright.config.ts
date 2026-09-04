@@ -24,6 +24,7 @@ const NAVEGADOR = CHROMIUM === '' ? {} : { launchOptions: { executablePath: CHRO
 
 export default defineConfig({
   testDir: 'tests',
+  globalSetup: './tests/e2e/global-setup.ts',
   testMatch: ['e2e/**/*.spec.ts', 'a11y/**/*.spec.ts'],
   fullyParallel: false,
   forbidOnly: process.env['CI'] === 'true',

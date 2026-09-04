@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { headers } from 'next/headers';
+import { after } from 'next/server';
 import { LEGAL_NAV, SITE_NAV } from '@/platform/i18n';
+import { record } from '@/platform/analytics';
+import { classifyUserAgent } from '@/platform/kernel/ids';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +19,25 @@ export const dynamic = 'force-dynamic';
  *
  * Desde 360 px: el menú colapsa por debajo de `md` y se despliega en horizontal
  * por encima. No hay ningún punto intermedio en el que se corte.
+ *
+ * La medición agregada se registra aquí y no en cada pantalla: el marco es lo
+ * único por lo que pasan todas las rutas públicas, y repartirla por las páginas
+ * garantizaría que la siguiente que alguien escriba no mida nada. Va dentro de
+ * `after()`, así que ocurre **después** de responder: quien lee la página no
+ * espera a que se escriba un contador.
  */
-export default function PublicoLayout({ children }: { children: ReactNode }) {
+export default async function PublicoLayout({ children }: { children: ReactNode }) {
+  const cabeceras = await headers();
+  const ruta = cabeceras.get('x-pathname') ?? '/';
+  const clase = classifyUserAgent(cabeceras.get('user-agent'));
+
+  after(async () => {
+    await record(ruta === '/sin-conexion' ? 'OFFLINE_FALLBACK' : 'PAGE_VIEW', {
+      route: ruta,
+      userAgentClass: clase,
+    });
+  });
+
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-[var(--color-line)] bg-[var(--color-surface-raised)]">

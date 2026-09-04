@@ -4,6 +4,7 @@ import { hashPassword } from '@/platform/auth/password';
 import type { ActorContext, RoleAssignmentSnapshot } from '@/platform/kernel/actor-context';
 import { newCorrelationId, newPublicId } from '@/platform/kernel/ids';
 import { ROLE_COMPARTMENTS } from '@/platform/auth/actor-resolver';
+import { rootActorId } from '@/platform/auth/superadmin';
 
 /**
  * Datos de prueba para las pruebas de integración.
@@ -218,6 +219,35 @@ export async function contextoDe(
     ),
     reason: null,
     correlationId: newCorrelationId(),
+    ipHash: null,
+    userAgentSummary: null,
+    locale: 'es-MX',
+    timeZone: 'America/Mexico_City',
+    ...extras,
+  };
+}
+
+/**
+ * Contexto del actor raíz, construido desde la base.
+ *
+ * Sus permisos **no** se enumeran aquí: salen de `SUPERADMIN_GRANTED` a través
+ * del motor, igual que en producción. Escribirlos a mano haría que una prueba
+ * siguiera pasando después de quitarle un permiso a la lista cerrada, que es
+ * justo el cambio que hay que notar.
+ */
+export async function contextoRaiz(extras: Partial<ActorContext> = {}): Promise<ActorContext> {
+  return {
+    actorId: await rootActorId(),
+    actorKind: 'ROOT_SUPERADMIN',
+    userId: null,
+    personId: null,
+    jobType: null,
+    sessionId: null,
+    roles: [],
+    legalEntityScope: [],
+    compartments: new Set(),
+    reason: 'prueba de integración',
+    correlationId: 'correlacion-raiz-de-prueba',
     ipHash: null,
     userAgentSummary: null,
     locale: 'es-MX',

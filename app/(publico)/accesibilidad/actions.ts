@@ -1,7 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { savePreferences } from '@/platform/preferences';
+import { record } from '@/platform/analytics';
 import { textField } from '@/platform/http/form-fields';
 
 export interface PreferencesState {
@@ -27,6 +29,14 @@ export async function savePreferencesAction(
     motion: textField(formData, 'motion'),
     focus: textField(formData, 'focus'),
     theme: textField(formData, 'theme'),
+  });
+
+  // Se cuenta **que** alguien guardó sus preferencias, nunca cuáles. Que una
+  // persona suba el tamaño del texto o reduzca el movimiento es un dato de
+  // salud; saber que el centro de accesibilidad se usa no lo es, y es lo único
+  // que hace falta para decidir si merece más trabajo.
+  after(async () => {
+    await record('PREFERENCES_SAVED', { route: '/accesibilidad' });
   });
 
   // Se revalida la raíz: las preferencias se aplican en el marco del documento.

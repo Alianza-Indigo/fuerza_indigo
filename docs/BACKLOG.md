@@ -151,8 +151,8 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F2-PWA-002 | Implementar caché segura que nunca almacena expedientes ni respuestas autenticadas | Hecho |
 | F2-PWA-003 | Indicar con claridad las acciones que requieren conexión | Hecho |
 | F2-ARQ-001 | Implementar los catálogos de mensajes y los formatos de fecha, número y moneda | Hecho |
-| F2-OPS-001 | Implementar SEO técnico, mapa del sitio, datos estructurados y metadatos sociales | Pendiente |
-| F2-OPS-002 | Implementar analítica respetuosa de la privacidad para eventos esenciales | Pendiente |
+| F2-OPS-001 | Implementar SEO técnico, mapa del sitio, datos estructurados y metadatos sociales | Hecho |
+| F2-OPS-002 | Implementar analítica respetuosa de la privacidad para eventos esenciales | Hecho |
 | F2-ACC-001 | Verificar los umbrales de accesibilidad en todas las rutas públicas | Pendiente |
 | F2-QA-001 | Configurar Playwright con perfiles móvil y escritorio, y las pruebas visuales | Pendiente |
 | F2-QA-002 | Verificar los umbrales de rendimiento de las rutas públicas | Pendiente |

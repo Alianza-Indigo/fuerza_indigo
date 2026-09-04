@@ -739,6 +739,16 @@ Se escribe **en la misma transacción** que el hecho que lo origina. Tabla hija 
 **`WebhookEvent`** — Recepción genérica de webhooks distintos de Stripe. Inmutable.
 `id` PK · `source` IX · `externalId` NULL U? · `eventType` · `signatureVerified` *bool* · `payload` *json* · `receivedAt` IX · `processingStatus` *enum* (`RECEIVED`, `PROCESSED`, `FAILED`, `IGNORED`) · `attempts` *int* · `lastError` NULL.
 
+**`SiteMetric`** — Medición agregada del sitio público (F2-OPS-002). **Añadida en la Fase 2.**
+`id` PK · `event` *enum* (`PAGE_VIEW`, `SEARCH_WITH_RESULTS`, `SEARCH_WITHOUT_RESULTS`, `PREFERENCES_SAVED`, `OFFLINE_FALLBACK`) IX · `route` — ruta reducida, sin consulta, sin fragmento y sin identificadores · `occurredAtHour` — truncado a la hora IX · `userAgentClass` *enum* · `count` *int*.
+Único `(event, route, occurredAtHour, userAgentClass)`.
+
+No estaba contratada en la Fase 0 y se añade aquí, siguiendo el patrón que `CredentialVerification` (§5) ya fija: **no existe una fila por visita**. Cada visita incrementa un contador, de modo que no hay recorrido que reconstruir ni nada que correlacionar, y la tabla no tiene ninguna columna que pueda señalar a una persona —ni huella de origen, ni persona, ni sesión, ni correlación—. La hora va truncada porque con minutos se encadenan visitas cercanas y se reconstruye un recorrido, que es como se reidentifica a alguien en una tabla que «no tiene datos personales».
+
+Lo que deliberadamente **no** se mide: el texto de una búsqueda (lo que alguien busca en el sitio de un sindicato dice más de esa persona que su nombre; se cuentan las búsquedas con y sin resultados, que es lo que sirve para decidir qué falta escribir); qué preferencia sensorial se eligió (subir el tamaño del texto o reducir el movimiento es un dato de salud: se cuenta que el centro de accesibilidad se usó, no cómo); y los envíos de la entrada pública, que ya se cuentan solos en `support_request`.
+
+La migración retira `DELETE` y `TRUNCATE` al rol de la aplicación: una medición agregada que se puede borrar desde una petición web deja de servir para rendir cuentas de lo que el sitio hizo. La purga por retención la hace el rol propietario.
+
 **`AuditEvent`** — Bitácora institucional anexable (PRD §20.4). Inmutable.
 `id` PK · `occurredAt` IX · `actorId` FK→`Actor` IX — cubre persona, Superadmin raíz, trabajo programado y migración sin nulos ni cuentas ficticias · `onBehalfOfPersonId` NULL FK→`Person` — cuando alguien actúa por representación acreditada · `action` — código del catálogo cerrado · `objectKind` IX · `objectId` IX · `legalEntityId` NULL FK IX · `territorialUnitId` NULL FK · `outcome` *enum* (`SUCCESS`, `DENIED`, `FAILED`) · `reason` NULL *text* — obligatorio cuando el permiso lo exige · `scope` *json* — alcance efectivo aplicado · `metadata` *json* — minimizada, sin datos personales innecesarios · `correlationId` IX · `previousHash` · `hash` — encadenamiento que evidencia supresiones.
 

@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { Card, Notice, PageShell, Prose, Section } from '@/design-system/primitives';
 import { RequestForm } from '../contacto/request-form';
+import { socialMetadata } from '@/platform/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = socialMetadata({
   title: 'Solicitar apoyo',
   description:
     'Si vives una situación laboral, educativa, de salud o de accesibilidad difícil, empieza aquí. Preguntas de información, no de derecho.',
-  robots: { index: true, follow: true },
-};
+  path: '/solicitar-apoyo',
+});
 
 /**
  * Entrada única de ayuda (PRD §10.1, F2-UI-010).

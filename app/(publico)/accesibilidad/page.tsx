@@ -3,15 +3,16 @@ import Link from 'next/link';
 import { Card, PageShell, Prose, Section } from '@/design-system/primitives';
 import { currentPreferences } from '@/platform/preferences';
 import { PreferencesForm } from './preferences-form';
+import { socialMetadata } from '@/platform/seo';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = socialMetadata({
   title: 'Cómo se ve este sitio',
   description:
     'Ajusta el tamaño del texto, el espacio, el movimiento y el tema. Tus preferencias se guardan y se aplican en todo el sitio.',
-  robots: { index: true, follow: true },
-};
+  path: '/accesibilidad',
+});
 
 /**
  * Centro de accesibilidad (F2-UI-012, PRD §5.3).

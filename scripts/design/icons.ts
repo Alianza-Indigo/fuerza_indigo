@@ -31,6 +31,27 @@ const RAIZ = process.cwd();
 const PUBLICO = path.join(RAIZ, 'public');
 
 /**
+ * Imagen social (1200×630).
+ *
+ * Es lo que se ve cuando alguien comparte un enlace en una red o en un grupo de
+ * mensajería, que para un sindicato es como circula casi todo. Lleva el nombre
+ * y una línea que dice qué es, sobre el índigo de la paleta: sin ella, quien
+ * recibe el enlace ve un rectángulo gris y no lo abre.
+ */
+function svgSocial(fondo: string, tinta: string, tintaSuave: string): string {
+  const tipografia =
+    'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Fuerza Índigo">',
+    `  <rect width="1200" height="630" fill="${fondo}"/>`,
+    `  <text x="96" y="300" fill="${tinta}" font-family="${tipografia}" font-size="104" font-weight="700" letter-spacing="-3">Fuerza Índigo</text>`,
+    `  <text x="96" y="380" fill="${tintaSuave}" font-family="${tipografia}" font-size="42" font-weight="500">Sindicato de personas neurodivergentes</text>`,
+    `  <rect x="96" y="440" width="180" height="10" rx="5" fill="${tintaSuave}"/>`,
+    '</svg>',
+  ].join('\n');
+}
+
+/**
  * Marca cuadrada con zona de seguridad para recorte.
  *
  * El fondo cubre el lienzo entero y las letras ocupan el círculo central del
@@ -55,7 +76,9 @@ async function main(): Promise<void> {
 
   mkdirSync(PUBLICO, { recursive: true });
 
+  const tintaSuave = colorToken('--color-indigo-200');
   const marca = svg(fondo, tinta);
+  const social = svgSocial(fondo, tinta, tintaSuave);
   writeFileSync(path.join(PUBLICO, 'icono.svg'), `${marca}\n`);
 
   const navegador = await chromium.launch({
@@ -85,6 +108,17 @@ async function main(): Promise<void> {
       await pagina.close();
       console.log(`Escrito public/${archivo} (${lado}×${lado})`);
     }
+
+    const paginaSocial = await navegador.newPage({
+      viewport: { width: 1200, height: 630 },
+      deviceScaleFactor: 1,
+    });
+    await paginaSocial.setContent(
+      `<!doctype html><style>html,body{margin:0;padding:0}svg{display:block;width:1200px;height:630px}</style>${social}`,
+    );
+    await paginaSocial.screenshot({ path: path.join(PUBLICO, 'og.png') });
+    await paginaSocial.close();
+    console.log('Escrito public/og.png (1200×630)');
   } finally {
     await navegador.close();
   }

@@ -401,7 +401,16 @@ const CHECKS = [
     run() {
       const problems = [];
       const openChoice = /\*[a-záéíóúñ]+(?:\([^)]*\))? o [a-záéíóúñ]+[^*]*\*/i;
-      const undecided = /(por definir|a decidir|queda abierto|se decidir[áa]|pendiente de decidir|se evaluar[áa] m[áa]s adelante)/i;
+      // El límite de palabra va solo al principio, y las dos decisiones son
+      // deliberadas. Al principio hace falta: sin él, «para decidir qué falta
+      // escribir» contiene «a decidir» y el control acusaba una decisión
+      // pospuesta donde había una frase corriente; un control que da falsos
+      // positivos enseña a ignorarlo, y entonces deja de servir cuando acierta.
+      // Al final estorba: `\b` de JavaScript solo entiende letras ASCII, de modo
+      // que tras la «á» de «se decidirá» no reconoce ningún límite y la
+      // alternativa dejaría de acusar nunca.
+      const undecided =
+        /\b(por definir|a decidir|queda abierto|se decidir[áa]|pendiente de decidir|se evaluar[áa] m[áa]s adelante)/i;
       for (const doc of ['docs/DATA_MODEL.md', 'docs/ARCHITECTURE.md', 'docs/INTEGRATIONS.md', 'docs/SECURITY.md', 'docs/PERMISSIONS.md']) {
         const content = read(doc);
         if (content === null) continue;

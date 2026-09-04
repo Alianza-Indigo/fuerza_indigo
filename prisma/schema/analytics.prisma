@@ -1,0 +1,63 @@
+/// Medición agregada del sitio público (PRD §24 Fase 2, F2-OPS-002).
+///
+/// «Analítica respetuosa de la privacidad» aquí significa algo concreto y
+/// comprobable: **no existe una fila por visita**. La tabla guarda contadores
+/// por combinación de evento, ruta, hora y clase de dispositivo, y cada visita
+/// incrementa uno. No hay nada que correlacionar porque no hay nada que
+/// pertenezca a nadie: ni identificador, ni cookie, ni dirección, ni siquiera
+/// la huella con clave que sí usa el límite de envíos.
+///
+/// Sigue el patrón que `CredentialVerification` ya fija para el verificador de
+/// credenciales (docs/DATA_MODEL.md §5): medición agregada, hora truncada y
+/// clase de agente, sin construir perfiles.
+///
+/// Qué **no** se mide, y por qué no:
+///
+///  · El texto de una búsqueda. Lo que alguien busca en el sitio de un
+///    sindicato —«despido», «acoso», «diagnóstico»— dice más de esa persona que
+///    su nombre. Se cuentan las búsquedas con y sin resultados, que es lo que
+///    sirve para decidir qué falta escribir.
+///  · Qué preferencia sensorial se eligió. Que alguien suba el tamaño del texto
+///    o reduzca el movimiento es un dato de salud. Se cuenta que el centro de
+///    accesibilidad se usó, no cómo.
+///  · Los envíos de la entrada pública. Ya se cuentan solos en `support_request`
+///    y duplicarlos aquí sería tener dos verdades sobre lo mismo.
+model SiteMetric {
+  id    String          @id @default(uuid(7)) @db.Uuid
+  event SiteMetricEvent
+
+  /// Ruta pública, sin parámetros de consulta ni fragmentos. Nunca lleva
+  /// identificadores: una dirección con folio dentro sería el folio publicado.
+  route String @db.VarChar(160)
+
+  /// Hora truncada. Sin minutos no se puede reconstruir una sesión encadenando
+  /// visitas cercanas, que es como se reidentifica a alguien en una tabla que
+  /// «no tiene datos personales».
+  occurredAtHour DateTime @db.Timestamptz(3)
+
+  /// Clase del agente, para poder excluir el tráfico automatizado de los
+  /// informes. No es la cadena completa: esa sí distingue dispositivos.
+  userAgentClass UserAgentClass @default(UNKNOWN)
+
+  /// Cuántas veces. Es la columna que hace que esto sea un contador y no un
+  /// registro de visitas.
+  count Int @default(1)
+
+  @@unique([event, route, occurredAtHour, userAgentClass])
+  @@index([event, occurredAtHour])
+  @@index([occurredAtHour])
+  @@map("site_metric")
+}
+
+enum SiteMetricEvent {
+  /// Una página pública se sirvió.
+  PAGE_VIEW
+  /// El buscador devolvió al menos un resultado.
+  SEARCH_WITH_RESULTS
+  /// El buscador no devolvió nada. Es la señal editorial más útil de todas.
+  SEARCH_WITHOUT_RESULTS
+  /// Alguien guardó sus preferencias sensoriales. No se registra cuáles.
+  PREFERENCES_SAVED
+  /// Se mostró la pantalla de sin conexión.
+  OFFLINE_FALLBACK
+}

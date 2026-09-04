@@ -323,7 +323,10 @@
     ],
     "2": [
       "ContentPage",
-      "ContentVersion"
+      "ContentVersion",
+      "ContentRedirect",
+      "SupportRequest",
+      "SiteMetric"
     ],
     "3": [
       "StripeAccountConfiguration",
@@ -399,7 +402,6 @@
       "Appeal"
     ],
     "6": [
-      "SupportRequest",
       "Case",
       "CaseParticipant",
       "CaseAssignment",
@@ -481,7 +483,7 @@
     "ApplicationReview->OfficeTerm": "La revisión registra la cartera del revisor cuando existe. En la Fase 4 basta la cuenta revisora; la Fase 5 agrega el enlace.",
     "CredentialVerification->CeniCertificate": "El verificador público atiende credenciales desde la Fase 4 y distintivos CENI desde la Fase 9, que agrega la columna.",
     "TerritorialUnit->Resolution": "El acuerdo habilitante de una unidad territorial se registra cuando existe vida asamblearia, en la Fase 5.",
-    "SupportRequest->AiGeneration": "La sugerencia de canalización asistida es opcional por diseño: la Fase 6 opera con clasificación humana y la Fase 10 agrega el enlace.",
+    "SupportRequest->AiGeneration": "La sugerencia de canalización asistida es opcional por diseño. La entrada se construye en la Fase 2 y no la escribe; la Fase 6 opera con clasificación humana y la Fase 10 agrega el enlace al modelo.",
     "Consent->CareRelationship": "El consentimiento otorgado por representación necesita la relación de cuidado, que llega en la Fase 4 junto con las personas representadas.",
     "CatalogProduct->Resolution": "Solo las cuotas extraordinarias exigen acuerdo habilitante, y esas no existen antes de la Fase 5.",
     "Subscription->Membership": "Una suscripción puede sostener una membresía, una herramienta o un servicio. La Fase 3 opera suscripciones sin membresías; la Fase 4 agrega el enlace.",

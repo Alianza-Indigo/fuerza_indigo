@@ -2,12 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, Notice, PageShell, Prose, Section } from '@/design-system/primitives';
 import { RequestForm } from './request-form';
+import { socialMetadata } from '@/platform/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = socialMetadata({
   title: 'Contacto',
   description: 'Escríbele a Fuerza Índigo o a Alianza Índigo. Te damos un folio y una persona te contesta.',
-  robots: { index: true, follow: true },
-};
+  path: '/contacto',
+});
 
 /**
  * Contacto general (F2-UI-010).

@@ -3,16 +3,16 @@ import Link from 'next/link';
 import { Card, EmptyState, LinkButton, ModuleBadge, Section } from '@/design-system/primitives';
 import { publishedList } from '@/modules/content';
 import { SITE_NAV, formatDate } from '@/platform/i18n';
+import { StructuredData, organizacion, sitioWeb, socialMetadata } from '@/platform/seo';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = socialMetadata({
   title: 'Fuerza Índigo · Sindicato de inclusión y derechos neurodivergentes',
   description:
     'Sindicato Unión de Inclusión y Derechos Neurodivergentes. Defendemos los derechos laborales de las personas neurodivergentes y de quienes trabajan con ellas.',
-  robots: { index: true, follow: true },
-  openGraph: { type: 'website', locale: 'es_MX' },
-};
+  path: '/',
+});
 
 /**
  * Inicio.
@@ -28,6 +28,8 @@ export default async function InicioPage() {
 
   return (
     <main id="contenido">
+      <StructuredData data={organizacion()} />
+      <StructuredData data={sitioWeb()} />
       <section className="border-b border-[var(--color-line)] bg-[var(--color-surface-accent)]">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
           <p className="font-semibold text-[var(--color-accent-ink)]">

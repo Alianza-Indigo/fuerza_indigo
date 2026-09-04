@@ -6,14 +6,52 @@ import { colorToken } from '@/design-system/tokens';
 import { env } from '@/platform/config/env';
 import './globals.css';
 
+const DESCRIPCION =
+  'Plataforma del Sindicato Unión de Inclusión y Derechos Neurodivergentes «Fuerza Índigo» y del ecosistema Alianza Índigo.';
+
+/**
+ * Metadatos del documento (F2-OPS-001).
+ *
+ * `robots` deniega por omisión y cada ruta pública lo habilita para sí. Es la
+ * misma postura que la lista cerrada de permisos: una pantalla nueva de gestión
+ * no queda indexable porque alguien olvidó excluirla.
+ *
+ * `metadataBase` sale de `APP_URL` para que las direcciones sociales sean
+ * absolutas. Sin ella, una imagen relativa se comparte rota en cuanto sale del
+ * sitio, que es justo cuando importa.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(env().APP_URL),
   title: {
     default: 'Fuerza Índigo',
     template: '%s · Fuerza Índigo',
   },
-  description:
-    'Plataforma del Sindicato Unión de Inclusión y Derechos Neurodivergentes «Fuerza Índigo» y del ecosistema Alianza Índigo.',
+  description: DESCRIPCION,
+  applicationName: 'Fuerza Índigo',
   robots: { index: false, follow: false },
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: 'Fuerza Índigo',
+    locale: 'es_MX',
+    title: 'Fuerza Índigo',
+    description: DESCRIPCION,
+    url: '/',
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Fuerza Índigo · sindicato de personas neurodivergentes' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fuerza Índigo',
+    description: DESCRIPCION,
+    images: ['/og.png'],
+  },
+  icons: {
+    icon: [
+      { url: '/icono.svg', type: 'image/svg+xml' },
+      { url: '/icono-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export const viewport: Viewport = {

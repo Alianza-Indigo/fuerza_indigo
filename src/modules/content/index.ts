@@ -24,6 +24,8 @@ export {
   type PublishedPage,
   type PublishedSummary,
   type EditorialPage,
+  publishedSitemapEntries,
+  type SitemapEntry,
   searchPublished,
   type SearchHit,
   type VersionHistoryEntry,

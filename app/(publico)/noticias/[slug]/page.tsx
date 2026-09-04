@@ -5,6 +5,7 @@ import { PageShell, Prose } from '@/design-system/primitives';
 import { Markdown } from '@/design-system/markdown';
 import { publishedPage } from '@/modules/content';
 import { formatDate } from '@/platform/i18n';
+import { StructuredData, articulo, socialMetadata } from '@/platform/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,19 +14,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const nota = await publishedPage(slug);
   if (nota === null) return { title: 'Nota no encontrada' };
 
-  return {
+  return socialMetadata({
     title: nota.seoTitle ?? nota.title,
     description: nota.seoDescription ?? nota.summary,
-    alternates: { canonical: `/noticias/${nota.slug}` },
-    openGraph: {
-      title: nota.seoTitle ?? nota.title,
-      description: nota.seoDescription ?? nota.summary,
-      type: 'article',
-      locale: 'es_MX',
-      ...(nota.publishedAt === null ? {} : { publishedTime: nota.publishedAt.toISOString() }),
-    },
-    robots: { index: true, follow: true },
-  };
+    path: `/noticias/${nota.slug}`,
+    type: 'article',
+    publishedTime: nota.publishedAt,
+  });
 }
 
 export default async function NotaPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -35,6 +30,14 @@ export default async function NotaPage({ params }: { params: Promise<{ slug: str
 
   return (
     <PageShell title={nota.title} description={nota.summary} width="lectura">
+      <StructuredData
+        data={articulo({
+          titulo: nota.title,
+          resumen: nota.summary,
+          slug: nota.slug,
+          publicadoEl: nota.publishedAt,
+        })}
+      />
       <article>
         {nota.publishedAt !== null && (
           <p className="mb-6 text-sm text-[var(--color-ink-soft)]" data-secondary>

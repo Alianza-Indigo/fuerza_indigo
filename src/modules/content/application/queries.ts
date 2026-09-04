@@ -302,3 +302,31 @@ export async function searchPublished(query: string, limit = 30): Promise<Search
       publishedAt: fila.publishedAt,
     }));
 }
+
+export interface SitemapEntry {
+  readonly slug: string;
+  readonly publishedAt: Date | null;
+}
+
+/**
+ * Direcciones publicadas y visibles para el mapa del sitio (F2-OPS-001).
+ *
+ * Solo `PUBLIC`: una página de acceso restringido en el mapa del sitio le
+ * anuncia a todo el mundo que existe, y a quien la abra le responde una
+ * denegación. Devuelve la dirección y la fecha, nada más: el mapa no necesita
+ * el cuerpo y traerlo sería mover el sitio entero en cada rastreo.
+ */
+export async function publishedSitemapEntries(): Promise<SitemapEntry[]> {
+  const filas = await db().contentPage.findMany({
+    where: {
+      status: 'PUBLISHED',
+      accessLevel: 'PUBLIC',
+      archivedAt: null,
+      currentVersionId: { not: null },
+    },
+    orderBy: [{ slug: 'asc' }],
+    select: { slug: true, publishedAt: true },
+  });
+
+  return filas.map((fila) => ({ slug: fila.slug, publishedAt: fila.publishedAt }));
+}

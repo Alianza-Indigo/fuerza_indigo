@@ -3,6 +3,10 @@ import Link from 'next/link';
 import { Card, EmptyState, NoResults, PageShell } from '@/design-system/primitives';
 import { searchPublished } from '@/modules/content';
 import { formatDate } from '@/platform/i18n';
+import { after } from 'next/server';
+import { headers } from 'next/headers';
+import { record } from '@/platform/analytics';
+import { classifyUserAgent } from '@/platform/kernel/ids';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +37,12 @@ const TIPO: Record<string, string> = {
  * Distingue los dos estados vacíos que el PRD §5.4 obliga a separar: **aún no
  * has buscado** y **no hay resultados para lo que buscaste** no dicen lo mismo
  * ni ofrecen lo mismo.
+ *
+ * De cada búsqueda se cuenta **si tuvo resultados o no**, y nada más. El texto
+ * buscado no se guarda en ninguna parte: lo que alguien busca en el sitio de un
+ * sindicato —«despido», «acoso», «diagnóstico»— dice más de esa persona que su
+ * nombre. Lo que sirve para decidir qué falta escribir es cuántas búsquedas se
+ * quedan sin nada, y eso se sabe con un contador.
  */
 export default async function BuscarPage({
   searchParams,
@@ -41,7 +51,18 @@ export default async function BuscarPage({
 }) {
   const { q } = await searchParams;
   const termino = (q ?? '').trim();
-  const resultados = termino.length >= 2 ? await searchPublished(termino) : [];
+  const buscó = termino.length >= 2;
+  const resultados = buscó ? await searchPublished(termino) : [];
+
+  if (buscó) {
+    const clase = classifyUserAgent((await headers()).get('user-agent'));
+    after(async () => {
+      await record(resultados.length > 0 ? 'SEARCH_WITH_RESULTS' : 'SEARCH_WITHOUT_RESULTS', {
+        route: '/buscar',
+        userAgentClass: clase,
+      });
+    });
+  }
 
   return (
     <PageShell title="Buscar" description="En páginas, noticias y comunicados publicados." width="ancha">

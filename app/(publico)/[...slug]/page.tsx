@@ -5,6 +5,7 @@ import { EmptyState, PageShell, Prose } from '@/design-system/primitives';
 import { Markdown } from '@/design-system/markdown';
 import { publishedPage, resolveRedirect } from '@/modules/content';
 import { PUBLIC_ROUTES, formatDate } from '@/platform/i18n';
+import { socialMetadata } from '@/platform/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,18 +50,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         };
   }
 
-  return {
+  return socialMetadata({
     title: pagina.seoTitle ?? pagina.title,
     description: pagina.seoDescription ?? pagina.summary,
-    alternates: { canonical: `/${pagina.slug}` },
-    openGraph: {
-      title: pagina.seoTitle ?? pagina.title,
-      description: pagina.seoDescription ?? pagina.summary,
-      type: 'article',
-      locale: 'es_MX',
-    },
-    robots: { index: true, follow: true },
-  };
+    path: `/${pagina.slug}`,
+    type: 'article',
+    publishedTime: pagina.publishedAt,
+  });
 }
 
 export default async function PaginaPublica({ params }: { params: Promise<{ slug: string[] }> }) {

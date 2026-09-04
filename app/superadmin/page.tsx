@@ -26,7 +26,7 @@ export default async function SuperadminHomePage() {
     >
       <div className="space-y-8">
         {failing.length > 0 && (
-          <Card className="border-[var(--color-danger)]">
+          <Card tone="danger">
             <h2 className="text-lg font-semibold text-[var(--color-danger)]">Requiere atención inmediata</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {failing.map((check) => (

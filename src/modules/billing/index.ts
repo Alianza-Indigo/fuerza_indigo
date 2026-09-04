@@ -38,3 +38,12 @@ export {
   type OwnSubscriptionRow,
   type PayableRow,
 } from './application/my-payments';
+export { receiveWebhook, type ReceiveOutcome } from './application/webhooks';
+export { processWebhookEvent, type ProcessOutcome } from './application/webhook-processing';
+export {
+  retryUnreconciledWebhooks,
+  RETRY_AFTER_MS,
+  MAX_ATTEMPTS,
+  ALERT_AFTER_MS,
+  type ReconcileSummary,
+} from './application/webhook-retry';

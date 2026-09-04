@@ -1,0 +1,14 @@
+-- Un cobro tiene que poder atarse a su suscripción (F3-PAG-008).
+--
+-- La migración de esta fase revocó `UPDATE` sobre `payment` y devolvió columna
+-- por columna solo lo que el cobro necesita mover. En esa lista faltaba
+-- `subscriptionId`, y la ausencia no era inocua: una intención de cobro se crea
+-- **antes** de que exista la suscripción —la abre la pasarela y su
+-- identificador llega después, en `checkout.session.completed`—, de modo que el
+-- enlace solo puede escribirse más tarde. Sin este privilegio, ese momento
+-- fallaba y la primera cuota de cada suscripción quedaba suelta, sin poder
+-- atribuirse al periodo que pagó.
+--
+-- Lo detectaron las pruebas de webhooks antes de que llegara a ninguna parte.
+-- El motor hizo exactamente lo que se le pidió; lo que estaba mal era la lista.
+GRANT UPDATE ("subscriptionId") ON TABLE "payment" TO fuerza_app;

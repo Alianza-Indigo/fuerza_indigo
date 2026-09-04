@@ -171,10 +171,10 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F3-PAG-002 | Implementar la configuración de las dos cuentas de Stripe y su selección por entidad | Hecho |
 | F3-PAG-003 | Implementar el Checkout alojado con clave de idempotencia | Hecho |
 | F3-PAG-004 | Implementar el portal de cliente | Hecho |
-| F3-PAG-005 | Implementar pagos únicos y suscripciones con periodo de gracia configurable | Pendiente |
+| F3-PAG-005 | Implementar pagos únicos y suscripciones con periodo de gracia configurable | Hecho |
 | F3-PAG-006 | Implementar cupones, becas, exenciones y convenios documentados | Pendiente |
-| F3-PAG-007 | Implementar la recepción de webhooks por cuenta con firma verificada y persistencia previa | Pendiente |
-| F3-PAG-008 | Implementar el procesamiento idempotente, transaccional y reintentable de eventos | Pendiente |
+| F3-PAG-007 | Implementar la recepción de webhooks por cuenta con firma verificada y persistencia previa | Hecho |
+| F3-PAG-008 | Implementar el procesamiento idempotente, transaccional y reintentable de eventos | Hecho |
 | F3-PAG-009 | Implementar los pagos manuales con evidencia y doble control | Pendiente |
 | F3-PAG-010 | Implementar reembolsos con solicitud y aprobación por personas distintas | Pendiente |
 | F3-LIB-001 | Implementar el libro auxiliar inmutable con asientos de reversión | Pendiente |
@@ -182,11 +182,11 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F3-LIB-003 | Implementar el registro patrimonial y sus movimientos con acuerdo habilitante | Pendiente |
 | F3-LIB-004 | Implementar los cortes y reportes semestrales de rendición de cuentas | Pendiente |
 | F3-LIB-005 | Implementar las exportaciones autorizadas con motivo, marca temporal y auditoría | Pendiente |
-| F3-OPS-001 | Implementar las alertas de eventos sin conciliar y de fallos de cobro | Pendiente |
+| F3-OPS-001 | Implementar las alertas de eventos sin conciliar y de fallos de cobro | Hecho |
 | F3-CMS-001 | Implementar las plantillas de comprobante y su emisión | Pendiente |
 | F3-UI-001 | Construir el panel de finanzas y la vista de pagos de la persona | Pendiente |
 | F3-QA-001 | Probar pago exitoso, fallido, pendiente, reembolsado y disputado | Pendiente |
-| F3-QA-002 | Probar firma inválida, evento repetido, evento fuera de orden y cuenta cruzada | Pendiente |
+| F3-QA-002 | Probar firma inválida, evento repetido, evento fuera de orden y cuenta cruzada | Hecho |
 | F3-DOC-001 | Documentar el modelo financiero y actualizar el estado de la fase | Pendiente |
 
 ---

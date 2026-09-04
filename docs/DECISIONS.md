@@ -650,3 +650,27 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Por qué.** Rehacer esas pantallas significaría rehacer también sus errores, y sobre todo obligaría a que los datos de una tarjeta pasaran por esta plataforma. No pasan, y no deben: cada sistema por el que pasa un número de tarjeta es un sistema más que puede filtrarlo.
 
 **Lo que esto implica para la cancelación.** La política de cancelación —al final del periodo o inmediata— se configura en la cuenta de la pasarela, y su efecto llega aquí por webhook. La plataforma no ofrece un segundo camino para cancelar: dos formas de hacer lo mismo acaban divergiendo, y la que se use menos es la que se queda rota sin que nadie lo note.
+
+---
+
+## ADR-0056 · Un evento adelantado no es un error: queda sin conciliar y se reintenta
+
+**Contexto.** La pasarela no garantiza el orden de entrega. El cambio de estado de una suscripción puede llegar antes que la sesión de cobro que ata esa suscripción a un concepto del catálogo, y entonces no hay forma de resolverlo todavía.
+
+**Decisión.** Un evento cuya referencia no existe se marca `UNRECONCILED`, no `FAILED`. Una tarea programada lo reintenta cada cinco minutos hasta doce veces, y **avisa una sola vez** de lo que sigue sin resolverse pasada una hora.
+
+**Por qué esa distinción importa.** Tratarlo como fallo llenaría la bitácora de alarmas por algo que se arregla solo en el siguiente intento, y una bitácora que grita por rutina es una que nadie lee cuando grita de verdad. Y al revés: no avisar nunca dejaría que un evento sin conciliar —que es dinero que entró o salió y que el sistema no supo dónde poner— viviera callado hasta el corte semestral.
+
+**Por qué doce intentos y no infinitos.** Una hora cubre de sobra un desorden de entrega. Lo que falta después no es tiempo sino una intervención, y seguir reintentando solo escondería el problema detrás de un registro que se repite. La ruta responde 503 mientras quede algo agotado, para que la supervisión externa lo vea sin leer el cuerpo.
+
+---
+
+## ADR-0057 · La idempotencia del ingreso se ancla en el documento de la pasarela
+
+**Contexto.** El PRD §11.4 prohíbe duplicar ingresos. Marcar el evento como procesado no basta: dos entregas simultáneas pueden pasar esa comprobación a la vez, y la pasarela envía eventos distintos —con identificadores distintos— por el mismo hecho.
+
+**Decisión.** Cada ingreso de renovación lleva `idempotencyKey = stripe:invoice:<id de la factura>`, único en toda la instalación. Y cada transición de estado es **condicional**: un cobro pasa a pagado solo si no lo estaba, y no vuelve a pagado desde un estado más avanzado como devuelto o en disputa.
+
+**Por qué la condición, además de la clave.** El índice único impide crear dos ingresos por la misma factura. La condición impide algo distinto: que un reenvío tardío de un evento viejo borre un estado posterior. Las dos cosas hacen falta, y ninguna sustituye a la otra.
+
+**Consecuencia probada.** Dos eventos distintos con la misma factura dejan un solo ingreso, y un `payment_intent.succeeded` que llega tarde no revierte una devolución ya asentada.

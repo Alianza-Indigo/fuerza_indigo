@@ -71,6 +71,8 @@ Se registran en el cierre.
 | `D-F3-006` | Baja | El mensaje «reactívalo antes de ponerle precio» prometía una operación que no existía: la única salida real era crear otro concepto con código distinto y partir el histórico en dos | Corregido. `reactivateProduct`, con motivo escrito y asiento en la bitácora |
 | `D-F3-007` | Alta | La integración continua llevaba fallando desde la Fase 2 sin que nadie lo mirara. `tests/unit/config/env-file.test.ts` heredaba del entorno de la máquina la misma variable que estaba afirmando: donde `SUPERADMIN_PASSWORD_HASH` viene exportada —como en la propia integración continua— la prueba dejaba de leer el archivo y leía la máquina | Corregido. El proceso hijo hereda el entorno **menos** las variables bajo examen, y dos pruebas nuevas fijan qué hace el cargador cuando el mismo nombre viene de dos sitios. Verificado reproduciendo la condición: la prueba vieja falla con la variable exportada y la nueva pasa |
 | `D-F3-008` | Baja | El chequeo de salud del contenedor de PostgreSQL buscaba una base con el nombre del rol y dejaba veinte `FATAL: database "fuerza" does not exist` en cada registro, delante de quien viniera a investigar un fallo real | Corregido: `pg_isready -U fuerza -d fuerza_ci` |
+| `D-F3-009` | Alta | La migración de la Fase 3 revocó `UPDATE` sobre `payment` y devolvió columna por columna, pero olvidó `subscriptionId`. Una intención de cobro se crea antes de que exista la suscripción, así que el enlace solo puede escribirse después: sin ese privilegio, la primera cuota de cada suscripción quedaba suelta, sin poder atribuirse al periodo que pagó | Corregido con una migración que concede esa columna. Lo detectaron las pruebas de webhooks; el motor hizo lo que se le pidió y lo que estaba mal era la lista |
+| `D-F3-010` | Alta | Con `form-action 'self'` a secas, Chromium bloquea la redirección a la pasarela: aplica la directiva a toda la cadena de redirección, no solo al primer destino. Quien intentara pagar se quedaría mirando una página que no hace nada, sin ningún error a la vista | Corregido enumerando los dos servidores de la pasarela. Comprobado en un navegador de verdad —con la directiva estrecha la petición no llega a salir— y fijado con una prueba de extremo a extremo sobre la cabecera que responde el servidor |
 
 ---
 
@@ -213,7 +215,7 @@ Los cuatro últimos son defectos **de los controles**, no del producto, y se reg
 
 ## Decisiones
 
-Quince decisiones, de ADR-0041 a ADR-0055 en [`DECISIONS.md`](DECISIONS.md):
+Diecisiete decisiones, de ADR-0041 a ADR-0057 en [`DECISIONS.md`](DECISIONS.md):
 
 | ADR | Decisión |
 |---|---|
@@ -232,6 +234,8 @@ Quince decisiones, de ADR-0041 a ADR-0055 en [`DECISIONS.md`](DECISIONS.md):
 | 0053 | Volver del navegador no prueba ningún pago |
 | 0054 | La idempotencia del cobro se apoya en la intención abierta, no en una clave eterna |
 | 0055 | El portal de cliente no se reconstruye |
+| 0056 | Un evento adelantado no es un error: queda sin conciliar y se reintenta |
+| 0057 | La idempotencia del ingreso se ancla en el documento de la pasarela |
 
 El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 

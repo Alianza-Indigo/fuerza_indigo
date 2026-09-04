@@ -566,3 +566,41 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **La alternativa que se descartó.** Duplicar la pantalla bajo `/superadmin`. Habría dado una segunda implementación del mismo caso de uso, y un actor que administra direcciones sin poder ver a qué apuntan.
 
 **Principio que queda.** Un permiso que nadie puede ejercer no es inofensivo por no usarse: figura en la lista de lo que el actor más poderoso del sistema puede hacer, y esa lista es lo que alguien lee para saber qué está en juego si esa credencial se pierde. Concederlo «por si acaso» ensucia justo el documento que tiene que estar limpio.
+
+---
+
+## ADR-0049 · Un precio no se edita: se cierra y nace otro
+
+**Contexto.** El PRD §11.1 exige que los conceptos y sus precios se administren desde el sistema y no estén codificados en el frontend. Eso resuelve dónde vive un importe, pero no qué pasa cuando cambia. La forma obvia —una columna `amountMinor` que se actualiza— deja el sistema sin poder responder la única pregunta que se hace en una asamblea: cuánto se cobraba cuando se cobró.
+
+**Decisión.** `CatalogPrice` es una serie versionada por concepto. Añadir un precio incrementa `version`, y la versión anterior se cierra poniéndole `effectiveTo` en el mismo instante en que empieza la nueva. Nunca hay dos vigencias solapadas. `currentPrice()` resuelve por vigencia —`effectiveFrom <= t < effectiveTo`— y no por la marca `isDefault`, porque un precio puede estar marcado por omisión y todavía no haber entrado en vigor.
+
+**Por qué el importe se pide en unidades menores.** `amountMinor` es entero y `BigInt` en la base. La conversión de pesos a centavos ocurre en un solo sitio, al capturar. Si se aceptara un decimal, existiría un punto del sistema donde un importe es coma flotante, y ahí es donde aparecen los centavos que no cuadran en la conciliación.
+
+**La alternativa que se descartó.** Guardar el historial en la bitácora y editar la fila. La bitácora prueba quién cambió qué; no sirve para calcular. Reconstruir el precio de marzo leyendo asientos de auditoría convertiría cada corte semestral en una investigación.
+
+**Consecuencia para los pagos.** Un pago apunta a un `CatalogPrice`, no a un producto. El importe cobrado queda anclado a la versión con la que se cobró aunque el catálogo cambie al día siguiente.
+
+---
+
+## ADR-0050 · Archivar es reversible; borrar no existe
+
+**Contexto.** Retirar un concepto del catálogo es frecuente y a veces equivocado. Borrarlo dejaría pagos apuntando a precios de un producto inexistente.
+
+**Decisión.** `archiveProduct` marca `archivedAt` y baja `isActive`; el concepto sale del listado ordinario y conserva todos sus precios. `reactivateProduct` lo devuelve, con su historial intacto y sin reabrir ningún importe: cambiar una cantidad sigue exigiendo una versión nueva de precio. Ambos actos exigen motivo escrito y quedan en la bitácora.
+
+**Por qué existe la reactivación y no solo el archivado.** El mensaje que ve quien intenta ponerle precio a un concepto archivado dice «reactívalo antes». Sin la operación, esa frase sería una instrucción imposible, y la única salida sería crear otro concepto con código distinto: el histórico de lo que es la misma cuota quedaría partido en dos.
+
+**Una cuota extraordinaria no se crea sin acuerdo.** `UNION_DUE_EXTRAORDINARY` exige `authorizingResolutionNote`. La tabla `Resolution` llega en la Fase 5; hasta entonces el acuerdo se declara por escrito, y sin esa declaración el concepto no se crea. Cobrar una cuota extraordinaria que nadie acordó es el abuso que el PRD §9.4 previene.
+
+---
+
+## ADR-0051 · Un día del calendario se convierte en instante con la zona de quien lo captura
+
+**Contexto.** Un campo de fecha entrega «2026-01-01», que es un día del calendario, no un instante. La conversión evidente, `new Date('2026-01-01T00:00:00Z')`, lo fija a la medianoche de Londres. En México eso son las seis de la tarde del 31 de diciembre: un precio acordado para enero empezaba a regir en diciembre, y la tabla que debía explicarlo lo presentaba con la fecha del día anterior.
+
+**Decisión.** `startOfDayInZone(fecha, zona)` resuelve el desfase consultando la zona en ese mismo instante y repitiendo el cálculo una vez, que es lo que hace falta el día en que entra o sale el horario de verano. La zona sale del contexto de la persona, no del servidor. `todayInZone` da el día que se está viviendo donde está quien mira, y es lo que rellena por omisión un campo de fecha.
+
+**Por qué no se guarda la cadena tal cual.** Una columna de texto con «2026-01-01» no se puede comparar con `effectiveFrom <= ahora` sin volver a decidir la zona en cada consulta, y esa decisión acabaría tomándose distinta en dos sitios.
+
+**Alcance.** Vale para toda fecha que una persona captura como día —vigencias, cortes, periodos de conciliación— y no para las marcas de tiempo que pone el sistema, que ya son instantes.

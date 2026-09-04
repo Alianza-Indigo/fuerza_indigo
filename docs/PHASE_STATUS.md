@@ -63,7 +63,12 @@ Se registran en el cierre.
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
-| — | — | Sin defectos registrados todavía en la Fase 3 | — |
+| `D-F3-001` | Alta | El punto era separador de millares en algunas formas de escribir una cantidad, así que «150.005» se leía como ciento cincuenta mil cinco pesos: un error de mil veces en un cobro que sale de verdad | Corregido. El punto es siempre decimal, que es la convención de México; hay prueba que fija las dos lecturas |
+| `D-F3-002` | Alta | Un importe pasaba por `number` al validarse, y por encima del entero seguro de JavaScript perdía precisión antes de llegar a la columna, que es `BigInt` | Corregido. La validación produce `bigint` y la prueba falla si se reintroduce el paso por `number` |
+| `D-F3-003` | Alta | La fecha de vigencia se guardaba a medianoche UTC: un precio acordado para el 1 de enero empezaba a regir a las seis de la tarde del 31 de diciembre y se presentaba con la fecha del día anterior | Corregido. `startOfDayInZone` interpreta el día del calendario en la zona de quien captura, con horario de verano incluido |
+| `D-F3-004` | Media | `/gestion` llevaba su propia lista de secciones, distinta de la que dibuja la navegación: quien solo tuviera el catálogo de cobros entraba al área de gestión para ser expulsado de ella | Corregido. Una sola lista en `app/gestion/secciones.ts` para el marco y para la portada |
+| `D-F3-005` | Media | Había dos `formatMoney`: el de la Fase 2 dividía entre cien y perdía precisión en importes grandes, y además fijaba dos decimales para cualquier moneda | Corregido. Uno solo, en `platform/i18n`, con aritmética entera y el exponente tomado del catálogo de monedas |
+| `D-F3-006` | Baja | El mensaje «reactívalo antes de ponerle precio» prometía una operación que no existía: la única salida real era crear otro concepto con código distinto y partir el histórico en dos | Corregido. `reactivateProduct`, con motivo escrito y asiento en la bitácora |
 
 ---
 
@@ -206,7 +211,7 @@ Los cuatro últimos son defectos **de los controles**, no del producto, y se reg
 
 ## Decisiones
 
-Ocho decisiones, de ADR-0041 a ADR-0048 en [`DECISIONS.md`](DECISIONS.md):
+Once decisiones, de ADR-0041 a ADR-0051 en [`DECISIONS.md`](DECISIONS.md):
 
 | ADR | Decisión |
 |---|---|
@@ -218,6 +223,9 @@ Ocho decisiones, de ADR-0041 a ADR-0048 en [`DECISIONS.md`](DECISIONS.md):
 | 0046 | Los privilegios de las pruebas se leen de las migraciones |
 | 0047 | Las páginas legales se distinguen por dirección, no por columna nueva |
 | 0048 | Un permiso sin pantalla desde la que ejercerlo no se concede |
+| 0049 | Un precio no se edita: se cierra y nace otro |
+| 0050 | Archivar es reversible; borrar no existe |
+| 0051 | Un día del calendario se convierte en instante con la zona de quien lo captura |
 
 El sistema de diseño se documenta aparte, en [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 

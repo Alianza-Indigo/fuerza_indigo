@@ -6,23 +6,9 @@ import { isAuthenticated } from '@/platform/kernel/actor-context';
 import { can } from '@/platform/authz/policy';
 import { SubmitButton } from '@/design-system/primitives';
 import { logoutAction } from '../(auth)/acceso/actions';
+import { SECCIONES } from './secciones';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Cada sección declara el permiso que la abre.
- *
- * La navegación se construye a partir de lo que la persona puede alcanzar de
- * verdad. Mostrar una pestaña que lleva a una denegación es hacerle perder el
- * tiempo y, además, decirle que existe algo que no le corresponde.
- */
-const SECCIONES = [
-  { href: '/gestion/nombramientos', label: 'Nombramientos', permiso: 'access.role.assign' },
-  { href: '/gestion/personas', label: 'Invitar personas', permiso: 'identity.user.invite' },
-  { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
-  { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
-  { href: '/gestion/redirecciones', label: 'Redirecciones', permiso: 'content.redirect.manage' },
-] as const;
 
 /**
  * Marco del área de gestión institucional.

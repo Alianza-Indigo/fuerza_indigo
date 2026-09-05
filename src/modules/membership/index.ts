@@ -158,6 +158,8 @@ export {
   replaceCredential,
   verifyCredential,
   personCredentials,
+  membershipByCredential,
+  type CredentialHolder,
   credentialForDownload,
   credentialRegistry,
   verificationSummary,

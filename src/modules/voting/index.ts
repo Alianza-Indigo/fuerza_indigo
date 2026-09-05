@@ -1,0 +1,23 @@
+/** Interfaz pública del módulo de votación (PRD §9.5, ADR-0012). */
+export {
+  scheduleVoteProcess,
+  issueVoteCredentials,
+  castBallot,
+  closeVoteProcess,
+  tallyVoteProcess,
+  certifyVoteProcess,
+  voteProcessList,
+  scheduleVoteProcessSchema,
+  issueVoteCredentialsSchema,
+  castBallotSchema,
+  closeVoteProcessSchema,
+  tallyVoteProcessSchema,
+  certifyVoteProcessSchema,
+  voteOptionSchema,
+  type ScheduleVoteProcessInput,
+  type CastBallotInput,
+  type IssuedVoteCredential,
+  type TallyResult,
+  type VoteOption,
+  type VoteProcessRow,
+} from './application/processes';

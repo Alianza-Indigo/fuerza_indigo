@@ -884,3 +884,65 @@ export async function verificationSummary(
       .sort((a, b) => (a.dia === b.dia ? a.result.localeCompare(b.result) : b.dia.localeCompare(a.dia))),
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Resolución de una credencial a su titular (F5-ASA-004)                     */
+/* -------------------------------------------------------------------------- */
+
+export interface CredentialHolder {
+  readonly membershipId: string;
+  readonly personId: string;
+  readonly displayName: string;
+  readonly memberNumber: string;
+  readonly credentialStatus: MemberCredentialStatus;
+  readonly membershipStatus: MembershipStatus;
+}
+
+/**
+ * Resuelve una credencial a la membresía de su titular.
+ *
+ * La usa el registro de asistencia por lectura de QR (PRD §9.4). A diferencia
+ * del verificador público, este sí devuelve identificadores internos, y por eso
+ * exige `credentialing.credential.read`: no es la comprobación que hace
+ * cualquiera en la puerta, es la que hace quien va a inscribir a alguien en un
+ * padrón de asistencia.
+ *
+ * Devuelve `null` cuando la credencial no existe. Que exista no significa que
+ * valga: el estado viaja con la respuesta y quien registra la asistencia decide
+ * qué hacer con una credencial vencida o revocada.
+ */
+export async function membershipByCredential(
+  actor: ActorContext,
+  entrada: string,
+): Promise<UseCaseResult<CredentialHolder | null>> {
+  const decision = can(actor, 'credentialing.credential.read', { kind: 'MemberCredential' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const lectura = leerToken(entrada);
+  if (lectura.clase === 'INVALIDO') return ok(null);
+
+  const fila = await db().memberCredential.findUnique({
+    where: { publicCode: lectura.publicCode },
+    select: {
+      displayName: true,
+      status: true,
+      revokedAt: true,
+      issuedAt: true,
+      expiresAt: true,
+      membership: { select: { id: true, personId: true, memberNumber: true, status: true } },
+    },
+  });
+  if (fila === null) return ok(null);
+  // Una credencial puede no colgar de una membresía —la de un cargo o la de una
+  // persona beneficiaria—, y esas no asisten a una asamblea de agremiados.
+  if (fila.membership === null) return ok(null);
+
+  return ok({
+    membershipId: fila.membership.id,
+    personId: fila.membership.personId,
+    displayName: fila.displayName,
+    memberNumber: fila.membership.memberNumber,
+    credentialStatus: estadoVigente(fila),
+    membershipStatus: fila.membership.status,
+  });
+}

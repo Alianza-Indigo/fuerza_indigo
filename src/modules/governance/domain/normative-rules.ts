@@ -9,10 +9,21 @@ import { z } from 'zod';
  * plataforma.
  */
 
-/** Reglas de mayoría admitidas. */
-const MAYORIA = ['SIMPLE', 'ABSOLUTE', 'THREE_FIFTHS', 'TWO_THIRDS', 'THREE_FOURTHS'] as const;
-/** Bases de quórum admitidas. */
-const QUORUM = ['HALF_PLUS_ONE', 'THREE_FIFTHS', 'TWO_THIRDS', 'THOSE_PRESENT'] as const;
+/**
+ * Reglas de mayoría admitidas.
+ *
+ * Son exactamente las tres que el modelo de datos reconoce en un punto del
+ * orden del día (`RequiredMajority`): la ordinaria y las dos calificadas. Un
+ * vocabulario más ancho aquí produciría versiones normativas que la asamblea no
+ * podría aplicar, porque el punto que se vota no sabría representarlas.
+ */
+const MAYORIA = ['SIMPLE', 'TWO_THIRDS', 'THREE_FOURTHS'] as const;
+/**
+ * Bases de quórum admitidas: las dos que enuncia el PRD §9.4 —«la mitad más uno
+ * del padrón aplicable» y «los agremiados presentes»— y las dos que guarda la
+ * convocatoria.
+ */
+const QUORUM = ['HALF_PLUS_ONE', 'THOSE_PRESENT'] as const;
 
 export type MajorityRule = (typeof MAYORIA)[number];
 export type QuorumRule = (typeof QUORUM)[number];
@@ -115,18 +126,44 @@ export const FORMA_DE_REGLA: Readonly<Record<keyof NormativeRules, FormaDeRegla>
 /** Etiquetas en español de las reglas de mayoría y de quórum. */
 export const NOMBRE_DE_MAYORIA: Readonly<Record<MajorityRule, string>> = {
   SIMPLE: 'Mayoría simple — más votos a favor que en contra',
-  ABSOLUTE: 'Mayoría absoluta — más de la mitad de quienes votan',
-  THREE_FIFTHS: 'Tres quintas partes',
-  TWO_THIRDS: 'Dos terceras partes',
-  THREE_FOURTHS: 'Tres cuartas partes',
+  TWO_THIRDS: 'Dos terceras partes de los votos emitidos',
+  THREE_FOURTHS: 'Tres cuartas partes de los votos emitidos',
 };
 
 export const NOMBRE_DE_QUORUM: Readonly<Record<QuorumRule, string>> = {
   HALF_PLUS_ONE: 'La mitad más uno del padrón aplicable',
-  THREE_FIFTHS: 'Tres quintas partes del padrón aplicable',
-  TWO_THIRDS: 'Dos terceras partes del padrón aplicable',
   THOSE_PRESENT: 'Quienes estén presentes',
 };
+
+/**
+ * Fracción de los votos emitidos que exige cada mayoría calificada.
+ *
+ * La simple no tiene fracción: se decide comparando a favor con en contra, y
+ * las abstenciones no cuentan en ninguno de los dos lados. Por eso es `null` y
+ * no `0.5`: media parte de los votos emitidos es otra regla distinta.
+ */
+export const FRACCION_DE_MAYORIA: Readonly<Record<MajorityRule, number | null>> = {
+  SIMPLE: null,
+  TWO_THIRDS: 2 / 3,
+  THREE_FOURTHS: 3 / 4,
+};
+
+/**
+ * Decide si un resultado alcanza la mayoría exigida.
+ *
+ * `emitidos` son todos los votos depositados, abstenciones incluidas: una
+ * mayoría calificada se mide sobre lo emitido, no sobre lo no abstenido.
+ */
+export function alcanzaMayoria(
+  regla: MajorityRule,
+  aFavor: number,
+  enContra: number,
+  emitidos: number,
+): boolean {
+  const fraccion = FRACCION_DE_MAYORIA[regla];
+  if (fraccion === null) return aFavor > enContra;
+  return emitidos > 0 && aFavor >= fraccion * emitidos;
+}
 
 export const MAYORIAS = MAYORIA;
 export const QUORUMS = QUORUM;

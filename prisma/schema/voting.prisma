@@ -20,6 +20,12 @@ model VoteProcess {
   /// actualización sobre esta columna una vez abierto el proceso.
   options          Json
   rosterSnapshotId String            @db.Uuid
+  /// Sal aleatoria de la que se deriva, junto con el secreto del entorno, la
+  /// clave con la que se firman las credenciales de este proceso (ADR-0012).
+  /// **Se borra al certificar los resultados**: sin ella la clave deja de poder
+  /// derivarse y nadie puede fabricar credenciales válidas retroactivamente.
+  /// Por sí sola no sirve de nada: el secreto maestro nunca está en la base.
+  credentialSalt   String?           @db.VarChar(64)
   opensAt          DateTime          @db.Timestamptz(3)
   closesAt         DateTime          @db.Timestamptz(3)
   status           VoteProcessStatus @default(SCHEDULED)

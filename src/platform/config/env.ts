@@ -99,6 +99,14 @@ const schema = z.object({
 
   CRON_SECRET: secret('autenticar las invocaciones de los trabajos programados'),
   QR_SIGNING_SECRET: signingKeyring,
+  /**
+   * Secreto maestro del que se deriva la clave de firma de cada proceso de
+   * votación (ADR-0012). La clave concreta se deriva con la sal aleatoria que
+   * guarda el proceso; al certificar los resultados la sal se borra y con ella
+   * la posibilidad de fabricar credenciales válidas, aunque este secreto siga
+   * existiendo. Vive en el entorno y **nunca** en la base de datos.
+   */
+  VOTE_CREDENTIAL_SECRET: optionalSecret(),
 
   // Fases posteriores. Se declaran desde ahora para que el arranque valide el
   // conjunto completo, pero no son obligatorias hasta su fase (ENVIRONMENT.md §11).
@@ -125,6 +133,7 @@ const REQUIRED_BY_PHASE: Record<number, (keyof Env)[]> = {
     'STRIPE_ALIANZA_WEBHOOK_SECRET',
     'NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY',
   ],
+  5: ['VOTE_CREDENTIAL_SECRET'],
   10: ['GEMINI_API_KEY', 'GEMINI_DEFAULT_MODEL'],
 };
 

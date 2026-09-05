@@ -664,6 +664,7 @@ CREATE TABLE "vote_process" (
     "method" "VoteMethod" NOT NULL,
     "options" JSONB NOT NULL,
     "rosterSnapshotId" UUID NOT NULL,
+    "credentialSalt" VARCHAR(64),
     "opensAt" TIMESTAMPTZ(3) NOT NULL,
     "closesAt" TIMESTAMPTZ(3) NOT NULL,
     "status" "VoteProcessStatus" NOT NULL DEFAULT 'SCHEDULED',

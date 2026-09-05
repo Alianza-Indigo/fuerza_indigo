@@ -205,10 +205,10 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-AFI-007 | Implementar la gestión documental de la solicitud con revisión por documento | Hecho |
 | F4-AFI-008 | Conectar la activación de membresía con el cobro confirmado por webhook | Hecho |
 | F4-AFI-009 | Implementar bajas, suspensiones, vencimientos y conversiones sin duplicar la persona | Hecho |
-| F4-PAD-001 | Implementar el padrón de agremiados con sus filtros e índices reales | Pendiente |
-| F4-PAD-002 | Implementar el padrón de afiliados honorarios | Pendiente |
-| F4-PAD-003 | Implementar el padrón de beneficiarios protegidos con privacidad reforzada | Pendiente |
-| F4-PAD-004 | Implementar la preparación de altas y bajas para las obligaciones ante la autoridad laboral | Pendiente |
+| F4-PAD-001 | Implementar el padrón de agremiados con sus filtros e índices reales | Hecho |
+| F4-PAD-002 | Implementar el padrón de afiliados honorarios | Hecho |
+| F4-PAD-003 | Implementar el padrón de beneficiarios protegidos con privacidad reforzada | Hecho |
+| F4-PAD-004 | Implementar la preparación de altas y bajas para las obligaciones ante la autoridad laboral | Hecho |
 | F4-DIR-001 | Implementar el directorio interno con búsqueda, filtros y exportación auditada | Pendiente |
 | F4-DIR-002 | Implementar las preferencias de publicación granulares y la publicación pública | Pendiente |
 | F4-DIR-003 | Implementar el retiro del consentimiento con invalidación de caché y señal de no indexación | Pendiente |

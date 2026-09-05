@@ -184,6 +184,10 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.record.terminate',
       'membership.roster.read',
       'membership.roster.export',
+      // Quien lleva el padrón lleva su cumplimiento ante la autoridad: separar
+      // las dos cosas dejaría el expediente sin titular, que es como se pierde
+      // un trámite (defecto `D-F4-003`, aprendido).
+      'membership.authority_filing.manage',
       'membership.beneficiary.create',
       'membership.beneficiary.read',
       'membership.beneficiary.update',

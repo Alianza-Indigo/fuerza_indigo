@@ -68,6 +68,8 @@ model Actor {
 
   @@index([kind])
   @@map("actor")
+  labourFilingsCreated LabourAuthorityFiling[] @relation("LabourFilingCreatedBy")
+  labourFilingsUpdated LabourAuthorityFiling[] @relation("LabourFilingUpdatedBy")
 }
 
 enum ActorKind {
@@ -161,6 +163,7 @@ model Person {
   @@index([territorialUnitId])
   @@index([primaryEmail])
   @@map("person")
+  labourFilings LabourAuthorityFiling[] @relation("LabourFilingPerson")
 }
 
 enum GenderIdentity {

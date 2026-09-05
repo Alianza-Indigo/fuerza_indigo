@@ -1045,3 +1045,35 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Suspender sigue sin fecha de fin**, y por eso está en la lista de estados en curso: es una pausa, no una salida. La distinción no es cosmética: quien consulte el padrón dentro de dos años tiene que poder separar a quien se fue de quien estuvo suspendido tres meses y volvió.
 
 **Los siete motivos no comparten estado final.** Una baja voluntaria termina en `VOLUNTARY_WITHDRAWAL` y una expulsión en `STATUS_LOSS`. Decir que son lo mismo sería mentir en el único registro que va a quedar.
+
+---
+
+## ADR-0084 · Un padrón por consulta, y la calidad exacta en cada fila
+
+**Contexto.** El PRD §7.1 enumera siete padrones y añade una frase que gobierna todo el módulo: «ningún padrón se construirá mediante una vista que mezcle categorías sin mostrar su calidad exacta».
+
+**La solución que no se tomó.** Una función `roster(categoria)` y tres pantallas que la llaman con distinto argumento. Es menos código y funciona el primer día. Falla el día que alguien quiera «ver todo» y la invoque sin filtro —o con el filtro mal—, y ese día el padrón sindical contiene afiliados honorarios. No hace falta mala fe: basta un parámetro opcional.
+
+**Decisión.** Una función por padrón, cada una con su categoría escrita en la consulta. `unionRoster` no admite otra cosa; `honoraryRoster` tampoco. No existe la manera de llamarlas y obtener lo que el PRD manda separar. Lo que sí se comparte es la **presentación**: una tabla, tres consultas.
+
+**La columna de calidad exacta va siempre**, aunque en un padrón de una sola categoría parezca redundante, y también en el CSV exportado. Una tabla se copia, se recorta y se pega en otro documento; un archivo se renombra. La columna viaja con los datos; el título de la pantalla, no.
+
+**El padrón que se remite a la autoridad es el más estrecho de los tres**: solo membresías activas de una calidad que declara `appearsInAuthorityRoster`. El criterio del PRD §24 —«solo agremiados elegibles aparecen en el padrón sindical correspondiente»— se cumple en la consulta y no en la pantalla, porque una pantalla se puede abrir con otros filtros y una función no. Una suspendida sí está en el padrón de agremiados y no en el que se remite: son dos preguntas distintas, y por eso son dos consultas.
+
+**Exportar exige motivo escrito y deja asiento antes de entregar el archivo.** Un padrón exportado es una lista de personas que sale del sistema y deja de estar protegida por él; el asiento se escribe primero porque un fallo entre las dos cosas dejaría los datos fuera sin constancia de que salieron.
+
+---
+
+## ADR-0085 · La obligación ante la autoridad nace con el hecho, no en un repaso
+
+**Contexto.** El PRD §8.1 paso 14 pide que cada alta «quede preparada para el informe o trámite ante la autoridad laboral», y el §9.7 que las altas y bajas tengan «expediente de cumplimiento y estado de notificación».
+
+**Decisión.** Cada alta y cada baja de una calidad que aparece ante autoridades abre su expediente **dentro de la misma transacción que la produce**. No hay un trabajo nocturno que recorra las membresías buscando movimientos sin informar.
+
+**Por qué.** Un repaso periódico deja un intervalo en el que la obligación ya existe y no consta en ninguna parte —entre el hecho y la siguiente pasada—, y ese intervalo es exactamente donde se pierden los trámites: si el repaso falla, o si alguien cambia el criterio de búsqueda, el movimiento no aparece nunca y nadie lo echa de menos. Naciendo con el hecho, la única forma de que falte el expediente es que no haya ocurrido el alta.
+
+**Las bajas también, incluidas las que ocurren solas.** Un vencimiento saca a la persona del padrón que se remite igual que una baja voluntaria. Una organización que informa las altas y no las bajas acaba remitiendo un padrón que crece y nunca mengua, y eso se descubre en la peor conversación posible.
+
+**Una afiliación honoraria no abre expediente**, porque no genera obligación (PRD §3.3). Abrírselo sería prepararse para informar algo que no hay que informar, y llenaría la bandeja de trámites falsos hasta que alguien dejara de mirarla.
+
+**Lo que la plataforma no hace es declarar cumplida la obligación** (PRD §9.6). Registra que se preparó, que se presentó y que la autoridad acusó, con su número de trámite. El trámite no retrocede: deshacer un acuse borraría la prueba de que se presentó. Y descartar la obligación —`NOT_REQUIRED`— exige explicarlo por escrito: una obligación que se cierra sin motivo es la forma silenciosa de no cumplirla.

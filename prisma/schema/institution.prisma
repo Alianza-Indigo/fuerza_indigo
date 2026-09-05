@@ -54,6 +54,7 @@ model LegalEntity {
   beneficiaries   ProtectedBeneficiary[]
 
   @@map("legal_entity")
+  labourFilings LabourAuthorityFiling[]
 }
 
 enum LegalEntityCode {

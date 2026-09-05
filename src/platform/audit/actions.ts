@@ -123,6 +123,10 @@ export const AUDIT_ACTIONS = {
   CARE_RELATIONSHIP_REVOKED: 'membership.relationship.revoked',
   ROSTER_READ: 'membership.roster.read',
   ROSTER_EXPORTED: 'membership.roster.exported',
+  /** Nació la obligación de informar un alta o una baja (PRD §8.1 paso 14). */
+  AUTHORITY_FILING_OPENED: 'membership.authority_filing.opened',
+  /** Avanzó el trámite ante la autoridad laboral: preparado, presentado, acusado. */
+  AUTHORITY_FILING_ADVANCED: 'membership.authority_filing.advanced',
   DIRECTORY_READ: 'directory.internal.read',
   DIRECTORY_EXPORTED: 'directory.internal.exported',
   DIRECTORY_PREFERENCE_GRANTED: 'directory.preference.granted',

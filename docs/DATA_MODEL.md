@@ -152,6 +152,7 @@ erDiagram
     Membership ||--o{ MembershipStatusEvent : "registra"
     Membership ||--o{ MemberCredential : "acredita"
     MemberCredential ||--o{ CredentialVerification : "es consultada en"
+    Membership ||--o{ LabourAuthorityFiling : "obliga a informar"
     Person ||--o{ ProtectedBeneficiary : "es"
     Person ||--o{ CareRelationship : "origen"
     Person ||--o{ DirectoryPreference : "configura"
@@ -200,6 +201,13 @@ Garantías en base: `dueAt > requestedAt`; los tres campos de la respuesta van j
 
 `CONVERSION` y `EXPIRY` se añaden en la Fase 4 (ADR-0083): el modelo exige que toda membresía terminada diga por qué —`("endedAt" IS NULL) = ("endReason" IS NULL)`—, y sin ellos una conversión tendría que anotarse como corrección administrativa y un vencimiento como inactividad. Las dos afirmarían una decisión que nadie tomó. `EXPIRY` lo escribe solo el trabajo de vencimiento y **no** se ofrece en el formulario de baja.
 Único parcial: una sola membresía en estado activo por `(personId, membershipTypeId.category)`.
+
+**`LabourAuthorityFiling`** — Expediente de cumplimiento ante la autoridad laboral (PRD §8.1.14, §9.7; ADR-0084).
+`id` PK · `publicId` U · `legalEntityId` FK IX · `membershipId` FK IX · `personId` FK · `kind` *enum* (`ROSTER_ADDITION`, `ROSTER_REMOVAL`) · `status` *enum* (`PENDING`, `PREPARED`, `SUBMITTED`, `ACKNOWLEDGED`, `NOT_REQUIRED`) · `occurredAt` IX — cuándo ocurrió el hecho, no cuándo alguien se acordó · `preparedAt` NULL · `submittedAt` NULL · `acknowledgedAt` NULL · `authorityReference` NULL · `notes` NULL · `evidenceFileId` NULL FK.
+
+Se abre **dentro de la transacción del alta o de la baja**, solo para calidades con `appearsInAuthorityRoster`. Único parcial `(membershipId, kind)`: un movimiento se informa una vez.
+
+Garantías en base: cada estado exige su fecha; `NOT_REQUIRED` exige quince caracteres de explicación; `ACKNOWLEDGED` exige referencia de la autoridad; y privilegios por columna que impiden reescribir el hecho —qué membresía, de quién, qué movimiento y cuándo— o borrar la fila.
 
 **`MembershipStatusEvent`** — Bitácora de transición de estado (PRD §3.6). Inmutable.
 `id` PK · `membershipId` FK IX · `fromStatus` NULL · `toStatus` · `reason` *text* · `actorUserId` NULL FK→`User` · `actorId` FK→`Actor` — el sujeto de atribución, que ya lleva su propio `kind` (ADR-0026), de modo que no hace falta repetirlo aquí · `evidenceFileId` NULL FK→`FileObject` · `occurredAt` IX.

@@ -10,6 +10,7 @@ import { newPublicId } from '@/platform/kernel/ids';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { MembershipCategory, MembershipEndReason, MembershipStatus } from '@prisma-client/enums';
+import { openAuthorityFiling } from './rosters';
 
 /**
  * Vida de una membresía: activación, vigencia, suspensión, baja y conversión
@@ -124,6 +125,17 @@ export async function crearMembresiaActiva(
   await tx.membershipApplication.update({
     where: { id: solicitud.id },
     data: { status: 'ACTIVATED', updatedByActorId: actor.actorId, rowVersion: { increment: 1 } },
+  });
+
+  // El alta queda preparada para el informe ante la autoridad laboral, dentro
+  // de la misma transacción que la produce (PRD §8.1 paso 14). Solo para las
+  // calidades que sí aparecen ante autoridades: la función lo comprueba.
+  await openAuthorityFiling(tx, actor, {
+    membershipId: creada.id,
+    personId: solicitud.personId,
+    legalEntityId: solicitud.legalEntityId,
+    kind: 'ROSTER_ADDITION',
+    occurredAt: ahora,
   });
 
   await recordAudit(tx, actor, {
@@ -537,11 +549,24 @@ export async function endMembership(
 
   const destino = ESTADO_FINAL[parsed.data.endReason] ?? 'STATUS_LOSS';
 
+  const cuando = new Date();
   await transaction(async (tx) => {
     await moverEstado(tx, actor, fila, destino, parsed.data.reason, {
-      endedAt: new Date(),
+      endedAt: cuando,
       endReason: parsed.data.endReason,
     });
+
+    // Y la baja queda preparada igual que el alta (PRD §8.1 paso 14, §9.7). Una
+    // organización que informa las altas y olvida las bajas acaba con un padrón
+    // ante la autoridad que crece y nunca mengua.
+    await openAuthorityFiling(tx, actor, {
+      membershipId: fila.id,
+      personId: fila.personId,
+      legalEntityId: fila.legalEntityId,
+      kind: 'ROSTER_REMOVAL',
+      occurredAt: cuando,
+    });
+
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.MEMBERSHIP_TERMINATED,
       objectKind: 'Membership',
@@ -605,6 +630,19 @@ export async function expireDueMemberships(
         `Terminó la vigencia el ${cuando.toISOString().slice(0, 10)}. Nadie la dio de baja: renovar la devuelve.`,
         { endedAt: cuando, endReason: 'EXPIRY' },
       );
+
+      // Vencer saca del padrón que se remite a la autoridad, así que también
+      // obliga a informar. Una organización que informa las altas y no las
+      // bajas —incluidas las que ocurren solas— acaba remitiendo un padrón que
+      // crece y nunca mengua.
+      await openAuthorityFiling(tx, actor, {
+        membershipId: fila.id,
+        personId: fila.personId,
+        legalEntityId: fila.legalEntityId,
+        kind: 'ROSTER_REMOVAL',
+        occurredAt: cuando,
+      });
+
       await recordAudit(tx, actor, {
         action: AUDIT_ACTIONS.MEMBERSHIP_EXPIRED,
         objectKind: 'Membership',

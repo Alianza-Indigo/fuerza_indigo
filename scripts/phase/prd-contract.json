@@ -30,7 +30,8 @@
       "DirectoryPreference",
       "DirectoryPublication",
       "MemberCredential",
-      "CredentialVerification"
+      "CredentialVerification",
+      "LabourAuthorityFiling"
     ],
     "18.3 Gobierno y territorio": [
       "TerritorialUnit",
@@ -369,7 +370,8 @@
       "CredentialVerification",
       "DocumentTemplate",
       "GeneratedDocument",
-      "SignatureRecord"
+      "SignatureRecord",
+      "LabourAuthorityFiling"
     ],
     "5": [
       "UnionBody",

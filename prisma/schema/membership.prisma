@@ -342,11 +342,16 @@ model Membership {
   updatedByActor  Actor                  @relation("MembershipUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
 
   statusEvents  MembershipStatusEvent[]
+  authorityFilings LabourAuthorityFiling[]
   credentials   MemberCredential[]
   subscriptions Subscription[]
 
   @@index([personId])
   @@index([legalEntityId, status])
+  /// El padrón se recorre por entidad, calidad y estado (PRD §7.1). Sin este
+  /// índice cada consulta recorre la tabla entera: hoy no se nota y el día de
+  /// una asamblea, sí.
+  @@index([legalEntityId, category, status], map: "membership_padron_por_categoria")
   @@index([expiresAt])
   @@index([territorialUnitId])
   @@index([sectionId])
@@ -407,6 +412,84 @@ model MembershipStatusEvent {
   @@index([membershipId, occurredAt])
   @@index([occurredAt])
   @@map("membership_status_event")
+}
+
+/// Expediente de cumplimiento ante la autoridad laboral (PRD §8.1 paso 14, §9.7).
+///
+/// El PRD pide que cada alta y cada baja del padrón sindical «queden preparadas
+/// para el informe o trámite» y tengan «expediente de cumplimiento y estado de
+/// notificación». Esto es ese expediente.
+///
+/// **Se crea solo, con el hecho.** Una fila nace cuando una membresía que sí
+/// aparece ante autoridades se activa o termina, dentro de la misma transacción
+/// del hecho: si se creara después, en un repaso periódico, el sistema tendría
+/// un intervalo en el que la obligación existe y no consta, y ese intervalo es
+/// justo donde se pierden los trámites.
+///
+/// **Lo que el sistema no hace es declarar cumplida la obligación.** Marca que
+/// se preparó, que se presentó y que la autoridad acusó, con su referencia. Que
+/// eso baste jurídicamente no lo decide una plataforma (PRD §9.6).
+model LabourAuthorityFiling {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  publicId      String              @unique @db.VarChar(22)
+  legalEntityId String              @db.Uuid
+  membershipId  String              @db.Uuid
+  personId      String              @db.Uuid
+  kind          LabourFilingKind
+  status        LabourFilingStatus  @default(PENDING)
+  /// Cuándo ocurrió el hecho que hay que informar: el alta o la baja. No es la
+  /// fecha en que alguien se acordó de prepararlo.
+  occurredAt    DateTime            @db.Timestamptz(3)
+
+  preparedAt      DateTime? @db.Timestamptz(3)
+  submittedAt     DateTime? @db.Timestamptz(3)
+  acknowledgedAt  DateTime? @db.Timestamptz(3)
+  /// Acuse o número de trámite que devuelve la autoridad. Es lo que se enseña
+  /// cuando alguien pregunta si se informó.
+  authorityReference String? @db.VarChar(120)
+  /// Por qué no hacía falta informarlo, cuando ese es el caso. Obligatorio en
+  /// `NOT_REQUIRED`: una obligación que se descarta sin explicación es una
+  /// obligación que nadie puede revisar.
+  notes           String?   @db.VarChar(1000)
+  evidenceFileId  String?   @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+
+  legalEntity    LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  membership     Membership  @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  person         Person      @relation("LabourFilingPerson", fields: [personId], references: [id], onDelete: Restrict)
+  evidenceFile   FileObject? @relation("LabourFilingEvidence", fields: [evidenceFileId], references: [id], onDelete: Restrict)
+  createdByActor Actor       @relation("LabourFilingCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor       @relation("LabourFilingUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([membershipId, kind], map: "labour_filing_un_expediente_por_movimiento")
+  @@index([legalEntityId, status])
+  @@index([membershipId])
+  @@index([occurredAt])
+  @@map("labour_authority_filing")
+}
+
+enum LabourFilingKind {
+  /// Alta en el padrón sindical.
+  ROSTER_ADDITION
+  /// Baja del padrón sindical.
+  ROSTER_REMOVAL
+}
+
+enum LabourFilingStatus {
+  /// Consta la obligación y nadie la ha tocado todavía.
+  PENDING
+  /// Se reunió lo que hay que presentar.
+  PREPARED
+  /// Se presentó ante la autoridad.
+  SUBMITTED
+  /// La autoridad acusó de recibo, con referencia.
+  ACKNOWLEDGED
+  /// No hacía falta informarlo. Exige explicación escrita.
+  NOT_REQUIRED
 }
 
 /// Calidad de beneficiario protegido: atención sin afiliación ni cuota (PRD §3.4).

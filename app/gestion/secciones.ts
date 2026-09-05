@@ -19,6 +19,13 @@ export const SECCIONES = [
   { href: '/gestion/afiliacion/solicitudes', label: 'Solicitudes de afiliación', permiso: 'membership.application.read' },
   { href: '/gestion/afiliacion/calidades', label: 'Calidades de membresía', permiso: 'membership.type.read' },
   { href: '/gestion/afiliacion/beneficiarios', label: 'Personas beneficiarias', permiso: 'membership.beneficiary.read' },
+  { href: '/gestion/afiliacion/padrones/agremiados', label: 'Padrón de agremiados', permiso: 'membership.roster.read' },
+  { href: '/gestion/afiliacion/padrones/honorarios', label: 'Padrón de afiliados honorarios', permiso: 'membership.roster.read' },
+  {
+    href: '/gestion/afiliacion/autoridad-laboral',
+    label: 'Autoridad laboral',
+    permiso: 'membership.roster.read',
+  },
   { href: '/gestion/consentimientos', label: 'Avisos y consentimientos', permiso: 'consent.version.manage' },
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },

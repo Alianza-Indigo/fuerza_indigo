@@ -343,6 +343,16 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
    * lo hace deja dicho para qué: es lo único que después permite distinguir una
    * remisión a la autoridad de una copia que alguien se llevó.
    */
+  /**
+   * Llevar el expediente de cumplimiento ante la autoridad laboral (PRD §9.7).
+   *
+   * Aparte de leer el padrón, y por una razón: marcar que un alta se presentó
+   * ante la autoridad es afirmar algo frente a un tercero con consecuencias
+   * jurídicas. Quien consulta el padrón no tiene por qué poder afirmarlo.
+   */
+  define('membership.authority_filing.manage', 'Llevar el expediente ante la autoridad laboral', {
+    sensitivity: 'CRITICAL',
+  }),
   define('membership.roster.export', 'Exportar un padrón', {
     sensitivity: 'CRITICAL',
     requiresReason: true,

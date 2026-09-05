@@ -61,6 +61,7 @@ model FileObject {
   careRelationshipEvidence CareRelationship[]      @relation("CareRelationshipEvidence")
   credentialPhotos        MemberCredential[]       @relation("CredentialPhoto")
   renderedCredentials     MemberCredential[]       @relation("CredentialRendered")
+  labourFilingEvidence LabourAuthorityFiling[] @relation("LabourFilingEvidence")
 }
 
 enum FileClassification {

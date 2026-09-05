@@ -12,7 +12,7 @@ import {
 } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { can } from '@/platform/authz/policy';
-import { enablingResolutionOptions, territorialTree } from '@/modules/governance';
+import { approvedResolutionOptions, territorialTree } from '@/modules/governance';
 import { CreateUnitForm, DissolveUnitForm, UpdateUnitForm } from './territory-forms';
 
 export const metadata = { title: 'Estructura territorial', robots: { index: false, follow: false } };
@@ -48,7 +48,7 @@ export default async function EstructuraTerritorialPage() {
 
   const [arbol, acuerdos] = await Promise.all([
     territorialTree(actor, { includeDissolved: true }),
-    enablingResolutionOptions(actor),
+    approvedResolutionOptions(actor),
   ]);
 
   const puedeCrear = can({ ...actor, reason: 'alta de unidad territorial' }, 'territory.unit.create', {

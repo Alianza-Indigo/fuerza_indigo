@@ -5,7 +5,7 @@ export {
   dissolveTerritorialUnit,
   territorialTree,
   territorialPanel,
-  enablingResolutionOptions,
+  approvedResolutionOptions,
   segmentoDeRuta,
   createTerritorialUnitSchema,
   updateTerritorialUnitSchema,
@@ -15,23 +15,80 @@ export {
   type DissolveTerritorialUnitInput,
   type TerritorialNode,
   type TerritorialPanelData,
-  type EnablingResolutionOption,
+  type ApprovedResolutionOption,
 } from './application/territory';
+
+export {
+  appointableMemberships,
+  grantablePeople,
+  permissionOptions,
+  type Opcion,
+} from './application/options';
 
 export {
   createUnionBody,
   defineOffice,
   declareIncompatibility,
+  createUnionBodySchema,
+  defineOfficeSchema,
+  declareIncompatibilitySchema,
   incompatibleOffices,
   unionBodyList,
   officeList,
   reglasVigentes,
+  type UnionBodyRow,
+  type OfficeRow,
+  type CreateUnionBodyInput,
+  type DefineOfficeInput,
 } from './application/bodies';
+
+export {
+  draftRuleSet,
+  editRuleDraft,
+  putRulesInForce,
+  ruleSetList,
+  leerReglas,
+  reglasFaltantes,
+  normativeRulesSchema,
+  draftRuleSetSchema,
+  editRuleDraftSchema,
+  putRulesInForceSchema,
+  CLAVES_DE_REGLA,
+  NOMBRE_DE_REGLA,
+  FORMA_DE_REGLA,
+  NOMBRE_DE_MAYORIA,
+  NOMBRE_DE_QUORUM,
+  MAYORIAS,
+  QUORUMS,
+  type NormativeRules,
+  type MajorityRule,
+  type QuorumRule,
+  type RuleSetRow,
+  type FormaDeRegla,
+  type DraftRuleSetInput,
+  type EditRuleDraftInput,
+  type PutRulesInForceInput,
+} from './application/normative-rules';
+
+export {
+  grantPower,
+  revokePower,
+  revokePowersOfTerm,
+  powerGrantList,
+  grantPowerSchema,
+  revokePowerSchema,
+  type GrantPowerInput,
+  type RevokePowerInput,
+  type PowerGrantRow,
+} from './application/powers';
 
 export {
   appointOffice,
   endOfficeTerm,
   revokeExpiredOfficeAccess,
   officeTermList,
+  appointOfficeSchema,
+  endOfficeTermSchema,
+  type AppointOfficeInput,
   type OfficeTermRow,
 } from './application/office-terms';

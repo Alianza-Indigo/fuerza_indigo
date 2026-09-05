@@ -967,6 +967,9 @@ CREATE INDEX "signature_record_documentId_idx" ON "signature_record"("documentId
 CREATE INDEX "signature_record_signerPersonId_idx" ON "signature_record"("signerPersonId");
 
 -- CreateIndex
+CREATE INDEX "signature_record_signerOfficeTermId_idx" ON "signature_record"("signerOfficeTermId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "union_body_code_key" ON "union_body"("code");
 
 -- CreateIndex
@@ -1352,6 +1355,9 @@ ALTER TABLE "signature_record" ADD CONSTRAINT "signature_record_documentId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "signature_record" ADD CONSTRAINT "signature_record_signerPersonId_fkey" FOREIGN KEY ("signerPersonId") REFERENCES "person"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "signature_record" ADD CONSTRAINT "signature_record_signerOfficeTermId_fkey" FOREIGN KEY ("signerOfficeTermId") REFERENCES "office_term"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "signature_record" ADD CONSTRAINT "signature_record_fileObjectId_fkey" FOREIGN KEY ("fileObjectId") REFERENCES "file_object"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

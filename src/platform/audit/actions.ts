@@ -204,8 +204,11 @@ export const AUDIT_ACTIONS = {
   OBLIGATION_OPENED: 'compliance.obligation.opened',
   OBLIGATION_ADVANCED: 'compliance.obligation.advanced',
 
+  DOCUMENT_TEMPLATE_DRAFTED: 'documents.template.drafted',
   DOCUMENT_TEMPLATE_PUBLISHED: 'documents.template.published',
+  DOCUMENT_TEMPLATE_RETIRED: 'documents.template.retired',
   DOCUMENT_ISSUED: 'documents.document.issued',
+  DOCUMENT_CANCELLED: 'documents.document.cancelled',
   DOCUMENT_SIGNED: 'documents.document.signed',
 
   AUDIT_EXPORTED: 'audit.exported',

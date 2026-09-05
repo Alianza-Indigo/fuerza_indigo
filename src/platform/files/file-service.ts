@@ -49,6 +49,14 @@ const MAX_BYTES = 25 * 1024 * 1024;
  */
 const MAGIC: Record<string, readonly number[][]> = {
   'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
+  /**
+   * `<!DOCTYPE`. El HTML no tiene número mágico, pero los documentos
+   * institucionales que emite la plataforma sí: los genera ella misma a partir
+   * de una plantilla y siempre empiezan por el doctype. La comprobación deja
+   * de ser una adivinanza sobre un archivo ajeno y pasa a ser lo que es, la
+   * confirmación de que lo guardado es lo que el emisor produjo.
+   */
+  'text/html': [[0x3c, 0x21, 0x44, 0x4f, 0x43, 0x54, 0x59, 0x50, 0x45]],
   'image/jpeg': [[0xff, 0xd8, 0xff]],
   'image/png': [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
   'image/webp': [[0x52, 0x49, 0x46, 0x46]],

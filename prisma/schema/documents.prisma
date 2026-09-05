@@ -170,14 +170,19 @@ model SignatureRecord {
   updatedByActorId String   @db.Uuid
   rowVersion       Int      @default(0)
 
-  document       GeneratedDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
-  signerPerson   Person            @relation("SignatureSigner", fields: [signerPersonId], references: [id], onDelete: Restrict)
+  document         GeneratedDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  signerPerson     Person            @relation("SignatureSigner", fields: [signerPersonId], references: [id], onDelete: Restrict)
+  /// Cargo con el que se firmó. Sin esta relación la columna nombraba un
+  /// periodo de cargo sin apuntar a ninguno: quien firmó «como Secretaría
+  /// General» no podía comprobarse (`D-F5-002`).
+  signerOfficeTerm OfficeTerm?       @relation("SignatureOfficeTerm", fields: [signerOfficeTermId], references: [id], onDelete: Restrict)
   fileObject     FileObject?       @relation("SignatureFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
   createdByActor Actor             @relation("SignatureRecordCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor Actor             @relation("SignatureRecordUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
 
   @@index([documentId])
   @@index([signerPersonId])
+  @@index([signerOfficeTermId])
   @@map("signature_record")
 }
 

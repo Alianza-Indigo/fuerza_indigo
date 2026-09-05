@@ -218,6 +218,7 @@ model OfficeTerm {
   convenedAssemblies Assembly[]              @relation("AssemblyConvenedBy")
   reviewedApplications ApplicationReview[]   @relation("ReviewerOfficeTerm")
   credentials        MemberCredential[]      @relation("CredentialOfficeTerm")
+  signatures         SignatureRecord[]       @relation("SignatureOfficeTerm")
 
   @@index([officeDefinitionId])
   @@index([personId])

@@ -632,22 +632,24 @@ export async function territorialPanel(
   });
 }
 
-export interface EnablingResolutionOption {
+export interface ApprovedResolutionOption {
   readonly id: string;
   readonly label: string;
 }
 
 /**
- * Resoluciones aprobadas que pueden constituir una unidad territorial.
+ * Resoluciones aprobadas, para los formularios que exigen un acuerdo.
  *
- * Existe para que el formulario no ofrezca lo que el caso de uso va a
- * rechazar (PRD §0.3): solo entran las aprobadas. Devuelve el número, la fecha
- * y el órgano —lo justo para reconocer el acuerdo—, no su texto.
+ * La usan la constitución de una unidad territorial y la puesta en vigor de una
+ * reforma estatutaria: los dos actos que no ocurren sin acuerdo de asamblea.
+ * Existe para que el formulario no ofrezca lo que el caso de uso va a rechazar
+ * (PRD §0.3): solo entran las aprobadas. Devuelve el número, la fecha y el
+ * órgano —lo justo para reconocer el acuerdo—, no su texto.
  */
-export async function enablingResolutionOptions(
+export async function approvedResolutionOptions(
   actor: ActorContext,
-): Promise<UseCaseResult<readonly EnablingResolutionOption[]>> {
-  const decision = can(actor, 'territory.unit.create', { kind: 'TerritorialUnit' });
+): Promise<UseCaseResult<readonly ApprovedResolutionOption[]>> {
+  const decision = can(actor, 'assembly.assembly.read', { kind: 'Resolution' });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const filas = await db().resolution.findMany({

@@ -76,7 +76,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     requiresReason: true,
   }),
   define('territory.unit.read', 'Consultar unidades territoriales'),
-  define('institution.normative_rules.manage', 'Publicar una versión de reglas estatutarias', {
+  define('institution.normative_rules.manage', 'Poner en vigor una versión de reglas estatutarias', {
     sensitivity: 'CRITICAL',
   }),
 
@@ -468,7 +468,14 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     sensitivity: 'CRITICAL',
     requiresReason: true,
   }),
-  define('governance.rules.manage', 'Administrar las versiones de reglas estatutarias', {
+  /**
+   * Redactar una reforma y ponerla en vigor son actos distintos, y por eso son
+   * dos permisos. Este abre el borrador: se propone, se corrige y se descarta
+   * sin consecuencias, porque un borrador no obliga a nadie. Ponerlo en vigor
+   * exige `institution.normative_rules.manage` y el acuerdo de la asamblea que
+   * lo aprobó, porque eso sí obliga a todo el gremio.
+   */
+  define('governance.rules.manage', 'Redactar y editar borradores de reglas estatutarias', {
     sensitivity: 'CRITICAL',
     requiresReason: true,
   }),

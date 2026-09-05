@@ -10,6 +10,7 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import { incompatibleOffices } from './bodies';
+import { revokePowersOfTerm } from './powers';
 import type { DesignationMethod } from '@prisma-client/enums';
 
 /**
@@ -323,13 +324,21 @@ export async function endOfficeTerm(
       });
     }
 
+    const poderes = await revokePowersOfTerm(
+      tx,
+      actor,
+      term.id,
+      new Date(`${data.endedOn}T00:00:00.000Z`),
+      `Conclusión del periodo de «${term.officeDefinition.name}»`,
+    );
+
     await recordAudit(tx, conMotivo, {
       action: AUDIT_ACTIONS.OFFICE_ENDED,
       objectKind: 'OfficeTerm',
       objectId: term.id,
       outcome: 'SUCCESS',
       reason: data.reason,
-      metadata: { cargo: term.officeDefinition.name, hasta: data.endedOn },
+      metadata: { cargo: term.officeDefinition.name, hasta: data.endedOn, poderesRevocados: poderes },
     });
   });
 
@@ -337,42 +346,59 @@ export async function endOfficeTerm(
 }
 
 /**
- * Revoca los accesos de los periodos que vencieron. Lo ejecuta el trabajo
- * `role-expiry`, y devuelve cuántos cerró para que el trabajo lo asiente.
+ * Retira lo que conceden los periodos que vencieron: el acceso y los poderes.
+ * Lo ejecuta el trabajo `role-expiry`, y devuelve cuántos cerró para que el
+ * trabajo lo asiente.
  *
  * No cambia el periodo: `endsOn` ya pasó y eso es un hecho, no un estado que
- * haya que escribir. Lo único que hace falta es que el acceso deje de existir.
+ * haya que escribir. Lo único que hace falta es que deje de conceder.
  */
 export async function revokeExpiredOfficeAccess(
   tx: Tx,
   actor: ActorContext,
   ahora: Date,
 ): Promise<{ revoked: number }> {
+  // Se buscan los periodos vencidos que todavía **conceden algo**: un acceso
+  // vivo o un poder vivo. Mirar solo el acceso dejaba fuera al cargo cuyo rol ya
+  // se había revocado a mano y cuyos poderes seguían en pie.
   const vencidos = await tx.officeTerm.findMany({
     where: {
       endsOn: { lt: ahora },
-      roleAssignmentId: { not: null },
-      roleAssignment: { revokedAt: null },
+      endedEarlyOn: null,
+      OR: [
+        { roleAssignment: { revokedAt: null } },
+        { powerGrants: { some: { revokedOn: null } } },
+      ],
     },
     select: {
       id: true,
       roleAssignmentId: true,
+      roleAssignment: { select: { revokedAt: true } },
       officeDefinition: { select: { name: true } },
     },
   });
 
   for (const term of vencidos) {
-    if (term.roleAssignmentId === null) continue;
-    await tx.roleAssignment.update({
-      where: { id: term.roleAssignmentId },
-      data: { revokedAt: ahora, revokeReason: 'Periodo de cargo concluido' },
-    });
+    if (term.roleAssignmentId !== null && term.roleAssignment?.revokedAt === null) {
+      await tx.roleAssignment.update({
+        where: { id: term.roleAssignmentId },
+        data: { revokedAt: ahora, revokeReason: 'Periodo de cargo concluido' },
+      });
+    }
+    const poderes = await revokePowersOfTerm(
+      tx,
+      actor,
+      term.id,
+      ahora,
+      `Vencimiento del periodo de «${term.officeDefinition.name}»`,
+    );
+
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.OFFICE_EXPIRED,
       objectKind: 'OfficeTerm',
       objectId: term.id,
       outcome: 'SUCCESS',
-      metadata: { cargo: term.officeDefinition.name },
+      metadata: { cargo: term.officeDefinition.name, poderesRevocados: poderes },
     });
   }
 

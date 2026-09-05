@@ -11,7 +11,7 @@
 - **Fecha de inicio:** 4 de septiembre de 2026
 - **Cierre previo:** 5 de septiembre de 2026 en `038297d`, **reabierto** el mismo día por la corrección de alcance de CIAN y CENI (véase «Corrección de alcance» más abajo)
 - **Fecha de cierre:** 5 de septiembre de 2026, con la corrección de alcance ya aplicada
-- **SHA del punto de control:** `ddd471e`
+- **SHA del punto de control:** `cadebbd`
 - **Fase anterior:** 3 — `APPROVED`, cerrada en `85cf196`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 5 — Estructura territorial, gobierno, asambleas y elecciones, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -209,7 +209,7 @@ Las que gobiernan lo construido aquí, en una línea cada una:
 | 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
 | 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
-| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `ddd471e`. Afiliación completa de punta a punta: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal. 22 defectos encontrados y cerrados. Cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI, y cerrada de nuevo con ella aplicada |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd`. Afiliación completa de punta a punta: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal. 22 defectos encontrados y cerrados. Cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI, y cerrada de nuevo con ella aplicada |
 | 5 a 10 | — | — | No iniciadas | — |
 
 ---

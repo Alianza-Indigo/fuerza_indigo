@@ -355,6 +355,14 @@ sequenceDiagram
 
 Cuando una persona sustituye a otra se crea un `OfficeTerm` nuevo con su propia `RoleAssignment`. Las sesiones de la persona saliente no se heredan: se revocan por `SESSION_VERSION_BUMP` (PRD §4.3).
 
+### 7.1 Los roles de membresía no son nombramientos
+
+`UNION_MEMBER` y `HONORARY_AFFILIATE` **no se nombran**: llegan con la calidad y se van con ella. La activación de la membresía crea la asignación y el fin de la membresía la revoca, dentro de la misma transacción que escribe el cambio de estado (ADR-0088).
+
+Esto es deliberado y no pasa por `assignRole`. Ese caso de uso modela un acto de designación —exige `access.role.assign`, la regla de no elevación y un motivo de nombramiento—, y aquí no se designa a nadie: la calidad ya la resolvió quien tenía la facultad de resolverla, y el rol solo la refleja en el motor de permisos. Como otorgante consta **quien firmó la resolución**, no el trabajo que la ejecutó.
+
+El rol se retira cuando ya no queda ninguna membresía viva de esa calidad. Una membresía **suspendida cuenta como viva**: suspender es una pausa, no una salida (ADR-0083).
+
 ---
 
 ## 8. Superadmin (PRD §4.4)

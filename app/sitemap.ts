@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { env } from '@/platform/config/env';
 import { publishedSitemapEntries } from '@/modules/content';
+import { publicDirectory } from '@/modules/membership';
 import { PUBLIC_ROUTES } from '@/platform/i18n';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,11 @@ export const dynamic = 'force-dynamic';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env().APP_URL;
   const publicadas = await publishedSitemapEntries();
+  // Del directorio entran **solo** las fichas cuya persona autorizó que la
+  // indexen (PRD §7.3). Quien pidió aparecer sin indexación tiene una página
+  // que se puede visitar y que no se anuncia a ningún buscador; meterla aquí
+  // sería desobedecer esa distinción con una lista.
+  const fichas = (await publicDirectory()).filter((ficha) => ficha.indexable);
   const conContenido = new Set(publicadas.map((entrada) => `/${entrada.slug}`));
 
   const contratadas = PUBLIC_ROUTES.filter(
@@ -31,6 +37,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ruta.href === '/buscar' ||
       ruta.href === '/contacto' ||
       ruta.href === '/solicitar-apoyo' ||
+      // El directorio existe desde la Fase 4 y lo sirve el código, no el gestor.
+      ruta.href === '/directorio' ||
       conContenido.has(ruta.href),
   ).map((ruta): MetadataRoute.Sitemap[number] => ({
     url: `${base}${ruta.href}`,
@@ -48,5 +56,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }));
 
-  return [...contratadas, ...delGestor];
+  const delDirectorio = fichas.map((ficha): MetadataRoute.Sitemap[number] => ({
+    url: `${base}/directorio/${ficha.slug}`,
+    lastModified: ficha.publishedAt,
+    changeFrequency: 'monthly',
+    priority: 0.4,
+  }));
+
+  return [...contratadas, ...delGestor, ...delDirectorio];
 }

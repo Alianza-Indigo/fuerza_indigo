@@ -594,3 +594,170 @@ describe('conversión sin duplicar a la persona (PRD §8.4)', () => {
     expect(fila.endedAt).not.toBeNull();
   });
 });
+
+/**
+ * El rol sigue a la calidad (defecto `D-F4-014`, ADR-0088).
+ *
+ * Antes de esto una persona quedaba agremiada en el padrón y seguía siendo
+ * `APPLICANT` para el motor de permisos: no podía leer su propia membresía, ni
+ * decidir sobre su ficha del directorio, ni ver su credencial. Era miembro en
+ * los datos y aspirante en la práctica.
+ */
+describe('el rol sigue a la calidad', () => {
+  /** Códigos de rol vigentes de una cuenta, sin los revocados. */
+  async function rolesVivos(userId: string): Promise<string[]> {
+    const filas = await base.prisma.roleAssignment.findMany({
+      where: { userId, revokedAt: null },
+      select: { role: { select: { code: true } } },
+    });
+    return filas.map((fila) => fila.role.code).sort();
+  }
+
+  it('activar por cobro confirmado concede el rol, y lo otorga quien firmó la resolución', async () => {
+    const { quien, applicationId } = await solicitudResuelta('AGREMIADO', 'RolAlta');
+    expect(await rolesVivos(quien.userId)).not.toContain('UNION_MEMBER');
+
+    const paymentId = await cobroConfirmado(quien.personId, applicationId);
+    const sistema = systemContext({
+      actorId: secretaria.actorId,
+      jobType: 'domain-events',
+      correlationId: newCorrelationId(),
+    });
+    const activada = await activateFromConfirmedPayment(sistema, paymentId);
+    expect(activada.activated).toBe(true);
+
+    expect(await rolesVivos(quien.userId)).toContain('UNION_MEMBER');
+
+    // No es un nombramiento de nadie: la calidad la resolvió quien tenía la
+    // facultad, y de ahí viene el rol. Que el otorgante sea quien firmó la
+    // resolución es lo que hace que el registro se pueda leer años después.
+    const solicitud = await base.prisma.membershipApplication.findUniqueOrThrow({
+      where: { id: applicationId },
+      select: { resolvedById: true, folio: true },
+    });
+    const asignacion = await base.prisma.roleAssignment.findFirstOrThrow({
+      where: { userId: quien.userId, revokedAt: null, role: { code: 'UNION_MEMBER' } },
+      select: { grantedById: true, grantReason: true },
+    });
+    expect(asignacion.grantedById).toBe(solicitud.resolvedById);
+    expect(asignacion.grantReason).toContain(solicitud.folio);
+  });
+
+  it('la calidad honoraria concede su propio rol, no el sindical', async () => {
+    const { quien } = await solicitudResuelta('AFILIADO_HONORARIO', 'RolHonoraria');
+    const roles = await rolesVivos(quien.userId);
+    expect(roles).toContain('HONORARY_AFFILIATE');
+    expect(roles).not.toContain('UNION_MEMBER');
+  });
+
+  it('terminar la membresía retira el rol y deja escrito por qué', async () => {
+    const { quien, applicationId } = await solicitudResuelta('AGREMIADO', 'RolBaja');
+    const paymentId = await cobroConfirmado(quien.personId, applicationId);
+    const sistema = systemContext({
+      actorId: secretaria.actorId,
+      jobType: 'domain-events',
+      correlationId: newCorrelationId(),
+    });
+    const activada = await activateFromConfirmedPayment(sistema, paymentId);
+    if (!activada.activated || activada.membershipId === undefined) throw new Error('no se activó');
+    expect(await rolesVivos(quien.userId)).toContain('UNION_MEMBER');
+
+    const baja = await endMembership(secretaria, {
+      membershipId: activada.membershipId,
+      endReason: 'VOLUNTARY_WITHDRAWAL',
+      reason: 'La persona pidió por escrito dejar de ser agremiada.',
+    });
+    expect(baja.ok, baja.ok ? '' : JSON.stringify(baja.error)).toBe(true);
+
+    expect(await rolesVivos(quien.userId)).not.toContain('UNION_MEMBER');
+
+    const revocada = await base.prisma.roleAssignment.findFirstOrThrow({
+      where: { userId: quien.userId, role: { code: 'UNION_MEMBER' } },
+      select: { revokedAt: true, revokeReason: true, revokedById: true },
+    });
+    expect(revocada.revokedAt).not.toBeNull();
+    expect(revocada.revokeReason).toContain('dejar de ser agremiada');
+    expect(revocada.revokedById).toBe(secretariaPersona.userId);
+  });
+
+  it('vencer también lo retira: la calidad caducada no deja facultades vivas', async () => {
+    const { quien, applicationId } = await solicitudResuelta('AGREMIADO', 'RolVence');
+    const paymentId = await cobroConfirmado(quien.personId, applicationId);
+    const sistema = systemContext({
+      actorId: secretaria.actorId,
+      jobType: 'membership-expiry',
+      correlationId: newCorrelationId(),
+    });
+    const activada = await activateFromConfirmedPayment(sistema, paymentId);
+    expect(activada.activated).toBe(true);
+    expect(await rolesVivos(quien.userId)).toContain('UNION_MEMBER');
+
+    await base.sql.query(
+      `UPDATE membership
+          SET "startedAt" = now() - interval '13 months',
+              "expiresAt" = now() - interval '1 day'
+        WHERE "personId" = $1`,
+      [quien.personId],
+    );
+
+    const vencidas = await expireDueMemberships(sistema);
+    expect(vencidas.ok, vencidas.ok ? '' : JSON.stringify(vencidas.error)).toBe(true);
+
+    expect(await rolesVivos(quien.userId)).not.toContain('UNION_MEMBER');
+  });
+
+  it('si otra membresía viva sostiene la calidad, terminar una no retira el rol', async () => {
+    const { quien, applicationId } = await solicitudResuelta('AGREMIADO', 'RolDoble');
+    const paymentId = await cobroConfirmado(quien.personId, applicationId);
+    const sistema = systemContext({
+      actorId: secretaria.actorId,
+      jobType: 'domain-events',
+      correlationId: newCorrelationId(),
+    });
+    const activada = await activateFromConfirmedPayment(sistema, paymentId);
+    if (!activada.activated || activada.membershipId === undefined) throw new Error('no se activó');
+
+    // Una etapa anterior de la misma persona, suspendida y todavía viva: la
+    // base admite una sola activa por calidad, no una sola viva. Quien tiene
+    // dos etapas abiertas sigue siendo agremiada cuando se cierra una.
+    const tipo = await base.prisma.membershipType.findUniqueOrThrow({
+      where: { code: 'AGREMIADO' },
+      select: { id: true },
+    });
+    const actor = await base.prisma.actor.findFirstOrThrow({ select: { id: true } });
+    const anterior = await base.prisma.membership.create({
+      data: {
+        publicId: newPublicId(20),
+        memberNumber: `FI-A2025-9${String(contador).padStart(4, '0')}`,
+        personId: quien.personId,
+        membershipTypeId: tipo.id,
+        category: 'UNION_MEMBER',
+        legalEntityId: entidadId,
+        status: 'SUSPENDED',
+        startedAt: new Date('2025-01-01T00:00:00.000Z'),
+        createdByActorId: actor.id,
+        updatedByActorId: actor.id,
+      },
+      select: { id: true },
+    });
+
+    const baja = await endMembership(secretaria, {
+      membershipId: anterior.id,
+      endReason: 'VOLUNTARY_WITHDRAWAL',
+      reason: 'Se cierra la etapa anterior, que había quedado suspendida sin resolver.',
+    });
+    expect(baja.ok, baja.ok ? '' : JSON.stringify(baja.error)).toBe(true);
+
+    // Sigue siendo agremiada por la etapa vigente.
+    expect(await rolesVivos(quien.userId)).toContain('UNION_MEMBER');
+
+    // Y al cerrar la que quedaba, entonces sí se va.
+    const segunda = await endMembership(secretaria, {
+      membershipId: activada.membershipId,
+      endReason: 'VOLUNTARY_WITHDRAWAL',
+      reason: 'La persona pidió por escrito dejar de ser agremiada.',
+    });
+    expect(segunda.ok, segunda.ok ? '' : JSON.stringify(segunda.error)).toBe(true);
+    expect(await rolesVivos(quien.userId)).not.toContain('UNION_MEMBER');
+  });
+});

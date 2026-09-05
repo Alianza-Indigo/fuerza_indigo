@@ -133,3 +133,22 @@ export {
   type ExportRosterInput,
   type AdvanceFilingInput,
 } from './application/rosters';
+export {
+  internalDirectory,
+  exportInternalDirectory,
+  setDirectoryPreference,
+  publishDirectoryEntry,
+  withdrawDirectoryConsent,
+  publicDirectory,
+  publicEntry,
+  myDirectoryState,
+  exportDirectorySchema,
+  setDirectoryPreferenceSchema,
+  withdrawDirectorySchema,
+  type DirectoryEntry,
+  type DirectoryFilters,
+  type PublicEntry,
+  type SetDirectoryPreferenceInput,
+  type WithdrawDirectoryInput,
+  type ExportDirectoryInput,
+} from './application/directory';

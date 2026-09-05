@@ -209,9 +209,9 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-PAD-002 | Implementar el padrón de afiliados honorarios | Hecho |
 | F4-PAD-003 | Implementar el padrón de beneficiarios protegidos con privacidad reforzada | Hecho |
 | F4-PAD-004 | Implementar la preparación de altas y bajas para las obligaciones ante la autoridad laboral | Hecho |
-| F4-DIR-001 | Implementar el directorio interno con búsqueda, filtros y exportación auditada | Pendiente |
-| F4-DIR-002 | Implementar las preferencias de publicación granulares y la publicación pública | Pendiente |
-| F4-DIR-003 | Implementar el retiro del consentimiento con invalidación de caché y señal de no indexación | Pendiente |
+| F4-DIR-001 | Implementar el directorio interno con búsqueda, filtros y exportación auditada | Hecho |
+| F4-DIR-002 | Implementar las preferencias de publicación granulares y la publicación pública | Hecho |
+| F4-DIR-003 | Implementar el retiro del consentimiento con invalidación de caché y señal de no indexación | Hecho |
 | F4-CRE-001 | Implementar la emisión de credenciales con código opaco firmado y sus cuatro diseños | Pendiente |
 | F4-CRE-002 | Implementar la descarga digital e imprimible de la credencial | Pendiente |
 | F4-CRE-003 | Implementar el verificador público con lectura de estado vivo y registro agregado | Pendiente |

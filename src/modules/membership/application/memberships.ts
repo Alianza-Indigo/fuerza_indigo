@@ -52,6 +52,128 @@ function vencimiento(desde: Date, durationMonths: number | null): Date | null {
   return fin;
 }
 
+
+/**
+ * El rol sigue a la calidad (defecto `D-F4-014`, ADR-0088).
+ *
+ * Activar una membresía no es nombrar a nadie: es reconocer una calidad que ya
+ * resolvió quien tenía la facultad de resolverla. Por eso esto **no pasa por
+ * `assignRole`**, que exige la regla de no elevación y un acto de nombramiento
+ * —y que además dejaría fuera de juego a la activación por webhook, donde no
+ * hay ninguna persona pulsando nada—.
+ *
+ * El defecto que corrige: una persona quedaba agremiada en el padrón y seguía
+ * siendo `APPLICANT` para el motor de permisos. No podía leer su propia
+ * membresía, ni decidir sobre su ficha del directorio, ni ver su credencial.
+ * Era miembro en los datos y aspirante en la práctica.
+ *
+ * Quien figura como otorgante es **quien firmó la resolución**, porque de ahí
+ * viene la calidad. Si la membresía no tiene solicitud —no ocurre en
+ * producción— o la persona no tiene cuenta digital, no hay rol que conceder y
+ * la función no hace nada: una membresía puede existir sin cuenta (PRD §3.4).
+ */
+async function sincronizarRolDeMembresia(
+  tx: Tx,
+  actor: ActorContext,
+  input: {
+    personId: string;
+    legalEntityId: string;
+    category: MembershipCategory;
+    accion: 'CONCEDER' | 'RETIRAR';
+    motivo: string;
+    otorganteUserId?: string | null;
+    /**
+     * Membresía que se está terminando, para no contarla al comprobar si a la
+     * persona le queda otra. Solo se usa al retirar.
+     */
+    exceptoMembershipId?: string;
+  },
+): Promise<void> {
+  const usuario = await tx.user.findUnique({ where: { personId: input.personId }, select: { id: true } });
+  if (usuario === null) return;
+
+  const codigo = input.category === 'UNION_MEMBER' ? 'UNION_MEMBER' : 'HONORARY_AFFILIATE';
+  const rol = await tx.role.findUnique({ where: { code: codigo }, select: { id: true } });
+  if (rol === null) return;
+
+  const vigente = await tx.roleAssignment.findFirst({
+    where: {
+      userId: usuario.id,
+      roleId: rol.id,
+      legalEntityId: input.legalEntityId,
+      revokedAt: null,
+    },
+    select: { id: true },
+  });
+
+  if (input.accion === 'CONCEDER') {
+    if (vigente !== null) return;
+    const otorgante = input.otorganteUserId ?? actor.userId;
+    if (otorgante === null || otorgante === undefined) return;
+
+    const creada = await tx.roleAssignment.create({
+      data: {
+        userId: usuario.id,
+        roleId: rol.id,
+        legalEntityId: input.legalEntityId,
+        grantedById: otorgante,
+        grantReason: input.motivo,
+      },
+      select: { id: true },
+    });
+
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.ROLE_GRANTED,
+      objectKind: 'RoleAssignment',
+      objectId: creada.id,
+      outcome: 'SUCCESS',
+      legalEntityId: input.legalEntityId,
+      onBehalfOfPersonId: input.personId,
+      reason: input.motivo,
+      metadata: { rol: codigo, origen: 'activación de membresía' },
+    });
+    return;
+  }
+
+  if (vigente === null) return;
+
+  // Una persona puede sostener la misma calidad por más de una membresía —una
+  // renovación que se solapa, una segunda entidad—. Terminar una no la deja de
+  // ser lo que sigue siendo por la otra, así que el rol solo se retira cuando
+  // ya no queda ninguna viva que lo sustente. Suspendida cuenta como viva: una
+  // suspensión es una pausa, no una salida.
+  const sostiene = await tx.membership.count({
+    where: {
+      personId: input.personId,
+      legalEntityId: input.legalEntityId,
+      category: input.category,
+      status: { in: ['ACTIVE', 'SUSPENDED', 'DISCIPLINARY_PROCESS'] },
+      ...(input.exceptoMembershipId === undefined ? {} : { id: { not: input.exceptoMembershipId } }),
+    },
+  });
+  if (sostiene > 0) return;
+
+  await tx.roleAssignment.update({
+    where: { id: vigente.id },
+    data: {
+      revokedAt: new Date(),
+      revokeReason: input.motivo,
+      ...(actor.userId === null ? {} : { revokedById: actor.userId }),
+    },
+  });
+
+  await recordAudit(tx, actor, {
+    action: AUDIT_ACTIONS.ROLE_REVOKED,
+    objectKind: 'RoleAssignment',
+    objectId: vigente.id,
+    outcome: 'SUCCESS',
+    legalEntityId: input.legalEntityId,
+    onBehalfOfPersonId: input.personId,
+    reason: input.motivo,
+    metadata: { rol: codigo, origen: 'fin de la membresía' },
+  });
+}
+
 interface SolicitudActivable {
   readonly id: string;
   readonly folio: string;
@@ -125,6 +247,21 @@ export async function crearMembresiaActiva(
   await tx.membershipApplication.update({
     where: { id: solicitud.id },
     data: { status: 'ACTIVATED', updatedByActorId: actor.actorId, rowVersion: { increment: 1 } },
+  });
+
+  // La calidad trae su rol: sin esto la persona queda agremiada en el padrón y
+  // aspirante para el motor de permisos (defecto `D-F4-014`).
+  const resolucion = await tx.membershipApplication.findUnique({
+    where: { id: solicitud.id },
+    select: { resolvedById: true },
+  });
+  await sincronizarRolDeMembresia(tx, actor, {
+    personId: solicitud.personId,
+    legalEntityId: solicitud.legalEntityId,
+    category: solicitud.category,
+    accion: 'CONCEDER',
+    motivo: `Calidad reconocida al activarse la membresía ${creada.memberNumber} (solicitud ${solicitud.folio}).`,
+    otorganteUserId: resolucion?.resolvedById ?? null,
   });
 
   // El alta queda preparada para el informe ante la autoridad laboral, dentro
@@ -370,6 +507,7 @@ interface MembresiaEnCurso {
   readonly id: string;
   readonly memberNumber: string;
   readonly status: MembershipStatus;
+  readonly category: MembershipCategory;
   readonly personId: string;
   readonly legalEntityId: string;
   readonly territorialUnitId: string | null;
@@ -382,6 +520,7 @@ async function membresia(membershipId: string): Promise<MembresiaEnCurso | null>
       id: true,
       memberNumber: true,
       status: true,
+      category: true,
       personId: true,
       legalEntityId: true,
       territorialUnitId: true,
@@ -567,6 +706,18 @@ export async function endMembership(
       occurredAt: cuando,
     });
 
+    // Y el rol se va con la calidad (ADR-0088). Dejarlo sería peor que no
+    // haberlo dado nunca: quien ya no es miembro seguiría leyendo padrones y
+    // publicando ficha en el directorio del sindicato al que dejó de pertenecer.
+    await sincronizarRolDeMembresia(tx, actor, {
+      personId: fila.personId,
+      legalEntityId: fila.legalEntityId,
+      category: fila.category,
+      accion: 'RETIRAR',
+      motivo: `Terminó la membresía ${fila.memberNumber}: ${parsed.data.reason}`,
+      exceptoMembershipId: fila.id,
+    });
+
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.MEMBERSHIP_TERMINATED,
       objectKind: 'Membership',
@@ -611,6 +762,7 @@ export async function expireDueMemberships(
       id: true,
       memberNumber: true,
       status: true,
+      category: true,
       personId: true,
       legalEntityId: true,
       territorialUnitId: true,
@@ -641,6 +793,15 @@ export async function expireDueMemberships(
         legalEntityId: fila.legalEntityId,
         kind: 'ROSTER_REMOVAL',
         occurredAt: cuando,
+      });
+
+      await sincronizarRolDeMembresia(tx, actor, {
+        personId: fila.personId,
+        legalEntityId: fila.legalEntityId,
+        category: fila.category,
+        accion: 'RETIRAR',
+        motivo: `Venció la membresía ${fila.memberNumber} el ${cuando.toISOString().slice(0, 10)}. Renovar devuelve la calidad y con ella el rol.`,
+        exceptoMembershipId: fila.id,
       });
 
       await recordAudit(tx, actor, {

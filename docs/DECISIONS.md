@@ -1077,3 +1077,68 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Una afiliación honoraria no abre expediente**, porque no genera obligación (PRD §3.3). Abrírselo sería prepararse para informar algo que no hay que informar, y llenaría la bandeja de trámites falsos hasta que alguien dejara de mirarla.
 
 **Lo que la plataforma no hace es declarar cumplida la obligación** (PRD §9.6). Registra que se preparó, que se presentó y que la autoridad acusó, con su número de trámite. El trámite no retrocede: deshacer un acuse borraría la prueba de que se presentó. Y descartar la obligación —`NOT_REQUIRED`— exige explicarlo por escrito: una obligación que se cierra sin motivo es la forma silenciosa de no cumplirla.
+
+---
+
+## ADR-0086 · El directorio público se deriva de la autorización, nunca al revés
+
+**Contexto.** El PRD §7.1 dice que el directorio público se construye «exclusivamente» a partir de autorizaciones expresas, y el §7.3 enumera ocho decisiones granulares —desde no aparecer hasta permitir la indexación—, todas revocables.
+
+**Decisión.** Una ficha pública **no se edita**: se deriva de la preferencia vigente y se vuelve a derivar si la preferencia cambia. No existe un formulario donde alguien escriba qué se publica de otra persona.
+
+**Por qué importa la dirección.** Si la ficha fuera editable, publicado y autorizado podrían separarse: bastaría un cambio bienintencionado —añadir el teléfono «que ya está en su perfil»— para que hubiera algo publicado que nadie autorizó, y nada en el sistema lo delataría. Derivándola, lo publicado siempre corresponde a una autorización concreta, y la fila guarda cuál.
+
+**La instantánea se guarda, no se lee en vivo.** Los campos publicados se copian al publicar. Un perfil que cambie después no cambia lo que estuvo publicado: lo publicado tiene que poder demostrarse tal como estuvo, y leerlo en vivo reescribiría la historia cada vez que alguien edita su perfil.
+
+**Cuatro negativas antes de publicar nada**, y ninguna es discrecional:
+
+1. Sin **texto de consentimiento publicado** no hay nada que aceptar. Una autorización sin texto es una casilla marcada.
+2. **Una persona menor de edad no se publica.** El PRD §7.3 exige base y autorización específicas aprobadas institucionalmente; mientras eso no exista, la respuesta es no.
+3. **Quien tiene una atención con privacidad reforzada, tampoco.** Pidió ayuda bajo esa protección, y un formulario no la revoca.
+4. **Marcar la indexación sin aparecer no guarda nada**: sería una autorización que no autoriza.
+
+**La dirección pública no lleva el identificador interno.** Se construye del nombre, con sufijo si se repite. Una dirección que expone un identificador de base invita a probar el siguiente.
+
+---
+
+## ADR-0087 · Retirar el consentimiento invalida la caché, o no es retirar
+
+**Contexto.** El PRD §24 Fase 4 lo pone como criterio de aceptación: «retirar consentimiento elimina la publicación pública y la indexación controlada».
+
+**Decisión.** El retiro hace tres cosas en un solo acto: revoca la preferencia, marca la ficha retirada con `indexable` en falso, y **devuelve las direcciones afectadas** para que la capa web invalide su caché. La acción del portal las recorre y llama a `revalidatePath` en cada una.
+
+**Por qué el tercer paso no es un detalle de rendimiento.** Una página cacheada sigue sirviéndose después de que su origen desaparezca. Sin invalidar, la ficha seguiría en pie hasta que a alguien se le ocurriera recargarla —o hasta que expirara sola—, y durante ese tiempo la organización estaría publicando a una persona que dijo que no. Eso es exactamente lo que el criterio prohíbe, y no lo cazaría ninguna prueba de dominio: la base diría que está retirada.
+
+**Por qué el módulo devuelve rutas y no invalida él.** El dominio no conoce el enrutador. Meter `revalidatePath` en el caso de uso ataría la regla —«al retirar, deja de servirse»— a un detalle del marco, y la haría intocable el día que el marco cambie. Devolver las direcciones deja la regla en el dominio y la mecánica en la capa que la conoce.
+
+**La fila no se borra.** Queda con su fecha de retiro como evidencia de qué estuvo publicado y cuándo. Borrarla dejaría a la organización sin poder demostrar que retiró lo que dijo que retiraría, que es justo la prueba que hará falta si alguien reclama.
+
+**Y la señal para los buscadores va en la propia ficha**, no en una lista aparte: `robots: noindex` cuando no se autorizó indexar, y «no encontrado» cuando se retiró. Un buscador necesita esas dos respuestas de la dirección que indexó; una lista global no se las da.
+
+---
+
+## ADR-0088 · El rol sigue a la calidad, y se va con ella
+
+**Contexto.** Activar una membresía escribía la fila del padrón y nada más. La persona quedaba agremiada en los datos y seguía siendo `APPLICANT` para el motor de permisos: no podía leer su propia membresía, ni decidir sobre su ficha del directorio, ni —cuando llegue— ver su credencial. Era miembro en el padrón y aspirante en la práctica (defecto `D-F4-014`).
+
+**Decisión.** La activación concede el rol de la calidad —`UNION_MEMBER` o `HONORARY_AFFILIATE`— y el fin de la membresía lo retira, ambos dentro de la misma transacción que escribe el cambio de estado.
+
+**Por qué no pasa por `assignRole`.** Ese caso de uso modela un **nombramiento**: exige la regla de no elevación, un actor con `access.role.assign` y un motivo de designación. Aquí no se nombra a nadie. La calidad ya la resolvió quien tenía la facultad de resolverla, y el rol solo la refleja en el motor de permisos. Además, la activación por cobro confirmado ocurre en un webhook, donde no hay ninguna persona pulsando nada: exigir un actor con facultad de nombrar dejaría sin rol precisamente a quien pagó.
+
+**Quien figura como otorgante es quien firmó la resolución** (`resolvedById`), no el trabajo nocturno ni el sistema. De ahí viene la calidad, y así el registro se puede leer años después sin tener que reconstruir qué proceso lo escribió.
+
+**Retirar es condicional, conceder no.** Una persona puede sostener la misma calidad por más de una membresía —una etapa suspendida que se cierra mientras otra sigue viva—. El rol solo se retira cuando ya no queda ninguna membresía viva que lo sustente; **suspendida cuenta como viva**, porque una suspensión es una pausa y no una salida (ADR-0083). Sin esa comprobación, cerrar una etapa antigua dejaría sin facultades a alguien que sigue siendo miembro.
+
+**Si la persona no tiene cuenta digital, no hay rol que conceder** y la sincronización no hace nada. Una membresía puede existir sin cuenta (PRD §3.4), y fabricar una cuenta para colgarle un rol convertiría un requisito técnico en una obligación para la persona.
+
+---
+
+## ADR-0089 · El acuse sale del hecho, no del formulario
+
+**Contexto.** Es la tercera vez que aparece el mismo defecto: `D-F4-006` (la respuesta a una aclaración), `D-F4-013` (el acuse de la revisión) y ahora `D-F4-015` (el retiro de la ficha del directorio). El patrón es siempre idéntico: el acuse se muestra desde el estado del formulario, y la acción que se acusa **hace desaparecer ese formulario** —porque ya no queda nada que hacer con él—. La persona ejerce su derecho y la pantalla se queda muda.
+
+**Decisión.** Cuando una acción cambia lo que la pantalla ofrece, el acuse **no vive en el estado del formulario**: se deriva del hecho registrado —`withdrawnAt`, `answeredAt`, `reviewedAt`— y se pinta fuera de la sección condicional.
+
+**Por qué es más que estética.** Un acuse que solo existe en la respuesta de la acción desaparece con una recarga, con un `revalidatePath`, o con volver mañana. Quien retiró su ficha necesita poder comprobar **que la retiró**, no solo que ya no aparece: no aparecer es también lo que le pasa a quien nunca autorizó nada, y las dos situaciones son distintas para quien las vive. Derivarlo del hecho hace que la respuesta esté ahí cada vez que se pregunte.
+
+**Y por eso el caso de uso devuelve la fecha.** `myDirectoryState` informa de la última retirada cuando ya no hay ficha viva. No es un dato para adornar: es la diferencia entre «no apareces» y «retiramos tu autorización el día tal, y se avisó a los buscadores».

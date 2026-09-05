@@ -21,6 +21,7 @@ export const dynamic = 'force-dynamic';
  */
 const SECCIONES_DEL_PORTAL = [
   { href: '/mi/afiliacion', label: 'Mi afiliación' },
+  { href: '/mi/directorio', label: 'Mi ficha pública' },
   { href: '/mi/pagos', label: 'Mis pagos' },
   { href: '/mi/seguridad', label: 'Seguridad y sesiones' },
 ] as const;

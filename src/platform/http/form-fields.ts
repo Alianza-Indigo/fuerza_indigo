@@ -14,3 +14,15 @@ export function textField(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === 'string' ? value : '';
 }
+
+/**
+ * Lectura de una casilla de verificación.
+ *
+ * Un `<input type="checkbox">` sin marcar **no se envía**: no llega como
+ * «false», no llega. Por eso la ausencia es falso y cualquier presencia es
+ * cierto, y por eso no sirve `textField(...) === 'true'`: el valor por omisión
+ * que manda el navegador es `on`, no `true`.
+ */
+export function checkboxField(formData: FormData, name: string): boolean {
+  return formData.get(name) !== null;
+}

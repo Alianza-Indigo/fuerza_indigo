@@ -10,7 +10,7 @@
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
 - **Fecha de cierre:** 5 de septiembre de 2026
-- **SHA del punto de control:** se registra en el commit de cierre
+- **SHA del punto de control:** `038297d`
 - **Fase anterior:** 3 — `APPROVED`, cerrada en `85cf196`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 5 — Estructura territorial, gobierno, asambleas y elecciones, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 

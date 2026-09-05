@@ -24,12 +24,10 @@ Convención de las tablas de cada flujo: **Camino** describe la desviación; **C
 | [F-12 Elección con voto secreto](#f-12-elección-con-voto-secreto) | §9.5 | 5 |
 | [F-13 Consulta de contrato colectivo](#f-13-consulta-de-contrato-colectivo) | §9.6 | 5 |
 | [F-14 Procedimiento disciplinario](#f-14-procedimiento-disciplinario) | §9.8 | 5 |
-| [F-15 Acceso a herramientas y revocación](#f-15-acceso-a-herramientas-y-revocación) | §12 | 7 |
-| [F-16 CIAN: admisión, plan y seguimiento](#f-16-cian-admisión-plan-y-seguimiento) | §13 | 8 |
-| [F-17 CENI: contratación, certificado y renovación](#f-17-ceni-contratación-certificado-y-renovación) | §14 | 9 |
-| [F-18 Asistencia con Gemini y revisión humana](#f-18-asistencia-con-gemini-y-revisión-humana) | §15 | 10 |
-| [F-19 Eventos, asistencia y constancias](#f-19-eventos-asistencia-y-constancias) | §16.3 | 11 |
-| [F-20 Retención, bloqueo legal y derechos de datos](#f-20-retención-bloqueo-legal-y-derechos-de-datos) | §20.3, §17.4 | 1 y 12 |
+| [F-15 Acceso a una plataforma o herramienta del ecosistema](#f-15-acceso-a-una-plataforma-o-herramienta-del-ecosistema) | §12, §13, §14 | 7 |
+| [F-18 Asistencia con Gemini y revisión humana](#f-18-asistencia-con-gemini-y-revisión-humana) | §15 | 8 |
+| [F-19 Eventos, asistencia y constancias](#f-19-eventos-asistencia-y-constancias) | §16.3 | 9 |
+| [F-20 Retención, bloqueo legal y derechos de datos](#f-20-retención-bloqueo-legal-y-derechos-de-datos) | §20.3, §17.4 | 1 y 10 |
 
 ---
 
@@ -120,7 +118,7 @@ sequenceDiagram
 
 ## F-03 Alta de beneficiario protegido
 
-**Fase 4.** Puede iniciarla la propia persona, un familiar o cuidador autorizado, un agremiado, un delegado, personal de Alianza Índigo, CIAN o una canalización externa (PRD §8.3).
+**Fase 4.** Puede iniciarla la propia persona, un familiar o cuidador autorizado, un agremiado, un delegado, personal de Alianza Índigo o una canalización externa (PRD §8.3).
 
 El sistema registra origen, necesidad inicial, consentimiento, nivel de urgencia, territorio y entidad responsable. **La persona recibe apoyo sin pagar ni afiliarse.**
 
@@ -465,93 +463,28 @@ stateDiagram-v2
 
 ---
 
-## F-15 Acceso a herramientas y revocación
+## F-15 Acceso a una plataforma o herramienta del ecosistema
 
-**Fase 7.**
+**Fase 7.** CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación propia, fuera de este repositorio (PRD §12, §13 y §14).
 
-1. El panel recomienda herramientas con base en perfil y necesidades **declaradas**, sin inferir ni exhibir diagnósticos.
-2. La persona ve por qué tiene acceso, hasta cuándo y qué ocurrirá al terminar la vigencia.
-3. Si la modalidad exige intercambio de identidad, se solicita consentimiento específico.
-4. El lanzamiento emite un enlace firmado de corta duración y de un solo uso; no viajan datos sensibles en la URL.
-5. Al vencer o revocarse el derecho, el acceso cesa; los datos se tratan conforme a la política de conservación, no se borran de inmediato.
-
-| Camino | Comportamiento |
-|---|---|
-| Herramienta caída | El portal central sigue operando; la tarjeta muestra el estado operativo `DEGRADED` o `MAINTENANCE` y ofrece la vía de soporte. |
-| Enlace expirado o reutilizado | Se rechaza y se registra `DENIED`; se ofrece generar uno nuevo. |
-| Derecho revocado durante la sesión externa | El siguiente lanzamiento se deniega; la plataforma no puede cerrar sesiones dentro de la herramienta externa y lo indica con claridad. |
-| Herramienta nueva | Se agrega por catálogo y configuración, sin tocar el núcleo de membresías. |
-
----
-
-## F-16 CIAN: admisión, plan y seguimiento
-
-**Fase 8.**
-
-1. Admisión y entrevista inicial con consentimiento informado.
-2. Valoración de necesidades **sin diagnóstico**.
-3. Triage **humano** con prioridad y, en su caso, lista de espera.
-4. Asignación profesional según disciplina, capacidad y modalidad.
-5. Agenda y citas presenciales o remotas, con recordatorios.
-6. Apertura del episodio y del expediente de atención.
-7. Plan individual o familiar versionado, con objetivos, actividades y seguimiento.
-8. Notas profesionales de acceso restringido.
-9. Canalización a neurología u otra especialidad cuando se requiere evaluación diagnóstica.
-10. Coordinación con familia o cuidadores **autorizados**.
-11. Becas, pagos y comprobantes.
-12. Derivación a NeuroPlan u otras herramientas cuando corresponde.
-13. Encuestas de experiencia y resultados.
-14. Cierre, alta o canalización externa.
+1. La persona ve el catálogo, en el sitio público y en su portal: una ficha por plataforma o herramienta, con nombre, imagen, descripción breve y público al que se dirige.
+2. La ficha ofrece un botón de acceso e indica, de forma accesible y **antes** de pulsarlo, que se abrirá otra plataforma.
+3. Al pulsarlo se abre la dirección externa configurada, con `rel="noopener noreferrer"` y sin datos personales en la dirección.
+4. Lo que ocurre después pertenece a esa plataforma: su autenticación, su operación, sus cobros y sus datos.
 
 | Camino | Comportamiento |
 |---|---|
-| Ausencia a la cita | Estado `NO_SHOW` con política de reprogramación; la lista de espera avanza. |
-| Cancelación por el centro | Se notifica, se ofrece reprogramación prioritaria y se registra el motivo. |
-| Traslape de agenda | Restricción de exclusión por profesional: la base impide dos citas superpuestas. |
-| Familiar solicita el expediente | Accede exclusivamente a lo autorizado por el consentimiento; las notas clínicas no forman parte de lo autorizado por omisión. |
-| Rol sindical intenta ver notas clínicas | Denegado por compartimento y auditado. |
-| Persona sin capacidad de pago | Beca o programa gratuito; la afiliación **no** condiciona la atención urgente ni los programas gratuitos definidos. |
-| Corrección de una nota | Se crea una nota nueva que referencia la anterior; el contenido original nunca se sobrescribe. |
-
----
-
-## F-17 CENI: contratación, certificado y renovación
-
-**Fase 9.** Los trece pasos del ciclo del PRD §14.3.
-
-```mermaid
-flowchart LR
-    A["Prospección o solicitud"] --> B["Alta de organización y responsables"]
-    B --> C["Selección de línea CENI"]
-    C --> D["Contratación y pago"]
-    D --> E["Diagnóstico inicial"]
-    E --> F["Carga y validación de evidencias"]
-    F --> G["Evaluación con instrumento versionado"]
-    G --> H["Plan de mejora con responsables y fechas"]
-    H --> I["Capacitación y acompañamiento"]
-    I --> J["Verificación de cumplimiento"]
-    J --> K["Decisión humana de certificación"]
-    K --> L["Certificado y distintivo QR"]
-    L --> M["Seguimiento y renovación"]
-    M --> F
-```
-
-| Camino | Comportamiento |
-|---|---|
-| Evidencia insuficiente | Se solicita corrección con comentario del evaluador; la respuesta pasa a `CORRECTIONS_REQUESTED` sin perder lo cargado. |
-| Intento de alterar una evaluación cerrada | Imposible: una reevaluación crea una respuesta nueva sobre la versión vigente y conserva la anterior con su evidencia. |
-| Conflicto de interés del evaluador | Se declara y se reasigna; la decisión de certificación registra la declaración. |
-| No certificación | Resultado fundado, plan de mejora vigente y posibilidad de reevaluar; la organización conserva su expediente. |
-| Incumplimiento posterior | Suspensión del certificado con motivo; el verificador público lo refleja de inmediato. |
-| Vencimiento | Estado `EXPIRED` y ventana de renovación configurada por programa. |
-| Reporte agregado | Los datos individuales no se usan sin autorización y anonimización; los indicadores respetan umbrales de privacidad. |
-| Certificación sugerida por IA | Prohibida: la decisión es humana y queda firmada por una persona identificada. |
+| Ficha sin dirección configurada | No se muestra botón de acceso: la ficha explica qué es y a quién se dirige, y nada más. Un botón sin destino sería un botón sin acción. |
+| Plataforma externa caída | El portal central sigue operando; el estado operativo de la ficha se administra desde el catálogo y la ficha ofrece la vía de contacto. |
+| Cambio de dirección | Se edita en el catálogo, sin desplegar código. |
+| Plataforma o herramienta nueva | Se agrega por catálogo, sin tocar el núcleo de membresías. |
+| Alguien pide sincronizar cuentas, expedientes o pagos | No existe: no hay inicio de sesión único, ni API, ni transferencia de datos entre plataformas. |
 
 ---
 
 ## F-18 Asistencia con Gemini y revisión humana
 
-**Fase 10.**
+**Fase 8.**
 
 ```mermaid
 sequenceDiagram
@@ -593,7 +526,7 @@ sequenceDiagram
 
 ## F-19 Eventos, asistencia y constancias
 
-**Fase 11.**
+**Fase 9.**
 
 1. Publicación del evento con elegibilidad, capacidad y, si aplica, costo.
 2. Registro con lista de espera cuando se agota el cupo.
@@ -647,8 +580,6 @@ sequenceDiagram
 | §9.6 Contratos colectivos | F-13 |
 | §9.8 Régimen disciplinario | F-14 |
 | §12 Herramientas | F-15 |
-| §13 CIAN | F-16 |
-| §14 CENI | F-17 |
 | §15 Inteligencia artificial | F-18 |
 | §16.3 Eventos y capacitación | F-19 |
 | §9.9 y §20.3 Conservación y derechos | F-20 |

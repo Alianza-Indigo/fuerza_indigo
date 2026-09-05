@@ -34,8 +34,8 @@ Tres capas, en `app/globals.css`. La regla que las separa es simple: **una panta
 |---|---|---|
 | Sindicato | `--color-indigo-500` | Fuerza Índigo |
 | Alianza | `--color-alianza-500` | Alianza Índigo, acción social |
-| CIAN | `--color-cian-500` | Atención neurodivergente |
-| CENI | `--color-ceni-500` | Certificación de entornos |
+| CIAN | `--color-cian-500` | Acceso a la plataforma de atención neurodivergente |
+| CENI | `--color-ceni-500` | Acceso a la plataforma de certificación de entornos |
 | Herramientas | `--color-tools-500` | NeuroPlan, ADIA y NEXO |
 
 Los cinco comparten luminosidad y varían solo en tono y croma. Es lo que el criterio 2 de la fase pide con «diferencia módulos sin fragmentar el ecosistema», y `tests/unit/design/contrast.test.ts` lo comprueba calculando sobre los tokens, no sobre una captura.

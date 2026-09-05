@@ -17,11 +17,6 @@ export interface NavItem {
   /** Qué se encuentra ahí, en una frase. Se usa en el mapa del sitio y en el pie. */
   readonly description: string;
   readonly module?: 'sindicato' | 'alianza' | 'cian' | 'ceni' | 'herramientas';
-  /**
-   * Fase que habilita el contenido dinámico de la ruta. La página existe desde
-   * la Fase 2 con su contenido editorial; lo que llega después es el dato vivo.
-   */
-  readonly dataFrom?: number;
 }
 
 export interface NavSection {
@@ -67,14 +62,12 @@ export const SITE_NAV: readonly NavSection[] = [
         label: 'Afíliate como agremiado',
         description: 'Requisitos, derechos, cuota y cómo empezar.',
         module: 'sindicato',
-        dataFrom: 4,
       },
       {
         href: '/afiliate/honoraria',
         label: 'Afiliación honoraria',
         description: 'Apoyar al sindicato sin ser persona trabajadora del ramo.',
         module: 'sindicato',
-        dataFrom: 4,
       },
       {
         href: '/solicitar-apoyo',
@@ -87,14 +80,12 @@ export const SITE_NAV: readonly NavSection[] = [
         label: 'Directorio',
         description: 'Profesionales y organizaciones que decidieron aparecer públicamente.',
         module: 'sindicato',
-        dataFrom: 4,
       },
       {
         href: '/verificar',
         label: 'Verificar una credencial',
         description: 'Comprueba si una credencial de Fuerza Índigo está vigente en este momento.',
         module: 'sindicato',
-        dataFrom: 4,
       },
     ],
   },
@@ -112,21 +103,18 @@ export const SITE_NAV: readonly NavSection[] = [
         label: 'CIAN',
         description: 'Centro Integral de Atención Neurodivergente.',
         module: 'cian',
-        dataFrom: 8,
       },
       {
         href: '/ceni',
         label: 'CENI',
         description: 'Certificación de Entornos Neuroinclusivos.',
         module: 'ceni',
-        dataFrom: 9,
       },
       {
         href: '/herramientas',
         label: 'Herramientas',
         description: 'NeuroPlan, ADIA y NEXO.',
         module: 'herramientas',
-        dataFrom: 7,
       },
     ],
   },
@@ -142,7 +130,6 @@ export const SITE_NAV: readonly NavSection[] = [
         href: '/eventos',
         label: 'Eventos',
         description: 'Cursos, talleres y convocatorias abiertas.',
-        dataFrom: 11,
       },
       {
         href: '/contacto',

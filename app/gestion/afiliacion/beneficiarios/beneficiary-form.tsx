@@ -22,7 +22,6 @@ const ORIGENES: readonly Option[] = [
   { value: 'UNION_MEMBER', label: ORIGEN['UNION_MEMBER']! },
   { value: 'DELEGATE', label: ORIGEN['DELEGATE']! },
   { value: 'SOCIAL_STAFF', label: ORIGEN['SOCIAL_STAFF']! },
-  { value: 'CIAN', label: ORIGEN['CIAN']! },
   { value: 'EXTERNAL_REFERRAL', label: ORIGEN['EXTERNAL_REFERRAL']!, hint: 'Escuela, hospital, otra organización.' },
 ];
 

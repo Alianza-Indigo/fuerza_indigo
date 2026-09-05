@@ -543,7 +543,6 @@ enum BeneficiaryOrigin {
   UNION_MEMBER
   DELEGATE
   SOCIAL_STAFF
-  CIAN
   EXTERNAL_REFERRAL
 }
 
@@ -620,8 +619,7 @@ enum CareRelationshipKind {
   RESPONSIBLE_PROFESSIONAL
 }
 
-/// Perfil profesional para el directorio interno, el público y, más adelante,
-/// CIAN y CENI (PRD §7.2).
+/// Perfil profesional para el directorio interno y el público (PRD §7.2).
 model ProfessionalProfile {
   id                 String                   @id @default(uuid(7)) @db.Uuid
   personId           String                   @unique @db.Uuid

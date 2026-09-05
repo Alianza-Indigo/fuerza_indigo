@@ -25,7 +25,7 @@ export interface ResolveActorInput {
  * Compartimentos que concede cada rol.
  *
  * El actor raíz no aparece: su conjunto es vacío, y esa es la salvaguarda que
- * impide que una lectura de soporte alcance información clínica o disciplinaria
+ * impide que una lectura de soporte alcance información social o disciplinaria
  * (docs/PERMISSIONS.md §5.1).
  */
 export const ROLE_COMPARTMENTS: Partial<Record<RoleCode, readonly Compartment[]>> = {
@@ -33,8 +33,6 @@ export const ROLE_COMPARTMENTS: Partial<Record<RoleCode, readonly Compartment[]>
   OVERSIGHT_COMMISSION: ['UNION', 'DISCIPLINARY'],
   TERRITORIAL_DELEGATE: ['UNION'],
   SOCIAL_STAFF: ['SOCIAL'],
-  CIAN_PROFESSIONAL: ['CLINICAL'],
-  CIAN_COORDINATION: ['CLINICAL'],
   UNION_MEMBER: ['UNION'],
 };
 

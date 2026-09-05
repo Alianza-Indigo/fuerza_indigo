@@ -6,11 +6,10 @@
 ## Situación actual
 
 - **Fase activa:** 4 — Afiliación, padrones, directorios y credenciales
-- **Estado:** `APPROVED`
+- **Estado:** `IN_PROGRESS`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
-- **Fecha de cierre:** 5 de septiembre de 2026
-- **SHA del punto de control:** `038297d`
+- **Cierre previo:** 5 de septiembre de 2026 en `038297d`, **reabierto** el mismo día por la corrección de alcance de CIAN y CENI (véase «Corrección de alcance» más abajo)
 - **Fase anterior:** 3 — `APPROVED`, cerrada en `85cf196`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 5 — Estructura territorial, gobierno, asambleas y elecciones, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -85,7 +84,11 @@ Los cuatro controles nuevos de la fase —`C-F4-01` a `C-F4-04`— se comprobaro
 
 ## Defectos abiertos
 
-**Ninguno abierto.** Los veintiuno que aparecieron durante la construcción se corrigieron dentro de la fase, como exige el PRD §0 punto 6, y quedan registrados porque cada uno enseñó algo. Ocho los encontró abrir la pantalla en un navegador; tres, un control de fase; dos, la suite de accesibilidad al extenderse; uno, el propio registro del servidor.
+**Ninguno abierto.** Los veintidós que aparecieron durante la construcción se corrigieron dentro de la fase, como exige el PRD §0 punto 6, y quedan registrados porque cada uno enseñó algo. Ocho los encontró abrir la pantalla en un navegador; tres, un control de fase; dos, la suite de accesibilidad al extenderse; uno, el propio registro del servidor.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse `APPROVED`.
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
@@ -109,6 +112,7 @@ Los cuatro controles nuevos de la fase —`C-F4-01` a `C-F4-04`— se comprobaro
 | `D-F4-019` | **Alta** | `personConsents` recibía el identificador de la persona **por parámetro** y decidía con una sola facultad, `consent.read`, que tenían tanto la Secretaría como cualquier agremiada: bastaba con pedir el identificador de otra para leer su historial completo de consentimientos —para qué autorizó el tratamiento de sus datos, cuándo lo retiró, con qué texto—. Lo destapó una sonda escrita al preparar la pantalla de consentimientos de la persona, no una prueba existente: todas pasaban el identificador de quien preguntaba. La matriz de `PERMISSIONS.md` §4 **siempre dijo `O`** —solo sobre lo propio— para los roles personales: lo que se había separado del contrato eran el catálogo y la semilla | Corregido separando la pareja `consent.read` · `consent.read_own`, como ya estaba separada para otorgar y revocar (ADR-0096). Quien representa con una relación viva también lee. El control `C-F4-03` impide la recaída y se comprobó **dos veces**: la primera versión daba verde con el defecto delante —recortaba la firma en la primera llave, y `input: { personId: string }` lleva una llave dentro de los parámetros—, así que se reescribió contando paréntesis |
 | `D-F4-020` | Baja | El enrutador animaba el desplazamiento en **cada cambio de ruta**: la hoja de estilos declara desplazamiento suave y Next necesita `data-scroll-behavior="smooth"` en `<html>` para desactivarlo durante las transiciones. En una plataforma para personas neurodivergentes, el movimiento involuntario es justo lo que el PRD §5.2 manda poder controlar. Lo dijo el propio servidor de desarrollo en su registro; ninguna prueba lo mira | Corregido declarando el atributo. La preferencia de movimiento reducido sigue ganando por encima de todo |
 | `D-F4-021` | Media | Dos pantallas de afiliación pedían `--color-on-accent`, un token que **nunca se declaró**. Un `var()` roto no falla: la propiedad se queda sin valor y el navegador hereda lo que hubiera, así que el texto del botón principal salía en tinta oscura sobre el índigo del acento. Contraste insuficiente en el llamado a la acción más importante de la pantalla, invisible para los tipos, el linter y toda prueba de dominio | Corregido usando `--color-ink-inverse`, que es el token que existe. Lo destapó la suite de accesibilidad al extenderse a las pantallas con sesión. El control `C-F4-04` lo caza antes y sin levantar un navegador: comprueba que todo token que una pantalla pide esté declarado en la hoja de estilos. Se verificó viéndolo fallar |
+| `D-F4-022` | **Alta** | `C-COH-06` y `C-COH-07` llevaban desde la Fase 0 **dando verde sin mirar**. El lector de defectos exigía que la última celda de la fila dijera literalmente `Abierto` o `Cerrado`; ninguna de las 81 filas del documento lo dice, de modo que devolvía la lista vacía y los dos controles aprobaban sobre cero defectos. La misma forma que `D-F4-019` enseñó con `C-F4-03`: un control que aprueba sin leer es peor que no tenerlo. Lo destapó comprobar, al cerrar esta corrección de alcance, que el verificador **detectara** un defecto abierto | Corregido. El lector usa la forma que el documento tiene de verdad —identificador entre acentos graves, severidad, y la corrección en la última celda— y la regla se invierte: abierto es la celda vacía o la que empieza con `Abierto`, `Pendiente` o `Sin corregir`. `Bloqueante` se añade a las severidades que impiden aprobar. Comprobado viéndolo fallar en sus dos formas: con la celda diciendo `Abierto` y con la celda en blanco, y viéndolo pasar de 0 a 14 defectos leídos al arreglar el lector |
 | `D-F4-004` | Media | `identity.person.merge` tampoco lo tenía ningún rol: la pantalla de fusión de duplicados no la habría podido usar nadie. Lo detectó una prueba de integración al fallar con `FORBIDDEN` | Corregido. Lo recibe `EXECUTIVE_SECRETARY`, que es quien lleva el padrón, y la matriz de `PERMISSIONS.md` §4 registra la fila que le faltaba |
 
 ---
@@ -160,6 +164,39 @@ Las que gobiernan lo construido aquí, en una línea cada una:
 
 ---
 
+## Corrección de alcance · CIAN y CENI son plataformas externas
+
+**Fecha:** 5 de septiembre de 2026. **Instruida por la persona usuaria**, después de que la Fase 4 se cerrara en `038297d`.
+
+**Qué cambió.** CIAN y CENI son plataformas independientes y ya desarrolladas, con su propia autenticación, su propia operación, sus propios pagos y sus propios datos. Este repositorio **no** las construye, no las duplica y no administra su operación. Aparecen exclusivamente como **accesos externos** del ecosistema, con el mismo patrón de ficha que NeuroPlan, ADIA y NEXO: nombre, imagen, descripción breve, público al que se dirige, botón de acceso con indicación accesible de que se abre otra plataforma, y dirección externa **configurable desde el CMS**, nunca escrita en un componente.
+
+**Por qué la fase vuelve a `IN_PROGRESS`.** La instrucción llegó después del cierre y toca el contrato de la fase activa: el modelo de datos, el catálogo de permisos, la semilla de roles y varias pantallas de la Fase 4 llevaban anticipos de CIAN y CENI. Declarar aprobada una fase cuyo alcance acaba de corregirse sería sostener una firma sobre un texto que ya no es el mismo. El cierre previo queda registrado con su SHA; la fase se cierra de nuevo cuando la persona usuaria lo autorice.
+
+**Qué se retiró del repositorio.**
+
+| Ámbito | Qué se retiró |
+|---|---|
+| PRD | Entidades `Cian*` (11) y `Ceni*` (14) de §18; endpoints `/api/v1/cian/*`, `/api/v1/ceni/*` y `/api/v1/verify/ceni/*`; las fases 8 (CIAN) y 9 (CENI); los casos de uso de IA sobre CIAN y CENI. §13 y §14 se reescribieron como «plataforma del ecosistema», con la lista expresa de lo que Fuerza Índigo **no** hace |
+| Fases | El proyecto pasa de trece a **once fases, 0 a 10**. La 7 se reescribe como «Plataformas y herramientas del ecosistema»; 10, 11 y 12 se renumeran a 8, 9 y 10 |
+| Modelo de datos | `ToolDefinition`, `ToolPlan`, `ToolEntitlement`, `ToolLaunch` y `ExternalIdentityLink` se sustituyen por una sola entidad de catálogo, `EcosystemLink`: ficha y dirección de acceso, sin derechos, sin lanzamientos y sin vínculo de identidad |
+| Esquema | **26 valores de enumeración retirados** en once tipos: 5 de `RoleCode`, `Compartment.CLINICAL`, `FileClassification.CLINICAL`, `FileContextKind.CIAN` y `.CENI`, 4 de `CatalogProductKind`, 3 de `ModuleBinding`, 3 de `PaymentAppliesTo`, 2 de `ScholarshipProgram`, 3 de `ConsentPurpose`, `BeneficiaryOrigin.CIAN` y `SupportRequestType.CIAN_ATTENTION`. Más la columna `Subscription.toolEntitlementId`. Un solo valor **nuevo**: `ScholarshipProgram.SERVICE`, donde se funden `CIAN_SERVICE` y `TOOL_ACCESS` para que ninguna beca se pierda |
+| Permisos | Los 5 roles de operación de CIAN y CENI, sus columnas de la matriz, las familias `cian` y `ceni`, y los propósitos de consentimiento `CIAN_CARE`, `CLINICAL_DATA_SHARING` y `TOOL_IDENTITY_EXCHANGE` |
+| Flujos y pruebas | `F-16` y `F-17`; `E2E-10` y `E2E-11`. Los flujos E2E globales pasan de quince a **trece** y se renumeran |
+
+**Qué se conservó.** Las páginas públicas `/cian` y `/ceni`, sus acentos de módulo en el sistema de diseño, y las menciones institucionales del ecosistema: CIAN y CENI siguen siendo parte del ecosistema Alianza Índigo, y la plataforma lo dice. Lo que ya no hace es operarlas.
+
+**Los archivos de las fases 0 a 3 quedan tal cual.** Son el registro de lo que se dijo y se firmó en su momento, y varias de sus líneas nombran módulos y pruebas que esta corrección retira. Reescribirlos convertiría un historial en una versión conveniente del pasado. Lo que rige hoy es este apartado.
+
+**Migración correctiva.** `20260905120000_correccion_de_alcance_cian_y_ceni_externos`. No reescribe ninguna migración aplicada. PostgreSQL no permite retirar un valor de un tipo enumerado, de modo que cada tipo afectado se renombra, se vuelve a crear sin los valores retirados y se reasignan sus columnas —incluidas las de arreglo `consent_version.requiredFor`, `retention_policy.appliesToClassification` y `retention_policy.appliesToContextKind`—. Antes de tocar los tipos, una comprobación recorre las once tablas afectadas y **detiene la migración con un mensaje explícito** si alguna fila conserva un valor retirado: un anticipo se retira, un dato real se resuelve a mano. Verificada de las dos maneras que exige la instrucción:
+
+- **Sobre una base actualizada:** se levantó una base con las 16 migraciones anteriores, se insertaron los cinco roles de CIAN y CENI y un permiso del compartimento clínico, y la migración los retiró dejando `role`, `permission` y `role_permission` sin rastro, sin tipos `_anterior` huérfanos y con los 527 privilegios de columna intactos.
+- **Sobre una instalación nueva:** base vacía, `prisma migrate deploy` con las 17 migraciones y semilla: 14 roles y 97 permisos.
+- **La comprobación se probó viéndola fallar:** con una `retention_policy` que declaraba `CLINICAL`, la migración se detuvo con el nombre exacto de la fila.
+
+**Qué no se tocó.** Los repositorios y el funcionamiento de CIAN y CENI. Esta corrección vive por completo dentro de este repositorio.
+
+---
+
 ## Historial de fases
 
 | Fase | Inicio | Cierre | Estado | SHA del punto de control |
@@ -168,8 +205,8 @@ Las que gobiernan lo construido aquí, en una línea cada una:
 | 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
 | 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
-| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | Afiliación completa de punta a punta: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal. 21 defectos encontrados y cerrados dentro de la fase |
-| 5 a 12 | — | — | No iniciadas | — |
+| 4 | 2026-09-04 | — | `IN_PROGRESS` | Cerrada el 2026-09-05 en `038297d` y **reabierta** el mismo día por la corrección de alcance de CIAN y CENI. Lo construido sigue en pie: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal; 21 defectos encontrados y cerrados |
+| 5 a 10 | — | — | No iniciadas | — |
 
 ---
 

@@ -287,23 +287,23 @@ describe('can · comprobación 5 · consentimiento', () => {
 
 describe('can · comprobación 6 · compartimento', () => {
   /** Prueba negativa 4 de docs/PERMISSIONS.md §9, en su forma de motor. */
-  it('un rol sindical no lee un recurso de compartimento clínico', () => {
+  it('un rol sin compartimento no lee un recurso del compartimento social', () => {
     const actor = personWith(['files.file.download'], { compartments: new Set() });
-    expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'CLINICAL' }).reason).toBe(
+    expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'SOCIAL' }).reason).toBe(
       'COMPARTIMENTO_AJENO',
     );
   });
 
   it('concede a quien tiene el compartimento', () => {
-    const actor = personWith(['files.file.download'], { compartments: new Set(['CLINICAL']) });
-    expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'CLINICAL' }).allowed).toBe(true);
+    const actor = personWith(['files.file.download'], { compartments: new Set(['SOCIAL']) });
+    expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'SOCIAL' }).allowed).toBe(true);
   });
 
   it('el compartimento del recurso prevalece sobre el del permiso', () => {
     // Un permiso genérico usado sobre un recurso compartimentado no se cuela
     // por ser genérico.
     const actor = personWith(['files.file.download'], { compartments: new Set(['DISCIPLINARY']) });
-    expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'CLINICAL' }).reason).toBe(
+    expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'SOCIAL' }).reason).toBe(
       'COMPARTIMENTO_AJENO',
     );
     expect(can(actor, 'files.file.download', { kind: 'FileObject', compartment: 'DISCIPLINARY' }).allowed).toBe(true);

@@ -1,6 +1,6 @@
 # Plan de pruebas y calidad
 
-> Entregable de la **Fase 0** (PRD §24). Contrata la pirámide de pruebas del PRD §22.1, los quince flujos E2E globales del PRD §22.2, los comandos de calidad del PRD §22.3 y los umbrales que gobiernan la puerta universal de salida del PRD §23.2.
+> Entregable de la **Fase 0** (PRD §24). Contrata la pirámide de pruebas del PRD §22.1, los trece flujos E2E globales del PRD §22.2, los comandos de calidad del PRD §22.3 y los umbrales que gobiernan la puerta universal de salida del PRD §23.2.
 
 ---
 
@@ -20,7 +20,7 @@ El plan asigna a cada uno de esos criterios un tipo de prueba concreto, para que
 | Integración | Vitest + PostgreSQL aislado | Casos de uso completos contra base real: transacciones, unicidad, aislamiento por entidad y territorio, auditoría escrita | `tests/integration/` |
 | Contractuales | Vitest + adaptadores controlados | Stripe, Gemini, correo y herramientas: firma, idempotencia, esquema de salida, degradación | `tests/integration/contracts/` |
 | Componentes | Vitest + Testing Library | Componentes críticos con estado: formularios por pasos, tablas con filtros, selectores de consentimiento | `tests/unit/components/` |
-| E2E | Playwright | Los quince flujos globales y los flujos propios de cada fase, en móvil y escritorio | `tests/e2e/` |
+| E2E | Playwright | Los trece flujos globales y los flujos propios de cada fase, en móvil y escritorio | `tests/e2e/` |
 | Accesibilidad | Playwright + motor de reglas + revisión manual | Rutas representativas de cada superficie | `tests/a11y/` |
 | Visuales | Playwright | Rutas representativas en claro y oscuro, 360 px y escritorio | `tests/e2e/visual/` |
 | Migración | Vitest + Prisma | Instalación sobre base vacía y actualización desde la fase anterior | `tests/integration/migrations/` |
@@ -39,9 +39,9 @@ El plan asigna a cada uno de esos criterios un tipo de prueba concreto, para que
 
 ---
 
-## 4. Los quince flujos E2E globales (PRD §22.2)
+## 4. Los trece flujos E2E globales (PRD §22.2)
 
-Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y forma parte de la regresión permanente desde la fase que lo habilita. La Fase 12 los ejecuta íntegros como condición de liberación.
+Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y forma parte de la regresión permanente desde la fase que lo habilita. La Fase 10 los ejecuta íntegros como condición de liberación.
 
 ### E2E-01 · Solicitud, revisión, pago, activación y verificación QR de un agremiado
 **Fase 4** (depende de 3). Recorre `F-01`: requisitos, cuenta, captura, declaraciones, evidencia, aceptación de estatutos, resumen, envío, revisión humana, aclaración con plazo, resolución fundada, cobro, activación por webhook, emisión de credencial y verificación pública del QR. **Asertos:** la solicitud original permanece inalterada tras la revisión; el número de miembro se asigna solo al activar; la credencial verifica como vigente.
@@ -67,25 +67,19 @@ Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y
 ### E2E-08 · Caso disciplinario con audiencia, resolución y recurso
 **Fase 5.** Recorre `F-14`. **Asertos:** sin notificación y sin audiencia no existe transición a resolución; el agremiado accede a su expediente; el recurso se registra y puede revocar la sanción restituyendo derechos; el expediente permanece reservado para quien no está asignado.
 
-### E2E-09 · Acceso a una herramienta por beneficio y revocación al vencer
-**Fase 7.** Recorre `F-15`. **Asertos:** la persona ve por qué tiene acceso y hasta cuándo; el enlace firmado expira y no admite reutilización; al vencer el derecho el lanzamiento se deniega; la caída simulada de la herramienta no bloquea el portal.
+### E2E-09 · Acceso a una plataforma del ecosistema desde su ficha del catálogo
+**Fase 7.** Recorre `F-15`. **Asertos:** la ficha muestra nombre, imagen, descripción y público; una ficha sin dirección configurada no muestra botón; quien pulsa el acceso sabe antes de pulsarlo que sale de Fuerza Índigo; el enlace abre el dominio externo con `rel="noopener noreferrer"` y sin datos personales en la dirección; la caída simulada de la plataforma externa no bloquea el portal.
 
-### E2E-10 · CIAN desde admisión hasta plan y seguimiento
-**Fase 8.** Recorre `F-16`. **Asertos:** el triage es humano; un profesional no asignado no ve el expediente; un rol sindical no ve notas clínicas; la familia accede solo a lo autorizado; la corrección de una nota crea una nota nueva sin sobrescribir la original.
+### E2E-10 · Consulta a Gemini con permisos y revisión humana
+**Fase 8.** Recorre `F-18`. **Asertos:** el prompt proviene de una versión publicada, no del código; las fuentes respetan los permisos del actor; la salida se marca como generada con IA y es editable; una acción sensible exige confirmación humana; con el proveedor caído el flujo continúa por vía humana.
 
-### E2E-11 · CENI desde contratación hasta certificado QR y renovación
-**Fase 9.** Recorre `F-17`. **Asertos:** una organización no accede a otra; cerrar una evaluación preserva versión y evidencia; la decisión de certificación la firma una persona; el verificador distingue vigente, suspendido, vencido y revocado; la contratación se concilia con la entidad receptora correcta.
-
-### E2E-12 · Consulta a Gemini con permisos y revisión humana
-**Fase 10.** Recorre `F-18`. **Asertos:** el prompt proviene de una versión publicada, no del código; las fuentes respetan los permisos del actor; la salida se marca como generada con IA y es editable; una acción sensible exige confirmación humana; con el proveedor caído el flujo continúa por vía humana.
-
-### E2E-13 · Revocación de un rol territorial sin pérdida del historial
+### E2E-11 · Revocación de un rol territorial sin pérdida del historial
 **Fase 5** (base en 1). **Asertos:** al concluir el nombramiento el acceso se revoca automáticamente; los actos realizados durante el periodo permanecen íntegros y atribuidos; las sesiones de la persona saliente no se transfieren a su sustituta.
 
-### E2E-14 · Acceso denegado a un expediente ajeno aunque se conozca su identificador
-**Fase 1**, ampliado en cada fase que agrega expedientes. **Asertos:** la respuesta es `NOT_FOUND` en superficies públicas y de portal; se registra `SecurityEvent` `ACCESS_DENIED`; la respuesta no revela la existencia del recurso ni datos de terceros; se prueba para casos, episodios CIAN, expedientes CENI, procedimientos disciplinarios y archivos.
+### E2E-12 · Acceso denegado a un expediente ajeno aunque se conozca su identificador
+**Fase 1**, ampliado en cada fase que agrega expedientes. **Asertos:** la respuesta es `NOT_FOUND` en superficies públicas y de portal; se registra `SecurityEvent` `ACCESS_DENIED`; la respuesta no revela la existencia del recurso ni datos de terceros; se prueba para casos, procedimientos disciplinarios y archivos.
 
-### E2E-15 · Despliegue desde base vacía mediante migraciones del repositorio
+### E2E-13 · Despliegue desde base vacía mediante migraciones del repositorio
 **Fase 1**, repetido en cada fase. **Asertos:** `prisma migrate deploy` levanta el esquema completo desde cero; la semilla es idempotente y no contiene datos reales; la aplicación arranca y responde la verificación de salud; una migración fallida detiene el despliegue sin dejar el esquema a medias.
 
 ---
@@ -101,7 +95,7 @@ Un flujo E2E global es el recorrido completo con navegador; lo que sigue dice **
 | `E2E-03` | Alta protegida sin membresía, sin solicitud y sin cobro; privacidad reforzada; ausencia del padrón que se remite a la autoridad | `fase4-criterios`, `beneficiaries`, `rosters` |
 | `E2E-06` | Ausencia por omisión, publicación de solo los campos autorizados, retiro que deja de responder e invalida la caché, y señal de no indexación | `directory`, y el recorrido guiado del bloque H en navegador |
 
-Los recorridos con navegador de esta fase se hicieron guiados, paso a paso, sobre la base de desarrollo. Las suites automatizadas de `tests/e2e` y `tests/a11y` cubren las rutas públicas y las pantallas con sesión en los dos perfiles de pantalla; convertir los cuatro flujos completos en especificaciones permanentes es trabajo de la Fase 12, que el PRD §22.2 contrata como condición de liberación.
+Los recorridos con navegador de esta fase se hicieron guiados, paso a paso, sobre la base de desarrollo. Las suites automatizadas de `tests/e2e` y `tests/a11y` cubren las rutas públicas y las pantallas con sesión en los dos perfiles de pantalla; convertir los cuatro flujos completos en especificaciones permanentes es trabajo de la Fase 10, que el PRD §22.2 contrata como condición de liberación.
 
 ---
 

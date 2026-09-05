@@ -645,12 +645,12 @@ describe('una beca gana al descuento y no se acumulan', () => {
   });
 
   it('una exención total no manda a nadie a pagar cero: asienta el cobro como exento', async () => {
-    const productId = await conceptoConPrecio('EXENCION_TOTAL', 800_00, 'CIAN_SERVICE');
+    const productId = await conceptoConPrecio('EXENCION_TOTAL', 800_00, 'SERVICE_SUBSCRIPTION');
 
     const beca = await approveScholarship(await conMotivo(secretaria, 'exención total acreditada'), {
       personId: agremiada.personId,
       legalEntityId: fuerzaId,
-      programKind: 'CIAN_SERVICE',
+      programKind: 'SERVICE',
       coveragePercent: 100,
       justification:
         'La persona no tiene ingresos y el servicio es indispensable para su atención, según consta en su expediente.',
@@ -676,12 +676,12 @@ describe('una beca gana al descuento y no se acumulan', () => {
   it('una beca de un programa no rebaja el de otro', async () => {
     const membresia = await conceptoConPrecio('CUOTA_CON_BECA_DE_CURSO', 300_00, 'UNION_DUE_ORDINARY');
 
-    await approveScholarship(await conMotivo(secretaria, 'beca de curso'), {
+    await approveScholarship(await conMotivo(secretaria, 'beca de servicios'), {
       personId: agremiada.personId,
       legalEntityId: fuerzaId,
-      programKind: 'TOOL_ACCESS',
+      programKind: 'SERVICE',
       coveragePercent: 100,
-      justification: 'Beca de acceso a herramientas, otorgada por la situación acreditada en su expediente.',
+      justification: 'Beca de servicios y suscripciones, otorgada por la situación acreditada en su expediente.',
       validFrom: new Date('2020-01-01T00:00:00.000Z'),
     });
 

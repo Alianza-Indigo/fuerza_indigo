@@ -122,7 +122,7 @@ function resolveGrants(actor: ActorContext, now: Date): Grant[] {
         // asimetría es deliberada. Las dos entidades son personas morales
         // separadas y ningún nombramiento debe cruzarlas por descuido. Las
         // organizaciones, en cambio, viven DENTRO de una entidad, y hay cargos
-        // —la coordinación del CENI— cuya función es precisamente verlas todas.
+        // cuya función es precisamente verlas todas.
         // Por eso aquí `null` sí significa «todas las de su entidad»: la
         // comprobación de entidad ya se hizo y sigue acotando. Lo que impide el
         // descuido es que un rol de alcance ORGANIZATION no pueda nombrarse sin

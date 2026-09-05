@@ -65,7 +65,7 @@
 
 **Contexto.** El PRD §4.4 exige un Superadmin definido por variables de entorno **sin registro en base**, y el §20.1 exige listado de sesiones propias, revocación inmediata, rotación tras autenticar e invalidación masiva por versión de sesión.
 
-**Decisión.** Módulo de autenticación **propio**: sesión opaca cuyo hash se guarda en `Session`, cookie endurecida, y hash de contraseña **Argon2id** mediante `@node-rs/argon2` (binarios precompilados compatibles con el runtime de Node.js en Vercel). Parámetros iniciales documentados y almacenados junto al hash: memoria 19 MiB, iteraciones 2, paralelismo 1, con revisión al inicio de la Fase 12.
+**Decisión.** Módulo de autenticación **propio**: sesión opaca cuyo hash se guarda en `Session`, cookie endurecida, y hash de contraseña **Argon2id** mediante `@node-rs/argon2` (binarios precompilados compatibles con el runtime de Node.js en Vercel). Parámetros iniciales documentados y almacenados junto al hash: memoria 19 MiB, iteraciones 2, paralelismo 1, con revisión al inicio de la Fase 10.
 
 **Alternativas descartadas.** Una biblioteca de autenticación de propósito general: obligaría a modelar el Superadmin sin base como un caso especial fuera de su diseño, y a reimplementar de todos modos el listado y la revocación de sesiones. `bcrypt`: inferior frente a ataques con hardware especializado. JSON Web Tokens como sesión: no permiten revocación inmediata, requisito explícito del PRD.
 
@@ -174,7 +174,7 @@
 
 **Contexto.** PRD §17.4: los archivos son privados por omisión y no basta confiar en una URL difícil de adivinar.
 
-**Decisión.** Todo objeto se escribe con acceso privado y ruta lógica opaca. Las descargas pasan por una ruta de la aplicación que **reevalúa la política** y emite una URL temporal cuya vigencia depende de la clasificación del archivo (tabla en `INTEGRATIONS.md` §4). El material sensible y clínico exige motivo y no admite vista previa en el navegador.
+**Decisión.** Todo objeto se escribe con acceso privado y ruta lógica opaca. Las descargas pasan por una ruta de la aplicación que **reevalúa la política** y emite una URL temporal cuya vigencia depende de la clasificación del archivo (tabla en `INTEGRATIONS.md` §4). El material sensible exige motivo y no admite vista previa en el navegador.
 
 ---
 
@@ -282,7 +282,7 @@
 
 ## ADR-0025 · Bandeja de salida transaccional para otorgar derechos
 
-**Contexto.** Un pago confirmado debe activar una membresía, un derecho de herramienta, un servicio CIAN o un programa CENI. El PRD §11.4 exige que el webhook actualice pagos y derechos de acceso mediante transacciones. Pero el mapa de módulos sitúa `billing` **por debajo** de esos módulos y prohíbe dependencias circulares: si `billing` los invocara, rompería el grafo. La primera redacción de la arquitectura mencionaba "un evento de dominio o un módulo de coordinación superior" sin decidir cuál ni definirlo (defecto `D-F0-006`).
+**Contexto.** Un pago confirmado debe activar una membresía o un registro en un evento. El PRD §11.4 exige que el webhook actualice pagos y derechos de acceso mediante transacciones. Pero el mapa de módulos sitúa `billing` **por debajo** de esos módulos y prohíbe dependencias circulares: si `billing` los invocara, rompería el grafo. La primera redacción de la arquitectura mencionaba "un evento de dominio o un módulo de coordinación superior" sin decidir cuál ni definirlo (defecto `D-F0-006`).
 
 **Decisión.** Bandeja de salida transaccional en `platform/events`, del que dependen tanto el publicador como los consumidores:
 
@@ -290,7 +290,7 @@
 2. Tras confirmar, el mismo proceso intenta la entrega **en memoria**; en operación normal el derecho se otorga en el mismo instante.
 3. Si esa entrega falla o el proceso termina antes, el despachador de trabajos reintenta desde el mensaje persistido.
 4. Cada manejador es idempotente por `(outboxMessageId, handlerCode)`, de modo que la entrega al menos una vez produce efecto exactamente una vez.
-5. `billing` publica un nombre de evento; no conoce a sus consumidores. `membership`, `tools`, `cian`, `ceni` y `events` registran manejadores; no conocen a `billing`.
+5. `billing` publica un nombre de evento; no conoce a sus consumidores. `membership` y `events` registran manejadores; no conocen a `billing`.
 
 **Alternativa descartada.** Un módulo coordinador por encima de todos, que hospedara el webhook y ejecutara el otorgamiento en la misma transacción. Es más simple de leer, pero concentra el conocimiento de todos los módulos de derechos en un punto: cada herramienta, programa o servicio nuevo obligaría a modificarlo, en contra de la extensibilidad que pide el PRD §24 Fase 7.
 
@@ -336,9 +336,9 @@
 
 ## ADR-0029 · Llavero de firma con identificador de clave
 
-**Contexto.** `QR_SIGNING_SECRET` era una clave única sin versión. Rotarla invalidaba de golpe todas las credenciales sindicales y todos los distintivos CENI vigentes, lo que convertía una medida rutinaria de higiene criptográfica en un incidente institucional (defecto `D-F0-012`).
+**Contexto.** `QR_SIGNING_SECRET` era una clave única sin versión. Rotarla invalidaba de golpe todas las credenciales sindicales vigentes, lo que convertía una medida rutinaria de higiene criptográfica en un incidente institucional (defecto `D-F0-012`).
 
-**Decisión.** La variable pasa a ser un **llavero**: una lista de entradas `identificador:clave`, donde la primera es la activa. `MemberCredential` y `CeniCertificate` guardan en `signingKeyId` la clave con la que se firmaron. Rotar consiste en anteponer una clave nueva; lo emitido antes sigue verificando con la anterior mientras permanezca en el llavero.
+**Decisión.** La variable pasa a ser un **llavero**: una lista de entradas `identificador:clave`, donde la primera es la activa. `MemberCredential` guarda en `signingKeyId` la clave con la que se firmó. Rotar consiste en anteponer una clave nueva; lo emitido antes sigue verificando con la anterior mientras permanezca en el llavero.
 
 **Consecuencia operativa.** Una entrada solo se retira cuando ya no queda credencial viva que dependa de ella. El panel de salud muestra ese conteo por clave antes de permitir el retiro, porque retirar una clave con credenciales vigentes sí produce la invalidación masiva que esta decisión evita.
 
@@ -445,7 +445,7 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 
 **Decisión.** Un nombramiento sin entidad no alcanza ninguna. El alcance total sigue existiendo para el actor raíz y para los trabajos programados, pero se declara de forma explícita en su propia rama de `resolveGrants`, no por omisión de un campo. Al otorgar, un rol con permisos exige entidad jurídica, y uno de alcance `ORGANIZATION` exige además organización.
 
-**La asimetría con las organizaciones es deliberada.** Las dos entidades son personas morales distintas y ningún nombramiento debe cruzarlas por descuido. Las organizaciones viven **dentro** de una entidad, y hay cargos —la coordinación del CENI— cuya función es verlas todas. Ahí `null` sí significa «todas las de su entidad», porque la comprobación de entidad ya acotó antes. Lo que evita el descuido es que un rol de alcance `ORGANIZATION` no pueda nombrarse sin ella.
+**La asimetría con las organizaciones es deliberada.** Las dos entidades son personas morales distintas y ningún nombramiento debe cruzarlas por descuido. Las organizaciones viven **dentro** de una entidad, y hay cargos cuya función es verlas todas. Ahí `null` sí significa «todas las de su entidad», porque la comprobación de entidad ya acotó antes. Lo que evita el descuido es que un rol de alcance `ORGANIZATION` no pueda nombrarse sin ella.
 
 **Principio que queda.** Un valor por omisión que amplía el acceso es un permiso que nadie concedió. Cuando la ausencia de un dato tenga que significar algo, que signifique lo restrictivo.
 
@@ -795,7 +795,7 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 
 ## ADR-0067 · Los permisos de la Fase 4 no llevan compartimento
 
-**Contexto.** El esquema tiene compartimentos (`UNION`, `SOCIAL`, `CLINICAL`, `DISCIPLINARY`) y el motor de permisos los comprueba. Era tentador marcar los padrones como `UNION` y el registro de personas beneficiarias como `SOCIAL`.
+**Contexto.** El esquema tiene compartimentos (`UNION`, `SOCIAL`, `DISCIPLINARY`) y el motor de permisos los comprueba. Era tentador marcar los padrones como `UNION` y el registro de personas beneficiarias como `SOCIAL`.
 
 **Decisión.** Ningún permiso de esta fase declara compartimento.
 
@@ -1231,10 +1231,54 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 
 **Contexto.** `personConsents` recibía el identificador de la persona **por parámetro** y decidía con una sola facultad, `consent.read`, que tenían tanto la Secretaría Ejecutiva como cualquier persona agremiada. Bastaba con pedir el identificador de otra para leer su historial completo de consentimientos: para qué autorizó el tratamiento de sus datos, cuándo lo retiró y con qué texto (defecto `D-F4-019`).
 
-**Decisión.** La pareja se separa, como ya estaba separada para otorgar y revocar (ADR-0077): `consent.read` es institucional y `consent.read_own` cubre lo propio y lo de quien se representa con una relación de cuidado viva. Los roles personales —solicitante, agremiada, honoraria, beneficiaria protegida, usuaria de organización CENI— pasan a la segunda; la Secretaría y la atención social conservan la primera.
+**Decisión.** La pareja se separa, como ya estaba separada para otorgar y revocar (ADR-0077): `consent.read` es institucional y `consent.read_own` cubre lo propio y lo de quien se representa con una relación de cuidado viva. Los roles personales —solicitante, agremiada, honoraria y beneficiaria protegida— pasan a la segunda; la Secretaría y la atención social conservan la primera.
 
 **Quien representa también lee.** Si con una relación acreditada se puede otorgar y retirar en nombre de otra persona, hay que poder ver qué hay otorgado: decidir a ciegas sobre los datos de alguien a quien se representa es peor que no poder decidir.
 
 **Por qué el patrón se vuelve control.** Es la tercera vez que aparece la misma forma —`D-F4-009`, `D-F4-017` y ahora esta—: una facultad que mezcla lo propio con lo ajeno. `C-F4-03` la caza mecánicamente: si el catálogo define la pareja `X` / `X_own`, ninguna función que reciba un `personId` puede decidir mencionando solo `X`.
 
 **Su primera versión daba verde con el defecto delante.** Recortaba la firma en la primera llave, y una firma como `input: { personId: string }` lleva una llave **dentro** de los parámetros: el nombre que buscaba quedaba fuera. Se corrigió contando paréntesis. Un control que aprueba sin mirar es peor que no tenerlo, porque además tranquiliza.
+
+---
+
+## ADR-0097 · CIAN y CENI se muestran y se enlazan; no se construyen aquí
+
+**Contexto.** El PRD contrataba dos fases enteras para construir CIAN y CENI dentro de este repositorio: admisión, agenda, expedientes y notas clínicas por un lado; CRM de organizaciones, evaluaciones versionadas, evidencias y certificados por el otro. El esquema ya llevaba los anticipos: cinco roles, un compartimento clínico, valores de enumeración en pagos, becas, consentimientos y archivos. Las dos plataformas, sin embargo, **existen, son independientes y ya están desarrolladas**, con su propia autenticación, su operación, sus cobros y sus datos.
+
+**Decisión.** Fuerza Índigo no las construye, no las duplica y no administra su operación. Las presenta como servicios del ecosistema y lleva a ellas: ficha con nombre, imagen, descripción breve y público al que se dirige, y un botón de acceso que abre su dirección externa. El acceso es **únicamente una redirección**: sin inicio de sesión único, sin API, sin transferencia de datos y sin sincronización de personas, expedientes o pagos.
+
+**El mismo patrón para todas.** CIAN, CENI, NeuroPlan, ADIA y NEXO comparten una sola entidad de catálogo, `EcosystemLink`, y una sola pantalla. No hay casos especiales escritos en código: una plataforma nueva es un alta de catálogo. Esto sustituye a `ToolDefinition`, `ToolPlan`, `ToolEntitlement`, `ToolLaunch` y `ExternalIdentityLink`, que administraban elegibilidad, derechos de acceso, lanzamientos firmados y vínculo de identidad —todo ello innecesario cuando el acceso es una salida a otro dominio.
+
+**Las direcciones no viven en los componentes.** Se administran desde la superficie de contenidos que el CMS ya tiene, de modo que cambiar un enlace no exige desplegar. No se crea un subsistema aparte para esto: el catálogo configurable ya estaba previsto. Y una ficha sin dirección configurada **no muestra botón**: un botón sin destino es exactamente el botón sin acción que el PRD §0.3 prohíbe.
+
+**Lo que se conserva.** CIAN y CENI siguen siendo parte del ecosistema Alianza Índigo y la plataforma lo dice: sus páginas públicas, su acento de módulo y las menciones institucionales se quedan. Lo que desaparece es la pretensión de operarlas desde aquí.
+
+**Efecto en el plan.** El proyecto pasa de trece a **once fases, 0 a 10**. La Fase 7 se convierte en el catálogo de plataformas y herramientas; las antiguas 8 y 9 desaparecen; 10, 11 y 12 se renumeran a 8, 9 y 10.
+
+---
+
+## ADR-0098 · Un valor de enumeración se retira recreando el tipo, y solo si nadie lo usa
+
+**Contexto.** La corrección de alcance de ADR-0097 obliga a retirar 26 valores de enumeración repartidos en once tipos, más una columna. PostgreSQL **no permite eliminar un valor de un tipo enumerado**, y las migraciones ya aplicadas no se reescriben.
+
+**Decisión.** Una migración correctiva que, por cada tipo afectado, lo renombra, crea el tipo nuevo sin los valores retirados, reasigna todas sus columnas —incluidas las de arreglo— y elimina el antiguo. Los privilegios de columna sobreviven a la reasignación, que es lo que permite que el rol acotado de la aplicación siga funcionando sin volver a otorgar nada.
+
+**Antes de tocar nada, se comprueba que nadie lo use.** Una comprobación recorre las tablas afectadas y **detiene la migración con el nombre exacto de la fila** si alguna conserva un valor retirado. La alternativa —reinterpretar el dato en silencio— convertiría una corrección de alcance en una pérdida de información que nadie vería. Un anticipo se retira; un dato real se resuelve a mano.
+
+**Salvo cuando existe un equivalente fiel.** `ScholarshipProgram` conserva un programa de servicios: `CIAN_SERVICE` y `TOOL_ACCESS` se funden en `SERVICE`. Una beca es la constancia de que alguien no puede pagar, y eso no se borra porque el catálogo se haya reordenado; la beca sobrevive con su cobertura, su justificación y su vigencia.
+
+**Se probó de las tres maneras que importan:** sobre una base con las migraciones anteriores y los cinco roles sembrados; sobre una instalación desde cero; y **viendo fallar la comprobación**, con una fila que declaraba un valor retirado.
+
+---
+
+## ADR-0099 · Un control que no reconoce el documento que lee no es un control
+
+**Contexto.** `C-COH-06` —una fase con defectos abiertos no puede declararse aprobada— y `C-COH-07` —cada defecto abierto tiene su tarea de corrección— leían `PHASE_STATUS.md` con una expresión que exigía que la última celda de la fila dijera literalmente `Abierto` o `Cerrado`. **Ninguna de las 81 filas de defecto del documento lo dice:** la última columna cuenta cómo se corrigió. El lector devolvía la lista vacía y los dos controles aprobaban sobre cero defectos, desde la Fase 0 (defecto `D-F4-022`).
+
+**Decisión.** El lector usa la forma que el documento tiene de verdad: identificador en la primera celda —entre acentos graves o sin ellos—, severidad en la segunda, corrección en la última. Y la regla se invierte: un defecto está **abierto** si su última celda está vacía o empieza con `Abierto`, `Pendiente` o `Sin corregir`. Una celda en blanco es un defecto abierto, no un defecto sin documentar. `Bloqueante` se suma a las severidades que impiden aprobar.
+
+**Por qué el silencio cuenta como abierto y no al revés.** La regla contraria —cerrado salvo que diga «abierto»— premia el olvido: quien añade una fila y no la completa obtiene el verde. Así, el descuido cuesta un control rojo, que es el lado correcto por el que equivocarse.
+
+**La convención queda escrita donde se usa**, encima de la tabla de defectos, para que quien añada una fila sepa qué está declarando.
+
+**Es la segunda vez en esta fase.** `C-F4-03` también dio verde con el defecto delante (ADR-0096). Un control se prueba viéndolo fallar contra el código o el documento que lo provoca; si nunca se le ha visto en rojo, lo único que consta es que no rompe nada.

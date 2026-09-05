@@ -32,12 +32,11 @@ const TICKET_TTL_SECONDS: Record<FileClassification, number> = {
   INTERNAL: 900,
   RESTRICTED: 300,
   SENSITIVE_PERSONAL: 120,
-  CLINICAL: 120,
   LEGAL_PRIVILEGED: 120,
 };
 
 /** Clasificaciones que exigen motivo escrito y no admiten vista previa. */
-const SENSITIVE: ReadonlySet<FileClassification> = new Set(['SENSITIVE_PERSONAL', 'CLINICAL', 'LEGAL_PRIVILEGED']);
+const SENSITIVE: ReadonlySet<FileClassification> = new Set(['SENSITIVE_PERSONAL', 'LEGAL_PRIVILEGED']);
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
@@ -242,7 +241,7 @@ export async function authorizeDownload(
       kind: 'FileObject',
       id: file.id,
       legalEntityId: file.legalEntityId,
-      compartment: file.contextKind === 'CIAN' ? 'CLINICAL' : file.contextKind === 'CASE' ? 'SOCIAL' : null,
+      compartment: file.contextKind === 'CASE' ? 'SOCIAL' : null,
     },
     { hasLiveAssignment: () => isOwner },
   );

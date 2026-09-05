@@ -245,14 +245,36 @@ function entityPhaseIndex() {
   return index;
 }
 
-/** Defectos registrados en docs/PHASE_STATUS.md con su estado. */
+/**
+ * Defectos registrados en docs/PHASE_STATUS.md con su estado.
+ *
+ * Lee la forma que el documento **usa de verdad**: una fila por defecto, con el
+ * identificador en la primera celda —entre acentos graves o sin ellos—, la
+ * severidad en la segunda y, en la última, o bien la corrección o bien nada.
+ *
+ * La versión anterior exigía que la última celda dijera literalmente `Abierto`
+ * o `Cerrado`. Ninguna de las 81 filas del documento lo dice, de modo que el
+ * lector devolvía la lista vacía y los dos controles que dependen de él —
+ * `C-COH-06` y `C-COH-07`— llevaban desde la Fase 0 dando verde sin mirar
+ * (defecto `D-F4-022`). Un control que aprueba sin leer es peor que no tenerlo.
+ *
+ * La regla es al revés y no admite silencios: la última celda cuenta cómo se
+ * corrigió el defecto, y un defecto **abierto** la deja vacía o la empieza con
+ * `Abierto`, `Pendiente` o `Sin corregir`. Una celda vacía es un defecto
+ * abierto, no un defecto sin documentar.
+ */
 function registeredDefects() {
   const status = read('docs/PHASE_STATUS.md');
   if (status === null) return [];
   const found = [];
   for (const line of status.split('\n')) {
-    const m = line.match(/^\|\s*(D-F\d+-\d+)\s*\|.*\|\s*(Abierto|Cerrado)\s*\|/);
-    if (m) found.push({ id: m[1], open: m[2] === 'Abierto', severity: line.split('|')[2]?.trim() ?? '' });
+    if (!/^\|\s*`?D-F\d+-\d+`?\s*\|/.test(line)) continue;
+    const celdas = line.split('|').slice(1, -1).map((c) => c.trim());
+    const id = (celdas[0] ?? '').replace(/`/g, '');
+    const severity = celdas[1] ?? '';
+    const cierre = celdas[celdas.length - 1] ?? '';
+    const abierto = cierre === '' || /^(Abierto|Pendiente|Sin corregir|No corregido)\b/i.test(cierre);
+    found.push({ id, open: abierto, severity });
   }
   return found;
 }
@@ -336,7 +358,7 @@ const CHECKS = [
   },
   {
     id: 'C-DATA-01',
-    title: 'Todas las entidades del PRD §18.1–18.10 están modeladas o consolidadas con justificación',
+    title: 'Todas las entidades del PRD §18.1–18.8 están modeladas o consolidadas con justificación',
     phases: 'all',
     run() {
       const model = read('docs/DATA_MODEL.md');
@@ -536,7 +558,7 @@ const CHECKS = [
       if (status === null) return fail('No existe docs/PHASE_STATUS.md.');
       const declared = status.match(/^-\s*\*\*Estado:\*\*\s*`?(IN_PROGRESS|BLOCKED|APPROVED)`?/m);
       const open = registeredDefects().filter((d) => d.open);
-      const blocking = open.filter((d) => /Cr[íi]tica|Alta|Media/i.test(d.severity));
+      const blocking = open.filter((d) => /Bloqueante|Cr[íi]tica|Alta|Media/i.test(d.severity));
       if (declared && declared[1] === 'APPROVED' && blocking.length) {
         return fail([
           `La fase se declara APPROVED con ${blocking.length} defecto(s) de severidad bloqueante abiertos: ${blocking.map((d) => d.id).join(', ')}.`,
@@ -641,7 +663,7 @@ const CHECKS = [
   },
   {
     id: 'C-PHASE-01',
-    title: 'El backlog cubre las 13 fases sin tareas huérfanas',
+    title: 'El backlog cubre las 11 fases sin tareas huérfanas',
     phases: 'all',
     run() {
       const backlog = read('docs/BACKLOG.md');
@@ -664,7 +686,7 @@ const CHECKS = [
       }
       const orphanSection = /##\s+Tareas sin fase/i.test(backlog);
       if (orphanSection) problems.push('El backlog declara una sección de tareas sin fase; el PRD §24 Fase 0 lo prohíbe.');
-      return problems.length ? fail(problems) : ok(['13 fases con backlog asignado y sin tareas huérfanas.']);
+      return problems.length ? fail(problems) : ok(['11 fases con backlog asignado y sin tareas huérfanas.']);
     },
   },
   {
@@ -907,7 +929,7 @@ const CHECKS = [
         .join('\n');
 
       const obligatorias = [
-        ['1', 'prueba negativa 1', /acceso horizontal|E2E-14|expediente ajeno|archivo ajeno/i],
+        ['1', 'prueba negativa 1', /acceso horizontal|E2E-12|expediente ajeno|archivo ajeno/i],
         ['2', 'escalamiento vertical', /escalamiento vertical|elevación de privilegios|no posee/i],
         ['3', 'territorio ajeno', /FUERA_DE_TERRITORIO/],
         ['9', 'superadmin acotado', /SUPERADMIN_GRANTED/],

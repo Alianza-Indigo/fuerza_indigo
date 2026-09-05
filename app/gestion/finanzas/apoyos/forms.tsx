@@ -216,9 +216,8 @@ export function ApproveScholarshipForm({ entidades }: { entidades: readonly Opci
         required
         options={[
           { value: 'MEMBERSHIP', label: 'Cuotas y membresía' },
-          { value: 'CIAN_SERVICE', label: 'Servicios del CIAN' },
+          { value: 'SERVICE', label: 'Servicios y suscripciones' },
           { value: 'COURSE', label: 'Cursos y programas formativos' },
-          { value: 'TOOL_ACCESS', label: 'Acceso a herramientas' },
         ]}
         {...(errores['programKind'] === undefined ? {} : { errors: errores['programKind'] })}
       />

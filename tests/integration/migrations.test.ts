@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createEmptyDatabase, createTestDatabase, type TestDatabase } from './helpers/database';
 
 /**
- * E2E-15 · Despliegue desde base vacía mediante las migraciones del repositorio
+ * E2E-13 · Despliegue desde base vacía mediante las migraciones del repositorio
  * (docs/TEST_PLAN.md §4, §6).
  *
  * La base sobre la que corren estas pruebas se construyó ejecutando

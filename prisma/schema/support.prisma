@@ -94,7 +94,7 @@ model SupportRequest {
 
 /// Tipos de la entrada única de ayuda (PRD §10.1).
 ///
-/// Son los doce del PRD, con los nombres que contrata `docs/DATA_MODEL.md` §7,
+/// Son los once del PRD, con los nombres que contrata `docs/DATA_MODEL.md` §7,
 /// más `GENERAL_CONTACT`: el formulario de contacto y el de solicitud de apoyo
 /// son el mismo acto —alguien escribe desde fuera— y separarlos en dos tablas
 /// haría que una de las dos se quedara atrás. Lo que cambia es qué tipos se
@@ -108,7 +108,6 @@ enum SupportRequestType {
   HEALTH_ACCESS
   ACCESSIBILITY
   FAMILY_GUIDANCE
-  CIAN_ATTENTION
   PSYCHOSOCIAL_RISK
   VIOLENCE_OR_URGENCY
   TRAINING_OR_INSTITUTIONAL_SUPPORT

@@ -20,7 +20,7 @@ export interface RelacionFormState {
   readonly fieldErrors?: Record<string, string[]>;
 }
 
-const ALCANCES = ['MEMBERSHIP', 'CASES', 'CIAN', 'DOCUMENTS', 'NOTIFICATIONS'] as const;
+const ALCANCES = ['MEMBERSHIP', 'CASES', 'DOCUMENTS', 'NOTIFICATIONS'] as const;
 const nulo = (valor: string): string | null => (valor === '' ? null : valor);
 
 export async function registerCareRelationshipAction(
@@ -106,10 +106,7 @@ export async function grantConsentAction(
       | 'DIRECTORY_PUBLICATION'
       | 'CASE_PROCESSING'
       | 'INTER_ENTITY_REFERRAL'
-      | 'CIAN_CARE'
-      | 'CLINICAL_DATA_SHARING'
       | 'AI_ASSISTANCE'
-      | 'TOOL_IDENTITY_EXCHANGE'
       | 'MARKETING_COMMUNICATIONS'
       | 'EVENT_PARTICIPATION'
       | 'MINOR_REPRESENTATION',

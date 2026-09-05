@@ -170,7 +170,7 @@ describe('alta de una atención protegida', () => {
     const ajeno = await registerBeneficiary(suyo, {
       personId: persona.personId,
       legalEntityId: entidadId,
-      originKind: 'CIAN',
+      originKind: 'EXTERNAL_REFERRAL',
       initialNeed: NECESIDAD,
     });
     expect(ajeno.ok).toBe(false);
@@ -326,7 +326,7 @@ describe('el padrón de atenciones', () => {
     const alta = await registerBeneficiary(secretaria, {
       personId: persona.personId,
       legalEntityId: entidadId,
-      originKind: 'CIAN',
+      originKind: 'EXTERNAL_REFERRAL',
       initialNeed: 'Una necesidad que no tiene por qué leerse de pasada en una lista.',
     });
     if (!alta.ok) throw alta.error;

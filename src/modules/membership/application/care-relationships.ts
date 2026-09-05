@@ -39,7 +39,7 @@ const TIPOS = [
 ] as const;
 
 /** Módulos que una relación puede llegar a alcanzar, si además hay consentimiento. */
-const ALCANCES = ['MEMBERSHIP', 'CASES', 'CIAN', 'DOCUMENTS', 'NOTIFICATIONS'] as const;
+const ALCANCES = ['MEMBERSHIP', 'CASES', 'DOCUMENTS', 'NOTIFICATIONS'] as const;
 
 export const registerCareRelationshipSchema = z.object({
   /** Quien cuida, representa o acompaña. */

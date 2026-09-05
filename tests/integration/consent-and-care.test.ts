@@ -228,7 +228,7 @@ describe('otorgar y revocar un consentimiento', () => {
 
     const intento = await grantConsent(secretaria, {
       personId: quien.personId,
-      purpose: 'CLINICAL_DATA_SHARING',
+      purpose: 'CASE_PROCESSING',
       consentVersionId: versionId,
       medium: 'SCREEN',
     });

@@ -8,7 +8,7 @@ import { PERMISSIONS } from '@/platform/authz/permissions';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 
 /**
- * E2E-15 · Despliegue desde base vacía (docs/TEST_PLAN.md §4, §6).
+ * E2E-13 · Despliegue desde base vacía (docs/TEST_PLAN.md §4, §6).
  *
  * Recorre lo que hace un despliegue real y en el mismo orden: migraciones sobre
  * una base vacía, semilla, verificación de salud y arranque de la primera
@@ -42,7 +42,7 @@ describe('la semilla', () => {
     };
 
     expect(primera.entidades).toBe(2);
-    expect(primera.roles).toBe(19);
+    expect(primera.roles).toBe(14);
     expect(primera.permisos).toBe(PERMISSIONS.length);
     expect(primera.territorios).toBeGreaterThan(30);
     expect(primera.reglas).toBeGreaterThan(0);

@@ -22,10 +22,6 @@ const TIPO: Record<string, string> = {
   HONORARY_MEMBERSHIP: 'Membresía honoraria',
   SERVICE_SUBSCRIPTION: 'Suscripción',
   COURSE: 'Curso',
-  CIAN_SERVICE: 'Servicio del CIAN',
-  CENI_PROGRAM: 'Programa del CENI',
-  CENI_ASSESSMENT: 'Evaluación del CENI',
-  CENI_CERTIFICATION: 'Certificación del CENI',
   RENEWAL: 'Renovación',
   DONATION: 'Donativo',
 };

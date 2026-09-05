@@ -7,7 +7,7 @@ import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { actorDeMigracion, contextoDe, crearPersonaConCuenta, nombrar, type PersonaDePrueba } from './helpers/fixtures';
 
 /**
- * E2E-14 y prueba negativa 13 (docs/TEST_PLAN.md §4, docs/PERMISSIONS.md §9).
+ * E2E-12 y prueba negativa 13 (docs/TEST_PLAN.md §4, docs/PERMISSIONS.md §9).
  *
  * Criterio de la Fase 1: **un archivo privado no puede abrirse mediante su URL
  * persistente sin autorización**. Aquí se comprueban las dos mitades de esa
@@ -23,7 +23,7 @@ let delegada: PersonaDePrueba;
 let secretaria: PersonaDePrueba;
 let entidadId: string;
 let archivoInterno: string;
-let archivoClinico: string;
+let archivoReservado: string;
 
 async function crearArchivo(opciones: {
   classification: FileClassification;
@@ -86,9 +86,9 @@ beforeAll(async () => {
     contextKind: 'GOVERNANCE',
     ownerPersonId: propietaria.personId,
   });
-  archivoClinico = await crearArchivo({
-    classification: 'CLINICAL',
-    contextKind: 'CIAN',
+  archivoReservado = await crearArchivo({
+    classification: 'SENSITIVE_PERSONAL',
+    contextKind: 'CASE',
     ownerPersonId: propietaria.personId,
   });
 }, 180_000);
@@ -97,7 +97,7 @@ afterAll(async () => {
   await base.destroy();
 });
 
-describe('E2E-14 · conocer el identificador de un archivo ajeno no sirve de nada', () => {
+describe('E2E-12 · conocer el identificador de un archivo ajeno no sirve de nada', () => {
   it('quien no tiene el permiso recibe «no encontrado», no «no autorizado»', async () => {
     const actor = await contextoDe(base.prisma, ajena);
     const resultado = await authorizeDownload(actor, archivoInterno);
@@ -243,50 +243,50 @@ describe('prueba negativa 13 · el pase no sustituye a la autorización', () => 
 
   it('la vigencia del pase es más corta cuanto más sensible es el archivo', async () => {
     const interno = await pase(propietaria, archivoInterno);
-    const clinico = await contextoDe(base.prisma, propietaria);
-    const ticketClinico = await authorizeDownload(clinico, archivoClinico);
+    const titular = await contextoDe(base.prisma, propietaria);
+    const ticketReservado = await authorizeDownload(titular, archivoReservado);
 
-    // La propietaria alcanza su archivo clínico por ser suyo, sin necesidad de
+    // La propietaria alcanza su archivo reservado por ser suyo, sin necesidad de
     // compartimento: el compartimento acota a terceros, no a la titular.
-    if (ticketClinico.ok) {
-      const url = new URL(`https://ejemplo.invalid${ticketClinico.data.path}`);
+    if (ticketReservado.ok) {
+      const url = new URL(`https://ejemplo.invalid${ticketReservado.data.path}`);
       expect(Number(url.searchParams.get('exp'))).toBeLessThan(interno.exp);
     }
   });
 });
 
-describe('prueba negativa 4 · compartimento clínico', () => {
-  it('la Secretaría Ejecutiva no tiene el compartimento clínico', async () => {
-    const actor = await contextoDe(base.prisma, secretaria);
+describe('prueba negativa 4 · compartimento social', () => {
+  it('la delegación territorial no tiene el compartimento social', async () => {
+    const actor = await contextoDe(base.prisma, delegada);
     expect([...actor.compartments]).toContain('UNION');
-    expect([...actor.compartments]).not.toContain('CLINICAL');
+    expect([...actor.compartments]).not.toContain('SOCIAL');
   });
 
-  it('con la descarga sensible pero sin asignación, el archivo clínico ajeno no se abre', async () => {
+  it('con la descarga sensible pero sin asignación, el archivo reservado ajeno no se abre', async () => {
     // La denegación llega por la comprobación 4 —asignación viva sobre el
     // expediente— antes que por la 6, porque ese es el orden del contrato. En la
     // Fase 1 no existen todavía expedientes que asignar, de modo que la
     // comprobación de compartimento sobre archivos no es alcanzable aquí: se
-    // ejercita en las pruebas del motor, y de extremo a extremo en la Fase 8,
-    // cuando el CIAN tenga expedientes reales.
+    // ejercita en las pruebas del motor, y de extremo a extremo en la Fase 6,
+    // cuando existan expedientes de caso reales.
     const actor = await contextoDe(base.prisma, secretaria);
-    const resultado = await authorizeDownload(actor, archivoClinico);
+    const resultado = await authorizeDownload(actor, archivoReservado);
     expect(resultado.ok).toBe(false);
     if (resultado.ok) return;
     expect(resultado.error.code).toBe('NOT_FOUND');
     expect(resultado.error.internalReason).toContain('asignación viva');
   });
 
-  it('un rol sindical sin descarga sensible tampoco alcanza el archivo clínico', async () => {
+  it('un rol sindical sin descarga sensible tampoco alcanza el archivo reservado', async () => {
     const actor = await contextoDe(base.prisma, delegada);
-    const resultado = await authorizeDownload(actor, archivoClinico);
+    const resultado = await authorizeDownload(actor, archivoReservado);
     expect(resultado.ok).toBe(false);
     expect(!resultado.ok && resultado.error.code).toBe('NOT_FOUND');
   });
 
-  it('la denegación de material clínico se registra como crítica', async () => {
+  it('la denegación de material reservado se registra como crítica', async () => {
     const actor = await contextoDe(base.prisma, delegada);
-    await authorizeDownload(actor, archivoClinico);
+    await authorizeDownload(actor, archivoReservado);
     const evento = await base.prisma.securityEvent.findFirstOrThrow({
       where: { kind: 'FILE_ACCESS_DENIED', actorId: delegada.actorId },
       orderBy: { occurredAt: 'desc' },

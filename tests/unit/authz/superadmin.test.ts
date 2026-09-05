@@ -49,7 +49,7 @@ describe('lista cerrada de concesión', () => {
       'identity',
       'content',
     ]);
-    const accionesSindicalesProhibidas = ['vote', 'membership', 'discipline', 'cian', 'ceni', 'assembly'];
+    const accionesSindicalesProhibidas = ['vote', 'membership', 'discipline', 'assembly'];
 
     for (const code of SUPERADMIN_GRANTED) {
       const modulo = code.split('.')[0] ?? '';
@@ -74,10 +74,10 @@ describe('lista cerrada de concesión', () => {
 });
 
 describe('prueba negativa 9 · el actor raíz no gobierna el sindicato', () => {
-  // Los permisos de voto, admisión y certificación CENI se declaran en fases
+  // Los permisos de voto y de resolución disciplinaria se declaran en fases
   // posteriores. Lo que aquí se fija —y lo que hará que sigan denegados cuando
   // existan— es que ninguno se agregue a la lista de concesión.
-  const acciones = ['vote.ballot.cast', 'membership.application.resolve', 'ceni.certificate.issue'];
+  const acciones = ['vote.ballot.cast', 'membership.application.resolve', 'discipline.decision.issue'];
 
   it.each(acciones)('%s no figura en la lista de concesión', (code) => {
     expect(SUPERADMIN_GRANTED.has(code)).toBe(false);
@@ -93,7 +93,7 @@ describe('prueba negativa 9 · el actor raíz no gobierna el sindicato', () => {
 });
 
 describe('prueba negativa 10 · el actor raíz no tiene compartimentos', () => {
-  it.each(['CLINICAL', 'DISCIPLINARY', 'SOCIAL'] as const)(
+  it.each(['UNION', 'DISCIPLINARY', 'SOCIAL'] as const)(
     'no lee un recurso del compartimento %s ni con un permiso que sí posee',
     (compartimento) => {
       const decision = can(

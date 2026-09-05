@@ -96,7 +96,7 @@ Cada entidad jurídica tiene su propio conjunto. La ruta de webhook incluye la c
 | `STRIPE_FUERZA_SECRET_KEY` | Clave secreta de la cuenta del sindicato. Conceptos sindicales. | Clave secreta de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
 | `STRIPE_FUERZA_WEBHOOK_SECRET` | Secreto de firma del webhook de esa cuenta. | Secreto de endpoint de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
 | `NEXT_PUBLIC_STRIPE_FUERZA_PUBLISHABLE_KEY` | Clave publicable de esa cuenta. **Pública por diseño.** | Clave publicable de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
-| `STRIPE_ALIANZA_SECRET_KEY` | Clave secreta de la cuenta de la A.C. Programas sociales, CIAN, CENI, cursos y aportaciones. | Clave secreta de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
+| `STRIPE_ALIANZA_SECRET_KEY` | Clave secreta de la cuenta de la A.C. Programas sociales, cursos y aportaciones. | Clave secreta de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
 | `STRIPE_ALIANZA_WEBHOOK_SECRET` | Secreto de firma del webhook de esa cuenta. | Secreto de endpoint de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
 | `NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY` | Clave publicable de esa cuenta. **Pública por diseño.** | Clave publicable de Stripe | Opc. hasta Fase 3 | Obl. desde Fase 3 | Obl. desde Fase 3 |
 
@@ -108,8 +108,8 @@ En desarrollo y vista previa se usan claves de prueba. Si al inicio se opera una
 
 | Variable | Propósito | Formato | Desarrollo | Vista previa | Producción |
 |---|---|---|---|---|---|
-| `GEMINI_API_KEY` | Clave del SDK oficial de Google. Se usa **exclusivamente en servidor**. | Clave del proveedor | Opc. hasta Fase 10 | Obl. desde Fase 10 | Obl. desde Fase 10 |
-| `GEMINI_DEFAULT_MODEL` | Modelo por omisión cuando la versión del prompt no fija uno. | Identificador de modelo, p. ej. `gemini-2.5-flash` | Opc. hasta Fase 10 | Obl. desde Fase 10 | Obl. desde Fase 10 |
+| `GEMINI_API_KEY` | Clave del SDK oficial de Google. Se usa **exclusivamente en servidor**. | Clave del proveedor | Opc. hasta Fase 8 | Obl. desde Fase 8 | Obl. desde Fase 8 |
+| `GEMINI_DEFAULT_MODEL` | Modelo por omisión cuando la versión del prompt no fija uno. | Identificador de modelo, p. ej. `gemini-2.5-flash` | Opc. hasta Fase 8 | Obl. desde Fase 8 | Obl. desde Fase 8 |
 
 Sin estas variables, el servicio de IA queda deshabilitado y la aplicación **continúa operando** por los flujos humanos equivalentes (PRD §15.5). Los límites de tokens, peticiones y costo se administran en `AiProviderConfiguration`, no por entorno.
 
@@ -132,11 +132,11 @@ En desarrollo se usa `console`: los mensajes se registran sin enviarse y sin exp
 | Variable | Propósito | Formato | Desarrollo | Vista previa | Producción |
 |---|---|---|---|---|---|
 | `CRON_SECRET` | Autentica las invocaciones de Vercel Cron a `/api/v1/cron/*`. Se compara en tiempo constante. | 32 bytes aleatorios en base64url | Obl. | Obl. | Obl. |
-| `QR_SIGNING_SECRET` | **Llavero** de firma de los códigos opacos de credenciales y distintivos CENI. Contiene la clave activa y, durante una rotación, las anteriores que aún deben poder verificarse. | Lista separada por comas de entradas `identificador:clave`, la primera es la activa. Ej.: `k2:<32 bytes base64url>,k1:<32 bytes base64url>` | Obl. | Obl. | Obl. |
+| `QR_SIGNING_SECRET` | **Llavero** de firma de los códigos opacos de las credenciales. Contiene la clave activa y, durante una rotación, las anteriores que aún deben poder verificarse. | Lista separada por comas de entradas `identificador:clave`, la primera es la activa. Ej.: `k2:<32 bytes base64url>,k1:<32 bytes base64url>` | Obl. | Obl. | Obl. |
 
 **Rotación sin invalidación simultánea (defecto `D-F0-012`).** Cada credencial y cada certificado guardan en `signingKeyId` el identificador de la clave con la que se firmaron. Rotar consiste en anteponer una clave nueva al llavero: lo emitido a partir de ese momento se firma con ella, y lo emitido antes **sigue verificando** con la clave anterior, que permanece en el llavero. Solo cuando la última credencial firmada con una clave vieja ha vencido o se ha reemplazado se retira esa entrada del llavero.
 
-Sin el identificador de clave, una sola rotación invalidaría de golpe todas las credenciales sindicales y todos los distintivos CENI vigentes, lo que convertía una medida de higiene criptográfica en un incidente institucional. Retirar una clave del llavero **antes** de tiempo sí produce ese efecto, y por eso el panel de salud muestra cuántas credenciales vivas dependen de cada clave antes de permitir su retiro.
+Sin el identificador de clave, una sola rotación invalidaría de golpe todas las credenciales sindicales vigentes, lo que convertía una medida de higiene criptográfica en un incidente institucional. Retirar una clave del llavero **antes** de tiempo sí produce ese efecto, y por eso el panel de salud muestra cuántas credenciales vivas dependen de cada clave antes de permitir su retiro.
 
 ---
 

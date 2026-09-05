@@ -107,10 +107,6 @@ enum CatalogProductKind {
   HONORARY_MEMBERSHIP
   SERVICE_SUBSCRIPTION
   COURSE
-  CIAN_SERVICE
-  CENI_PROGRAM
-  CENI_ASSESSMENT
-  CENI_CERTIFICATION
   RENEWAL
   DONATION
 }
@@ -123,9 +119,6 @@ enum BillingMode {
 enum ModuleBinding {
   MEMBERSHIP
   HONORARY_AFFILIATION
-  TOOL_ACCESS
-  CIAN_SERVICE
-  CENI_PROGRAM
   EVENT_REGISTRATION
   NONE
 }
@@ -225,8 +218,6 @@ model Subscription {
   /// destino y convertida en clave foránea en la Fase 4, cuando la tabla
   /// existe: los pagos históricos no hubo que reconstruirlos.
   membershipId         String?            @db.Uuid
-  /// Se escribe en la Fase 7, cuando exista el derecho de acceso a herramientas.
-  toolEntitlementId    String?            @db.Uuid
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
@@ -348,9 +339,6 @@ enum PaymentAppliesTo {
   NONE
   MEMBERSHIP
   HONORARY_AFFILIATION
-  TOOL_ENTITLEMENT
-  CIAN_SERVICE
-  CENI_PROGRAM
   EVENT_REGISTRATION
   DONATION
 }
@@ -506,9 +494,8 @@ model Scholarship {
 
 enum ScholarshipProgram {
   MEMBERSHIP
-  CIAN_SERVICE
+  SERVICE
   COURSE
-  TOOL_ACCESS
 }
 
 /// Evidencia documental de una beca. Una beca sin respaldo no es una beca.

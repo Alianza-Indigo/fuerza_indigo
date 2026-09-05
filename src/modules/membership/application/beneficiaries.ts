@@ -35,7 +35,6 @@ const ORIGENES = [
   'UNION_MEMBER',
   'DELEGATE',
   'SOCIAL_STAFF',
-  'CIAN',
   'EXTERNAL_REFERRAL',
 ] as const;
 

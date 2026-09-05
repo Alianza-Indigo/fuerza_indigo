@@ -6,7 +6,6 @@ export const ORIGEN: Record<string, string> = {
   UNION_MEMBER: 'Una persona agremiada',
   DELEGATE: 'Una delegación territorial',
   SOCIAL_STAFF: 'Personal social de Alianza Índigo',
-  CIAN: 'CIAN',
   EXTERNAL_REFERRAL: 'Canalización externa',
 };
 
@@ -44,7 +43,6 @@ export const RELACION: Record<string, string> = {
 export const ALCANCE: Record<string, string> = {
   MEMBERSHIP: 'Afiliación',
   CASES: 'Expedientes de caso',
-  CIAN: 'Atención CIAN',
   DOCUMENTS: 'Documentos',
   NOTIFICATIONS: 'Avisos y notificaciones',
 };

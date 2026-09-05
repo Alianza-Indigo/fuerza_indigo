@@ -298,7 +298,7 @@ export async function discountList(actor: ActorContext): Promise<UseCaseResult<D
 export const approveScholarshipSchema = z.object({
   personId: z.uuid(),
   legalEntityId: z.uuid(),
-  programKind: z.enum(['MEMBERSHIP', 'CIAN_SERVICE', 'COURSE', 'TOOL_ACCESS'] as const),
+  programKind: z.enum(['MEMBERSHIP', 'SERVICE', 'COURSE'] as const),
   coveragePercent: z.coerce
     .number()
     .int({ error: () => 'La cobertura va en porcentaje entero.' })

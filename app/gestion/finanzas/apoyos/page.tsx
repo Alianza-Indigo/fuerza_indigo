@@ -15,9 +15,8 @@ export const dynamic = 'force-dynamic';
 
 const PROGRAMA: Record<string, string> = {
   MEMBERSHIP: 'Cuotas y membresía',
-  CIAN_SERVICE: 'Servicios del CIAN',
+  SERVICE: 'Servicios y suscripciones',
   COURSE: 'Cursos y programas',
-  TOOL_ACCESS: 'Acceso a herramientas',
 };
 
 /**

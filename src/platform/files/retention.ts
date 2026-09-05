@@ -79,8 +79,8 @@ export async function applyRetention(actor: ActorContext, limit = 100): Promise<
 
     // 2. Un objeto referenciado por un expediente vivo no se toca.
     //    En la Fase 1 el único contexto con expedientes es el propio sistema;
-    //    las fases que introducen casos, CIAN y CENI amplían esta comprobación
-    //    con sus tablas. Mientras tanto se comprueba lo que existe.
+    //    la fase que introduce los casos amplía esta comprobación con sus
+    //    tablas. Mientras tanto se comprueba lo que existe.
     if (file.contextKind !== 'SYSTEM' && file.contextId !== null) {
       result.postponedByReference += 1;
       continue;

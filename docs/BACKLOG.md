@@ -1,10 +1,10 @@
 # Backlog por fases
 
-> Entregable de la **Fase 0** (PRD §24): *"backlog asignado a fases, sin tareas huérfanas"*. Todo el alcance del PRD está distribuido en las trece fases. **No existe una sección de tareas sin asignar**: el control `C-PHASE-01` de `npm run phase:verify` falla si alguna fase queda sin tareas o si aparecen identificadores de otra fase dentro de una sección.
+> Entregable de la **Fase 0** (PRD §24): *"backlog asignado a fases, sin tareas huérfanas"*. Todo el alcance del PRD está distribuido en las once fases. **No existe una sección de tareas sin asignar**: el control `C-PHASE-01` de `npm run phase:verify` falla si alguna fase queda sin tareas o si aparecen identificadores de otra fase dentro de una sección.
 
 ## Cómo leer este documento
 
-- **Identificador:** `F<fase>-<área>-<consecutivo>`. Áreas: `ARQ` arquitectura · `DAT` datos · `AUT` autenticación · `PER` permisos · `AUD` auditoría · `ARC` archivos · `JOB` trabajos · `UI` interfaz · `CMS` contenidos · `PWA` aplicación instalable · `PAG` pagos · `LIB` libro auxiliar · `AFI` afiliación · `PAD` padrones · `DIR` directorios · `CRE` credenciales · `TER` territorio · `GOB` gobierno · `ASA` asambleas · `ELE` elecciones · `NEG` negociación colectiva · `DIS` disciplina · `CAS` casos · `SOC` social · `HER` herramientas · `CIAN` atención integral · `CENI` certificación · `IA` inteligencia artificial · `NOT` notificaciones · `EVE` eventos · `IND` indicadores · `SEC` seguridad · `ACC` accesibilidad · `QA` pruebas · `DOC` documentación · `OPS` operación.
+- **Identificador:** `F<fase>-<área>-<consecutivo>`. Áreas: `ARQ` arquitectura · `DAT` datos · `AUT` autenticación · `PER` permisos · `AUD` auditoría · `ARC` archivos · `JOB` trabajos · `UI` interfaz · `CMS` contenidos · `PWA` aplicación instalable · `PAG` pagos · `LIB` libro auxiliar · `AFI` afiliación · `PAD` padrones · `DIR` directorios · `CRE` credenciales · `TER` territorio · `GOB` gobierno · `ASA` asambleas · `ELE` elecciones · `NEG` negociación colectiva · `DIS` disciplina · `CAS` casos · `SOC` social · `CAT` catálogo de plataformas y herramientas · `IA` inteligencia artificial · `NOT` notificaciones · `EVE` eventos · `IND` indicadores · `SEC` seguridad · `ACC` accesibilidad · `QA` pruebas · `DOC` documentación · `OPS` operación.
 - **Estado:** `Pendiente`, `En curso`, `Terminada`. Solo la fase activa puede tener tareas en curso.
 - Cada tarea se considera terminada cuando cumple los doce criterios transversales del PRD §25, no cuando compila.
 
@@ -29,12 +29,12 @@
 | F0-AUD-001 | Definir la estrategia de auditoría transaccional, anexable y encadenada | Terminada |
 | F0-PAG-001 | Definir la estrategia de Stripe por entidad jurídica y el contrato de webhooks | Terminada |
 | F0-IA-001 | Definir la estrategia de IA, prompts versionados, privacidad y límites de decisión | Terminada |
-| F0-QA-001 | Redactar el plan de pruebas con los quince flujos E2E globales y los umbrales | Terminada |
+| F0-QA-001 | Redactar el plan de pruebas con los flujos E2E globales y los umbrales | Terminada |
 | F0-DOC-001 | Redactar los entregables documentales de la fase con diagramas Mermaid | Terminada |
 | F0-DOC-002 | Registrar las decisiones de arquitectura en el registro de ADR | Terminada |
 | F0-OPS-001 | Preparar el repositorio: control de versiones, plantilla de entorno y convenciones | Terminada |
 | F0-OPS-002 | Construir el verificador de fase sin dependencias y el contrato del PRD | Terminada |
-| F0-DOC-003 | Distribuir todo el alcance del PRD en el backlog de las trece fases | Terminada |
+| F0-DOC-003 | Distribuir todo el alcance del PRD en el backlog de las once fases | Terminada |
 
 ### Correcciones abiertas por la revisión semántica
 
@@ -49,7 +49,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F0-COR-005 | Generalizar el modelo de autoría a persona, Superadmin raíz y sistema en todas las entidades, como ya ocurre en la bitácora | Alta | Terminada |
 | F0-COR-006 | Definir el coordinador de otorgamiento de derechos y el patrón de bandeja de salida que resuelve la dependencia del cobro sin romper el mapa de módulos | Alta | Terminada |
 | F0-COR-007 | Adelantar a la Fase 1 las plantillas versionadas de mensaje y el registro de entrega que exigen la invitación y la recuperación | Media | Terminada |
-| F0-COR-008 | Resolver la dependencia de CENI sobre eventos: adelantar la entidad mínima o desacoplar el requisito de capacitación | Media | Terminada |
+| F0-COR-008 | Resolver la dependencia de CENI sobre eventos: adelantar la entidad mínima o desacoplar el requisito de capacitación | Media | Terminada — sin efecto desde la corrección de alcance del 2026-09-05: CENI no se opera en este repositorio |
 | F0-COR-009 | Modelar la fragmentación documental, el almacenamiento de vectores y la estrategia de recuperación de la búsqueda semántica | Media | Terminada |
 | F0-COR-010 | Cerrar la decisión sobre la representación de la jerarquía territorial y registrarla como decisión de arquitectura | Media | Terminada |
 | F0-COR-011 | Separar el permiso de informes de rendición de cuentas del de lectura del libro auxiliar y ajustar la matriz | Media | Terminada |
@@ -143,7 +143,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F2-CMS-002 | Implementar la reversión de versiones y el registro de cambios editoriales | Hecho |
 | F2-CMS-003 | Implementar redirecciones, metadatos y las páginas legales configurables por entidad | Hecho |
 | F2-UI-008 | Construir las páginas públicas institucionales del mapa funcional | Hecho |
-| F2-UI-009 | Construir las páginas públicas de CIAN, CENI y herramientas | Hecho |
+| F2-UI-009 | Construir las páginas públicas de acceso a CIAN, CENI y herramientas del ecosistema | Hecho |
 | F2-UI-010 | Construir el formulario de contacto y la entrada inicial de solicitudes | Hecho |
 | F2-UI-011 | Implementar el buscador público con estados vacío y sin resultados diferenciados | Hecho |
 | F2-UI-012 | Construir el centro de accesibilidad y la declaración correspondiente | Hecho |
@@ -158,7 +158,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F2-QA-002 | Verificar los umbrales de rendimiento de las rutas públicas | Hecho |
 | F2-DOC-001 | Documentar el sistema de diseño y actualizar el estado de la fase | Hecho |
 
-**Qué significa «hecho» en F2-UI-008 y F2-UI-009.** Las páginas institucionales del mapa funcional existen: cada ruta contratada resuelve, tiene sus metadatos, es editable desde el gestor de contenidos y, mientras nadie haya publicado nada, dice con todas sus letras que aún no hay contenido en vez de mostrar relleno. Lo que **no** se entrega es el texto: un comunicado o una descripción del sindicato firmados por la organización los escribe la organización. Redactarlos aquí sería poner palabras en boca de Fuerza Índigo, que es la misma clase de error que inventar un valor estatutario. Los datos vivos de CIAN, CENI, herramientas, afiliación, directorio y eventos llegan con sus fases (8, 9, 7, 4, 4 y 11).
+**Qué significa «hecho» en F2-UI-008 y F2-UI-009.** Las páginas institucionales del mapa funcional existen: cada ruta contratada resuelve, tiene sus metadatos, es editable desde el gestor de contenidos y, mientras nadie haya publicado nada, dice con todas sus letras que aún no hay contenido en vez de mostrar relleno. Lo que **no** se entrega es el texto: un comunicado o una descripción del sindicato firmados por la organización los escribe la organización. Redactarlos aquí sería poner palabras en boca de Fuerza Índigo, que es la misma clase de error que inventar un valor estatutario. CIAN, CENI y las herramientas del ecosistema no traen datos vivos a este repositorio en ninguna fase: son plataformas externas y la Fase 7 solo administra su ficha y su dirección de acceso. Los datos de afiliación y directorio llegan con la Fase 4 y los de eventos con la Fase 9.
 
 ---
 
@@ -292,158 +292,97 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 ---
 
-## Fase 7 — Herramientas tecnológicas
+## Fase 7 — Plataformas y herramientas del ecosistema
+
+CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación propia, fuera de este repositorio. Esta fase las **presenta y lleva a ellas**; no las construye, no las duplica y no administra su operación (PRD §12, §13 y §14).
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F7-DAT-001 | Migrar las entidades de herramientas, derechos, lanzamientos e identidad externa | Pendiente |
-| F7-HER-001 | Implementar el catálogo de herramientas con identidad visual y estado operativo | Pendiente |
-| F7-HER-002 | Implementar planes, elegibilidad declarativa y su motor de evaluación | Pendiente |
-| F7-HER-003 | Implementar los derechos de acceso con origen, vigencia y explicación a la persona | Pendiente |
-| F7-HER-004 | Implementar el lanzamiento con enlace firmado de corta duración y un solo uso | Pendiente |
-| F7-HER-005 | Implementar el vínculo de identidad externa con consentimiento específico | Pendiente |
-| F7-HER-006 | Implementar el historial de acceso sin almacenar contenido de la herramienta | Pendiente |
-| F7-HER-007 | Implementar la suspensión y revocación con política de conservación | Pendiente |
-| F7-HER-008 | Integrar NeuroPlan, ADIA y NEXO con sus modalidades respectivas | Pendiente |
-| F7-UI-001 | Construir el panel de herramientas de la persona y el de administración | Pendiente |
-| F7-IND-001 | Implementar métricas agregadas de uso por perfil y territorio | Pendiente |
-| F7-DOC-001 | Documentar cómo agregar una herramienta nueva sin tocar el núcleo | Pendiente |
-| F7-QA-001 | Probar expiración, reutilización de enlace y revocación de derecho | Pendiente |
-| F7-QA-002 | Probar que la caída de una herramienta no bloquea el portal central | Pendiente |
+| F7-DAT-001 | Migrar la entidad `EcosystemLink` del catálogo configurable de plataformas y herramientas | Pendiente |
+| F7-CAT-001 | Implementar la ficha con nombre, logotipo o imagen, descripción breve, público al que se dirige y estado operativo | Pendiente |
+| F7-CAT-002 | Implementar la dirección externa configurable desde el CMS, sin direcciones escritas en componentes | Pendiente |
+| F7-CAT-003 | Implementar el botón de acceso con indicación accesible de que se abre otra plataforma | Pendiente |
+| F7-CAT-004 | Cargar las fichas de CIAN, CENI, NeuroPlan, ADIA y NEXO con el mismo patrón, sin casos especiales en código | Pendiente |
+| F7-UI-001 | Construir la página pública del catálogo y su repetición en el portal personal, adaptable y neuroinclusiva | Pendiente |
+| F7-UI-002 | Construir la administración del catálogo dentro de la superficie de contenidos existente | Pendiente |
+| F7-DOC-001 | Documentar cómo agregar una plataforma o herramienta nueva sin tocar el núcleo | Pendiente |
+| F7-QA-001 | Probar que una ficha sin dirección real configurada no muestra botón de acceso | Pendiente |
+| F7-QA-002 | Probar que el acceso es únicamente redirección externa, sin datos personales en la dirección y con `rel="noopener noreferrer"` | Pendiente |
+| F7-QA-003 | Probar que la caída de una plataforma externa no bloquea el portal central | Pendiente |
 
 ---
 
-## Fase 8 — CIAN
+## Fase 8 — Inteligencia artificial Gemini
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F8-DAT-001 | Migrar las entidades de admisión, agenda, episodios, planes y notas | Pendiente |
-| F8-CIAN-001 | Implementar la admisión y la entrevista inicial con consentimiento informado | Pendiente |
-| F8-CIAN-002 | Implementar la valoración de necesidades sin diagnóstico | Pendiente |
-| F8-CIAN-003 | Implementar el triage humano, la prioridad y la lista de espera | Pendiente |
-| F8-CIAN-004 | Implementar el directorio de profesionales, servicios y verificación de habilitación | Pendiente |
-| F8-CIAN-005 | Implementar disponibilidad, capacidad y prevención de traslapes | Pendiente |
-| F8-CIAN-006 | Implementar citas presenciales y remotas con recordatorios | Pendiente |
-| F8-CIAN-007 | Implementar cancelaciones, reprogramaciones y ausencias | Pendiente |
-| F8-CIAN-008 | Implementar el episodio y el expediente de atención | Pendiente |
-| F8-CIAN-009 | Implementar planes versionados con objetivos, actividades y seguimiento | Pendiente |
-| F8-CIAN-010 | Implementar notas profesionales restringidas con corrección por nota nueva | Pendiente |
-| F8-CIAN-011 | Implementar canalizaciones diagnósticas y terapéuticas con consentimiento | Pendiente |
-| F8-CIAN-012 | Implementar la coordinación con familia o cuidadores autorizados | Pendiente |
-| F8-CIAN-013 | Conectar pagos, becas y comprobantes de servicios | Pendiente |
-| F8-CIAN-014 | Integrar la derivación a NeuroPlan | Pendiente |
-| F8-CIAN-015 | Implementar encuestas de experiencia, resultados y cierre o alta | Pendiente |
-| F8-UI-001 | Construir el panel profesional y el de coordinación con sus bandejas | Pendiente |
-| F8-IND-001 | Implementar indicadores agregados y anonimizados de calidad y satisfacción | Pendiente |
-| F8-QA-001 | Probar que un profesional solo ve casos asignados | Pendiente |
-| F8-QA-002 | Probar que el personal sindical no ve notas clínicas por omisión | Pendiente |
-| F8-DOC-001 | Documentar la operación de CIAN y actualizar el estado de la fase | Pendiente |
+| F8-DAT-001 | Migrar las entidades de configuración, prompts, conversaciones, generaciones y revisiones | Pendiente |
+| F8-IA-001 | Implementar el servicio central de Gemini ejecutado solo en servidor | Pendiente |
+| F8-IA-002 | Implementar prompts administrables con versiones, estados y reversión | Pendiente |
+| F8-IA-003 | Implementar el laboratorio de pruebas de prompts y su publicación con revisión humana | Pendiente |
+| F8-IA-004 | Implementar la base documental con separación de fuentes por permisos | Pendiente |
+| F8-IA-005 | Implementar la minimización, redacción y seudonimización antes de enviar al modelo | Pendiente |
+| F8-IA-006 | Implementar la validación de la salida contra el esquema declarado | Pendiente |
+| F8-IA-007 | Implementar las defensas contra inyección de prompt y exfiltración | Pendiente |
+| F8-IA-008 | Implementar la lista de efectos prohibidos y su rechazo en el servicio | Pendiente |
+| F8-IA-009 | Implementar orientación inicial y explicación de trámites en lenguaje claro | Pendiente |
+| F8-IA-010 | Implementar clasificación sugerida de solicitudes y resúmenes asistidos | Pendiente |
+| F8-IA-011 | Implementar el apoyo para redactar comunicaciones y documentos | Pendiente |
+| F8-IA-012 | Implementar la revisión humana de salidas y su registro | Pendiente |
+| F8-IA-013 | Implementar el control de costos, límites y su consulta por módulo | Pendiente |
+| F8-IA-014 | Implementar la degradación al flujo humano cuando el proveedor no responde | Pendiente |
+| F8-QA-001 | Probar que ningún prompt crítico vive solamente en el código | Pendiente |
+| F8-QA-002 | Probar que las fuentes respetan los permisos del usuario | Pendiente |
+| F8-DOC-001 | Documentar la gobernanza de la IA y actualizar el estado de la fase | Pendiente |
 
 ---
 
-## Fase 9 — CENI
+## Fase 9 — Comunicaciones, eventos, capacitación e indicadores
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F9-DAT-001 | Migrar las entidades de programas, evaluaciones, hallazgos y certificados | Pendiente |
-| F9-CENI-001 | Implementar el alta de organizaciones, sus responsables y sus sedes | Pendiente |
-| F9-CENI-002 | Implementar el seguimiento de prospección y contratación | Pendiente |
-| F9-CENI-003 | Implementar programas, líneas y su contratación con pago a la entidad correcta | Pendiente |
-| F9-CENI-004 | Implementar instrumentos de evaluación versionados con criterios y ponderaciones | Pendiente |
-| F9-CENI-005 | Implementar el diagnóstico inicial y la captura de respuestas | Pendiente |
-| F9-CENI-006 | Implementar la carga y validación de evidencias con solicitud de corrección | Pendiente |
-| F9-CENI-007 | Implementar hallazgos con severidad y trazabilidad del evaluador | Pendiente |
-| F9-CENI-008 | Implementar planes de mejora con responsables, fechas y verificación | Pendiente |
-| F9-CENI-009 | Implementar requisitos de capacitación y su acreditación **por evidencia documental**, sin depender del módulo de eventos | Pendiente |
-| F9-CENI-010 | Implementar el control de conflicto de interés del evaluador | Pendiente |
-| F9-CENI-011 | Implementar la decisión humana de certificación con fundamento | Pendiente |
-| F9-CENI-012 | Implementar la emisión de certificado y distintivo con código firmado | Pendiente |
-| F9-CENI-013 | Implementar vigencia, suspensión, revocación y renovación | Pendiente |
-| F9-CENI-014 | Implementar el verificador público que distingue los cuatro estados | Pendiente |
-| F9-CENI-015 | Implementar el directorio público de organizaciones certificadas | Pendiente |
-| F9-CENI-016 | Implementar oportunidades y convenios con agremiados y capacitadores | Pendiente |
-| F9-UI-001 | Construir los paneles de organización, evaluador y coordinación | Pendiente |
-| F9-IND-001 | Implementar información agregada sobre barreras de inclusión con anonimización | Pendiente |
-| F9-QA-001 | Probar que una organización nunca accede a otra | Pendiente |
-| F9-QA-002 | Probar que cerrar una evaluación preserva su versión y su evidencia | Pendiente |
-| F9-DOC-001 | Documentar el ciclo CENI y actualizar el estado de la fase | Pendiente |
+| F9-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Pendiente |
+| F9-NOT-001 | Implementar el centro de notificaciones dentro de la plataforma | Pendiente |
+| F9-NOT-002 | Ampliar el envío por correo con campañas, preferencias y reintentos sobre la base construida en la Fase 1 | Pendiente |
+| F9-NOT-003 | Implementar notificaciones web con autorización explícita de la persona | Pendiente |
+| F9-NOT-004 | Implementar preferencias por categoría sin permitir suprimir avisos obligatorios | Pendiente |
+| F9-NOT-005 | Implementar campañas operativas autorizadas y su separación de lo obligatorio | Pendiente |
+| F9-EVE-001 | Implementar el calendario público y privado de eventos | Pendiente |
+| F9-EVE-002 | Implementar registro, capacidad, elegibilidad y lista de espera | Pendiente |
+| F9-EVE-003 | Conectar el cobro de eventos con el catálogo financiero | Pendiente |
+| F9-EVE-004 | Implementar asistencia, materiales y evaluación | Pendiente |
+| F9-EVE-005 | Implementar constancias verificables y revocables | Pendiente |
+| F9-IND-001 | Construir los tableros por rol con decisiones accionables | Pendiente |
+| F9-IND-002 | Implementar indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
+| F9-IND-003 | Implementar los reportes institucionales y sus exportaciones auditadas | Pendiente |
+| F9-IND-004 | Implementar la publicación de transparencia autorizada | Pendiente |
+| F9-IND-005 | Implementar alertas de vencimientos y obligaciones | Pendiente |
+| F9-QA-001 | Probar que las plantillas están versionadas y que las exportaciones respetan permisos | Pendiente |
+| F9-DOC-001 | Documentar comunicaciones e indicadores, y actualizar el estado de la fase | Pendiente |
 
 ---
 
-## Fase 10 — Inteligencia artificial Gemini
+## Fase 10 — Endurecimiento, migración final y liberación productiva
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F10-DAT-001 | Migrar las entidades de configuración, prompts, conversaciones, generaciones y revisiones | Pendiente |
-| F10-IA-001 | Implementar el servicio central de Gemini ejecutado solo en servidor | Pendiente |
-| F10-IA-002 | Implementar prompts administrables con versiones, estados y reversión | Pendiente |
-| F10-IA-003 | Implementar el laboratorio de pruebas de prompts y su publicación con revisión humana | Pendiente |
-| F10-IA-004 | Implementar la base documental con separación de fuentes por permisos | Pendiente |
-| F10-IA-005 | Implementar la minimización, redacción y seudonimización antes de enviar al modelo | Pendiente |
-| F10-IA-006 | Implementar la validación de la salida contra el esquema declarado | Pendiente |
-| F10-IA-007 | Implementar las defensas contra inyección de prompt y exfiltración | Pendiente |
-| F10-IA-008 | Implementar la lista de efectos prohibidos y su rechazo en el servicio | Pendiente |
-| F10-IA-009 | Implementar orientación inicial y explicación de trámites en lenguaje claro | Pendiente |
-| F10-IA-010 | Implementar clasificación sugerida de solicitudes y resúmenes asistidos | Pendiente |
-| F10-IA-011 | Implementar el apoyo para redactar comunicaciones y documentos | Pendiente |
-| F10-IA-012 | Implementar el apoyo administrativo de CIAN sin diagnóstico | Pendiente |
-| F10-IA-013 | Implementar el análisis asistido de evidencia CENI sin decisión | Pendiente |
-| F10-IA-014 | Implementar la revisión humana de salidas y su registro | Pendiente |
-| F10-IA-015 | Implementar el control de costos, límites y su consulta por módulo | Pendiente |
-| F10-IA-016 | Implementar la degradación al flujo humano cuando el proveedor no responde | Pendiente |
-| F10-QA-001 | Probar que ningún prompt crítico vive solamente en el código | Pendiente |
-| F10-QA-002 | Probar que las fuentes respetan los permisos del usuario | Pendiente |
-| F10-DOC-001 | Documentar la gobernanza de la IA y actualizar el estado de la fase | Pendiente |
-
----
-
-## Fase 11 — Comunicaciones, eventos, capacitación e indicadores
-
-| Id | Tarea | Estado |
-|---|---|---|
-| F11-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Pendiente |
-| F11-NOT-001 | Implementar el centro de notificaciones dentro de la plataforma | Pendiente |
-| F11-NOT-002 | Ampliar el envío por correo con campañas, preferencias y reintentos sobre la base construida en la Fase 1 | Pendiente |
-| F11-NOT-003 | Implementar notificaciones web con autorización explícita de la persona | Pendiente |
-| F11-NOT-004 | Implementar preferencias por categoría sin permitir suprimir avisos obligatorios | Pendiente |
-| F11-NOT-005 | Implementar campañas operativas autorizadas y su separación de lo obligatorio | Pendiente |
-| F11-EVE-001 | Implementar el calendario público y privado de eventos | Pendiente |
-| F11-EVE-002 | Implementar registro, capacidad, elegibilidad y lista de espera | Pendiente |
-| F11-EVE-003 | Conectar el cobro de eventos con el catálogo financiero | Pendiente |
-| F11-EVE-004 | Implementar asistencia, materiales y evaluación | Pendiente |
-| F11-EVE-006 | Enlazar los requisitos de capacitación CENI con eventos, como enriquecimiento del mecanismo por evidencia ya operativo desde la Fase 9 | Pendiente |
-| F11-EVE-005 | Implementar constancias verificables y revocables | Pendiente |
-| F11-IND-001 | Construir los tableros por rol con decisiones accionables | Pendiente |
-| F11-IND-002 | Implementar indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
-| F11-IND-003 | Implementar los reportes institucionales y sus exportaciones auditadas | Pendiente |
-| F11-IND-004 | Implementar la publicación de transparencia autorizada | Pendiente |
-| F11-IND-005 | Implementar alertas de vencimientos y obligaciones | Pendiente |
-| F11-QA-001 | Probar que las plantillas están versionadas y que las exportaciones respetan permisos | Pendiente |
-| F11-DOC-001 | Documentar comunicaciones e indicadores, y actualizar el estado de la fase | Pendiente |
-
----
-
-## Fase 12 — Endurecimiento, migración final y liberación productiva
-
-| Id | Tarea | Estado |
-|---|---|---|
-| F12-QA-001 | Ejecutar íntegros los quince flujos E2E globales | Pendiente |
-| F12-SEC-001 | Realizar la revisión de seguridad contra las catorce amenazas del plan | Pendiente |
-| F12-SEC-002 | Realizar la revisión completa de permisos positivos y negativos | Pendiente |
-| F12-UI-001 | Realizar la revisión visual completa en móvil y escritorio, en claro y oscuro | Pendiente |
-| F12-ACC-001 | Realizar la validación de accesibilidad automatizada y la revisión manual | Pendiente |
-| F12-QA-002 | Ejecutar las pruebas de rendimiento y de carga en los flujos críticos | Pendiente |
-| F12-OPS-001 | Ejercitar la recuperación ante fallos y la restauración de base y archivos | Pendiente |
-| F12-PAG-001 | Verificar la conciliación de ambas cuentas de Stripe | Pendiente |
-| F12-IA-001 | Revisar costos, límites y registros del servicio de inteligencia artificial | Pendiente |
-| F12-OPS-002 | Verificar SEO técnico y comportamiento instalable | Pendiente |
-| F12-OPS-003 | Revisar registros, alertas y observabilidad de webhooks y trabajos | Pendiente |
-| F12-DAT-001 | Ejecutar la migración de datos existentes cuando los haya | Pendiente |
-| F12-DOC-001 | Redactar los manuales operativos por rol | Pendiente |
-| F12-DOC-002 | Preparar y realizar la capacitación administrativa | Pendiente |
-| F12-OPS-004 | Completar la lista de verificación de despliegue en Vercel | Pendiente |
-| F12-OPS-005 | Desplegar a producción y verificar posteriormente | Pendiente |
-| F12-DOC-003 | Documentar la aprobación final por módulo | Pendiente |
+| F10-QA-001 | Ejecutar íntegros los trece flujos E2E globales | Pendiente |
+| F10-SEC-001 | Realizar la revisión de seguridad contra las catorce amenazas del plan | Pendiente |
+| F10-SEC-002 | Realizar la revisión completa de permisos positivos y negativos | Pendiente |
+| F10-UI-001 | Realizar la revisión visual completa en móvil y escritorio, en claro y oscuro | Pendiente |
+| F10-ACC-001 | Realizar la validación de accesibilidad automatizada y la revisión manual | Pendiente |
+| F10-QA-002 | Ejecutar las pruebas de rendimiento y de carga en los flujos críticos | Pendiente |
+| F10-OPS-001 | Ejercitar la recuperación ante fallos y la restauración de base y archivos | Pendiente |
+| F10-PAG-001 | Verificar la conciliación de ambas cuentas de Stripe | Pendiente |
+| F10-IA-001 | Revisar costos, límites y registros del servicio de inteligencia artificial | Pendiente |
+| F10-OPS-002 | Verificar SEO técnico y comportamiento instalable | Pendiente |
+| F10-OPS-003 | Revisar registros, alertas y observabilidad de webhooks y trabajos | Pendiente |
+| F10-DAT-001 | Ejecutar la migración de datos existentes cuando los haya | Pendiente |
+| F10-DOC-001 | Redactar los manuales operativos por rol | Pendiente |
+| F10-DOC-002 | Preparar y realizar la capacitación administrativa | Pendiente |
+| F10-OPS-004 | Completar la lista de verificación de despliegue en Vercel | Pendiente |
+| F10-OPS-005 | Desplegar a producción y verificar posteriormente | Pendiente |
+| F10-DOC-003 | Documentar la aprobación final por módulo | Pendiente |
 
 ---
 
@@ -457,24 +396,24 @@ Cada sección del PRD tiene tareas asignadas. Esta tabla permite comprobar que n
 | §3 Personas, membresías y relaciones | 0, 4 |
 | §4 Usuarios, roles y control de acceso | 0, 1, 5 |
 | §5 Experiencia de usuario y sistema de diseño | 2, y cada fase con interfaz |
-| §6 Mapa funcional | 2, 4, 5, 6, 8, 9, 11 |
+| §6 Mapa funcional | 2, 4, 5, 6, 7, 9 |
 | §7 Directorios, padrones y credenciales | 4 |
 | §8 Afiliación y admisión | 4 |
 | §9 Estructura sindical, territorio y gobierno | 5 |
 | §10 Protección, defensa y atención social | 6 |
 | §11 Pagos, membresías y Stripe | 3 |
-| §12 Herramientas tecnológicas | 7 |
-| §13 CIAN | 8 |
-| §14 CENI | 9 |
-| §15 Inteligencia artificial con Gemini | 10 |
-| §16 Comunicación, contenidos y notificaciones | 2, 11 |
+| §12 Catálogo de plataformas y herramientas del ecosistema | 7 |
+| §13 CIAN como plataforma del ecosistema | 7 |
+| §14 CENI como plataforma del ecosistema | 7 |
+| §15 Inteligencia artificial con Gemini | 8 |
+| §16 Comunicación, contenidos y notificaciones | 2, 9 |
 | §17 Arquitectura técnica obligatoria | 0, 1, 2 |
 | §18 Modelo de datos | 0, y la fase que migra cada familia |
 | §19 API y contratos de aplicación | 0, 1, y la fase de cada familia |
-| §20 Seguridad, privacidad y auditoría | 1, 6, 12 |
+| §20 Seguridad, privacidad y auditoría | 1, 6, 10 |
 | §21 Variables de entorno | 0, 1 |
-| §22 Pruebas y calidad | 0, 1, 2, 12 |
+| §22 Pruebas y calidad | 0, 1, 2, 10 |
 | §23 Protocolo de ejecución por fases | 0, y todas |
 | §24 Fases de construcción | Todas |
 | §25 Criterios de aceptación transversales | Todas |
-| §27 Definición final de terminado | 12 |
+| §27 Definición final de terminado | 10 |

@@ -87,9 +87,9 @@ El producto permitirá que una persona llegue por cualquier puerta del ecosistem
 3. Registrar y atender beneficiarios protegidos aunque no tengan afiliación.
 4. Dar a los agremiados herramientas reales de representación, participación y defensa.
 5. Crear una red territorial mediante delegaciones, secciones y representaciones.
-6. Canalizar necesidades sociales hacia Alianza Índigo y CIAN.
-7. Conectar a cada perfil con ADIA, NEXO, NeuroPlan y futuras herramientas.
-8. Gestionar CENI como vínculo con empresas, escuelas, instituciones y organizaciones.
+6. Canalizar necesidades sociales hacia Alianza Índigo mediante referencia externa, sin administrar la operación de la plataforma que las reciba.
+7. Dar a conocer las plataformas y herramientas del ecosistema —CIAN, CENI, ADIA, NEXO, NeuroPlan y las que se incorporen— y ofrecer su acceso mediante enlace externo configurable.
+8. Difundir CENI como oferta del ecosistema dirigida a empresas, escuelas, instituciones y organizaciones, remitiendo su contratación y operación a su propia plataforma.
 9. Procesar cuotas, membresías, suscripciones, servicios y renovaciones mediante Stripe.
 10. Ofrecer orientación asistida por Gemini sin sustituir decisiones humanas sensibles.
 11. Mantener separación jurídica, financiera, documental y de permisos entre el sindicato y la A.C.
@@ -104,9 +104,7 @@ El producto permitirá que una persona llegue por cualquier puerta del ecosistem
 - Tasa de pago y renovación de cuotas o membresías.
 - Casos atendidos, canalizados, resueltos y reabiertos.
 - Tiempo de primera respuesta a una solicitud de apoyo.
-- Uso de herramientas tecnológicas por perfil y territorio.
-- Personas atendidas y planes activos en CIAN.
-- Organizaciones incorporadas, evaluadas y certificadas mediante CENI.
+- Cobertura territorial de delegaciones y secciones activas.
 - Participación y quórum en asambleas y procesos electorales.
 - Incidentes de acceso indebido a datos sensibles: objetivo cero.
 - Errores críticos en producción: objetivo cero.
@@ -163,22 +161,21 @@ Responsable de la parte social del ecosistema:
 - programas para personas neurodivergentes y familias;
 - acompañamiento social;
 - administración de beneficiarios protegidos canalizados;
-- operación o coordinación de CIAN;
 - becas, apoyos y convenios sociales;
 - proyectos tecnológicos de beneficio comunitario;
 - programas financiados mediante aportaciones, servicios o alianzas.
 
 ### CIAN
 
-Brazo de atención integral para evaluación inicial, orientación, canalización, planes de atención, seguimiento profesional, coordinación familiar y servicios relacionados con neurodivergencia. CIAN no realizará diagnósticos automáticos mediante IA.
+Brazo de atención integral del ecosistema, con **plataforma propia, independiente y ya desarrollada**. Fuerza Índigo no construye, duplica ni administra su operación: la presenta como servicio del ecosistema y ofrece su acceso. Véase §13.
 
 ### CENI
 
-Programa de inclusión institucional y motor económico del ecosistema. Atenderá organizaciones mediante diagnóstico, capacitación, evaluación, planes de mejora, evidencias, certificación, renovación y distintivos verificables.
+Programa de inclusión institucional del ecosistema, con **plataforma propia, independiente y ya desarrollada**. Fuerza Índigo no construye, duplica ni administra su operación: la presenta como servicio del ecosistema y ofrece su acceso. Véase §14.
 
 ### Herramientas tecnológicas
 
-ADIA, NEXO, NeuroPlan y futuras soluciones conformarán una capa modular de herramientas de apoyo. La plataforma central administrará descubrimiento, elegibilidad, accesos, consentimientos, lanzamientos e indicadores, sin acoplarse de forma irreversible a una herramienta específica.
+ADIA, NEXO, NeuroPlan y futuras soluciones son productos con operación propia. Fuerza Índigo mantiene un catálogo editable de plataformas y herramientas: cada ficha lleva nombre, imagen, descripción breve, público al que se dirige y una dirección externa configurable desde el CMS. El acceso es siempre una salida a otra plataforma, nunca una función interna.
 
 ## 2.3 Separación obligatoria
 
@@ -191,7 +188,7 @@ Aunque el usuario perciba una experiencia integrada, la plataforma deberá separ
 - avisos de privacidad y consentimientos;
 - responsables internos;
 - permisos de acceso;
-- expedientes sociales, sindicales, clínicos o institucionales;
+- expedientes sociales y sindicales;
 - numeración y series documentales;
 - reportes y auditorías.
 
@@ -203,7 +200,7 @@ Ningún usuario obtendrá acceso transversal solo por trabajar en una entidad de
 
 ## 3.1 Registro único de persona
 
-Cada ser humano tendrá un solo registro maestro de persona. Sobre ese registro podrán coexistir distintas relaciones con el ecosistema. No se duplicará a una persona por ser simultáneamente agremiada, familiar, profesional de CIAN o representante de una organización CENI.
+Cada ser humano tendrá un solo registro maestro de persona. Sobre ese registro podrán coexistir distintas relaciones con el ecosistema. No se duplicará a una persona por ser simultáneamente agremiada, familiar, persona cuidadora o representante de una organización.
 
 El registro maestro separará:
 
@@ -343,11 +340,6 @@ Se utilizará control de acceso por roles y atributos. El permiso efectivo depen
 | Comisión de Vigilancia | Revisión financiera y de administración sin facultades operativas incompatibles |
 | Comisión Electoral | Gestión temporal de procesos electorales y padrón de electores |
 | Personal social de Alianza Índigo | Casos sociales asignados y programas autorizados |
-| Profesional CIAN | Agenda, expediente y plan de atención de casos asignados |
-| Coordinación CIAN | Operación, asignación, calidad y seguimiento de CIAN |
-| Usuario de organización CENI | Expediente y actividades de su propia organización |
-| Evaluador CENI | Evaluaciones y evidencias expresamente asignadas |
-| Coordinación CENI | Operación completa del programa CENI |
 | Finanzas | Catálogo, conciliación, reportes y comprobantes de su entidad jurídica |
 | Contenidos y comunicación | CMS, eventos y comunicaciones autorizadas |
 | Auditor | Lectura de evidencia y bitácoras dentro de un alcance definido |
@@ -465,14 +457,13 @@ No existirá un único panel saturado para todos. La navegación se compondrá s
 - Directorio público de miembros que autoricen aparecer.
 - Delegaciones y presencia territorial.
 - Herramientas tecnológicas.
-- CIAN.
-- CENI.
+- CIAN, como acceso a su plataforma.
+- CENI, como acceso a su plataforma.
 - Cursos, eventos y convocatorias públicas.
-- Organizaciones con certificación CENI vigente.
 - Transparencia pública autorizada.
 - Noticias y recursos.
 - Contacto.
-- Verificador de credenciales y distintivos QR.
+- Verificador público de credenciales por QR.
 - Avisos de privacidad, términos, accesibilidad y canal de derechos de datos.
 
 ## 6.2 Portal personal
@@ -486,8 +477,7 @@ No existirá un único panel saturado para todos. La navegación se compondrá s
 - Beneficios.
 - Herramientas tecnológicas.
 - Solicitudes de apoyo y casos.
-- CIAN.
-- Actividad CENI, cuando aplique.
+- Accesos a CIAN, CENI y herramientas del ecosistema.
 - Asambleas, votaciones y acuerdos, solo para quien tenga derecho.
 - Eventos y capacitación.
 - Notificaciones.
@@ -530,8 +520,7 @@ No existirá un único panel saturado para todos. La navegación se compondrá s
 - Personas, cuentas y roles.
 - Configuración de módulos.
 - Catálogo y Stripe.
-- CIAN y CENI.
-- Herramientas e integraciones.
+- Catálogo de plataformas y herramientas del ecosistema, con sus direcciones de acceso.
 - Gemini, modelos, prompts y límites.
 - Contenido público.
 - Plantillas de documentos y mensajes.
@@ -553,8 +542,7 @@ El sistema mantendrá, como mínimo:
 3. padrón de beneficiarios protegidos;
 4. padrón de cargos y autoridades;
 5. directorio de profesionales;
-6. directorio de organizaciones CENI;
-7. directorio público derivado exclusivamente de autorizaciones expresas.
+6. directorio público derivado exclusivamente de autorizaciones expresas.
 
 Ningún padrón se construirá mediante una vista que mezcle categorías sin mostrar su calidad exacta.
 
@@ -598,8 +586,7 @@ Habrá diseños claramente diferenciados para:
 - agremiado;
 - afiliado honorario;
 - cargo o representación;
-- profesional autorizado;
-- certificación o distintivo CENI, en su módulo propio.
+- profesional autorizado.
 
 El QR contendrá un identificador opaco y firmado, no datos personales. La página de verificación mostrará solo:
 
@@ -653,7 +640,6 @@ Podrá iniciarse por:
 - agremiado;
 - delegado;
 - personal de Alianza Índigo;
-- CIAN;
 - canalización externa.
 
 El sistema registrará origen, necesidad inicial, consentimiento, nivel de urgencia, territorio y entidad responsable. La persona podrá recibir apoyo sin pagar ni afiliarse.
@@ -847,7 +833,6 @@ Tipos iniciales:
 - acceso a salud;
 - accesibilidad;
 - orientación familiar;
-- necesidad de atención CIAN;
 - riesgo psicosocial;
 - violencia o urgencia;
 - capacitación o apoyo institucional;
@@ -879,7 +864,7 @@ Cada caso tendrá:
 ## 10.3 Seguridad de casos
 
 - acceso por asignación y necesidad legítima;
-- separación entre expediente sindical, social y CIAN;
+- separación entre expediente sindical y expediente social;
 - documentos con clasificación de sensibilidad;
 - descargas mediante autorización temporal;
 - marca de agua en exportaciones sensibles cuando corresponda;
@@ -911,8 +896,6 @@ Stripe procesará:
 - membresías honorarias;
 - suscripciones a servicios;
 - cursos, talleres y diplomados;
-- servicios CIAN;
-- programas, evaluaciones y certificaciones CENI;
 - renovaciones;
 - becas parciales, descuentos, convenios y códigos promocionales;
 - aportaciones destinadas a Alianza Índigo cuando resulten aplicables.
@@ -924,7 +907,7 @@ Los precios y conceptos no estarán codificados en el frontend. Se administrará
 La arquitectura admitirá conexiones Stripe independientes:
 
 - cuenta de Fuerza Índigo para conceptos sindicales;
-- cuenta de Alianza Índigo para programas sociales, CIAN, CENI y conceptos que jurídicamente le correspondan.
+- cuenta de Alianza Índigo para programas sociales y conceptos que jurídicamente le correspondan.
 
 Las claves permanecerán en variables de entorno. Cada webhook tendrá secreto propio. Si inicialmente se opera una sola cuenta autorizada, el modelo de datos conservará desde el primer día la entidad receptora y permitirá migrar a cuentas separadas sin reconstruir pagos históricos.
 
@@ -967,183 +950,106 @@ También existirá un registro patrimonial de bienes muebles, inmuebles, cuentas
 
 ---
 
-# 12. HERRAMIENTAS TECNOLÓGICAS DE APOYO
+# 12. CATÁLOGO DE PLATAFORMAS Y HERRAMIENTAS DEL ECOSISTEMA
 
-## 12.1 Catálogo
+## 12.1 Qué es
 
-Cada herramienta tendrá:
+Un catálogo administrable —`EcosystemLink`, editado desde la superficie de contenidos del CMS— con las plataformas y herramientas del ecosistema: CIAN, CENI, NeuroPlan, ADIA, NEXO y las que se incorporen después. Todas siguen el mismo patrón de ficha, sin excepciones ni casos especiales escritos en código. No se crea ningún subsistema adicional: es el catálogo configurable ya previsto para herramientas.
 
-- nombre, descripción e identidad visual;
+## 12.2 Ficha
+
+Cada entrada tendrá:
+
+- nombre;
+- logotipo o imagen;
+- descripción breve;
+- público al que se dirige;
 - entidad responsable;
-- público objetivo;
-- requisitos de elegibilidad;
-- modalidad de acceso;
-- plan o beneficio que la incluye;
-- URL o integración;
-- estado operativo;
-- aviso de privacidad y términos propios;
-- soporte;
-- indicadores autorizados.
+- dirección externa de acceso, configurable;
+- botón de acceso claro, con indicación accesible de que se abre otra plataforma;
+- estado operativo, para retirarla de la vista sin borrarla;
+- orden de presentación.
 
-Herramientas iniciales:
+Las direcciones **no se escriben en los componentes**: viven en el contenido administrable y se editan sin desplegar código. Una ficha sin dirección real configurada no muestra botón de acceso.
 
-- NeuroPlan;
-- ADIA;
-- NEXO.
+## 12.3 Modalidad de acceso
 
-## 12.2 Modalidades de integración
+Una sola: **redirección externa.** El enlace abre la plataforma o herramienta en su propio dominio, con `rel="noopener noreferrer"`, sin datos personales en la dirección, sin iframe y sin intercambio de identidad.
 
-La capa de integración admitirá:
+En este repositorio no existen ni existirán inicio de sesión único, tokens de lanzamiento, integración por API ni sincronización de personas, expedientes o pagos con esas plataformas. Cada una conserva su propia autenticación, su operación, sus cobros y sus datos.
 
-- módulo nativo;
-- enlace profundo autenticado;
-- inicio de sesión firmado de corta duración;
-- integración por API;
-- acceso externo sin intercambio de identidad, cuando corresponda.
+## 12.4 Presentación
 
-No se utilizarán iframes inseguros ni se compartirán datos sensibles por parámetros de URL. Cada lanzamiento quedará registrado sin almacenar innecesariamente el contenido utilizado dentro de la herramienta.
+El catálogo se publica en el sitio público y se repite, con las mismas fichas, en el portal personal. No hay elegibilidad, derechos de acceso, vigencias ni recomendaciones calculadas: el acceso es público y quien decide es la persona.
 
-## 12.3 Derechos de acceso
-
-Los accesos podrán originarse en:
-
-- membresía activa;
-- beneficio sindical;
-- programa social;
-- beca;
-- contratación individual;
-- contratación de una organización CENI;
-- asignación de CIAN;
-- campaña o convenio;
-- autorización administrativa con vigencia.
-
-El usuario verá por qué tiene acceso, hasta cuándo y qué ocurrirá al terminar su vigencia. La revocación no borrará sus datos sin aplicar la política de conservación correspondiente.
-
-## 12.4 Experiencia unificada
-
-El panel recomendará herramientas con base en perfil y necesidades declaradas, sin inferir ni exhibir diagnósticos. Las recomendaciones de IA serán explicables, opcionales y nunca condicionarán la protección sindical o social.
+El diseño es moderno, adaptable a móvil y neuroinclusivo: contraste suficiente, foco visible, lectura clara, sin movimiento impuesto y navegable por teclado.
 
 ---
 
-# 13. CIAN
+# 13. CIAN COMO PLATAFORMA DEL ECOSISTEMA
 
-## 13.1 Objetivo
+## 13.1 Qué es y dónde vive
 
-CIAN coordinará la atención integral de personas neurodivergentes y sus familias mediante una ruta clara, humana y trazable, desde la solicitud inicial hasta el seguimiento.
+El Centro Integral de Atención Neurodivergente es el brazo de atención integral del ecosistema: evaluación inicial, orientación, canalización, planes de atención, seguimiento profesional y coordinación familiar.
 
-## 13.2 Funciones
+**CIAN es una plataforma propia, independiente y ya desarrollada.** Vive fuera de este repositorio, con su propia autenticación, su propia operación, sus propios pagos y sus propios datos.
 
-- admisión y entrevista inicial;
-- consentimiento informado y privacidad;
-- valoración de necesidades;
-- canalización a neurología u otras especialidades cuando sea necesaria una evaluación diagnóstica;
-- directorio de profesionales y centros;
-- agenda y disponibilidad;
-- citas presenciales o remotas;
-- expediente de atención;
-- plan individual o familiar;
-- objetivos, actividades y seguimiento;
-- terapias y servicios;
-- notas profesionales con acceso restringido;
-- coordinación con familia o cuidadores autorizados;
-- becas y apoyos;
-- pagos y comprobantes;
-- derivación a NeuroPlan u otras herramientas;
-- encuestas de experiencia y resultados;
-- cierre, alta o canalización externa.
+## 13.2 Qué hace Fuerza Índigo con CIAN
 
-## 13.3 Límites
+Exactamente una cosa: **presentarla y llevar a ella.**
 
-- Gemini no emitirá diagnósticos.
-- El personal sin función asistencial no verá notas clínicas.
-- Una afiliación no condicionará la atención urgente ni los programas gratuitos definidos.
-- Los profesionales solo accederán a personas asignadas.
-- Las notas no se reutilizarán para fines sindicales, comerciales o CENI sin consentimiento específico y base autorizada.
+- una página moderna que explica qué es CIAN, a quién se dirige y qué ofrece;
+- su nombre, su logotipo o imagen y una descripción breve;
+- un botón de acceso claro, con dirección externa configurable;
+- indicación accesible de que al pulsarlo se abre otra plataforma.
 
-## 13.4 Panel de CIAN
+## 13.3 Qué **no** hace Fuerza Índigo
 
-- bandeja de nuevas solicitudes;
-- triage humano;
-- agenda;
-- asignación profesional;
-- lista de espera;
-- expedientes;
-- planes activos;
-- alertas de seguimiento;
-- pagos y becas;
-- capacidad de profesionales;
-- indicadores agregados y anonimizados;
-- calidad, incidencias y satisfacción.
+No construye, no duplica y no administra la operación de CIAN. En este repositorio no existen ni existirán:
+
+- admisión, entrevista inicial, triage ni lista de espera;
+- directorio operativo de profesionales, agenda, disponibilidad ni citas;
+- episodios, expedientes de atención, planes, objetivos ni notas profesionales;
+- canalizaciones diagnósticas o terapéuticas integradas;
+- pagos, becas ni derechos de acceso a servicios CIAN administrados aquí;
+- roles, permisos ni compartimentos de operación CIAN;
+- sincronización de personas, expedientes, pagos o información personal;
+- inicio de sesión único, API ni transferencia de datos entre plataformas.
+
+Una persona que necesita atención puede escribir por la entrada única de ayuda (§11); lo que recibe es orientación y el acceso a la plataforma, no un expediente abierto aquí.
 
 ---
 
-# 14. CENI
+# 14. CENI COMO PLATAFORMA DEL ECOSISTEMA
 
-## 14.1 Objetivo
+## 14.1 Qué es y dónde vive
 
-CENI permitirá acompañar a empresas, escuelas, instituciones públicas, organizaciones civiles y otros espacios en la creación y verificación de entornos neuroinclusivos.
+La Certificación de Entornos Neuroinclusivos acompaña a empresas, escuelas, instituciones públicas y organizaciones civiles en la creación y verificación de entornos neuroinclusivos.
 
-## 14.2 Expediente de organización
+**CENI es una plataforma propia, independiente y ya desarrollada.** Vive fuera de este repositorio, con su propio ciclo comercial y técnico, su propia evaluación, sus propios certificados y su propio verificador público.
 
-- razón social y nombre comercial;
-- tipo de organización;
-- responsables y usuarios autorizados;
-- sedes y centros de trabajo;
-- sector y tamaño;
-- contratos y convenios;
-- facturación y pagos;
-- programas contratados;
-- evaluaciones;
-- evidencias;
-- planes de mejora;
-- capacitaciones;
-- certificaciones, vigencias y renovaciones;
-- incidencias y comunicaciones.
+## 14.2 Qué hace Fuerza Índigo con CENI
 
-## 14.3 Ciclo CENI
+Lo mismo que con CIAN: **presentarla y llevar a ella**, con ficha, descripción, público al que se dirige, botón de acceso, dirección externa configurable e indicación accesible de que se abre otra plataforma.
 
-1. Prospección o solicitud.
-2. Alta de organización y responsables.
-3. Selección de CENI Laboral, CENI Espacios u otra línea configurada.
-4. Contratación y pago.
-5. Diagnóstico inicial.
-6. Carga y validación de evidencias.
-7. Evaluación.
-8. Plan de mejora con responsables y fechas.
-9. Capacitación y acompañamiento.
-10. Verificación de cumplimiento.
-11. Decisión humana de certificación.
-12. Emisión de certificado y distintivo QR.
-13. Seguimiento y renovación.
+## 14.3 Qué **no** hace Fuerza Índigo
 
-## 14.4 Evidencias y evaluación
+En este repositorio no existen ni existirán:
 
-- formularios versionados;
-- criterios y ponderaciones versionados;
-- evidencia documental, fotográfica y de enlace;
-- comentarios y solicitudes de corrección;
-- trazabilidad del evaluador;
-- prohibición de alterar una evaluación cerrada;
-- nueva versión para reevaluaciones;
-- indicadores y hallazgos;
-- plan de acción;
-- conflictos de interés;
-- revisión y decisión final humanas.
+- CRM de organizaciones, sedes, usuarios ni contratos CENI;
+- programas, evaluaciones versionadas, evidencias ni hallazgos;
+- planes de mejora, capacitación ni seguimiento de cumplimiento;
+- decisión de certificación, certificados, distintivos ni su verificador;
+- vigencia, suspensión, revocación ni renovación de certificaciones;
+- directorio de organizaciones certificadas;
+- pagos ni contratación de programas CENI administrados aquí;
+- roles, permisos ni expedientes de organización CENI;
+- IA para analizar evidencia o evaluaciones CENI;
+- sincronización de datos, inicio de sesión único ni API entre plataformas.
 
-## 14.5 Certificados y distintivos
+## 14.4 Lo que sí es de Fuerza Índigo
 
-Cada certificado tendrá número único, organización, sede o alcance, línea CENI, nivel, fecha de emisión, vigencia, estado y QR firmado. La verificación pública mostrará información vigente y marcará claramente certificados suspendidos, vencidos o revocados.
-
-## 14.6 Vinculación con Fuerza Índigo
-
-CENI podrá:
-
-- ofrecer oportunidades laborales a agremiados;
-- localizar capacitadores y especialistas;
-- gestionar convenios;
-- recibir canalizaciones institucionales;
-- generar información agregada sobre barreras de inclusión;
-- facilitar acciones de mejora sin exponer casos personales ni datos sensibles.
+La relación institucional con las organizaciones —convenios, oportunidades laborales para personas agremiadas, canalizaciones institucionales— es actividad sindical y se gestiona con los módulos propios de este repositorio, sin expediente CENI de por medio.
 
 ---
 
@@ -1162,9 +1068,6 @@ Gemini será el único proveedor inicial de IA. Se integrará mediante el SDK of
 - apoyo para redactar comunicaciones y documentos;
 - extracción estructurada de documentos autorizados;
 - preparación de informes para delegados;
-- apoyo a NeuroPlan, ADIA y NEXO;
-- análisis asistido de evidencia CENI;
-- apoyo administrativo CIAN sin diagnóstico;
 - búsqueda semántica sobre una base documental autorizada;
 - traducción y adaptación de lenguaje.
 
@@ -1199,7 +1102,6 @@ La IA no podrá decidir:
 - resolución de conflictos;
 - otorgamiento de representación legal;
 - diagnóstico médico o psicológico;
-- certificación CENI;
 - autorización de pagos o reembolsos;
 - acceso a expedientes;
 - publicación de datos personales.
@@ -1233,7 +1135,7 @@ El Superadmin y los roles de comunicación autorizados podrán gestionar:
 - eventos;
 - banners y alertas;
 - perfiles públicos de delegaciones;
-- páginas de CIAN, CENI y herramientas;
+- páginas de acceso a CIAN, CENI y herramientas del ecosistema;
 - SEO, metadatos, imágenes sociales y redirecciones.
 
 Los contenidos tendrán borrador, revisión, programación, publicación, archivo e historial de versiones.
@@ -1259,7 +1161,7 @@ La arquitectura quedará preparada para WhatsApp o SMS sin asumirlos como requis
 - evaluación;
 - constancias verificables;
 - eventos por territorio;
-- cursos vinculados con CENI, CIAN o beneficios sindicales.
+- cursos vinculados con beneficios sindicales.
 
 ---
 
@@ -1441,48 +1343,13 @@ El esquema definitivo se diseñará en la Fase 0. Como mínimo deberá contempla
 - `RetentionPolicy`
 - `LegalHold`
 
-## 18.7 Herramientas
+## 18.7 Catálogo de plataformas y herramientas
 
-- `ToolDefinition`
-- `ToolPlan`
-- `ToolEntitlement`
-- `ToolLaunch`
-- `ExternalIdentityLink`
+- `EcosystemLink`
 - `IntegrationCredentialReference`
 - `IntegrationEvent`
 
-## 18.8 CIAN
-
-- `CianIntake`
-- `CianProfessional`
-- `CianService`
-- `CianAvailability`
-- `CianAppointment`
-- `CianCareEpisode`
-- `CianCarePlan`
-- `CianGoal`
-- `CianClinicalNote`
-- `CianOutcome`
-- `CianReferral`
-
-## 18.9 CENI
-
-- `CeniProgram`
-- `CeniSite`
-- `CeniEngagement`
-- `AssessmentTemplate`
-- `AssessmentVersion`
-- `AssessmentResponse`
-- `AssessmentEvidence`
-- `Finding`
-- `ImprovementPlan`
-- `ImprovementAction`
-- `TrainingRequirement`
-- `CertificationDecision`
-- `CeniCertificate`
-- `CeniBadge`
-
-## 18.10 IA, contenido y operación
+## 18.8 IA, contenido y operación
 
 - `AiProviderConfiguration`
 - `AiPrompt`
@@ -1503,7 +1370,7 @@ El esquema definitivo se diseñará en la Fase 0. Como mínimo deberá contempla
 - `AuditEvent`
 - `SecurityEvent`
 
-## 18.11 Reglas generales del esquema
+## 18.9 Reglas generales del esquema
 
 - Identificadores opacos no secuenciales para exposición pública.
 - Fechas almacenadas en UTC y mostradas en la zona del usuario o territorio.
@@ -1537,14 +1404,11 @@ El esquema definitivo se diseñará en la Fase 0. Como mínimo deberá contempla
 - `/api/v1/auth/*`
 - `/api/v1/public/directory/*`
 - `/api/v1/verify/credentials/*`
-- `/api/v1/verify/ceni/*`
 - `/api/v1/memberships/*`
 - `/api/v1/support-requests/*`
 - `/api/v1/cases/*`
 - `/api/v1/payments/*`
-- `/api/v1/tools/*`
-- `/api/v1/cian/*`
-- `/api/v1/ceni/*`
+- `/api/v1/ecosystem-links/*`
 - `/api/v1/assemblies/*`
 - `/api/v1/elections/*`
 - `/api/v1/webhooks/stripe/{account}`
@@ -1601,7 +1465,6 @@ Se auditarán como mínimo:
 - emisión y revocación de credenciales;
 - convocatorias, padrones congelados y resultados;
 - publicación de prompts;
-- decisiones CENI;
 - cambios de consentimiento;
 - exportaciones;
 - acciones del Superadmin.
@@ -1693,13 +1556,11 @@ Las variables públicas solo contendrán valores seguros para navegador. Ningún
 6. Directorio privado y publicación voluntaria con retiro posterior.
 7. Convocatoria, padrón congelado, quórum, voto secreto y acta.
 8. Caso disciplinario con audiencia, resolución y recurso.
-9. Acceso a una herramienta por beneficio y revocación al vencer.
-10. CIAN desde admisión hasta plan y seguimiento.
-11. CENI desde contratación hasta certificado QR y renovación.
-12. Consulta Gemini con permisos y revisión humana.
-13. Revocación de un rol territorial sin pérdida del historial.
-14. Acceso denegado a un expediente ajeno aunque se conozca su identificador.
-15. Despliegue desde base vacía mediante migraciones del repositorio.
+9. Acceso a una plataforma del ecosistema desde su ficha del catálogo, con aviso de salida.
+10. Consulta Gemini con permisos y revisión humana.
+11. Revocación de un rol territorial sin pérdida del historial.
+12. Acceso denegado a un expediente ajeno aunque se conozca su identificador.
+13. Despliegue desde base vacía mediante migraciones del repositorio.
 
 ## 22.3 Comandos de calidad
 
@@ -2051,102 +1912,36 @@ Proporcionar una puerta única de ayuda y un expediente seguro para la intervenc
 - El sistema prueba acceso denegado para territorios y expedientes ajenos.
 - Casos urgentes muestran rutas humanas y de emergencia configuradas.
 
-## FASE 7 — Herramientas tecnológicas
+## FASE 7 — Herramientas tecnológicas y accesos externos
 
 ### Objetivo
 
-Convertir ADIA, NEXO, NeuroPlan y futuras herramientas en una oferta unificada y administrable.
+Reunir en una sola oferta administrable las herramientas del ecosistema —ADIA, NEXO, NeuroPlan y las que se agreguen— y los **accesos a las plataformas independientes** CIAN y CENI.
+
+**CIAN y CENI son plataformas propias y ya desarrolladas, fuera de este repositorio.** Fuerza Índigo no las construye, no las duplica y no administra su operación: las presenta como servicios del ecosistema y lleva a ellas. La autenticación, la operación, los pagos y los datos de cada plataforma permanecen en su plataforma.
 
 ### Alcance
 
-- catálogo;
-- planes y elegibilidad;
-- derechos de acceso;
-- lanzamiento seguro;
-- enlaces de identidad externa;
-- consentimiento de intercambio;
-- historial de acceso;
-- panel de herramientas;
-- administración de integraciones;
-- métricas agregadas;
-- suspensión y revocación;
-- documentación para agregar nuevas herramientas.
+- catálogo único de plataformas y herramientas del ecosistema;
+- ficha de cada una con nombre, imagen o logotipo, descripción breve, público al que se dirige y estado operativo;
+- dirección externa configurable, administrada desde el catálogo o el CMS, nunca escrita en un componente;
+- botón de acceso con indicación accesible de que se abrirá otra plataforma;
+- página de catálogo en el sitio público y las mismas fichas en el portal personal;
+- administración del catálogo desde el CMS, sin desplegar código para cambiar una dirección;
+- documentación para agregar una plataforma o una herramienta nueva sin tocar el núcleo.
 
 ### Criterios específicos
 
-- Cada herramienta puede integrarse sin cambiar el núcleo de membresías.
-- Los enlaces firmados expiran y no exponen datos en URL.
-- El usuario entiende el origen y vigencia de su acceso.
-- La falla de una herramienta no bloquea el portal central.
-- No se comparten diagnósticos para recomendar herramientas.
+- Cada plataforma o herramienta se agrega sin cambiar el núcleo de membresías.
+- **Ninguna ficha tiene un botón sin dirección real configurable.**
+- **CIAN y CENI aparecen exclusivamente como accesos externos**: sin expediente, sin agenda, sin evaluación y sin cobro administrados aquí.
+- Quien pulsa un acceso externo sabe, antes de pulsarlo, que sale de Fuerza Índigo.
+- El acceso es únicamente redirección externa: sin inicio de sesión único, sin API, sin sincronización y sin datos personales en la dirección.
+- Ninguna dirección de acceso está escrita en un componente.
+- La falla de una plataforma externa no bloquea el portal central.
+- Las fichas de CIAN, CENI, NeuroPlan, ADIA y NEXO siguen el mismo patrón, sin casos especiales en código.
 
-## FASE 8 — CIAN
-
-### Objetivo
-
-Completar la operación de atención integral de Alianza Índigo.
-
-### Alcance
-
-- admisión;
-- entrevista y consentimientos;
-- triage humano;
-- profesionales y servicios;
-- disponibilidad y citas;
-- episodios y expedientes;
-- planes, objetivos y seguimientos;
-- notas restringidas;
-- canalizaciones diagnósticas o terapéuticas;
-- coordinación familiar;
-- pagos y becas;
-- integración con NeuroPlan;
-- calidad y resultados;
-- panel profesional y coordinación.
-
-### Criterios específicos
-
-- Un profesional solo ve casos asignados.
-- Familiares acceden exclusivamente a lo autorizado.
-- Personal sindical no ve notas clínicas por defecto.
-- La IA no diagnostica.
-- Citas, cancelaciones, lista de espera, ausencias y reprogramaciones están completas.
-- Planes y notas conservan autoría, fecha y versiones necesarias.
-
-## FASE 9 — CENI
-
-### Objetivo
-
-Construir el ciclo comercial, técnico y verificable de inclusión institucional.
-
-### Alcance
-
-- CRM básico de organizaciones CENI;
-- usuarios y sedes;
-- programas y contratos;
-- pago;
-- evaluaciones versionadas;
-- evidencias;
-- hallazgos;
-- planes de mejora;
-- capacitación;
-- seguimiento;
-- decisión de certificación;
-- certificado y distintivo QR;
-- vigencia, suspensión, revocación y renovación;
-- directorio público CENI;
-- oportunidades y convenios con Fuerza Índigo;
-- panel de organización, evaluador y coordinación.
-
-### Criterios específicos
-
-- Una organización nunca accede a otra.
-- Cerrar una evaluación preserva su versión y evidencia.
-- Gemini no emite la certificación.
-- El verificador público distingue vigencia, suspensión, vencimiento y revocación.
-- La contratación se concilia con la entidad receptora correcta.
-- Datos individuales no se usan en reportes CENI sin autorización y anonimización.
-
-## FASE 10 — Inteligencia artificial Gemini
+## FASE 8 — Inteligencia artificial Gemini
 
 ### Objetivo
 
@@ -2163,9 +1958,6 @@ Incorporar IA gobernada, medible y segura en los módulos ya funcionales.
 - clasificación sugerida;
 - resúmenes;
 - documentos asistidos;
-- apoyo CIAN no diagnóstico;
-- apoyo CENI no decisorio;
-- integraciones con NEXO, ADIA y NeuroPlan cuando corresponda;
 - costos, límites y auditoría;
 - revisión humana;
 - degradación cuando el proveedor no responda;
@@ -2180,7 +1972,7 @@ Incorporar IA gobernada, medible y segura en los módulos ya funcionales.
 - La aplicación continúa operando si Gemini está caído.
 - Los costos y errores pueden consultarse por módulo sin exponer contenido sensible.
 
-## FASE 11 — Comunicaciones, eventos, capacitación e indicadores
+## FASE 9 — Eventos, formación e indicadores
 
 ### Objetivo
 
@@ -2214,7 +2006,7 @@ Cerrar la operación comunitaria y proporcionar medición útil a cada nivel.
 - Las constancias son verificables y revocables.
 - Los paneles muestran decisiones accionables, no métricas decorativas.
 
-## FASE 12 — Endurecimiento, migración final y liberación productiva
+## FASE 10 — Integración, endurecimiento y producción
 
 ### Objetivo
 
@@ -2303,9 +2095,7 @@ La Plataforma Integral Fuerza Índigo estará terminada cuando:
 - un beneficiario protegido reciba apoyo sin necesidad de pagar o afiliarse;
 - el sindicato opere padrones, territorio, órganos, asambleas, elecciones, cuotas y defensa;
 - Alianza Índigo gestione la atención social con separación jurídica y de datos;
-- CIAN opere la ruta integral de atención;
-- CENI opere desde contratación hasta certificación verificable;
-- ADIA, NEXO y NeuroPlan se encuentren integrados mediante una capa extensible;
+- CIAN, CENI, ADIA, NEXO y NeuroPlan se presenten en el catálogo de plataformas y herramientas, cada una con su ficha y su acceso externo configurable;
 - Stripe determine pagos y suscripciones mediante webhooks confiables;
 - Gemini apoye sin tomar decisiones reservadas a personas;
 - los archivos permanezcan protegidos en Vercel Blob;
@@ -2316,7 +2106,7 @@ La Plataforma Integral Fuerza Índigo estará terminada cuando:
 - no exista rastro técnico de Supabase;
 - no queden parches pendientes, funciones simuladas ni deuda conocida de las fases aprobadas.
 
-La aprobación de la Fase 12 significará que Fuerza Índigo no es un prototipo: es una plataforma productiva que convierte al sindicato en el corazón operativo del ecosistema Alianza Índigo.
+La aprobación de la Fase 10 significará que Fuerza Índigo no es un prototipo: es una plataforma productiva que convierte al sindicato en el corazón operativo del ecosistema Alianza Índigo.
 
 ---
 

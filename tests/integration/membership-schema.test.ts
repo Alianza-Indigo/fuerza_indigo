@@ -729,7 +729,7 @@ describe('el beneficiario protegido no paga ni se afilia', () => {
         publicId: newPublicId(),
         personId: quien.personId,
         legalEntityId: entidadId,
-        originKind: 'CIAN',
+        originKind: 'EXTERNAL_REFERRAL',
         initialNeed: 'Acompañamiento en una valoración.',
         createdByActorId: actorId,
         updatedByActorId: actorId,

@@ -63,7 +63,6 @@ flowchart TB
         I3["Puertos de pago → Stripe"]
         I4["Puerto de IA → Gemini"]
         I5["Puerto de correo"]
-        I6["Puertos de herramientas"]
     end
     subgraph O["5 · Auditoría y observabilidad"]
         O1["AuditEvent · SecurityEvent"]
@@ -131,13 +130,11 @@ flowchart TD
     subgraph S["Atención"]
         SUPPORT["support"]
         CASES["cases"]
-        CIAN["cian"]
     end
 
     subgraph E["Economía y programas"]
         BILLING["billing"]
-        CENI["ceni"]
-        TOOLS["tools"]
+        ECOSYSTEM["ecosystem"]
         EVENTS["events"]
     end
 
@@ -154,23 +151,16 @@ flowchart TD
     S --> M
     E --> M
     C --> M
-    CIAN --> CASES
     ELECTION --> VOTING
     ASSEMBLY --> VOTING
     BARGAINING --> VOTING
     DISCIPLINE --> GOVERNANCE
-    CENI --> BILLING
-    TOOLS --> BILLING
     EVENTS --> BILLING
     MEMBERSHIP --> BILLING
-    CIAN --> BILLING
     CREDENTIALING --> DOCS
     ANALYTICS --> AUDIT
     BILLING -.->|"publica en la bandeja de salida"| EVENTBUS
     EVENTBUS -.->|"entrega a manejadores registrados"| MEMBERSHIP
-    EVENTBUS -.->|" "| TOOLS
-    EVENTBUS -.->|" "| CIAN
-    EVENTBUS -.->|" "| CENI
     EVENTBUS -.->|" "| EVENTS
 ```
 
@@ -209,16 +199,14 @@ Las flechas punteadas **no** son dependencias de código: `billing` no importa a
 | `discipline` | Régimen disciplinario con audiencia, resolución y recurso. | `DisciplinaryCase`, `DisciplinaryEvidence`, `DisciplinaryDecision`, `Appeal` | 5 |
 | `support` | Entrada única de ayuda y clasificación informativa. | `SupportRequest`, `EmergencyFlag` | 6 |
 | `cases` | Expediente de caso, participantes, tareas, mensajes y derivaciones. | `Case`, `CaseParticipant`, `CaseAssignment`, `CaseEvent`, `CaseTask`, `CaseMessage`, `Referral` | 6 |
-| `cian` | Admisión, agenda, episodios, planes y notas restringidas. | `CianIntake`, `CianAppointment`, `CianCarePlan`, … | 8 |
 | `billing` | Catálogo, Stripe por entidad, pagos, becas, libro auxiliar y patrimonio. | `CatalogProduct`, `Payment`, `LedgerEntry`, `AssetRegister`, … | 3 |
-| `ceni` | Organizaciones, programas, evaluaciones, certificados y distintivos. | `CeniProgram`, `AssessmentVersion`, `CeniCertificate`, … | 9 |
-| `tools` | Catálogo, elegibilidad, derechos de acceso y lanzamiento firmado. | `ToolDefinition`, `ToolEntitlement`, `ToolLaunch`, … | 7 |
-| `events` | Eventos, capacitación, registros, asistencia y constancias. | `Event`, `EventRegistration` | 11 |
-| `knowledge` | Fuentes autorizadas, fragmentación e índice vectorial para la búsqueda semántica. | `KnowledgeSource`, `KnowledgeChunk` | 10 |
+| `ecosystem` | Catálogo de plataformas y herramientas del ecosistema: ficha y dirección de acceso externo. | `EcosystemLink` | 7 |
+| `events` | Eventos, capacitación, registros, asistencia y constancias. | `Event`, `EventRegistration` | 9 |
+| `knowledge` | Fuentes autorizadas, fragmentación e índice vectorial para la búsqueda semántica. | `KnowledgeSource`, `KnowledgeChunk` | 8 |
 | `content` | CMS versionado, páginas públicas, SEO y redirecciones. | `ContentPage`, `ContentVersion` | 2 |
-| `notifications` | Centro interno, correo, notificaciones web y plantillas. | `Notification`, `NotificationTemplate`, `DeliveryAttempt` | 1 (correo y plantillas) · 11 (centro, web y campañas) |
-| `ai` | Servicio Gemini, prompts versionados, generaciones y revisión humana. | `AiPrompt`, `AiGeneration`, `AiReview`, `KnowledgeSource` | 10 |
-| `analytics` | Indicadores agregados con umbrales de privacidad. | vistas derivadas | 11 |
+| `notifications` | Centro interno, correo, notificaciones web y plantillas. | `Notification`, `NotificationTemplate`, `DeliveryAttempt` | 1 (correo y plantillas) · 9 (centro, web y campañas) |
+| `ai` | Servicio Gemini, prompts versionados, generaciones y revisión humana. | `AiPrompt`, `AiGeneration`, `AiReview`, `KnowledgeSource` | 8 |
+| `analytics` | Indicadores agregados con umbrales de privacidad. | vistas derivadas | 9 |
 
 ### 4.2 Reglas de frontera
 
@@ -226,11 +214,11 @@ Las flechas punteadas **no** son dependencias de código: `billing` no importa a
 2. Un módulo **no escribe** en tablas de otro módulo; solicita la operación a su servicio.
 3. La lectura entre módulos se hace por **proyecciones de solo lectura** declaradas en la interfaz pública, nunca por consultas Prisma cruzadas.
 4. Las dependencias circulares están prohibidas; cuando dos módulos se necesitan, se introduce un evento de dominio o un módulo de coordinación superior.
-5. `cases` y `cian` comparten personas, pero **no** comparten notas: la separación de expedientes es una regla de dominio, no una convención de interfaz (PRD §10.3, §13.3).
+5. `cases` y `discipline` comparten personas, pero **no** comparten notas: la separación de expedientes es una regla de dominio, no una convención de interfaz (PRD §10.3).
 
 ### 4.3 Cómo un cobro otorga un derecho sin romper el grafo
 
-Un pago confirmado debe activar una membresía, un derecho de herramienta, un servicio CIAN o un programa CENI. Pero `billing` está **por debajo** de esos módulos en el grafo: si los invocara directamente, introduciría la dependencia circular que la regla 4 prohíbe. Este es el conflicto que la primera redacción dejó sin resolver (defecto `D-F0-006`).
+Un pago confirmado debe activar una membresía o un registro en un evento. Pero `billing` está **por debajo** de esos módulos en el grafo: si los invocara directamente, introduciría la dependencia circular que la regla 4 prohíbe. Este es el conflicto que la primera redacción dejó sin resolver (defecto `D-F0-006`).
 
 La solución es una **bandeja de salida transaccional** en `platform/events`, del que dependen tanto quien publica como quien consume:
 
@@ -239,7 +227,7 @@ sequenceDiagram
     participant WH as Webhook (billing)
     participant DB as Neon
     participant BUS as platform/events
-    participant MOD as membership · tools · cian · ceni · events
+    participant MOD as membership · events
 
     Note over WH,DB: Transacción única
     WH->>DB: Payment → SUCCEEDED
@@ -398,8 +386,6 @@ Cada error lleva `code` estable, `message` en lenguaje claro para la persona, `d
 | Panel territorial | `/territorio/[unidad]/*` | Delegaciones y secciones | Sí + alcance territorial |
 | Gestión institucional | `/gestion/*` | Quien tiene facultades sindicales de nombramiento e invitación | Sí + permiso |
 | Panel institucional | `/institucional/*` | Órganos de gobierno | Sí + cargo vigente |
-| Panel CIAN | `/cian/*` | Profesionales y coordinación CIAN | Sí + asignación |
-| Panel CENI | `/ceni/*` | Organizaciones, evaluadores y coordinación | Sí + organización o asignación |
 | Superadmin | `/superadmin/*` | Superadmin raíz | Sesión independiente |
 | Verificación | `/verificar/*` | Público | No |
 
@@ -415,20 +401,18 @@ Cada error lleva `code` estable, `message` en lenguaje claro para la persona, `d
 /solicitar-apoyo                    Solicitar protección o apoyo
 /directorio                         Directorio público opt-in
 /delegaciones                       Delegaciones y presencia territorial
-/herramientas                       Herramientas tecnológicas
-/herramientas/[slug]                ADIA · NEXO · NeuroPlan
-/cian                               Centro Integral de Atención Neurodivergente
-/ceni                               Certificación de Entornos Neuroinclusivos
-/ceni/organizaciones                Organizaciones con certificación vigente
+/herramientas                       Plataformas y herramientas del ecosistema
+/herramientas/[slug]                Ficha y acceso externo de cada una
+/cian                               CIAN · qué es y acceso a su plataforma
+/ceni                               CENI · qué es y acceso a su plataforma
 /eventos                            Cursos, eventos y convocatorias públicas
 /eventos/[slug]                     Detalle de evento
 /transparencia                      Transparencia pública autorizada
 /noticias                           Noticias y recursos
 /noticias/[slug]                    Detalle de nota
 /contacto                           Contacto
-/verificar                          Verificador de credenciales y distintivos
+/verificar                          Verificador público de credenciales
 /verificar/credencial/[codigo]      Verificación de credencial
-/verificar/ceni/[codigo]            Verificación de distintivo CENI
 /legales/privacidad                 Aviso de privacidad por entidad
 /legales/terminos                   Términos
 /legales/accesibilidad              Declaración de accesibilidad
@@ -445,10 +429,8 @@ Cada error lleva `code` estable, `message` en lenguaje claro para la persona, `d
 /mi/credenciales                    Credenciales vigentes e históricas
 /mi/pagos                           Cuotas, membresías, comprobantes y portal Stripe
 /mi/beneficios                      Beneficios activos y su origen
-/mi/herramientas                    Herramientas y vigencia de acceso
+/mi/herramientas                    Plataformas y herramientas del ecosistema
 /mi/apoyo                           Solicitudes de apoyo y casos propios
-/mi/cian                            Citas, plan y documentos autorizados
-/mi/ceni                            Actividad CENI cuando aplica
 /mi/asambleas                       Convocatorias, asistencia y acuerdos
 /mi/votaciones                      Votaciones abiertas para quien tiene derecho
 /mi/eventos                         Registros, asistencia y constancias
@@ -458,7 +440,7 @@ Cada error lleva `code` estable, `message` en lenguaje claro para la persona, `d
 /mi/seguridad                       Contraseña, sesiones activas y cierre remoto
 ```
 
-### 7.4 Paneles territorial, institucional, CIAN, CENI y Superadmin
+### 7.4 Paneles territorial, institucional y Superadmin
 
 ```text
 /territorio/[unidad]                Resumen, padrón, solicitudes, casos, actividades,
@@ -477,17 +459,13 @@ Cada error lleva `code` estable, `message` en lenguaje claro para la persona, `d
 /institucional/finanzas             Finanzas, libro auxiliar y rendición de cuentas
 /institucional/disciplina           Régimen disciplinario
 
-/cian/bandeja  /cian/agenda  /cian/expedientes  /cian/planes  /cian/calidad
-/ceni/organizaciones  /ceni/evaluaciones  /ceni/certificaciones  /ceni/directorio
-
 /superadmin/login                   Acceso raíz independiente (PRD §4.4)
 /superadmin                         Estado general del sistema
 /superadmin/entidades               Entidades jurídicas
 /superadmin/personas                Personas, cuentas y roles
 /superadmin/modulos                 Configuración de módulos
 /superadmin/catalogo                Catálogo y Stripe
-/superadmin/cian  /superadmin/ceni  Configuración de programas
-/superadmin/herramientas            Herramientas e integraciones
+/superadmin/herramientas            Catálogo de plataformas y herramientas
 /superadmin/ia                      Gemini, modelos, prompts y límites
 /superadmin/contenido               Contenido público
 /superadmin/plantillas              Plantillas de documentos y mensajes
@@ -506,14 +484,11 @@ Las operaciones internas usan Server Actions. La API pública existe para integr
 | `/api/v1/auth/` | Sesión, cierre, rotación y verificación de estado. | Cookie de sesión | 1 |
 | `/api/v1/public/directory/` | Directorio público derivado de autorizaciones expresas. | Pública, con límite de tasa | 4 |
 | `/api/v1/verify/credentials/` | Verificación de credencial por identificador opaco firmado. | Pública, con límite de tasa | 4 |
-| `/api/v1/verify/ceni/` | Verificación de certificado y distintivo CENI. | Pública, con límite de tasa | 9 |
 | `/api/v1/memberships/` | Consulta y operación de membresías para integraciones autorizadas. | Token de servicio | 4 |
 | `/api/v1/support-requests/` | Alta de solicitudes de apoyo desde canales autorizados. | Token de servicio | 6 |
 | `/api/v1/cases/` | Consulta de estado de caso por la persona titular. | Cookie de sesión | 6 |
 | `/api/v1/payments/` | Estado de pagos y comprobantes. | Cookie de sesión o token | 3 |
-| `/api/v1/tools/` | Emisión de enlaces firmados y validación de derechos. | Cookie de sesión + firma | 7 |
-| `/api/v1/cian/` | Operaciones de agenda y expediente para personal asignado. | Cookie de sesión | 8 |
-| `/api/v1/ceni/` | Operaciones de organización, evidencia y evaluación. | Cookie de sesión | 9 |
+| `/api/v1/ecosystem-links/` | Consulta del catálogo de plataformas y herramientas del ecosistema. | Pública, con límite de tasa | 7 |
 | `/api/v1/assemblies/` | Convocatorias, asistencia y acuerdos publicables. | Cookie de sesión | 5 |
 | `/api/v1/elections/` | Padrón electoral, jornada y resultados publicables. | Cookie de sesión | 5 |
 | `/api/v1/webhooks/stripe/` | Recepción por cuenta: `/api/v1/webhooks/stripe/{account}`. | Firma de Stripe | 3 |
@@ -613,7 +588,7 @@ sequenceDiagram
 - No se borra un archivo sin verificar retención, bloqueo legal y referencias vivas.
 - Las exportaciones sensibles llevan marca de agua con actor, fecha y correlación cuando corresponde (PRD §10.3).
 
-Clasificaciones: `PUBLIC`, `INTERNAL`, `RESTRICTED`, `SENSITIVE_PERSONAL`, `CLINICAL`, `LEGAL_PRIVILEGED`. La clasificación determina caducidad de la URL firmada, si admite vista previa en el navegador y si exige motivo para descargar.
+Clasificaciones: `PUBLIC`, `INTERNAL`, `RESTRICTED`, `SENSITIVE_PERSONAL`, `LEGAL_PRIVILEGED`. La clasificación determina caducidad de la URL firmada, si admite vista previa en el navegador y si exige motivo para descargar.
 
 ---
 
@@ -623,7 +598,7 @@ Dos bitácoras separadas por naturaleza y retención:
 
 | Bitácora | Qué registra | Retención |
 |---|---|---|
-| `AuditEvent` | Actos institucionales y de negocio: admisiones, resoluciones, pagos, publicaciones, credenciales, decisiones CENI, consentimientos, exportaciones, acciones del Superadmin. | Larga, conforme a obligación documental |
+| `AuditEvent` | Actos institucionales y de negocio: admisiones, resoluciones, pagos, publicaciones, credenciales, consentimientos, exportaciones, acciones del Superadmin. | Larga, conforme a obligación documental |
 | `SecurityEvent` | Autenticación, intentos fallidos, límites de tasa, cambios de rol, sesiones, accesos denegados, anomalías. | Media, con minimización de datos |
 
 **Propiedades:**
@@ -654,7 +629,7 @@ flowchart LR
     RUN -->|agotados los intentos| ALERT["Marcar fallido + alerta operativa"]
 ```
 
-Trabajos contratados por el PRD §17.5: recordatorios, renovaciones, conciliación de pagos, reintento de webhooks, expiración de credenciales, tareas de retención, generación diferida de documentos y verificación de integraciones. A ellos se suman: revocación automática de accesos por vencimiento de nombramiento (PRD §4.3), cierre de vigencias de derechos de herramientas, y recálculo de indicadores agregados.
+Trabajos contratados por el PRD §17.5: recordatorios, renovaciones, conciliación de pagos, reintento de webhooks, expiración de credenciales, tareas de retención, generación diferida de documentos y verificación de integraciones. A ellos se suman: revocación automática de accesos por vencimiento de nombramiento (PRD §4.3) y recálculo de indicadores agregados.
 
 Cada trabajo tiene bloqueo, contador de intentos, próxima ejecución, error, resultado y alerta al agotar reintentos. Un trabajo nunca produce efectos dobles: la clave de idempotencia es única por `(tipo, claveDeNegocio)`.
 
@@ -679,7 +654,7 @@ Cada trabajo tiene bloqueo, contador de intentos, próxima ejecución, error, re
 
 ## 14. Aplicación web progresiva
 
-Manifiesto, iconos, metadatos y comportamiento móvil; caché de recursos públicos y de la carcasa de navegación. **Ningún expediente, documento, nota clínica ni respuesta de API con datos personales se guarda en cachés persistentes del navegador** (PRD §17.6). Las acciones que requieren conexión lo indican de forma explícita antes de intentarse, y el trabajador de servicio se limita a estrategias de red primero para todo lo autenticado.
+Manifiesto, iconos, metadatos y comportamiento móvil; caché de recursos públicos y de la carcasa de navegación. **Ningún expediente, documento ni respuesta de API con datos personales se guarda en cachés persistentes del navegador** (PRD §17.6). Las acciones que requieren conexión lo indican de forma explícita antes de intentarse, y el trabajador de servicio se limita a estrategias de red primero para todo lo autenticado.
 
 ---
 
@@ -699,8 +674,7 @@ Manifiesto, iconos, metadatos y comportamiento móvil; caché de recursos públi
 ## 16. Extensibilidad
 
 1. **Nueva entidad jurídica:** alta en `LegalEntity` más su configuración de Stripe, sus avisos y sus responsables. Ningún módulo requiere cambio de código.
-2. **Nueva herramienta tecnológica:** alta en `ToolDefinition` con su modalidad de integración; el núcleo de membresías no cambia (PRD §24 Fase 7).
-3. **Nueva línea CENI:** alta de `CeniProgram` con su plantilla de evaluación versionada.
+2. **Nueva plataforma o herramienta del ecosistema:** alta de un `EcosystemLink` con su ficha y su dirección externa, desde el CMS; el núcleo de membresías no cambia (PRD §24 Fase 7).
 4. **Nueva secretaría o comisión:** alta de `OfficeDefinition` con su conjunto de permisos; el nombre del cargo no concede acceso por sí mismo (PRD §9.2).
 5. **Nueva regla estatutaria:** nueva versión normativa con vigencia; las asambleas y elecciones anteriores conservan la versión con la que se celebraron (PRD §9.3).
 

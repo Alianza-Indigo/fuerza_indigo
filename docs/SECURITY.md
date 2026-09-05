@@ -6,7 +6,7 @@
 
 ## 1. Qué protege esta plataforma
 
-No custodia datos ordinarios. Custodia información sobre personas neurodivergentes, personas menores de edad, personas representadas, conflictos laborales, procedimientos disciplinarios, notas clínicas y el sentido de votos individuales. La consecuencia de una fuga no es un inconveniente: es un daño a personas en situación de vulnerabilidad y la pérdida de la confianza que sostiene al sindicato.
+No custodia datos ordinarios. Custodia información sobre personas neurodivergentes, personas menores de edad, personas representadas, conflictos laborales, procedimientos disciplinarios y el sentido de votos individuales. La consecuencia de una fuga no es un inconveniente: es un daño a personas en situación de vulnerabilidad y la pérdida de la confianza que sostiene al sindicato.
 
 De ahí los dos objetivos declarados por el PRD §1.3: **cero incidentes de acceso indebido a datos sensibles** y **cero errores críticos en producción**.
 
@@ -14,7 +14,6 @@ Activos y su clasificación:
 
 | Activo | Clasificación | Consecuencia de su compromiso |
 |---|---|---|
-| Notas clínicas CIAN | Crítica | Daño directo a la persona atendida y a su familia |
 | Expedientes disciplinarios | Crítica | Afectación al debido proceso y represalias |
 | Sentido individual del voto | Crítica | Destrucción de la garantía democrática |
 | Datos de personas menores de edad y representadas | Crítica | Daño a personas sin capacidad plena de defenderse |
@@ -56,7 +55,7 @@ Ruta independiente `/superadmin/login`, con sesión, cookie y ciclo de vida prop
 | Sin derechos sustantivos | Su conjunto de concesión `SUPERADMIN_GRANTED` es **cerrado**: solo contiene permisos de configuración técnica y operación. Admisiones, resoluciones, votos, sanciones, certificaciones y autorización de pagos quedan denegados por no figurar en él, igual que cualquier permiso futuro que nadie recuerde vetar (`PERMISSIONS.md` §5.1) |
 | Invisible institucionalmente | No aparece en padrones, directorios, asambleas ni reportes |
 | Motivo obligatorio | Las acciones críticas de soporte exigen `reason` capturado por la persona; sin él, la acción se deniega |
-| Sin acceso a compartimentos | `ctx.compartments` es el conjunto vacío: toda lectura de expedientes sindicales, sociales, clínicos o disciplinarios se deniega con `COMPARTIMENTO_AJENO` |
+| Sin acceso a compartimentos | `ctx.compartments` es el conjunto vacío: toda lectura de expedientes sindicales, sociales o disciplinarios se deniega con `COMPARTIMENTO_AJENO` |
 | Sin lectura masiva de datos sensibles | `identity.person.read_sensitive` no está concedido, y el motor deniega con `LECTURA_MASIVA_PROHIBIDA` toda consulta que devolvería más de un registro con datos personales. No existe exportación masiva para este actor |
 | Sin vía rápida en el motor | Recorre las siete comprobaciones de la tubería como cualquier actor. El tipo de actor determina el origen de sus permisos, nunca cuántas verificaciones atraviesa |
 | Alertas | Cada inicio de sesión raíz produce `SecurityEvent` `SUPERADMIN_LOGIN` y una alerta operativa |
@@ -93,25 +92,25 @@ La política se evalúa en el servidor en **cada** lectura, mutación, descarga 
 | Propósito visible | La persona ve para qué se usa cada dato antes de entregarlo |
 | Consentimiento versionado | Se conserva el texto exacto aceptado y su versión (mapa completo en `PERMISSIONS.md` §6) |
 | Acceso por expediente | La asignación viva es condición necesaria; el rol por sí solo no abre expedientes |
-| Descargas controladas | URL temporales, vigencia proporcional a la clasificación, motivo obligatorio en material sensible y clínico |
+| Descargas controladas | URL temporales, vigencia proporcional a la clasificación, motivo obligatorio en material sensible |
 | Marca de agua | Las exportaciones sensibles llevan actor, fecha y correlación visibles cuando corresponde (PRD §10.3) |
 | Cifrado | En tránsito por TLS; en reposo, mediante las protecciones del proveedor de base de datos y de almacenamiento |
 | Secretos | Solo en variables de entorno; nunca en base de datos, código o repositorio |
 | Registros limpios | Prohibido registrar contraseñas, tokens, diagnósticos, contenido documental o datos de personas menores. El serializador de registros aplica una lista de campos vetados y trunca lo desconocido |
 | Separación de ambientes | Desarrollo, vista previa y producción con bases y almacenes distintos. **Nunca** se copian datos reales de producción a otro ambiente |
-| Respaldo y restauración | Procedimiento documentado y **ejercitado** en la Fase 12, no solo descrito |
+| Respaldo y restauración | Procedimiento documentado y **ejercitado** en la Fase 10, no solo descrito |
 | Derechos de datos | Canal de acceso, rectificación, cancelación y oposición, con plazo, respuesta registrada y auditoría (F-20 en `FLOWS.md`) |
 | Personas menores y representadas | Privacidad reforzada por omisión, publicación pública vedada sin base y autorización específicas, y consentimiento otorgado por quien tiene la representación acreditada |
 
 ### 5.1 Compartimentos
 
-Cuatro compartimentos disjuntos: `UNION`, `SOCIAL`, `CLINICAL` y `DISCIPLINARY`. Un permiso de uno **no** habilita otro, aunque se trate de la misma persona titular. En particular, los diagnósticos y datos clínicos permanecen ocultos a roles sindicales sin autorización expresa y consentimiento específico (PRD §10.3, §13.3).
+Tres compartimentos disjuntos: `UNION`, `SOCIAL` y `DISCIPLINARY`. Un permiso de uno **no** habilita otro, aunque se trate de la misma persona titular. En particular, el expediente social permanece oculto a roles sindicales sin autorización expresa y consentimiento específico (PRD §10.3).
 
 ---
 
 ## 6. Auditoría (PRD §20.4)
 
-Se auditan como mínimo: accesos privilegiados; consulta y descarga de expedientes sensibles; cambios de roles; admisiones, rechazos, bajas y sanciones; pagos, ajustes y reembolsos; publicación de directorio; emisión y revocación de credenciales; convocatorias, padrones congelados y resultados; publicación de prompts; decisiones CENI; cambios de consentimiento; exportaciones; y todas las acciones del Superadmin.
+Se auditan como mínimo: accesos privilegiados; consulta y descarga de expedientes sensibles; cambios de roles; admisiones, rechazos, bajas y sanciones; pagos, ajustes y reembolsos; publicación de directorio; emisión y revocación de credenciales; convocatorias, padrones congelados y resultados; publicación de prompts; cambios de consentimiento; exportaciones; y todas las acciones del Superadmin.
 
 | Propiedad | Cómo se garantiza |
 |---|---|
@@ -146,7 +145,7 @@ Cada amenaza tiene control, prueba automatizada y fase propietaria. La ausencia 
 
 | # | Amenaza | Control | Prueba | Fase |
 |---|---|---|---|---|
-| 1 | Acceso horizontal a registros de otra persona | Resolución de identificadores contra el alcance; filtrado en consulta | E2E-14 y pruebas negativas por módulo | 1 y cada fase |
+| 1 | Acceso horizontal a registros de otra persona | Resolución de identificadores contra el alcance; filtrado en consulta | E2E-12 y pruebas negativas por módulo | 1 y cada fase |
 | 2 | Escalamiento vertical de privilegios | Verificación explícita en `role.assign`: nadie otorga lo que no tiene | Integración: administrador ordinario intenta autoasignarse `SUPERADMIN` | 1 |
 | 3 | Manipulación de identificadores | Identificadores opacos; toda resolución pasa por política | Integración con identificadores válidos de otro alcance | 1 |
 | 4 | Carga de archivos maliciosos | Validación de tipo real, tamaño, saneamiento y almacenamiento privado | Integración con archivo de tipo falseado y con carga desproporcionada | 1 |
@@ -248,7 +247,6 @@ La prohibición no se sustituye por una alternativa equivalente: la persistencia
 | §4.4 Superadmin por variables de entorno | §3 |
 | §9.5 Secreto del voto | §9 |
 | §10.3 Seguridad de casos | §5, §5.1 |
-| §13.3 Límites de CIAN | §5.1 |
 | §20.1 Autenticación | §2 |
 | §20.2 Autorización | §4 |
 | §20.3 Datos sensibles | §5 |

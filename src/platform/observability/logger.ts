@@ -25,7 +25,6 @@ const FORBIDDEN_KEYS = new Set(
     'credential',
     'sessiontoken',
     'diagnosis',
-    'clinicalnote',
     'notes',
     'body',
     'bodytemplate',

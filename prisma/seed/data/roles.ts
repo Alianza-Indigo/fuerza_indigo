@@ -1,7 +1,7 @@
 import type { RoleCode, ScopeKind } from '../../../src/generated/prisma/enums';
 
 /**
- * Los 19 roles base del PRD §4.2, con el conjunto de permisos que cada uno
+ * Los 14 roles base del PRD §4.2, con el conjunto de permisos que cada uno
  * recibe en la Fase 1.
  *
  * La matriz completa vive en `docs/PERMISSIONS.md` §4. Aquí solo se siembran
@@ -338,64 +338,6 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'support.request.read',
       'support.request.triage',
       'files.file.download_own','identity.person.read', 'consent.grant', 'consent.revoke', 'consent.read', 'files.file.upload', 'files.file.download'],
-  },
-  {
-    code: 'CIAN_PROFESSIONAL',
-    name: 'Profesional CIAN',
-    description: 'Agenda, expediente y plan de atención de los casos asignados.',
-    scopeKind: 'ASSIGNMENT',
-    requiresOfficeTerm: false,
-    permissions: [
-      'membership.beneficiary.create',
-      'membership.beneficiary.read',
-      'files.file.download_own','identity.person.read', 'files.file.upload', 'files.file.download'],
-  },
-  {
-    code: 'CIAN_COORDINATION',
-    name: 'Coordinación CIAN',
-    description: 'Operación, asignación, calidad y seguimiento de CIAN.',
-    scopeKind: 'LEGAL_ENTITY',
-    requiresOfficeTerm: false,
-    permissions: [
-      'membership.beneficiary.create',
-      'membership.beneficiary.read',
-      'membership.beneficiary.update',
-      'membership.relationship.read',
-      'billing.payment.read',
-      'files.file.download_own','identity.person.read', 'identity.user.invite', 'files.file.upload', 'files.file.download'],
-  },
-  {
-    code: 'CENI_ORG_USER',
-    name: 'Usuario de organización CENI',
-    description: 'Expediente y actividades de su propia organización.',
-    scopeKind: 'ORGANIZATION',
-    requiresOfficeTerm: false,
-    permissions: [
-      'billing.payment.read_own',
-      'billing.checkout.start',
-      'consent.grant_own',
-      'consent.revoke_own',
-      'consent.read_own',
-      'files.file.download_own','files.file.upload'],
-  },
-  {
-    code: 'CENI_ASSESSOR',
-    name: 'Evaluador CENI',
-    description: 'Evaluaciones y evidencias expresamente asignadas.',
-    scopeKind: 'ASSIGNMENT',
-    requiresOfficeTerm: false,
-    permissions: [
-      'files.file.download_own','files.file.download'],
-  },
-  {
-    code: 'CENI_COORDINATION',
-    name: 'Coordinación CENI',
-    description: 'Operación completa del programa CENI.',
-    scopeKind: 'LEGAL_ENTITY',
-    requiresOfficeTerm: false,
-    permissions: [
-      'billing.payment.read',
-      'files.file.download_own','identity.person.read', 'identity.user.invite', 'files.file.download'],
   },
   {
     code: 'FINANCE',

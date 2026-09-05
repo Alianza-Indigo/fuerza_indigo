@@ -86,9 +86,10 @@ export default function DeclaracionAccesibilidadPage() {
         <Section title="Lo que todavía no está" level={2}>
           <Prose>
             <p>
-              Las secciones del sitio cuyo contenido depende de módulos aún no construidos —afiliación, directorio,
-              herramientas, CIAN, CENI y eventos— existen como páginas y se irán llenando conforme se publiquen esos
-              módulos. Mientras tanto lo dicen abiertamente en lugar de mostrar un ejemplo inventado.
+              Las secciones del sitio cuyo contenido depende de módulos aún no construidos —el directorio, el
+              catálogo de plataformas y herramientas del ecosistema y los eventos— existen como páginas y se irán
+              llenando conforme se publiquen esos módulos. Mientras tanto lo dicen abiertamente en lugar de mostrar
+              un ejemplo inventado.
             </p>
             <p>
               No hemos hecho todavía una auditoría externa con personas usuarias de lectores de pantalla. Está

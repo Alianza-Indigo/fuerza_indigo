@@ -96,45 +96,12 @@
       "RetentionPolicy",
       "LegalHold"
     ],
-    "18.7 Herramientas": [
-      "ToolDefinition",
-      "ToolPlan",
-      "ToolEntitlement",
-      "ToolLaunch",
-      "ExternalIdentityLink",
+    "18.7 Catálogo de plataformas y herramientas": [
+      "EcosystemLink",
       "IntegrationCredentialReference",
       "IntegrationEvent"
     ],
-    "18.8 CIAN": [
-      "CianIntake",
-      "CianProfessional",
-      "CianService",
-      "CianAvailability",
-      "CianAppointment",
-      "CianCareEpisode",
-      "CianCarePlan",
-      "CianGoal",
-      "CianClinicalNote",
-      "CianOutcome",
-      "CianReferral"
-    ],
-    "18.9 CENI": [
-      "CeniProgram",
-      "CeniSite",
-      "CeniEngagement",
-      "AssessmentTemplate",
-      "AssessmentVersion",
-      "AssessmentResponse",
-      "AssessmentEvidence",
-      "Finding",
-      "ImprovementPlan",
-      "ImprovementAction",
-      "TrainingRequirement",
-      "CertificationDecision",
-      "CeniCertificate",
-      "CeniBadge"
-    ],
-    "18.10 IA, contenido y operación": [
+    "18.8 IA, contenido y operación": [
       "AiProviderConfiguration",
       "AiPrompt",
       "AiPromptVersion",
@@ -166,11 +133,6 @@
     "OVERSIGHT_COMMISSION",
     "ELECTORAL_COMMISSION",
     "SOCIAL_STAFF",
-    "CIAN_PROFESSIONAL",
-    "CIAN_COORDINATION",
-    "CENI_ORG_USER",
-    "CENI_ASSESSOR",
-    "CENI_COORDINATION",
     "FINANCE",
     "COMMUNICATIONS",
     "AUDITOR",
@@ -204,14 +166,11 @@
     "/api/v1/auth/",
     "/api/v1/public/directory/",
     "/api/v1/verify/credentials/",
-    "/api/v1/verify/ceni/",
     "/api/v1/memberships/",
     "/api/v1/support-requests/",
     "/api/v1/cases/",
     "/api/v1/payments/",
-    "/api/v1/tools/",
-    "/api/v1/cian/",
-    "/api/v1/ceni/",
+    "/api/v1/ecosystem-links/",
     "/api/v1/assemblies/",
     "/api/v1/elections/",
     "/api/v1/webhooks/stripe/",
@@ -231,9 +190,7 @@
     "E2E-10",
     "E2E-11",
     "E2E-12",
-    "E2E-13",
-    "E2E-14",
-    "E2E-15"
+    "E2E-13"
   ],
   "phases": [
     {
@@ -266,26 +223,18 @@
     },
     {
       "id": 7,
-      "name": "Herramientas tecnológicas"
+      "name": "Plataformas y herramientas del ecosistema"
     },
     {
       "id": 8,
-      "name": "CIAN"
-    },
-    {
-      "id": 9,
-      "name": "CENI"
-    },
-    {
-      "id": 10,
       "name": "Inteligencia artificial Gemini"
     },
     {
-      "id": 11,
+      "id": 9,
       "name": "Comunicaciones, eventos, capacitación e indicadores"
     },
     {
-      "id": 12,
+      "id": 10,
       "name": "Endurecimiento, migración final y liberación productiva"
     }
   ],
@@ -418,53 +367,11 @@
       "EmergencyFlag"
     ],
     "7": [
-      "ToolDefinition",
-      "ToolPlan",
-      "ToolEntitlement",
-      "ToolLaunch",
-      "ExternalIdentityLink",
+      "EcosystemLink",
       "IntegrationCredentialReference",
       "IntegrationEvent"
     ],
     "8": [
-      "CianIntake",
-      "CianProfessional",
-      "CianProfessionalService",
-      "CianProfessionalDiscipline",
-      "CianService",
-      "CianAvailability",
-      "CianAvailabilityService",
-      "CianAppointment",
-      "CianCareEpisode",
-      "CianCarePlan",
-      "CianGoal",
-      "CianClinicalNote",
-      "CianOutcome",
-      "CianReferral",
-      "CianReferralSharedFile"
-    ],
-    "9": [
-      "CeniProgram",
-      "CeniSite",
-      "CeniEngagement",
-      "CeniEngagementSite",
-      "CeniEngagementAssessor",
-      "AssessmentTemplate",
-      "AssessmentVersion",
-      "AssessmentResponse",
-      "AssessmentEvidence",
-      "Finding",
-      "ImprovementPlan",
-      "ImprovementAction",
-      "ImprovementActionEvidence",
-      "TrainingRequirement",
-      "TrainingRequirementEvidence",
-      "CertificationDecision",
-      "CeniCertificate",
-      "CeniCertificateSite",
-      "CeniBadge"
-    ],
-    "10": [
       "AiProviderConfiguration",
       "AiPrompt",
       "AiPromptVersion",
@@ -475,7 +382,7 @@
       "KnowledgeSource",
       "KnowledgeChunk"
     ],
-    "11": [
+    "9": [
       "Event",
       "EventRegistration",
       "EventMaterial"
@@ -485,15 +392,12 @@
     "$comment": "Referencias ANULABLES a entidades de fases posteriores. Cada una se justifica: la columna la agrega la migración de la fase posterior y la fase propietaria cierra al 100 % sin ella. Una referencia OBLIGATORIA hacia adelante nunca se admite aquí: es un error de orden de fases.",
     "RoleAssignment->OfficeTerm": "Enlace opcional del nombramiento. En la Fase 1 las asignaciones son administrativas; la Fase 5 agrega la columna al introducir los cargos.",
     "ApplicationReview->OfficeTerm": "La revisión registra la cartera del revisor cuando existe. En la Fase 4 basta la cuenta revisora; la Fase 5 agrega el enlace.",
-    "CredentialVerification->CeniCertificate": "El verificador público atiende credenciales desde la Fase 4 y distintivos CENI desde la Fase 9, que agrega la columna.",
     "TerritorialUnit->Resolution": "El acuerdo habilitante de una unidad territorial se registra cuando existe vida asamblearia, en la Fase 5.",
-    "SupportRequest->AiGeneration": "La sugerencia de canalización asistida es opcional por diseño. La entrada se construye en la Fase 2 y no la escribe; la Fase 6 opera con clasificación humana y la Fase 10 agrega el enlace al modelo.",
+    "SupportRequest->AiGeneration": "La sugerencia de canalización asistida es opcional por diseño. La entrada se construye en la Fase 2 y no la escribe; la Fase 6 opera con clasificación humana y la Fase 8 agrega el enlace al modelo.",
     "Consent->CareRelationship": "El consentimiento otorgado por representación necesita la relación de cuidado, que llega en la Fase 4 junto con las personas representadas.",
     "CatalogProduct->Resolution": "Solo las cuotas extraordinarias exigen acuerdo habilitante, y esas no existen antes de la Fase 5.",
     "Subscription->Membership": "Una suscripción puede sostener una membresía, una herramienta o un servicio. La Fase 3 opera suscripciones sin membresías; la Fase 4 agrega el enlace.",
-    "Subscription->ToolEntitlement": "Mismo caso que el anterior, con el derecho de herramienta que llega en la Fase 7.",
     "AssetRegister->Resolution": "La aprobación institucional de un acto patrimonial requiere acuerdo, que existe desde la Fase 5.",
-    "TrainingRequirement->Event": "El enlace es opcional (D-F0-008): CENI acredita la capacitación por evidencia documental y cierra su fase sin el módulo de eventos.",
     "NormativeRuleSet->GeneratedDocument": "El documento probatorio de la reforma estatutaria se adjunta cuando existe generación documental, en la Fase 4. La versión normativa inicial se siembra en la Fase 1 sin documento asociado."
   }
 }

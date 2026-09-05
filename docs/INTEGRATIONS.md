@@ -15,7 +15,6 @@ flowchart LR
         AP["AiPort"]
         FP["FileStoragePort"]
         MP["MailerPort"]
-        TP["ToolLaunchPort"]
     end
     subgraph ADP["Adaptadores"]
         S1["StripeAdapter · cuenta FUERZA"]
@@ -25,9 +24,6 @@ flowchart LR
         M1["ResendAdapter"]
         M2["SmtpAdapter"]
         M3["ConsoleAdapter (desarrollo)"]
-        T1["DeepLinkAdapter"]
-        T2["SignedLoginAdapter"]
-        T3["ApiAdapter"]
     end
     subgraph FAKE["Adaptadores de prueba"]
         F1["FakePayment"]
@@ -39,7 +35,6 @@ flowchart LR
     AP --> G1 & F2
     FP --> B1 & F3
     MP --> M1 & M2 & M3 & F4
-    TP --> T1 & T2 & T3
 ```
 
 Regla transversal: **ningún secreto vive en la base de datos**. Las claves están únicamente en variables de entorno; la tabla `IntegrationCredentialReference` guarda el *nombre* de la variable y una huella para detectar rotaciones, jamás el valor.
@@ -53,7 +48,7 @@ Regla transversal: **ningún secreto vive en la base de datos**. Las claves est�
 | Cuenta | Entidad receptora | Conceptos | Variables |
 |---|---|---|---|
 | `FUERZA` | Sindicato Fuerza Índigo | Cuota de inscripción, cuotas ordinarias y extraordinarias autorizadas, membresías sindicales | `STRIPE_FUERZA_SECRET_KEY`, `STRIPE_FUERZA_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_FUERZA_PUBLISHABLE_KEY` |
-| `ALIANZA` | Alianza Índigo Neurodivergente A.C. | Membresías honorarias con destino social, servicios CIAN, programas y certificaciones CENI, cursos, aportaciones | `STRIPE_ALIANZA_SECRET_KEY`, `STRIPE_ALIANZA_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY` |
+| `ALIANZA` | Alianza Índigo Neurodivergente A.C. | Membresías honorarias con destino social, cursos y aportaciones | `STRIPE_ALIANZA_SECRET_KEY`, `STRIPE_ALIANZA_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY` |
 
 Cada cuenta tiene **su propio secreto de webhook** y su propia ruta: `/api/v1/webhooks/stripe/fuerza` y `/api/v1/webhooks/stripe/alianza`. Un evento de una cuenta no puede modificar registros atribuidos a la otra: el manejador compara la entidad receptora del `Payment` con la cuenta del evento y rechaza el cruce.
 
@@ -95,7 +90,7 @@ Orden obligatorio del manejador:
 1. Leer el cuerpo **crudo** y verificar la firma con el secreto de esa cuenta.
 2. **Persistir** `StripeWebhookEvent` con el cuerpo íntegro, la cuenta y la versión de API, antes de cualquier procesamiento.
 3. Responder 200 en cuanto el evento está persistido; el procesamiento posterior es idempotente y reintentable.
-4. Procesar dentro de una transacción: actualizar `Payment`, escribir `LedgerEntry`, registrar auditoría y **publicar el evento de dominio en la bandeja de salida**. El derecho lo otorga el módulo correspondiente al recibir ese evento, de forma idempotente; `billing` no invoca a `membership`, `tools`, `cian` ni `ceni` (ver `ARCHITECTURE.md` §4.3 y ADR-0025).
+4. Procesar dentro de una transacción: actualizar `Payment`, escribir `LedgerEntry`, registrar auditoría y **publicar el evento de dominio en la bandeja de salida**. El derecho lo otorga el módulo correspondiente al recibir ese evento, de forma idempotente; `billing` no invoca a `membership` ni a `events` (ver `ARCHITECTURE.md` §4.3 y ADR-0025).
 5. Si el procesamiento falla, marcar `FAILED` y encolar el reintento; el evento persistido permite reprocesar sin depender de Stripe.
 
 | Evento | Efecto |
@@ -151,7 +146,7 @@ Reglas de ejecución:
 
 ### 3.3 Límites de decisión (PRD §15.4)
 
-La IA **no** decide: admisión o rechazo de afiliaciones; suspensión o expulsión; elegibilidad electoral definitiva; sentido o validez de un voto; resolución de conflictos; otorgamiento de representación legal; diagnóstico médico o psicológico; certificación CENI; autorización de pagos o reembolsos; acceso a expedientes; publicación de datos personales. Estas acciones están en la lista `AI_FORBIDDEN_EFFECTS` y el servicio las rechaza aunque un prompt lo pida.
+La IA **no** decide: admisión o rechazo de afiliaciones; suspensión o expulsión; elegibilidad electoral definitiva; sentido o validez de un voto; resolución de conflictos; otorgamiento de representación legal; diagnóstico médico o psicológico; autorización de pagos o reembolsos; acceso a expedientes; publicación de datos personales. Estas acciones están en la lista `AI_FORBIDDEN_EFFECTS` y el servicio las rechaza aunque un prompt lo pida.
 
 ### 3.4 Degradación
 
@@ -182,7 +177,6 @@ interface FileStoragePort {
 | `INTERNAL` | 15 min | Sí | No |
 | `RESTRICTED` | 5 min | Sí | No |
 | `SENSITIVE_PERSONAL` | 2 min | No, descarga directa | Sí |
-| `CLINICAL` | 2 min | No | Sí |
 | `LEGAL_PRIVILEGED` | 2 min | No | Sí |
 
 ---
@@ -209,33 +203,29 @@ Adaptadores: `resend` (producción), `smtp` (alternativa institucional) y `conso
 
 ---
 
-## 6. Herramientas tecnológicas
+## 6. Plataformas y herramientas del ecosistema
 
-### 6.1 Modalidades (PRD §12.2)
+CIAN, CENI, NeuroPlan, ADIA y NEXO tienen operación propia fuera de este repositorio. Aquí **no hay integración**: hay un catálogo con su ficha y su dirección de acceso (PRD §12, §13 y §14).
 
-| Modalidad | Cuándo se usa | Mecánica |
+### 6.1 Modalidad única
+
+**Redirección externa.** El enlace abre la plataforma en su propio dominio, con `rel="noopener noreferrer"` y `target="_blank"`, y una indicación accesible previa de que se sale de Fuerza Índigo.
+
+No existen inicio de sesión único, token de lanzamiento, intercambio de identidad, integración por API ni sincronización de personas, expedientes o pagos. Cada plataforma conserva su autenticación, su operación, sus cobros y sus datos.
+
+**Prohibiciones:** iframes, datos personales en parámetros de URL y cualquier dirección escrita en un componente en vez de administrada desde el catálogo.
+
+### 6.2 Fichas iniciales
+
+| Plataforma o herramienta | Entidad responsable | Acceso |
 |---|---|---|
-| `NATIVE_MODULE` | La herramienta vive dentro de la plataforma | Módulo propio; sin intercambio externo |
-| `AUTHENTICATED_DEEP_LINK` | La herramienta tiene su propia sesión | Enlace a una ruta que exige autenticación en destino; sin datos en la URL |
-| `SIGNED_SHORT_LIVED_LOGIN` | La herramienta acepta identidad delegada | Token firmado de corta duración y un solo uso, con `jti` registrado |
-| `API_INTEGRATION` | Intercambio servidor a servidor | Credenciales por entorno, firma y `IntegrationEvent` |
-| `EXTERNAL_NO_IDENTITY` | Recurso externo abierto | Enlace simple; no se comparte identidad |
+| CIAN | Alianza Índigo | Dirección externa configurable |
+| CENI | Alianza Índigo | Dirección externa configurable |
+| NeuroPlan | Alianza Índigo | Dirección externa configurable |
+| ADIA | Alianza Índigo | Dirección externa configurable |
+| NEXO | Fuerza Índigo | Dirección externa configurable |
 
-**Prohibiciones:** iframes inseguros y datos sensibles en parámetros de URL.
-
-### 6.2 Token de lanzamiento firmado
-
-Contenido mínimo, sin datos personales más allá de lo indispensable: `iss` (la plataforma), `aud` (código de la herramienta), `sub` (identificador opaco de la persona, no su correo), `jti` (único, registrado en `ToolLaunch`), `entitlement` (código del derecho), `exp` (≤ 120 segundos) y `scope`. Se firma con `AUTH_SECRET` derivado por herramienta. El consumo marca `consumedAt`; un `jti` reutilizado se rechaza y se audita.
-
-### 6.3 Herramientas iniciales
-
-| Herramienta | Entidad responsable | Modalidad prevista | Origen típico del derecho |
-|---|---|---|---|
-| NeuroPlan | Alianza Índigo | `SIGNED_SHORT_LIVED_LOGIN` | Asignación CIAN, beca o membresía honoraria |
-| ADIA | Alianza Índigo | `AUTHENTICATED_DEEP_LINK` | Beneficio sindical o programa social |
-| NEXO | Fuerza Índigo | `API_INTEGRATION` | Membresía sindical activa |
-
-La modalidad y la URL son configuración, no código: agregar una herramienta es un alta de catálogo (PRD §24 Fase 7).
+La dirección es configuración, no código: agregar una plataforma o una herramienta es un alta de catálogo (PRD §24 Fase 7). Una ficha sin dirección configurada se muestra **sin botón de acceso**.
 
 ---
 
@@ -246,7 +236,7 @@ Las rutas viven bajo `/api/v1/cron/*` y exigen `CRON_SECRET` comparado en tiempo
 | Trabajo | Frecuencia prevista | Qué hace |
 |---|---|---|
 | `reminders` | Cada hora | Recordatorios de citas, plazos de aclaración, cuotas y vencimientos —incluido el aviso previo al vencimiento de una credencial— |
-| `renewals` | Diaria | Renovaciones de membresías, herramientas y certificados CENI |
+| `renewals` | Diaria | Renovaciones de membresías |
 | `membership-expiry` | Diaria | Marca vencidas las membresías cuya vigencia terminó, con motivo `EXPIRY`. No da de baja a nadie: renovar la devuelve |
 | `payment-reconciliation` | Diaria | Cotejo del libro auxiliar contra cada cuenta de Stripe |
 | `webhook-retry` | Cada 15 minutos | Reprocesa eventos persistidos con estado `FAILED` |
@@ -267,7 +257,6 @@ Cada trabajo tiene bloqueo, intentos, próxima ejecución, error, resultado y al
 | Contrato | Entrada | Salida | Protección |
 |---|---|---|---|
 | `/api/v1/verify/credentials/{codigo}` | Código opaco firmado | Nombre autorizado, fotografía si corresponde, tipo, estado, vigencia, territorio o cargo, número público | Límite de tasa, respuesta uniforme para código inexistente o inválido, registro agregado sin identificar a quien consulta |
-| `/api/v1/verify/ceni/{codigo}` | Código opaco firmado | Organización, línea, nivel, alcance, emisión, vigencia y estado (vigente, suspendido, vencido o revocado) | Igual que el anterior |
 
 La verificación lee siempre el **estado vivo**: una revocación surte efecto de inmediato y ninguna caché la sobrevive.
 

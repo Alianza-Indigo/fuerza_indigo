@@ -58,16 +58,12 @@ export const createProductSchema = z.object({
     'HONORARY_MEMBERSHIP',
     'SERVICE_SUBSCRIPTION',
     'COURSE',
-    'CIAN_SERVICE',
-    'CENI_PROGRAM',
-    'CENI_ASSESSMENT',
-    'CENI_CERTIFICATION',
     'RENEWAL',
     'DONATION',
   ]),
   billingMode: z.enum(['ONE_TIME', 'RECURRING']),
   moduleBinding: z
-    .enum(['MEMBERSHIP', 'HONORARY_AFFILIATION', 'TOOL_ACCESS', 'CIAN_SERVICE', 'CENI_PROGRAM', 'EVENT_REGISTRATION', 'NONE'])
+    .enum(['MEMBERSHIP', 'HONORARY_AFFILIATION', 'EVENT_REGISTRATION', 'NONE'])
     .default('NONE'),
   stripeProductId: z.string().trim().max(80).optional(),
   authorizingResolutionNote: z.string().trim().max(400).optional(),

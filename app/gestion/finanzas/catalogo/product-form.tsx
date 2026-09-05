@@ -40,10 +40,6 @@ const TIPOS = [
     hint: 'Acceso periódico a un servicio de la plataforma.',
   },
   { value: 'COURSE', label: 'Curso o taller', hint: 'Una formación con inscripción.' },
-  { value: 'CIAN_SERVICE', label: 'Servicio del CIAN', hint: 'Atención del Centro Integral de Atención Neurodivergente.' },
-  { value: 'CENI_PROGRAM', label: 'Programa del CENI', hint: 'Un programa completo del Centro de Estudios.' },
-  { value: 'CENI_ASSESSMENT', label: 'Evaluación del CENI', hint: 'Una valoración suelta, sin programa.' },
-  { value: 'CENI_CERTIFICATION', label: 'Certificación del CENI', hint: 'La emisión de una constancia o un certificado.' },
   { value: 'RENEWAL', label: 'Renovación', hint: 'La continuidad de algo que ya se tenía.' },
   { value: 'DONATION', label: 'Donativo', hint: 'Una aportación voluntaria, sin contraprestación.' },
 ] as const;
@@ -52,9 +48,6 @@ const VINCULOS = [
   { value: 'NONE', label: 'Ninguno: solo se cobra' },
   { value: 'MEMBERSHIP', label: 'Afiliación sindical' },
   { value: 'HONORARY_AFFILIATION', label: 'Afiliación honoraria' },
-  { value: 'TOOL_ACCESS', label: 'Acceso a una herramienta' },
-  { value: 'CIAN_SERVICE', label: 'Servicio del CIAN' },
-  { value: 'CENI_PROGRAM', label: 'Programa del CENI' },
   { value: 'EVENT_REGISTRATION', label: 'Inscripción a un evento' },
 ] as const;
 

@@ -22,8 +22,8 @@ describe('etiquetas de los tipos de la entrada pública', () => {
     expect(Object.keys(REQUEST_TYPE_LABELS).sort()).toEqual([...REQUEST_TYPES].sort());
   });
 
-  it('los doce tipos del PRD §10.1 están, más el contacto general', () => {
-    expect(REQUEST_TYPES).toHaveLength(13);
+  it('los once tipos del PRD §10.1 están, más el contacto general', () => {
+    expect(REQUEST_TYPES).toHaveLength(12);
     expect(REQUEST_TYPES).toContain('VIOLENCE_OR_URGENCY');
     expect(REQUEST_TYPES).toContain('GENERAL_CONTACT');
   });

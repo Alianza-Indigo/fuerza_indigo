@@ -88,9 +88,9 @@ export default async function SuperadminHomePage() {
           <h2 className="mb-3 text-lg font-semibold">Módulos de fases posteriores</h2>
           <Card>
             <p className="text-sm text-[var(--color-ink-soft)]">
-              Catálogo y cobros, contenidos públicos, herramientas, CIAN, CENI e inteligencia artificial se
-              incorporan en sus fases correspondientes. Esta pantalla no los anuncia todavía, porque anunciar
-              lo que aún no existe no le sirve a nadie: cuando existan, aparecerán aquí en funcionamiento.
+              El catálogo de plataformas y herramientas del ecosistema y la inteligencia artificial se incorporan
+              en sus fases correspondientes. Esta pantalla no los anuncia todavía, porque anunciar lo que aún no
+              existe no le sirve a nadie: cuando existan, aparecerán aquí en funcionamiento.
             </p>
           </Card>
         </section>

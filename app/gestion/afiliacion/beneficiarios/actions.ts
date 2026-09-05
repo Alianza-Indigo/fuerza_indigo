@@ -48,7 +48,6 @@ export async function registerBeneficiaryAction(
       | 'UNION_MEMBER'
       | 'DELEGATE'
       | 'SOCIAL_STAFF'
-      | 'CIAN'
       | 'EXTERNAL_REFERRAL',
     initialNeed: textField(formData, 'initialNeed'),
     urgencyLevel: (textField(formData, 'urgencyLevel') || 'ROUTINE') as 'ROUTINE' | 'PRIORITY' | 'URGENT',

@@ -326,7 +326,7 @@ describe('revocación', () => {
     });
   });
 
-  it('revoca y conserva el historial (E2E-13)', async () => {
+  it('revoca y conserva el historial (E2E-11)', async () => {
     const actor = await contextoDe(base.prisma, secretaria);
     const resultado = await revokeRole(actor, { assignmentId: asignacionId, reason: 'conclusión del periodo acordada' });
     expect(resultado.ok && resultado.data.revoked).toBe(true);

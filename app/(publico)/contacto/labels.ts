@@ -35,10 +35,6 @@ export const REQUEST_TYPE_LABELS: Readonly<Record<SupportRequestType, { label: s
     label: 'Orientación familiar',
     help: 'Acompañamiento para tu familia o para quien cuidas.',
   },
-  CIAN_ATTENTION: {
-    label: 'Necesito atención del CIAN',
-    help: 'Atención neurodivergente integral.',
-  },
   PSYCHOSOCIAL_RISK: {
     label: 'Riesgo psicosocial',
     help: 'Acoso, carga excesiva, ambiente que te está haciendo daño.',

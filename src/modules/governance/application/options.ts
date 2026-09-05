@@ -102,3 +102,46 @@ export function permissionOptions(actor: ActorContext): UseCaseResult<readonly O
       .map((permiso) => ({ value: permiso.code, label: `${permiso.code} — ${permiso.description}` })),
   );
 }
+
+/**
+ * Personas a las que se puede encargar el seguimiento de un acuerdo.
+ *
+ * Son quienes ocupan un cargo vigente y tienen cuenta: un acuerdo se encarga a
+ * una secretaría, no a una persona cualquiera, y quien lo recibe tiene que
+ * poder entrar a actualizar su estado.
+ */
+export async function followUpOwners(actor: ActorContext): Promise<UseCaseResult<readonly Opcion[]>> {
+  const decision = can(actor, 'governance.body.read', { kind: 'OfficeTerm' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const ahora = new Date();
+  const filas = await db().officeTerm.findMany({
+    where: { endedEarlyOn: null, endsOn: { gte: ahora } },
+    orderBy: { endsOn: 'asc' },
+    select: {
+      officeDefinition: { select: { name: true } },
+      person: {
+        select: {
+          givenName: true,
+          middleName: true,
+          familyName: true,
+          secondFamilyName: true,
+          preferredName: true,
+          user: { select: { id: true, status: true } },
+        },
+      },
+    },
+  });
+
+  const vistas = new Set<string>();
+  const salida: Opcion[] = [];
+  for (const fila of filas) {
+    const cuenta = fila.person.user;
+    if (cuenta === null || cuenta.status !== 'ACTIVE') continue;
+    if (vistas.has(cuenta.id)) continue;
+    vistas.add(cuenta.id);
+    salida.push({ value: cuenta.id, label: `${nombreCompleto(fila.person)} · ${fila.officeDefinition.name}` });
+  }
+
+  return ok(salida);
+}

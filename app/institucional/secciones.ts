@@ -16,5 +16,7 @@ export const SECCIONES = [
   { href: '/institucional/reglas', label: 'Reglas estatutarias', permiso: 'governance.body.read' },
   { href: '/institucional/organos', label: 'Órganos y cargos', permiso: 'governance.body.read' },
   { href: '/institucional/nombramientos', label: 'Periodos y poderes', permiso: 'governance.body.read' },
+  { href: '/institucional/asambleas', label: 'Asambleas', permiso: 'assembly.assembly.read' },
+  { href: '/institucional/acuerdos', label: 'Seguimiento de acuerdos', permiso: 'assembly.assembly.read' },
   { href: '/institucional/documentos', label: 'Plantillas de documento', permiso: 'documents.template.manage' },
 ] as const;

@@ -22,6 +22,7 @@ export {
   appointableMemberships,
   grantablePeople,
   permissionOptions,
+  followUpOwners,
   type Opcion,
 } from './application/options';
 

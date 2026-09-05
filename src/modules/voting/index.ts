@@ -7,6 +7,7 @@ export {
   tallyVoteProcess,
   certifyVoteProcess,
   voteProcessList,
+  publicVoteProcess,
   scheduleVoteProcessSchema,
   issueVoteCredentialsSchema,
   castBallotSchema,
@@ -20,4 +21,5 @@ export {
   type TallyResult,
   type VoteOption,
   type VoteProcessRow,
+  type PublicVoteProcess,
 } from './application/processes';

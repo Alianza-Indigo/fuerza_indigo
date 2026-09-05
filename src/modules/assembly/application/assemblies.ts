@@ -623,3 +623,100 @@ export async function agendaItems(
     })),
   );
 }
+
+export interface AssemblyDetail extends AssemblyRow {
+  readonly minutesDocumentId: string | null;
+  readonly publicationLevel: string;
+  readonly closedAt: Date | null;
+  readonly convenedBy: string | null;
+  readonly callDetails: readonly {
+    readonly id: string;
+    readonly ordinal: CallOrdinal;
+    readonly issuedAt: Date;
+    readonly noticeDays: number;
+    readonly quorumRule: string;
+    readonly channels: readonly string[];
+    readonly documentId: string | null;
+  }[];
+}
+
+/** Una asamblea por su identificador público, con lo que la pantalla necesita. */
+export async function assemblyDetail(
+  actor: ActorContext,
+  publicId: string,
+): Promise<UseCaseResult<AssemblyDetail>> {
+  const decision = can(actor, 'assembly.assembly.read', { kind: 'Assembly' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const fila = await db().assembly.findUnique({
+    where: { publicId },
+    select: {
+      id: true,
+      publicId: true,
+      type: true,
+      modality: true,
+      venue: true,
+      scheduledAt: true,
+      status: true,
+      convenedByPetition: true,
+      quorumDeclaredAt: true,
+      minutesDocumentId: true,
+      publicationLevel: true,
+      closedAt: true,
+      unionBody: { select: { name: true } },
+      territorialUnit: { select: { name: true } },
+      normativeRuleSet: { select: { version: true } },
+      convenedByOfficeTerm: { select: { officeDefinition: { select: { name: true } } } },
+      calls: {
+        orderBy: { issuedAt: 'asc' },
+        select: {
+          id: true,
+          ordinal: true,
+          issuedAt: true,
+          noticeDays: true,
+          quorumRule: true,
+          publishedChannels: true,
+          documentId: true,
+        },
+      },
+      rosterSnapshot: { select: { id: true } },
+      _count: { select: { agendaItems: true } },
+    },
+  });
+  if (fila === null) return fail(errors.notFound('Esa asamblea no existe.'));
+
+  return ok({
+    id: fila.id,
+    publicId: fila.publicId,
+    bodyName: fila.unionBody.name,
+    territory: fila.territorialUnit.name,
+    type: fila.type,
+    modality: fila.modality,
+    venue: fila.venue,
+    scheduledAt: fila.scheduledAt,
+    status: fila.status,
+    normativeVersion: fila.normativeRuleSet.version,
+    convenedByPetition: fila.convenedByPetition,
+    agendaItemCount: fila._count.agendaItems,
+    calls: fila.calls.map((call) => ({
+      ordinal: call.ordinal,
+      issuedAt: call.issuedAt,
+      noticeDays: call.noticeDays,
+    })),
+    rosterFrozen: fila.rosterSnapshot !== null,
+    quorumDeclaredAt: fila.quorumDeclaredAt,
+    minutesDocumentId: fila.minutesDocumentId,
+    publicationLevel: fila.publicationLevel,
+    closedAt: fila.closedAt,
+    convenedBy: fila.convenedByOfficeTerm?.officeDefinition.name ?? null,
+    callDetails: fila.calls.map((call) => ({
+      id: call.id,
+      ordinal: call.ordinal,
+      issuedAt: call.issuedAt,
+      noticeDays: call.noticeDays,
+      quorumRule: call.quorumRule,
+      channels: call.publishedChannels,
+      documentId: call.documentId,
+    })),
+  });
+}

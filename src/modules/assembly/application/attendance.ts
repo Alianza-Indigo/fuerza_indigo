@@ -489,3 +489,72 @@ export async function attendanceList(
     })),
   );
 }
+
+export interface PendingAttendee {
+  readonly membershipId: string;
+  readonly memberNumber: string;
+  readonly personName: string;
+  readonly hasVote: boolean;
+}
+
+/**
+ * Personas del padrón congelado que todavía no han registrado asistencia.
+ *
+ * La lista existe para que el registro manual no obligue a teclear un número de
+ * miembro, y para que no ofrezca a quien ya está registrado: repetir una
+ * asistencia falla contra el índice único, y fallar después de elegir a alguien
+ * en una mesa de registro con gente esperando es la peor forma de descubrirlo.
+ */
+export async function pendingAttendees(
+  actor: ActorContext,
+  assemblyId: string,
+): Promise<UseCaseResult<readonly PendingAttendee[]>> {
+  const decision = can(actor, 'assembly.attendance.register', { kind: 'Attendance' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const asamblea = await db().assembly.findUnique({
+    where: { id: assemblyId },
+    select: { id: true, rosterSnapshot: { select: { id: true } } },
+  });
+  if (asamblea === null) return fail(errors.notFound('Esa asamblea no existe.'));
+  if (asamblea.rosterSnapshot === null) return ok([]);
+
+  const [entradas, registradas] = await Promise.all([
+    db().assemblyRosterEntry.findMany({
+      where: { rosterId: asamblea.rosterSnapshot.id },
+      orderBy: { memberNumber: 'asc' },
+      select: {
+        membershipId: true,
+        memberNumber: true,
+        hasVote: true,
+        membership: {
+          select: {
+            person: {
+              select: {
+                givenName: true,
+                middleName: true,
+                familyName: true,
+                secondFamilyName: true,
+                preferredName: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    db().attendance.findMany({ where: { assemblyId: asamblea.id }, select: { membershipId: true } }),
+  ]);
+
+  const yaEstan = new Set(registradas.map((fila) => fila.membershipId));
+
+  return ok(
+    entradas
+      .filter((entrada) => !yaEstan.has(entrada.membershipId))
+      .map((entrada) => ({
+        membershipId: entrada.membershipId,
+        memberNumber: entrada.memberNumber,
+        personName: nombreCompleto(entrada.membership.person),
+        hasVote: entrada.hasVote,
+      })),
+  );
+}

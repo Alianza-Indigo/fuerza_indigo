@@ -12,6 +12,7 @@ import { newPublicId } from '@/platform/kernel/ids';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import { alcanzaMayoria, leerReglas, type MajorityRule } from '@/modules/governance';
 import { issueDocument } from '@/modules/documents';
+import { uploadFile } from '@/platform/files';
 import type {
   FollowUpStatus,
   PublicationLevel,
@@ -397,10 +398,23 @@ export const updateFollowUpSchema = z.object({
   resolutionId: z.uuid(),
   status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE']),
   note: z.string().trim().min(10).max(2000),
-  evidenceFileId: z.uuid().nullable().default(null),
 });
 
-export type UpdateFollowUpInput = z.infer<typeof updateFollowUpSchema>;
+export interface FollowUpEvidence {
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly content: Uint8Array;
+}
+
+export interface UpdateFollowUpInput extends z.infer<typeof updateFollowUpSchema> {
+  /**
+   * Documento que acredita el cumplimiento. Se **sube aquí**, en el mismo acto:
+   * pedir que se hubiera subido antes y elegirlo de una lista obligaba a pasar
+   * por otra pantalla, y quien lleva el seguimiento de un acuerdo tiene el
+   * documento delante, no en un acervo.
+   */
+  readonly evidence?: FollowUpEvidence | null;
+}
 
 /**
  * Actualiza el seguimiento de un acuerdo (F5-ASA-007).
@@ -421,9 +435,18 @@ export async function updateFollowUp(
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const data = parsed.data;
+  const evidencia = input.evidence ?? null;
+
   const resolucion = await db().resolution.findUnique({
     where: { id: data.resolutionId },
-    select: { id: true, number: true, followUpStatus: true, followUpOwnerId: true, outcome: true },
+    select: {
+      id: true,
+      number: true,
+      followUpStatus: true,
+      followUpOwnerId: true,
+      outcome: true,
+      assembly: { select: { unionBody: { select: { legalEntityId: true } } } },
+    },
   });
   if (resolucion === null) return fail(errors.notFound('Esa resolución no existe.'));
   if (resolucion.outcome !== 'APPROVED') {
@@ -432,20 +455,27 @@ export async function updateFollowUp(
   if (resolucion.followUpOwnerId === null) {
     return fail(errors.conflict('Esa resolución no tiene responsable de seguimiento asignado.'));
   }
-  if (data.status === 'COMPLETED' && data.evidenceFileId === null) {
+  if (data.status === 'COMPLETED' && evidencia === null) {
     return fail(
       errors.validation({
-        evidenceFileId: ['Dar por cumplido un acuerdo exige evidencia. Adjunta el documento que lo acredita.'],
+        evidence: ['Dar por cumplido un acuerdo exige evidencia. Adjunta el documento que lo acredita.'],
       }),
     );
   }
 
-  if (data.evidenceFileId !== null) {
-    const archivo = await db().fileObject.findUnique({
-      where: { id: data.evidenceFileId },
-      select: { id: true, deletedAt: true },
+  let evidenciaId: string | null = null;
+  if (evidencia !== null) {
+    const guardado = await uploadFile(actor, {
+      legalEntityId: resolucion.assembly.unionBody.legalEntityId,
+      classification: 'INTERNAL',
+      contextKind: 'GOVERNANCE',
+      contextId: resolucion.id,
+      originalFileName: evidencia.fileName,
+      mimeType: evidencia.mimeType,
+      content: evidencia.content,
     });
-    if (archivo === null || archivo.deletedAt !== null) return fail(errors.notFound('Ese archivo no existe.'));
+    if (!guardado.ok) return fail(guardado.error);
+    evidenciaId = guardado.data.fileObjectId;
   }
 
   await transaction(async (tx) => {
@@ -464,7 +494,7 @@ export async function updateFollowUp(
         numero: resolucion.number,
         de: resolucion.followUpStatus,
         a: data.status,
-        evidencia: data.evidenceFileId,
+        evidencia: evidenciaId,
       },
     });
   });

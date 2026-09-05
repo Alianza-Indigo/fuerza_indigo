@@ -5,6 +5,7 @@ export {
   addAgendaItem,
   attachAgendaDocument,
   assemblyList,
+  assemblyDetail,
   agendaItems,
   conveneAssemblySchema,
   issueCallSchema,
@@ -14,6 +15,7 @@ export {
   type IssueCallInput,
   type AddAgendaItemInput,
   type AssemblyRow,
+  type AssemblyDetail,
   type AgendaItemRow,
 } from './application/assemblies';
 
@@ -35,11 +37,13 @@ export {
   computeQuorum,
   declareQuorum,
   attendanceList,
+  pendingAttendees,
   registerAttendanceSchema,
   declareQuorumSchema,
   type RegisterAttendanceInput,
   type AttendanceResult,
   type AttendanceRow,
+  type PendingAttendee,
   type QuorumComputation,
   type QuorumDeclaration,
 } from './application/attendance';
@@ -56,5 +60,6 @@ export {
   type RecordedResolution,
   type PublishMinutesInput,
   type UpdateFollowUpInput,
+  type FollowUpEvidence,
   type ResolutionRow,
 } from './application/resolutions';

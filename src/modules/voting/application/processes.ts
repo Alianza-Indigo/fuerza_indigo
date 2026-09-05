@@ -795,3 +795,58 @@ export async function voteProcessList(
     }),
   );
 }
+
+export interface PublicVoteProcess {
+  readonly publicId: string;
+  readonly title: string;
+  readonly method: VoteMethod;
+  readonly status: VoteProcessStatus;
+  readonly opensAt: Date;
+  readonly closesAt: Date;
+  readonly options: readonly VoteOption[];
+  /** Códigos escrutados, cuando el proceso ya se escrutó. Sin su sentido. */
+  readonly verificationCodes: readonly string[];
+}
+
+/**
+ * Vista pública de un proceso de votación.
+ *
+ * No exige sesión, y es deliberado: **exigirla crearía el vínculo que todo el
+ * diseño evita**. Si el servidor supiera quién abre la papeleta y a qué hora,
+ * comparar esa hora con el orden de las boletas volvería a permitir emparejar
+ * persona y voto. Quien deposita se autoriza con su credencial, que no dice de
+ * quién es.
+ *
+ * Devuelve el título, las opciones y —tras el escrutinio— la lista de códigos
+ * contados, para que cada quien compruebe que su boleta está.
+ */
+export async function publicVoteProcess(publicId: string): Promise<PublicVoteProcess | null> {
+  const fila = await db().voteProcess.findUnique({
+    where: { publicId },
+    select: {
+      publicId: true,
+      title: true,
+      method: true,
+      status: true,
+      opensAt: true,
+      closesAt: true,
+      options: true,
+      results: true,
+    },
+  });
+  if (fila === null) return null;
+
+  const opciones = voteOptionSchema.array().safeParse(fila.options);
+  const resultado = comoResultado(fila.results);
+
+  return {
+    publicId: fila.publicId,
+    title: fila.title,
+    method: fila.method,
+    status: fila.status,
+    opensAt: fila.opensAt,
+    closesAt: fila.closesAt,
+    options: opciones.success ? opciones.data : [],
+    verificationCodes: resultado?.verificationCodes ?? [],
+  };
+}

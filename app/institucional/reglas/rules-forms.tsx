@@ -24,7 +24,7 @@ import {
   NOMBRE_DE_REGLA,
   QUORUMS,
   type NormativeRules,
-} from '@/modules/governance/domain/normative-rules';
+} from '@/modules/governance/domain';
 import {
   draftRuleSetAction,
   editRuleDraftAction,

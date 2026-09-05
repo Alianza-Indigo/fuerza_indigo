@@ -210,7 +210,7 @@ Las flechas punteadas **no** son dependencias de código: `billing` no importa a
 
 ### 4.2 Reglas de frontera
 
-1. Un módulo **no importa** archivos internos de otro; solo su `index.ts`.
+1. Un módulo **no importa** archivos internos de otro; solo su `index.ts`. Un módulo puede publicar una segunda entrada, `domain/index.ts`, con lo que es **puro**: tipos, esquemas de validación y tablas de nombres. Existe para las pantallas que corren en el navegador, que necesitan la forma de un dato sin arrastrar consigo los casos de uso ni la conexión a la base. Todo lo demás sigue entrando por `index.ts`.
 2. Un módulo **no escribe** en tablas de otro módulo; solicita la operación a su servicio.
 3. La lectura entre módulos se hace por **proyecciones de solo lectura** declaradas en la interfaz pública, nunca por consultas Prisma cruzadas.
 4. Las dependencias circulares están prohibidas; cuando dos módulos se necesitan, se introduce un evento de dominio o un módulo de coordinación superior.

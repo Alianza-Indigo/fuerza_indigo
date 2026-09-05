@@ -36,12 +36,14 @@ const ESTADO_ORGANO: Record<string, { label: string; tone: Tone }> = {
 export default async function OrganosPage() {
   const actor = await currentActor();
 
-  const [organos, cargos, territorios, entidades, permisos] = await Promise.all([
+  // `permissionOptions` lee del catálogo en código y no consulta nada: es
+  // síncrona, y meterla en el `Promise.all` sería fingir que espera.
+  const permisos = permissionOptions(actor);
+  const [organos, cargos, territorios, entidades] = await Promise.all([
     unionBodyList(actor),
     officeList(actor),
     territoryOptions(actor),
     listLegalEntities(actor),
-    permissionOptions(actor),
   ]);
 
   const puedeAdministrar = can({ ...actor, reason: 'administración de órganos' }, 'governance.body.manage', {

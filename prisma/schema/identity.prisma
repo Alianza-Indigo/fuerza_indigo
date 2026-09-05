@@ -222,6 +222,8 @@ model User {
   resolvedApplications     MembershipApplication[] @relation("ApplicationResolvedBy")
   applicationReviews       ApplicationReview[]     @relation("ApplicationReviewer")
   reviewedApplicationDocuments ApplicationDocument[] @relation("ApplicationDocumentReviewedBy")
+  requestedClarifications  ApplicationClarification[] @relation("ClarificationRequestedBy")
+  answeredClarifications   ApplicationClarification[] @relation("ClarificationAnsweredBy")
   membershipStatusChanges  MembershipStatusEvent[] @relation("MembershipStatusActor")
   registeredBeneficiaries  ProtectedBeneficiary[]  @relation("BeneficiaryRegisteredBy")
   verifiedProfessionalProfiles ProfessionalProfile[] @relation("ProfessionalProfileVerifiedBy")

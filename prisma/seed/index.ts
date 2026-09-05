@@ -769,6 +769,116 @@ async function seedNotificationTemplates(): Promise<void> {
       variables: ['displayName', 'amount', 'concept', 'entityName', 'paidAt', 'reference', 'paymentUrl', 'contactEmail'],
     },
     {
+      /**
+       * Aclaración requerida durante la revisión (PRD §8.1 paso 10).
+       *
+       * Dice tres cosas y en este orden: qué falta, hasta cuándo y dónde
+       * contestar. Quien recibe un correo así suele estar preocupado por su
+       * solicitud; enterrar el plazo al final sería hacérselo buscar.
+       */
+      code: 'APPLICATION_CLARIFICATION_REQUESTED',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'MEMBERSHIP' as const,
+      subject: 'Necesitamos una aclaración sobre tu solicitud ({{folio}})',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'Estamos revisando tu solicitud {{folio}} en {{entityName}} y necesitamos que nos aclares algo.',
+        '',
+        'Esto es lo que falta:',
+        '{{request}}',
+        '',
+        'Tienes hasta el {{dueDate}}. Puedes contestar desde tu solicitud: {{applicationUrl}}',
+        '',
+        'Tu solicitud no se ha rechazado ni se va a rechazar por no contestar a tiempo.',
+        'Si el plazo se te pasa, contesta igual: seguimos con tu expediente.',
+        '',
+        'Si algo de lo que pedimos no se entiende, escríbenos a {{contactEmail}} y te lo explicamos con otras palabras.',
+      ].join('\n'),
+      variables: ['displayName', 'folio', 'entityName', 'request', 'dueDate', 'applicationUrl', 'contactEmail'],
+    },
+    {
+      /**
+       * Recordatorio de un plazo que ya pasó.
+       *
+       * El tono no es de advertencia a propósito: el plazo vencido no quita
+       * derechos (ADR-0080), y un recordatorio que suena a amenaza hace que
+       * quien ya estaba angustiado deje de abrir los correos.
+       */
+      code: 'APPLICATION_CLARIFICATION_OVERDUE',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'MEMBERSHIP' as const,
+      subject: 'Sigue pendiente la aclaración de tu solicitud ({{folio}})',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'El plazo que te dimos para aclarar algo de tu solicitud {{folio}} en {{entityName}} ya pasó,',
+        'y no hemos recibido tu respuesta.',
+        '',
+        'Esto es lo que pedimos:',
+        '{{request}}',
+        '',
+        'Todavía puedes contestar: {{applicationUrl}}',
+        'Tu solicitud sigue en pie. Que el plazo se haya pasado no la rechaza.',
+        '',
+        'Si no puedes reunir lo que pedimos, dínoslo a {{contactEmail}}: casi siempre hay otra forma.',
+      ].join('\n'),
+      variables: ['displayName', 'folio', 'entityName', 'request', 'applicationUrl', 'contactEmail'],
+    },
+    {
+      /** Resolución aprobatoria, con el motivo que la fundó (PRD §8.1 paso 11). */
+      code: 'APPLICATION_APPROVED',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'MEMBERSHIP' as const,
+      subject: 'Aprobamos tu solicitud ({{folio}})',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'Tu solicitud {{folio}} en {{entityName}} quedó aprobada.',
+        '',
+        'Fundamento de la resolución:',
+        '{{rationale}}',
+        '',
+        'Los siguientes pasos aparecen en tu solicitud: {{applicationUrl}}',
+        'Si hay una cuota de inscripción, ahí verás qué pagar y cómo. Tu membresía se activa cuando ese pago se confirma.',
+        '',
+        'Cualquier duda, escríbenos a {{contactEmail}}.',
+      ].join('\n'),
+      variables: ['displayName', 'folio', 'entityName', 'rationale', 'applicationUrl', 'contactEmail'],
+    },
+    {
+      /**
+       * Resolución de rechazo.
+       *
+       * Lleva el motivo entero, sin resumir: una persona a la que se le niega
+       * la afiliación tiene derecho a saber exactamente por qué, y a poder
+       * discutirlo. Un rechazo sin razones es un rechazo que no se puede
+       * recurrir.
+       */
+      code: 'APPLICATION_REJECTED',
+      version: 1,
+      channel: 'EMAIL' as const,
+      category: 'MEMBERSHIP' as const,
+      subject: 'Resolución de tu solicitud ({{folio}})',
+      bodyTemplate: [
+        'Hola {{displayName}}:',
+        '',
+        'Tu solicitud {{folio}} en {{entityName}} no fue aprobada.',
+        '',
+        'Fundamento y motivo de la resolución:',
+        '{{rationale}}',
+        '',
+        'Puedes consultarla completa aquí: {{applicationUrl}}',
+        '',
+        'Si crees que hay un error, o si la situación que motivó el rechazo cambia, escríbenos a {{contactEmail}}.',
+        'Esta resolución se refiere a esta solicitud; no te impide presentar otra.',
+      ].join('\n'),
+      variables: ['displayName', 'folio', 'entityName', 'rationale', 'applicationUrl', 'contactEmail'],
+    },
+    {
       /** Aviso de que un cobro periódico falló y cuánto tiempo hay para resolverlo. */
       code: 'PAYMENT_FAILED_NOTICE',
       version: 1,

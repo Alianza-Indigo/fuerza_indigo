@@ -155,6 +155,8 @@ export async function applicationQueue(
 export interface ApplicationDetail extends ApplicationRow {
   readonly personId: string;
   readonly membershipTypeId: string;
+  /** Hace falta en la pantalla: sin entidad, el motor no concede ningún alcance. */
+  readonly legalEntityId: string;
   readonly acceptedRuleSetVersion: string;
   /** Lo enviado, tal como se envió. Nulo mientras siga en borrador. */
   readonly originalSummary: unknown;
@@ -176,6 +178,25 @@ export interface ApplicationDetail extends ApplicationRow {
     readonly fileName: string;
     readonly reviewNote: string | null;
     readonly reviewedAt: Date | null;
+  }[];
+  /**
+   * Las aclaraciones pedidas, con su plazo y su respuesta.
+   *
+   * El estado se deduce de las fechas y no se guarda: una columna de estado
+   * junto a las fechas que lo determinan es una columna que puede mentir.
+   */
+  readonly clarifications: readonly {
+    readonly id: string;
+    readonly request: string;
+    readonly requestedBy: string;
+    readonly requestedAt: Date;
+    readonly dueAt: Date;
+    readonly answer: string | null;
+    readonly answeredAt: Date | null;
+    readonly notifiedAt: Date | null;
+    readonly closedAt: Date | null;
+    readonly closeReason: string | null;
+    readonly state: 'PENDING' | 'OVERDUE' | 'ANSWERED' | 'CLOSED';
   }[];
   readonly reviews: readonly {
     readonly id: string;
@@ -240,6 +261,21 @@ export async function applicationDetail(
           reviewer: { select: { person: { select: { givenName: true, familyName: true } } } },
         },
       },
+      clarifications: {
+        orderBy: { requestedAt: 'asc' },
+        select: {
+          id: true,
+          request: true,
+          requestedAt: true,
+          dueAt: true,
+          answer: true,
+          answeredAt: true,
+          notifiedAt: true,
+          closedAt: true,
+          closeReason: true,
+          requestedBy: { select: { person: { select: { givenName: true, familyName: true } } } },
+        },
+      },
     },
   });
   if (solicitud === null) return fail(errors.notFound('solicitud inexistente'));
@@ -257,6 +293,7 @@ export async function applicationDetail(
     ...aFila(solicitud as unknown as FilaCruda),
     personId: solicitud.personId,
     membershipTypeId: solicitud.membershipTypeId,
+    legalEntityId: solicitud.legalEntityId,
     acceptedRuleSetVersion: solicitud.acceptedRuleSet.version,
     originalSummary: solicitud.originalSummary,
     autosavedDraft: solicitud.autosavedDraft,
@@ -280,6 +317,26 @@ export async function applicationDetail(
       fileName: documento.fileObject.originalFileName,
       reviewNote: documento.reviewNote,
       reviewedAt: documento.reviewedAt,
+    })),
+    clarifications: solicitud.clarifications.map((aclaracion) => ({
+      id: aclaracion.id,
+      request: aclaracion.request,
+      requestedBy: `${aclaracion.requestedBy.person.givenName} ${aclaracion.requestedBy.person.familyName}`,
+      requestedAt: aclaracion.requestedAt,
+      dueAt: aclaracion.dueAt,
+      answer: aclaracion.answer,
+      answeredAt: aclaracion.answeredAt,
+      notifiedAt: aclaracion.notifiedAt,
+      closedAt: aclaracion.closedAt,
+      closeReason: aclaracion.closeReason,
+      state:
+        aclaracion.answeredAt !== null
+          ? ('ANSWERED' as const)
+          : aclaracion.closedAt !== null
+            ? ('CLOSED' as const)
+            : aclaracion.dueAt.getTime() < Date.now()
+              ? ('OVERDUE' as const)
+              : ('PENDING' as const),
     })),
     reviews: solicitud.reviews.map((revision) => ({
       id: revision.id,

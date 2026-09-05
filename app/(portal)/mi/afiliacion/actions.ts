@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import {
+  answerClarification,
   attachApplicationDocument,
   submitApplication,
   withdrawApplication,
@@ -132,6 +133,51 @@ export async function attachDocumentAction(
 
   revalidatePath(`/mi/afiliacion/${applicationId}`);
   return { status: 'ok', message: 'Documento adjuntado. Quien revise lo verá con tu solicitud.' };
+}
+
+export interface AclaracionFormState {
+  readonly status: 'idle' | 'error' | 'ok';
+  readonly message?: string;
+  readonly fieldErrors?: Record<string, string[]>;
+  readonly values?: Record<string, string>;
+}
+
+/**
+ * Respuesta de la persona a una aclaración (PRD §8.1, paso 10).
+ *
+ * Devuelve lo escrito cuando falla: perder una respuesta larga por un error de
+ * validación es la clase de cosa que hace que alguien abandone un trámite que ya
+ * casi tenía hecho.
+ */
+export async function answerClarificationAction(
+  _previous: AclaracionFormState,
+  formData: FormData,
+): Promise<AclaracionFormState> {
+  const actor = await currentActor();
+  const applicationId = textField(formData, 'applicationId');
+  const answer = textField(formData, 'answer');
+
+  const resultado = await answerClarification(actor, {
+    clarificationId: textField(formData, 'clarificationId'),
+    answer,
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      values: { answer },
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath(`/mi/afiliacion/${applicationId}`);
+  return {
+    status: 'ok',
+    message: resultado.data.late
+      ? 'Recibimos tu respuesta. El plazo ya había pasado, y aun así tu solicitud sigue su curso.'
+      : 'Recibimos tu respuesta. Tu solicitud vuelve a revisión.',
+  };
 }
 
 export interface RetiroFormState {

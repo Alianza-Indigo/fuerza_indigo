@@ -146,6 +146,7 @@ erDiagram
     MembershipType ||--o{ MembershipApplication : "clasifica"
     MembershipApplication ||--o{ ApplicationDocument : "adjunta"
     MembershipApplication ||--o{ ApplicationReview : "recibe"
+    MembershipApplication ||--o{ ApplicationClarification : "requiere"
     MembershipApplication ||--o| Membership : "origina"
     MembershipType ||--o{ Membership : "define"
     Membership ||--o{ MembershipStatusEvent : "registra"
@@ -182,6 +183,17 @@ El formulario refleja la misma regla: quien elige afiliación honoraria **nunca 
 **`ApplicationReview`** — Actuación de revisión humana. Siempre hay al menos una antes de resolver (PRD §3.2).
 `id` PK · `applicationId` FK IX · `reviewerId` FK→`User` · `reviewerOfficeTermId` NULL FK→`OfficeTerm` · `action` *enum* (`ASSIGNED`, `INFORMATION_REQUESTED`, `INTERVIEW_SCHEDULED`, `RECOMMENDED_APPROVAL`, `RECOMMENDED_REJECTION`, `APPROVED`, `REJECTED`) · `rationale` *text* — fundamento y motivo · `dueAt` NULL · `createdAt`.
 Inmutable una vez creada.
+
+**`ApplicationClarification`** — Aclaración requerida durante la revisión, con plazo (PRD §8.1.10; ADR-0081).
+`id` PK · `applicationId` FK IX · `request` *text* — lo que se pide, en las palabras que la persona va a leer · `requestedById` FK→`User` · `requestedAt` · `dueAt` IX · `answer` NULL *text* · `answeredAt` NULL · `answeredById` NULL FK→`User` · `notifiedAt` NULL — cuándo se avisó; el aviso se encuentra por `Notification.relatedKind`/`relatedId` · `remindedAt` NULL — recordatorio de vencimiento, una sola vez · `closedAt` NULL · `closeReason` NULL.
+
+Vive aparte de `ApplicationReview` porque es otra cosa: la actuación de revisión es un asiento de una cara e inmutable; la aclaración es un intercambio de dos, con respuesta escrita por la persona solicitante.
+
+**El estado no se guarda: se deduce.** `PENDING`, `OVERDUE`, `ANSWERED` y `CLOSED` salen de `dueAt`, `answeredAt` y `closedAt`. Una columna de estado junto a las fechas que la determinan es una columna que puede mentir.
+
+Garantías en base: `dueAt > requestedAt`; los tres campos de la respuesta van juntos o ninguno; cerrar sin respuesta exige motivo de quince caracteres; contestada y cerrada son excluyentes; único parcial de **una sola aclaración abierta por solicitud**; disparador que hace la respuesta, la petición y el plazo inmodificables; y privilegios por columna que solo dejan escribir lo que ocurre después de pedirla.
+
+**Un plazo vencido no cambia el estado de la solicitud** (ADR-0080). Se hace visible y se recuerda una vez; seguir sin la aclaración exige que una persona la cierre explicando por qué.
 
 **`Membership`** — Relación viva de la persona con la entidad.
 `id` PK · `publicId` U · `memberNumber` U — serie por categoría; obligatorio, porque una membresía nace activa y antes de activarse lo que hay es una solicitud (ADR-0066) · `personId` FK IX · `membershipTypeId` FK · `legalEntityId` FK IX · `applicationId` NULL FK U? · `status` *enum* `MembershipStatus` IX · `startedAt` · `expiresAt` NULL IX · `territorialUnitId` NULL FK IX · `sectionId` NULL FK→`TerritorialUnit` · `politicalRightsSuspendedUntil` NULL — suspensión de derechos por proceso disciplinario o cuotas · `currentSubscriptionId` NULL FK→`Subscription` · `endedAt` NULL · `endReason` NULL *enum* (`VOLUNTARY_WITHDRAWAL`, `EXPULSION`, `INACTIVITY`, `DECEASED`, `ADMIN_CORRECTION`, `DUPLICATE`).

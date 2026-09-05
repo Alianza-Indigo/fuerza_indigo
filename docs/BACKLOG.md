@@ -201,7 +201,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-AFI-003 | Implementar la afiliación honoraria con sus tres perfiles y su credencial diferenciada | En curso. Perfiles, solicitud y consentimientos hechos; la credencial diferenciada es F4-CRE-001 y la activación por cobro es F4-AFI-008 |
 | F4-AFI-004 | Implementar el alta de beneficiario protegido desde los siete orígenes previstos | Hecho |
 | F4-AFI-005 | Implementar las relaciones familiares y de cuidado con alcance, vigencia y consentimiento | Hecho |
-| F4-AFI-006 | Implementar la revisión humana, la solicitud de aclaración con plazo y la resolución fundada | Pendiente |
+| F4-AFI-006 | Implementar la revisión humana, la solicitud de aclaración con plazo y la resolución fundada | Hecho |
 | F4-AFI-007 | Implementar la gestión documental de la solicitud con revisión por documento | Hecho |
 | F4-AFI-008 | Conectar la activación de membresía con el cobro confirmado por webhook | Pendiente |
 | F4-AFI-009 | Implementar bajas, suspensiones, vencimientos y conversiones sin duplicar la persona | Pendiente |

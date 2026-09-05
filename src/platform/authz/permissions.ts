@@ -511,4 +511,11 @@ export const JOB_GRANTS: Readonly<Record<string, ReadonlySet<string>>> = {
   dispatch: new Set<string>(),
   health: new Set(['system.health.read']),
   'content-schedule': new Set(['content.page.publish']),
+  /**
+   * Recordar un plazo de aclaración vencido. Solo lee y avisa: no resuelve, no
+   * rechaza y no cierra nada. Por eso lleva la facultad de revisión y no la de
+   * resolver —que un trabajo programado pudiera rechazar una solicitud sería
+   * exactamente lo que el PRD §3.2 prohíbe al exigir revisión humana.
+   */
+  'clarification-due': new Set(['membership.application.review']),
 };

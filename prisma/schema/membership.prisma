@@ -127,9 +127,10 @@ model MembershipApplication {
   createdByActor  Actor             @relation("ApplicationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor  Actor             @relation("ApplicationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
 
-  documents  ApplicationDocument[]
-  reviews    ApplicationReview[]
-  membership Membership?
+  documents      ApplicationDocument[]
+  reviews        ApplicationReview[]
+  clarifications ApplicationClarification[]
+  membership     Membership?
 
   @@index([personId])
   @@index([membershipTypeId])
@@ -235,6 +236,58 @@ model ApplicationReview {
   @@index([applicationId])
   @@index([reviewerId])
   @@map("application_review")
+}
+
+/// Aclaración requerida durante la revisión, con plazo (PRD §8.1 paso 10).
+///
+/// Vive aparte de `ApplicationReview` porque es otra cosa: la actuación de
+/// revisión es un asiento de una sola cara y no se toca nunca; una aclaración
+/// es un intercambio de dos, con una pregunta, un plazo y una respuesta que
+/// llega después. Meter la respuesta en la bitácora de revisión habría obligado
+/// a mutar un asiento inmutable, o a que la respuesta de la persona no se
+/// guardara en ninguna parte.
+///
+/// **El estado no se guarda, se deduce.** Pendiente, contestada, vencida o
+/// cerrada salen de las fechas. Una columna de estado junto a las fechas que la
+/// determinan es una columna que puede mentir.
+model ApplicationClarification {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  applicationId String   @db.Uuid
+  /// Qué se pide, en lenguaje claro. Es literalmente lo que la persona va a leer.
+  request       String   @db.Text
+  requestedById String   @db.Uuid
+  requestedAt   DateTime @default(now()) @db.Timestamptz(3)
+  /// Hasta cuándo. Vencerlo no resuelve nada por sí solo: lo hace visible.
+  dueAt         DateTime @db.Timestamptz(3)
+
+  /// Lo que contestó la persona. Se escribe una vez y el motor impide cambiarla.
+  answer       String?   @db.Text
+  answeredAt   DateTime? @db.Timestamptz(3)
+  answeredById String?   @db.Uuid
+
+  /// Cuándo se avisó a la persona. El aviso en sí se encuentra por
+  /// `Notification.relatedKind` y `relatedId`, que es el mecanismo que ya existe
+  /// para eso; duplicarlo con una clave foránea propia solo daría dos verdades
+  /// que se pueden contradecir. Sin esta fecha, «mensajería trazable» sería una
+  /// promesa que nadie puede comprobar.
+  notifiedAt DateTime? @db.Timestamptz(3)
+  /// Recordatorio de vencimiento ya enviado, para no mandarlo cada noche.
+  remindedAt DateTime? @db.Timestamptz(3)
+
+  /// Cierre sin respuesta: la revisión siguió adelante sin ella. Exige motivo.
+  closedAt    DateTime? @db.Timestamptz(3)
+  closeReason String?   @db.VarChar(400)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  application MembershipApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  requestedBy User                  @relation("ClarificationRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  answeredBy  User?                 @relation("ClarificationAnsweredBy", fields: [answeredById], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@index([dueAt])
+  @@map("application_clarification")
 }
 
 enum ApplicationReviewAction {

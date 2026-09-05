@@ -77,6 +77,31 @@ const HANDLERS: Record<string, JobHandler> = {
   },
 
   /**
+   * Aviso sobre una solicitud de afiliación: aclaración requerida, plazo
+   * vencido o resolución (PRD §8.1 pasos 10 y 11).
+   *
+   * Va por la cola, y no en línea, por la misma razón que el acuse de la
+   * entrada pública: el acto ya ocurrió y consta. Si el proveedor de correo
+   * está caído, lo que no puede pasar es que se pierda la aclaración pedida o
+   * la resolución firmada por no poder anunciarlas.
+   *
+   * La clave de negocio la pone quien encola, y distingue el tipo de aviso de
+   * su objeto: reintentar no manda dos veces la misma noticia.
+   */
+  'application-notice': async (job) => {
+    const to = textValue(job.payload, 'to');
+    const templateCode = textValue(job.payload, 'templateCode');
+    const variables = stringMap(job.payload, 'variables');
+
+    if (to === '' || templateCode === '') {
+      throw new Error('El aviso de la solicitud no trae destinatario ni plantilla.');
+    }
+
+    const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
+    return { providerMessageId: sent.providerMessageId };
+  },
+
+  /**
    * Comprobante de un cobro confirmado (PRD §11.3, F3-CMS-001).
    *
    * El identificador del pago es la clave de negocio: reintentarlo no manda dos

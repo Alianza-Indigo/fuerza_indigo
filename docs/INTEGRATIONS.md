@@ -251,6 +251,7 @@ Las rutas viven bajo `/api/v1/cron/*` y exigen `CRON_SECRET` comparado en tiempo
 | `webhook-retry` | Cada 15 minutos | Reprocesa eventos persistidos con estado `FAILED` |
 | `credential-expiry` | Diaria | Marca credenciales vencidas y notifica antes del vencimiento |
 | `role-expiry` | Diaria | Revoca asignaciones cuyo nombramiento concluyó |
+| `clarification-due` | Diaria | Recuerda, **una sola vez**, un plazo de aclaración vencido. No rechaza, no cierra y no resuelve: un plazo vencido hace visible una situación, no decide sobre nadie (ADR-0080) |
 | `retention` | Diaria | Aplica políticas de conservación respetando bloqueos legales |
 | `document-generation` | Cada 15 minutos | Genera documentos diferidos |
 | `integration-health` | Cada hora | Verifica base de datos, Blob, Stripe por cuenta y disponibilidad de Gemini |

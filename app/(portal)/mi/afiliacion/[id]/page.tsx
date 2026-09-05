@@ -21,6 +21,7 @@ import {
   PERFIL_HONORARIO,
   TIPO_DE_DOCUMENTO,
 } from '../etiquetas';
+import { ClarificationForm } from './clarification-form';
 import { DocumentForm } from './document-form';
 import { WithdrawForm } from './withdraw-form';
 
@@ -61,6 +62,23 @@ export default async function MiSolicitudPage({ params }: { params: Promise<{ id
 
   const rechazados = solicitud.documentList.filter((documento) => documento.status === 'REJECTED');
 
+  // La que sigue esperando respuesta, vencida o no. Solo puede haber una: lo
+  // garantiza un índice parcial, no una convención.
+  const pendiente = solicitud.clarifications.find(
+    (aclaracion) => aclaracion.state === 'PENDING' || aclaracion.state === 'OVERDUE',
+  );
+  const contestadas = solicitud.clarifications.filter(
+    (aclaracion) => aclaracion.state === 'ANSWERED' || aclaracion.state === 'CLOSED',
+  );
+
+  // La última que se contestó. El acuse va **fuera** del formulario de
+  // respuesta, porque contestar hace desaparecer ese formulario y con él
+  // cualquier mensaje que viviera dentro (ADR-0074). Quien acaba de escribir
+  // media página tiene derecho a leer que llegó.
+  const ultimaContestada = [...solicitud.clarifications]
+    .filter((aclaracion) => aclaracion.answeredAt !== null)
+    .sort((una, otra) => (otra.answeredAt?.getTime() ?? 0) - (una.answeredAt?.getTime() ?? 0))[0];
+
   return (
     <PageShell title={`Solicitud ${solicitud.folio}`} description={solicitud.membershipType}>
       <div className="space-y-8">
@@ -83,12 +101,21 @@ export default async function MiSolicitudPage({ params }: { params: Promise<{ id
             </p>
           )}
 
-          {solicitud.status === 'CLARIFICATION_REQUIRED' && (
+          {pendiente !== undefined && (
             <Notice tone="warning" title="Te pedimos una aclaración">
               <p>
-                Lee la última anotación de abajo y responde adjuntando lo que se te pide.
-                {solicitud.clarificationDueAt !== null &&
-                  ` Tienes hasta el ${fecha.format(solicitud.clarificationDueAt)}.`}
+                {pendiente.state === 'OVERDUE'
+                  ? `El plazo terminó el ${fecha.format(pendiente.dueAt)}. Puedes contestar igual: tu solicitud sigue en pie y no se rechaza por eso.`
+                  : `Tienes hasta el ${fecha.format(pendiente.dueAt)} para contestar.`}
+              </p>
+            </Notice>
+          )}
+
+          {pendiente === undefined && ultimaContestada?.answeredAt !== undefined && ultimaContestada.answeredAt !== null && (
+            <Notice tone="success" title="Recibimos tu respuesta">
+              <p>
+                La contestaste el {fechaHora.format(ultimaContestada.answeredAt)} y tu solicitud volvió a
+                revisión. No tienes que hacer nada más por ahora.
               </p>
             </Notice>
           )}
@@ -111,6 +138,50 @@ export default async function MiSolicitudPage({ params }: { params: Promise<{ id
             </Notice>
           )}
         </Section>
+
+        {pendiente !== undefined && (
+          <Section title="Lo que te pedimos" description="Contesta aquí. Tu respuesta queda en el expediente.">
+            <Card>
+              <p className="whitespace-pre-wrap">{pendiente.request}</p>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Pedido el {fecha.format(pendiente.requestedAt)} · plazo hasta el {fecha.format(pendiente.dueAt)}
+              </p>
+              <div className="mt-4 border-t border-[var(--color-line)] pt-4">
+                <ClarificationForm
+                  clarificationId={pendiente.id}
+                  applicationId={solicitud.id}
+                  vencido={pendiente.state === 'OVERDUE'}
+                />
+              </div>
+            </Card>
+          </Section>
+        )}
+
+        {contestadas.length > 0 && (
+          <Section title="Aclaraciones anteriores">
+            <ol className="space-y-3">
+              {contestadas.map((aclaracion) => (
+                <li key={aclaracion.id} className="rounded-lg border border-[var(--color-line)] p-4">
+                  <p className="font-medium">Se te pidió el {fecha.format(aclaracion.requestedAt)}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{aclaracion.request}</p>
+                  {aclaracion.answer !== null && aclaracion.answeredAt !== null && (
+                    <div className="mt-3 rounded-lg bg-[var(--color-surface-sunken)] p-3">
+                      <p className="text-sm font-medium">
+                        Contestaste el {fechaHora.format(aclaracion.answeredAt)}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">{aclaracion.answer}</p>
+                    </div>
+                  )}
+                  {aclaracion.closeReason !== null && (
+                    <p className="mt-3 text-sm">
+                      La revisión siguió adelante sin tu respuesta: {aclaracion.closeReason}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </Section>
+        )}
 
         <Section title="Lo que enviaste" description="Tal como lo enviaste. Nadie puede modificarlo.">
           <dl className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)]">

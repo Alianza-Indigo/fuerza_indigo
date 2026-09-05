@@ -969,3 +969,44 @@ Es el control que habría cazado también `D-F4-003` —`identity.user.disable` 
 **Decisión.** `beneficiaryDetail` lee esa atención y solo esa, con la necesidad incluida. La regla de la lista sigue igual.
 
 **Lo que se añade al leer.** Abrir un expediente con privacidad reforzada deja asiento en la bitácora. El PRD §3.4 promete «controles reforzados de privacidad» sin decir cuáles; registrar la lectura y no solo la escritura es la traducción concreta de esa frase: quien contó algo de su vida puede saber quién lo ha leído. Con privacidad estándar no se anota, porque entonces el asiento no distinguiría nada.
+
+---
+
+## ADR-0080 · Un plazo vencido no rechaza a nadie
+
+**Contexto.** El PRD §8.1 paso 10 permite requerir una aclaración «con plazo y mensajería trazable». Un plazo admite dos lecturas: la fecha a partir de la cual la revisión puede seguir sin esperar, o la fecha a partir de la cual la solicitud se cae sola.
+
+**Decisión.** La primera. Al vencer un plazo **no ocurre nada automático**: la solicitud sigue viva, en el mismo estado, y la persona puede contestar después. Lo único que cambia es que se hace visible —en la bandeja de quien revisa, con la etiqueta «plazo vencido», y en un recordatorio a la persona—. Para seguir adelante sin la aclaración hace falta que alguien la cierre a mano, escribiendo por qué.
+
+**Por qué.** Tres razones, en orden de peso:
+
+1. **Rechazar es un acto, no una consecuencia del calendario.** El PRD §3.2 exige revisión humana y resolución registrable. Un trabajo nocturno que rechazara solicitudes estaría resolviendo sin que nadie resuelva, y firmando con el reloj.
+2. **Esta organización es de personas neurodivergentes.** No contestar a tiempo un correo administrativo no es desinterés: es, con frecuencia, exactamente la dificultad por la que alguien se acerca al sindicato. Convertirla en pérdida de derechos sería construir la barrera que la plataforma existe para quitar.
+3. **La demora casi nunca es del lado que se castiga.** Quien no reunió un papel en diez días suele seguir queriendo afiliarse. Descartar su expediente obliga a empezar de cero un trámite que ya estaba casi hecho, y el coste institucional de mirarlo una semana más tarde es cero.
+
+**Lo que sí hace el vencimiento.** Un recordatorio, **una sola vez** —`remindedAt` lo marca—, con un tono que no amenaza: dice que el plazo pasó, que todavía se puede contestar y que la solicitud sigue en pie. Un aviso que llega cada noche deja de leerse al tercero, y uno que suena a ultimátum hace que quien ya estaba angustiado deje de abrir los correos.
+
+**Contestar fuera de plazo se recibe igual**, y consta que fue tarde. Guardar el dato sirve para medir si los plazos que damos son razonables; usarlo para descartar a alguien, no.
+
+---
+
+## ADR-0081 · La aclaración vive fuera de la bitácora de revisión
+
+**Contexto.** `ApplicationReview` guarda cada actuación de quien revisa, es inmutable por privilegios de columna y tiene un campo `dueAt` que parecía destinado a alojar el requerimiento de aclaración.
+
+**El problema.** Una actuación de revisión es un asiento de **una sola cara**: lo que hizo quien revisa, congelado para siempre. Una aclaración es un intercambio de **dos**: una pregunta con plazo, y una respuesta que llega después y la escribe la persona solicitante. Guardar la respuesta en el asiento habría obligado a mutar una fila que el motor no deja mutar; no guardarla habría dejado la resolución fundada en un texto que no existe en ninguna parte.
+
+**Decisión.** `ApplicationClarification`, con su propia tabla, sus propias garantías y su propio ciclo. La bitácora de revisión conserva el asiento `INFORMATION_REQUESTED` —que quien revisa pidió algo, y cuándo— y la aclaración conserva el intercambio.
+
+**Cuatro garantías en la base, no en la disciplina:**
+
+- `dueAt > requestedAt`: pedir una aclaración «para ayer» convierte el requerimiento en un trámite para poder rechazar.
+- Los tres campos de la respuesta van juntos: una respuesta sin fecha no se sitúa en el plazo, y una fecha sin respuesta dice que alguien contestó sin decir qué.
+- Cerrar sin respuesta exige motivo de quince caracteres, y contestada y cerrada son excluyentes: marcar como «cerrada sin respuesta» una que sí se contestó borraría de la historia que la persona contestó.
+- Una sola aclaración abierta por solicitud, con índice parcial. Dos plazos corriendo a la vez dejan sin respuesta la pregunta de cuál venció, y esa pregunta se hace cuando alguien reclama.
+
+**El estado no se guarda: se deduce** de las fechas. Pendiente, vencida, contestada o cerrada salen de `dueAt`, `answeredAt` y `closedAt`. Una columna de estado junto a las fechas que la determinan es una columna que puede mentir, y miente el día que un proceso escribe una y olvida la otra.
+
+**Cómo se comprobó que las garantías funcionan.** La prueba que necesita un plazo ya vencido tuvo que pelear con las tres capas: los privilegios por columna le negaron el `UPDATE`, el disparador se lo negó también desde la conexión de propietaria, y la restricción `dueAt > requestedAt` la obligó a mover además la fecha de la petición. Ninguna ruta del producto puede hacer eso.
+
+**El contrato de fases se amplía, y se dice.** `ApplicationClarification` no figura en la enumeración de entidades del PRD §18.2: es una entidad que añade la implementación, dentro de lo que el PRD §0.1 deja al agente. Por eso se registra en `scripts/phase/prd-contract.json` —cuyo encabezado exige justamente una decisión escrita para tocarlo— en el apartado §18.2 y en las entidades que migra la Fase 4. Sin esa línea, el control de coherencia `C-COH-03` la vería como una tabla sin fase declarada y fallaría; y hacerla pasar sin registrarla habría sido esconder que el modelo creció.

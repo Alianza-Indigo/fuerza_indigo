@@ -25,6 +25,13 @@ import {
 } from '../../../../(portal)/mi/afiliacion/etiquetas';
 import { AssistedForm } from './assisted-form';
 import { DocumentReviewForm } from './document-review-form';
+import {
+  CloseClarificationForm,
+  RecommendationForm,
+  RequestClarificationForm,
+  ResolutionForm,
+  StartReviewForm,
+} from './review-forms';
 
 export const metadata = { title: 'Solicitud de afiliación', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -32,10 +39,13 @@ export const dynamic = 'force-dynamic';
 /**
  * Expediente de una solicitud para quien la revisa (PRD §8.1, pasos 9 y 10).
  *
- * Muestra el resumen inmutable —lo que la persona envió, tal como lo envió— y
- * los documentos con su revisión individual. Las actuaciones de revisión y la
- * resolución llegan con el bloque de revisión; aquí ya se ven las que existan,
- * porque un expediente que esconde su historial no es un expediente.
+ * Muestra el resumen inmutable —lo que la persona envió, tal como lo envió—, los
+ * documentos con su revisión individual, las aclaraciones con su plazo y las
+ * actuaciones. Un expediente que esconde su historial no es un expediente.
+ *
+ * Las acciones aparecen **según el estado**, y solo las que en ese momento
+ * tienen sentido. Ofrecer «resolver» sobre una solicitud con una aclaración
+ * abierta sería ofrecer un botón cuya única función es dar un error.
  */
 export default async function SolicitudPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -55,7 +65,28 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
   const puedeRevisar = can(actor, 'membership.application.review', {
     kind: 'MembershipApplication',
     id: solicitud.id,
+    legalEntityId: solicitud.legalEntityId,
   }).allowed;
+  // Resolver exige motivo escrito, y el motor lo comprueba. Aquí se pregunta con
+  // uno de mentira solo para saber si la persona tiene la facultad: sin esto, la
+  // sección de resolución no aparecería nunca aunque quien mira sí pudiera
+  // resolver, y quien puede resolver no encontraría dónde.
+  const puedeResolver = can(
+    { ...actor, reason: 'comprobación de facultades para mostrar la sección' },
+    'membership.application.resolve',
+    { kind: 'MembershipApplication', id: solicitud.id, legalEntityId: solicitud.legalEntityId },
+  ).allowed;
+
+  const EN_TRAMITE = ['SUBMITTED', 'DOCUMENTATION_PENDING', 'UNDER_REVIEW', 'CLARIFICATION_REQUIRED'];
+  const enTramite = EN_TRAMITE.includes(solicitud.status);
+  const aclaracionAbierta = solicitud.clarifications.find(
+    (aclaracion) => aclaracion.state === 'PENDING' || aclaracion.state === 'OVERDUE',
+  );
+
+  // Quién la tiene tomada. Se dice **fuera** de la sección de revisión, que es
+  // justo la que desaparece al tomarla: un mensaje de resultado dentro de la
+  // rama que la propia acción hace desaparecer no lo lee nadie (ADR-0074).
+  const tomadaPor = [...solicitud.reviews].reverse().find((revision) => revision.action === 'ASSIGNED');
 
   const esBorrador = solicitud.status === 'DRAFT';
   const [especialidades, territorios] = esBorrador
@@ -100,6 +131,12 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
             <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
               Enviada el {fechaHora.format(solicitud.submittedAt)} · estatuto aceptado{' '}
               {solicitud.acceptedRuleSetVersion} · entidad {solicitud.legalEntity}
+            </p>
+          )}
+          {tomadaPor !== undefined && solicitud.resolutionAt === null && (
+            <p className="mt-2">
+              La está revisando <strong>{tomadaPor.reviewer}</strong>, desde el{' '}
+              {fechaHora.format(tomadaPor.createdAt)}.
             </p>
           )}
           {solicitud.resolutionReason !== null && (
@@ -263,6 +300,139 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
             </ScrollableTable>
           )}
         </Section>
+
+        <Section
+          title="Aclaraciones"
+          description="Lo que se pidió, hasta cuándo y qué contestó la persona."
+        >
+          {solicitud.clarifications.length === 0 ? (
+            <EmptyState
+              title="No se ha pedido ninguna aclaración"
+              description="Se pide cuando falta algo que solo la persona puede aportar."
+            />
+          ) : (
+            <ol className="space-y-3">
+              {solicitud.clarifications.map((aclaracion) => (
+                <li key={aclaracion.id} className="rounded-lg border border-[var(--color-line)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="font-medium">Se pidió el {fecha.format(aclaracion.requestedAt)}</p>
+                    <Badge
+                      tone={
+                        aclaracion.state === 'ANSWERED'
+                          ? 'success'
+                          : aclaracion.state === 'OVERDUE'
+                            ? 'danger'
+                            : aclaracion.state === 'CLOSED'
+                              ? 'neutral'
+                              : 'accent'
+                      }
+                    >
+                      {aclaracion.state === 'ANSWERED'
+                        ? 'Contestada'
+                        : aclaracion.state === 'OVERDUE'
+                          ? 'Plazo vencido'
+                          : aclaracion.state === 'CLOSED'
+                            ? 'Cerrada sin respuesta'
+                            : 'En plazo'}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap">{aclaracion.request}</p>
+                  <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                    {aclaracion.requestedBy} · plazo hasta el {fecha.format(aclaracion.dueAt)}
+                    {aclaracion.notifiedAt === null
+                      ? ' · sin aviso enviado'
+                      : ` · avisada el ${fechaHora.format(aclaracion.notifiedAt)}`}
+                  </p>
+
+                  {aclaracion.answer !== null && aclaracion.answeredAt !== null && (
+                    <div className="mt-3 rounded-lg bg-[var(--color-surface-sunken)] p-3">
+                      <p className="text-sm font-medium">Contestó el {fechaHora.format(aclaracion.answeredAt)}</p>
+                      <p className="mt-1 whitespace-pre-wrap">{aclaracion.answer}</p>
+                    </div>
+                  )}
+
+                  {aclaracion.closeReason !== null && (
+                    <p className="mt-3 text-sm">
+                      <strong>Se cerró sin respuesta:</strong> {aclaracion.closeReason}
+                    </p>
+                  )}
+
+                  {puedeRevisar &&
+                    (aclaracion.state === 'PENDING' || aclaracion.state === 'OVERDUE') && (
+                      <div className="mt-4 border-t border-[var(--color-line)] pt-4">
+                        <CloseClarificationForm
+                          clarificationId={aclaracion.id}
+                          applicationId={solicitud.id}
+                        />
+                      </div>
+                    )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </Section>
+
+        {puedeRevisar && enTramite && (
+          <Section title="Revisar" description="Revisar no altera lo que la persona envió.">
+            <div className="space-y-6">
+              {solicitud.status !== 'UNDER_REVIEW' && aclaracionAbierta === undefined && (
+                <Card>
+                  <h3 className="mb-3 font-semibold">Tomar la solicitud</h3>
+                  <StartReviewForm applicationId={solicitud.id} />
+                </Card>
+              )}
+
+              {aclaracionAbierta === undefined ? (
+                <Card>
+                  <h3 className="mb-3 font-semibold">Pedir una aclaración</h3>
+                  <RequestClarificationForm applicationId={solicitud.id} />
+                </Card>
+              ) : (
+                <Notice tone="neutral" title="Hay una aclaración abierta">
+                  <p>
+                    Esperando la respuesta de la persona hasta el {fecha.format(aclaracionAbierta.dueAt)}. Para
+                    seguir sin ella, ciérrala arriba explicando por qué.
+                  </p>
+                </Notice>
+              )}
+
+              {solicitud.status === 'UNDER_REVIEW' && (
+                <Card>
+                  <h3 className="mb-3 font-semibold">Recomendar</h3>
+                  <RecommendationForm applicationId={solicitud.id} />
+                </Card>
+              )}
+            </div>
+          </Section>
+        )}
+
+        {puedeResolver && enTramite && (
+          <Section
+            title="Resolver"
+            description="Quien revisa prepara; quien resuelve firma. El PRD §8.1 las separa a propósito."
+          >
+            {aclaracionAbierta !== undefined ? (
+              <Notice tone="warning" title="No se resuelve con una aclaración abierta">
+                <p>
+                  Se le pidió algo a la persona y el plazo corre hasta el{' '}
+                  {fecha.format(aclaracionAbierta.dueAt)}. Resolver ahora sería pedirle que conteste y no
+                  esperar la respuesta.
+                </p>
+              </Notice>
+            ) : solicitud.reviews.length === 0 ? (
+              <Notice tone="warning" title="Todavía no hay ninguna revisión">
+                <p>
+                  La admisión exige revisión humana registrada antes de resolver (PRD §3.2). Toma la solicitud
+                  y revísala primero.
+                </p>
+              </Notice>
+            ) : (
+              <Card>
+                <ResolutionForm applicationId={solicitud.id} />
+              </Card>
+            )}
+          </Section>
+        )}
 
         <Section title="Actuaciones">
           {solicitud.reviews.length === 0 ? (

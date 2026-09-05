@@ -12,6 +12,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/v1/cron/clarification-due",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/v1/cron/content-schedule",
       "schedule": "*/5 * * * *"
     },

@@ -1500,6 +1500,58 @@ const CHECKS = [
     },
   },
   {
+    id: 'C-F2-08',
+    title: 'Fase 2: un módulo de acciones de servidor solo exporta funciones',
+    phases: [2],
+    run() {
+      // El defecto que este control impide (`D-F4-012`): un archivo marcado
+      // `'use server'` exportaba, además de sus acciones, una constante con el
+      // estado inicial del formulario. Next lo rechaza en ejecución —«a "use
+      // server" file can only export async functions»— y la pantalla entera
+      // devuelve 500. Los tipos pasan, el linter calla y la compilación de
+      // producción termina en verde: solo se ve abriendo la página.
+      //
+      // La frontera es la misma que la de `C-F2-07`, mirada desde el otro lado:
+      // lo que cruza de servidor a cliente por esta vía son funciones, y nada
+      // más. Las constantes van a un módulo sin directiva.
+      const problems = [];
+      const archivos = walk().filter((file) => /^(src|app)\//.test(file) && /\.tsx?$/.test(file));
+
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+        if (!/^\s*['"]use server['"]/.test(contenido)) continue;
+
+        for (const match of contenido.matchAll(/^export\s+(const|let|var|class|enum)\s+([A-Za-z_$][\w$]*)/gm)) {
+          // `export const algo = async (...)` sí es una acción.
+          const resto = contenido.slice(match.index + match[0].length, match.index + match[0].length + 40);
+          if (match[1] === 'const' && /^\s*(:[^=]*)?=\s*async\b/.test(resto)) continue;
+          problems.push(
+            `${file} exporta "${match[2]}", que no es una función: un módulo 'use server' solo exporta funciones asíncronas, y Next devuelve 500 al pintar la pantalla que lo importe.`,
+          );
+        }
+
+        // Reexportar un valor tiene el mismo efecto y no lo ve el patrón de
+        // arriba, porque la declaración vive en otro sitio.
+        for (const match of contenido.matchAll(/^export\s*\{([^}]*)\}\s*(?:from\s*'[^']+')?\s*;?\s*$/gm)) {
+          for (const bruto of match[1].split(',')) {
+            const nombre = bruto.trim();
+            if (nombre === '' || nombre.startsWith('type ')) continue;
+            const local = nombre.split(/\s+as\s+/)[0]?.trim() ?? '';
+            if (new RegExp(`export\\s+async\\s+function\\s+${local}\\b`).test(contenido)) continue;
+            if (new RegExp(`async\\s+function\\s+${local}\\b`).test(contenido)) continue;
+            problems.push(
+              `${file} reexporta "${nombre}" desde un módulo 'use server': si no es una función asíncrona, la pantalla que lo importe devuelve 500.`,
+            );
+          }
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Los módulos de acciones de servidor exportan solo funciones asíncronas.']);
+    },
+  },
+  {
     id: 'C-F3-01',
     title: 'Fase 3: ningún acceso se activa por la página de retorno del navegador',
     phases: [3],

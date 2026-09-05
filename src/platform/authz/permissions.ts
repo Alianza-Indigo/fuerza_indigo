@@ -449,6 +449,137 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   define('audit.security.read', 'Consultar la bitácora de seguridad', { sensitivity: 'CRITICAL' }),
   define('audit.audit.export', 'Exportar bitácoras', { sensitivity: 'CRITICAL', requiresReason: true }),
 
+  // governance — órganos, cargos, periodos y poderes (PRD §9.2, §9.3)
+  define('governance.body.manage', 'Administrar órganos de gobierno', { sensitivity: 'CRITICAL' }),
+  define('governance.body.read', 'Consultar órganos y cargos'),
+  define('governance.office.appoint', 'Designar a una persona en un cargo', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('governance.office.end', 'Concluir anticipadamente un periodo de cargo', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('governance.power.grant', 'Otorgar un poder o representación', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('governance.power.revoke', 'Revocar un poder o representación', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('governance.rules.manage', 'Administrar las versiones de reglas estatutarias', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+
+  // assembly — convocatoria, padrón congelado, quórum y actas (PRD §9.4)
+  define('assembly.assembly.convene', 'Convocar una asamblea', { sensitivity: 'CRITICAL' }),
+  define('assembly.assembly.read', 'Consultar asambleas y su orden del día'),
+  define('assembly.agenda.manage', 'Administrar el orden del día', { sensitivity: 'SENSITIVE' }),
+  define('assembly.roster.freeze', 'Congelar el padrón de una asamblea', { sensitivity: 'CRITICAL' }),
+  define('assembly.attendance.register', 'Registrar asistencia', { sensitivity: 'SENSITIVE' }),
+  define('assembly.quorum.declare', 'Declarar el quórum de una sesión', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('assembly.resolution.record', 'Asentar una resolución', { sensitivity: 'CRITICAL' }),
+  define('assembly.minutes.publish', 'Publicar el acta de una asamblea', { sensitivity: 'CRITICAL' }),
+  define('assembly.followup.manage', 'Dar seguimiento a los acuerdos', { sensitivity: 'SENSITIVE' }),
+
+  // voting — proceso de votación y voto secreto (PRD §9.5)
+  define('voting.process.manage', 'Abrir, cerrar y administrar un proceso de votación', {
+    sensitivity: 'CRITICAL',
+  }),
+  define('voting.credential.issue', 'Emitir credenciales de voto', { sensitivity: 'CRITICAL' }),
+  define('voting.ballot.cast', 'Depositar el voto propio', { needsAssignment: true }),
+  define('voting.tally.run', 'Escrutar una votación', { sensitivity: 'CRITICAL' }),
+  define('voting.tally.certify', 'Certificar el acta de resultados', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('voting.process.read', 'Consultar procesos de votación y sus resultados'),
+
+  // election — Comisión Electoral, planillas e incidencias (PRD §9.5)
+  define('election.election.manage', 'Administrar un proceso electoral', { sensitivity: 'CRITICAL' }),
+  define('election.slate.register', 'Registrar una planilla', { sensitivity: 'SENSITIVE' }),
+  define('election.slate.validate', 'Validar o rechazar una planilla', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('election.roster.publish', 'Publicar el padrón de electores', { sensitivity: 'CRITICAL' }),
+  define('election.incident.manage', 'Registrar y resolver incidencias electorales', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('election.evidence.export', 'Exportar evidencia electoral para la autoridad', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+
+  // bargaining — negociación colectiva y huelga (PRD §9.6)
+  define('bargaining.file.manage', 'Administrar expedientes de negociación colectiva', {
+    sensitivity: 'CRITICAL',
+    compartment: 'UNION',
+  }),
+  define('bargaining.file.read', 'Consultar expedientes de negociación colectiva', {
+    sensitivity: 'SENSITIVE',
+    compartment: 'UNION',
+  }),
+  define('bargaining.consultation.open', 'Abrir una consulta a agremiados afectados', {
+    sensitivity: 'CRITICAL',
+  }),
+  define('bargaining.strike.file_open', 'Iniciar un procedimiento de huelga', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    compartment: 'UNION',
+  }),
+
+  // discipline — régimen disciplinario (PRD §9.8)
+  define('discipline.case.open', 'Abrir un procedimiento disciplinario', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    compartment: 'DISCIPLINARY',
+  }),
+  define('discipline.case.read', 'Consultar un procedimiento disciplinario asignado', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+    compartment: 'DISCIPLINARY',
+  }),
+  define('discipline.case.read_own', 'Consultar el procedimiento disciplinario propio', {
+    needsAssignment: true,
+  }),
+  define('discipline.evidence.manage', 'Ofrecer y valorar pruebas', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+    compartment: 'DISCIPLINARY',
+  }),
+  define('discipline.decision.issue', 'Dictar una resolución disciplinaria', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    compartment: 'DISCIPLINARY',
+  }),
+  define('discipline.appeal.resolve', 'Resolver un recurso', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    compartment: 'DISCIPLINARY',
+  }),
+
+  // compliance — obligaciones ante autoridad y archivo histórico (PRD §9.7)
+  define('compliance.obligation.manage', 'Administrar obligaciones ante la autoridad laboral', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('compliance.obligation.read', 'Consultar obligaciones ante la autoridad laboral'),
+  define('compliance.archive.read', 'Consultar el archivo histórico institucional', {
+    sensitivity: 'SENSITIVE',
+  }),
+
+  // documents — plantillas y documentos institucionales (PRD §16.2)
+  define('documents.template.manage', 'Administrar plantillas de documento', { sensitivity: 'SENSITIVE' }),
+  define('documents.document.issue', 'Emitir un documento institucional', { sensitivity: 'SENSITIVE' }),
+  define('documents.document.read', 'Consultar documentos institucionales emitidos', {
+    sensitivity: 'SENSITIVE',
+  }),
+
   // system
   define('system.module.configure', 'Configurar módulos del sistema', { sensitivity: 'CRITICAL', requiresReason: true }),
   define('system.job.manage', 'Administrar trabajos programados', { sensitivity: 'CRITICAL', requiresReason: true }),
@@ -531,7 +662,7 @@ export const SUPERADMIN_GRANTED: ReadonlySet<string> = new Set([
  * lo que su tipo declara: no hereda un permiso total por ser «el sistema».
  */
 export const JOB_GRANTS: Readonly<Record<string, ReadonlySet<string>>> = {
-  'role-expiry': new Set(['access.role.revoke']),
+  'role-expiry': new Set(['access.role.revoke', 'governance.body.read']),
   retention: new Set(['files.file.delete', 'files.retention.manage']),
   dispatch: new Set<string>(),
   health: new Set(['system.health.read']),

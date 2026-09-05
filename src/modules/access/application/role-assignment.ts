@@ -8,6 +8,7 @@ import { can, effectiveGrantedPermissions, explain } from '@/platform/authz/poli
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit, recordSecurity } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { revokeExpiredOfficeAccess } from '@/modules/governance/application/office-terms';
 
 /**
  * Otorgamiento y revocación de roles (PRD §4.3, docs/PERMISSIONS.md §7).
@@ -283,27 +284,37 @@ export async function revokeRole(
 }
 
 /**
- * Revocación automática de nombramientos vencidos (PRD §4.3).
+ * Revocación automática de nombramientos vencidos (PRD §4.3, §24 Fase 5).
  *
  * Lo ejecuta el trabajo programado `role-expiry`. El acceso ya deja de conceder
  * en el momento del vencimiento —el motor solo considera asignaciones vigentes—;
  * este trabajo materializa la revocación para que quede constancia explícita y
  * el historial refleje el hecho institucional, no solo su efecto.
+ *
+ * Cierra primero los periodos de cargo vencidos y después barre el resto de las
+ * asignaciones. El orden importa: así el cargo concluido deja su asiento propio
+ * (`OFFICE_EXPIRED`, contra el `OfficeTerm`) en vez de aparecer como una
+ * revocación anónima, y la asignación ya revocada no se vuelve a tocar en el
+ * segundo barrido. Ambos pasos ocurren en la misma transacción: o el cargo
+ * vencido pierde el acceso entero, o no se movió nada.
  */
-export async function expireDueRoleAssignments(actor: ActorContext): Promise<UseCaseResult<{ revoked: number }>> {
+export async function expireDueRoleAssignments(
+  actor: ActorContext,
+): Promise<UseCaseResult<{ revoked: number; offices: number }>> {
   const decision = can(actor, 'access.role.revoke', { kind: 'RoleAssignment' });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const now = new Date();
-  const due = await db().roleAssignment.findMany({
-    where: { revokedAt: null, endsAt: { not: null, lte: now } },
-    select: { id: true, userId: true, legalEntityId: true, role: { select: { code: true } } },
-    take: 200,
-  });
 
-  if (due.length === 0) return ok({ revoked: 0 });
+  return await transaction(async (tx) => {
+    const cargos = await revokeExpiredOfficeAccess(tx, actor, now);
 
-  await transaction(async (tx) => {
+    const due = await tx.roleAssignment.findMany({
+      where: { revokedAt: null, endsAt: { not: null, lte: now } },
+      select: { id: true, userId: true, legalEntityId: true, role: { select: { code: true } } },
+      take: 200,
+    });
+
     for (const assignment of due) {
       await tx.roleAssignment.update({
         where: { id: assignment.id },
@@ -319,7 +330,7 @@ export async function expireDueRoleAssignments(actor: ActorContext): Promise<Use
         metadata: { role: assignment.role.code, targetUserId: assignment.userId },
       });
     }
-  });
 
-  return ok({ revoked: due.length });
+    return ok({ revoked: cargos.revoked + due.length, offices: cargos.revoked });
+  });
 }

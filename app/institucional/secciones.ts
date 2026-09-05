@@ -1,0 +1,16 @@
+/**
+ * Secciones del panel institucional (docs/ARCHITECTURE.md §7.1).
+ *
+ * Igual que en `/gestion`, la lista vive fuera del marco porque la portada del
+ * área también la necesita, y cada sección declara el permiso que la abre: la
+ * navegación se construye con lo que la persona alcanza de verdad.
+ *
+ * `/gestion` y `/institucional` no son lo mismo. En `/gestion` se administra la
+ * afiliación, el dinero y los contenidos. Aquí ocurre la vida institucional: el
+ * territorio, los órganos, las asambleas, las elecciones, la negociación
+ * colectiva y la disciplina. Son actos de gobierno, y quien los ejerce lo hace
+ * desde un cargo vigente, no desde una cuenta con permisos sueltos.
+ */
+export const SECCIONES = [
+  { href: '/institucional/territorio', label: 'Estructura territorial', permiso: 'territory.unit.read' },
+] as const;

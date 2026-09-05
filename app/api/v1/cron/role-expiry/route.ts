@@ -8,11 +8,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Revocación de nombramientos vencidos (PRD §4.3).
+ * Revocación de nombramientos vencidos (PRD §4.3, §24 Fase 5).
  *
  * El acceso ya deja de concederse al vencer —el motor solo considera
  * asignaciones vigentes—; este trabajo materializa la revocación para que el
  * historial refleje el hecho institucional, no solo su efecto.
+ *
+ * Incluye los periodos de cargo concluidos: un cargo vencido pierde el acceso
+ * sin que nadie intervenga, porque nadie tiene que acordarse de quitarlo.
  */
 export async function GET(request: Request): Promise<Response> {
   if (!isAuthorizedCron(request)) return cronUnauthorized();

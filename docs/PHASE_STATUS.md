@@ -6,10 +6,12 @@
 ## Situación actual
 
 - **Fase activa:** 4 — Afiliación, padrones, directorios y credenciales
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
 - **Cierre previo:** 5 de septiembre de 2026 en `038297d`, **reabierto** el mismo día por la corrección de alcance de CIAN y CENI (véase «Corrección de alcance» más abajo)
+- **Fecha de cierre:** 5 de septiembre de 2026, con la corrección de alcance ya aplicada
+- **SHA del punto de control:** `ddd471e`
 - **Fase anterior:** 3 — `APPROVED`, cerrada en `85cf196`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 5 — Estructura territorial, gobierno, asambleas y elecciones, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -84,7 +86,7 @@ Los cuatro controles nuevos de la fase —`C-F4-01` a `C-F4-04`— se comprobaro
 
 ## Defectos abiertos
 
-**Ninguno abierto.** Los veintidós que aparecieron durante la construcción se corrigieron dentro de la fase, como exige el PRD §0 punto 6, y quedan registrados porque cada uno enseñó algo. Ocho los encontró abrir la pantalla en un navegador; tres, un control de fase; dos, la suite de accesibilidad al extenderse; uno, el propio registro del servidor.
+**Ninguno abierto.** Los veintidós que aparecieron durante la construcción se corrigieron dentro de la fase, como exige el PRD §0 punto 6, y quedan registrados porque cada uno enseñó algo. Ocho los encontró abrir la pantalla en un navegador; tres, un control de fase; dos, la suite de accesibilidad al extenderse; uno, el propio registro del servidor; y el último, comprobar que el verificador supiera ver un defecto abierto.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -144,19 +146,21 @@ Las que gobiernan lo construido aquí, en una línea cada una:
 
 | Punto | Estado |
 |---|---|
-| Todo el alcance implementado | Los diecinueve puntos del alcance del PRD §24 Fase 4, en veinticuatro tareas del backlog |
-| Sin defectos críticos, altos o medios abiertos | Ninguno abierto: 21 encontrados, 21 cerrados dentro de la fase |
+| Todo el alcance implementado | Los diecinueve puntos del alcance del PRD §24 Fase 4, en veinticuatro tareas del backlog. El alcance no cambió con la corrección: CIAN y CENI nunca fueron alcance de esta fase, solo anticipos suyos en el esquema |
+| Sin defectos críticos, altos o medios abiertos | Ninguno abierto: 22 encontrados, 22 cerrados dentro de la fase. El último, `D-F4-022`, lo destapó comprobar que el propio verificador supiera ver un defecto abierto |
 | Sin botones, rutas ni acciones incompletas | `C-REPO-02` y `C-F1-02`; cada pantalla se abrió en un navegador |
-| Migraciones desde cero y desde la fase anterior | Las dos, y no como comprobación aparte: la suite de integración exige la primera y la base de desarrollo probó la segunda |
+| Migraciones desde cero y desde la fase anterior | Las dos, y no como comprobación aparte: la suite de integración exige la primera y la base de desarrollo probó la segunda. La migración correctiva de la corrección de alcance se probó además sobre una base actualizada, desde cero, y **viéndola fallar** con un dato que usaba un valor retirado |
 | Permisos positivos y negativos probados | En cada suite de la fase; `C-F1-05` comprueba que existen |
 | Interfaz revisada en móvil y escritorio | 232 pruebas en los dos perfiles |
 | Accesibilidad validada | 12 rutas públicas y 19 pantallas con sesión, dos temas, cero violaciones críticas o serias |
 | Estados vacíos y de error terminados | Cada pantalla nueva los declara con texto propio |
 | Auditoría conectada | El ciclo completo deja los cinco asientos y su evento de estado inmutable |
-| Documentación refleja el código real | `DATA_MODEL`, `PERMISSIONS`, `INTEGRATIONS`, `DECISIONS`, `BACKLOG` actualizados; se corrigió lo que la documentación prometía y el código había decidido de otro modo |
-| Lint, tipos, pruebas y compilación | Todo en verde |
+| Documentación refleja el código real | Los diez documentos de `docs/` actualizados, incluidos el PRD y el contrato de fases: once fases 0 a 10, trece flujos E2E, catorce roles, y ninguna promesa de construir CIAN o CENI aquí |
+| Lint, tipos, pruebas y compilación | Todo en verde sobre el árbol que se cierra: tipos, lint, 335 unitarias, 613 de integración, 232 de navegador en los dos perfiles, compilación de producción y los 53 controles de `phase:verify` |
 | Sin secretos ni datos reales | `C-REPO-04`, `C-ENV-02`; la contraseña de las cuentas de prueba se genera en cada corrida |
 | Informe de cierre | Este |
+
+**Lo que la corrección de alcance cambió en este cierre.** La fase se había cerrado el 5 de septiembre en `038297d`. La instrucción de retirar CIAN y CENI del repositorio llegó después y tocaba el contrato de la fase activa, así que la fase volvió a `IN_PROGRESS` y se cierra ahora con la corrección aplicada. **Nada de lo construido se deshizo:** lo que se retiró eran anticipos —valores de enumeración, cinco roles y una columna— que ninguna función de esta fase escribía. El apartado «Corrección de alcance» de este documento lo detalla ámbito por ámbito.
 
 **Lo que esta fase deliberadamente no hace, y no es una omisión.** No convoca asambleas ni celebra elecciones —Fase 5—, pero deja dicho en el dato quién vota: `grantsPoliticalRights` y `countsForQuorum`, con una comprobación de la base que impide que una calidad honoraria los obtenga por error. No abre expedientes de caso —Fase 6—: un beneficiario protegido se da de alta aquí con su origen y su necesidad inicial, y la atención empieza allá.
 
@@ -205,7 +209,7 @@ Las que gobiernan lo construido aquí, en una línea cada una:
 | 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
 | 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
-| 4 | 2026-09-04 | — | `IN_PROGRESS` | Cerrada el 2026-09-05 en `038297d` y **reabierta** el mismo día por la corrección de alcance de CIAN y CENI. Lo construido sigue en pie: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal; 21 defectos encontrados y cerrados |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `ddd471e`. Afiliación completa de punta a punta: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal. 22 defectos encontrados y cerrados. Cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI, y cerrada de nuevo con ella aplicada |
 | 5 a 10 | — | — | No iniciadas | — |
 
 ---

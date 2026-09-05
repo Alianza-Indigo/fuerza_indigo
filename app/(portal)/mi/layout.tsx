@@ -44,7 +44,9 @@ export default async function PortalLayout({ children }: { children: ReactNode }
     <div className="min-h-dvh">
       <header className="border-b border-[var(--color-line)] bg-[var(--color-surface-raised)]">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <span className="font-semibold">Mi cuenta</span>
+          <Link href="/mi" className="font-semibold">
+            Mi cuenta
+          </Link>
           <div className="flex items-center gap-2">
             {alcanzaGestion && (
               <Link

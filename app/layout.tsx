@@ -79,7 +79,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const preferencias = await currentPreferences();
 
   return (
-    <html lang="es-MX" {...preferenceAttributes(preferencias)}>
+    // `data-scroll-behavior` no es decoración: le dice al enrutador que la hoja
+    // de estilos declara desplazamiento suave, para que **lo desactive durante
+    // los cambios de ruta**. Sin él, cada navegación anima el salto de la
+    // página aunque nadie lo haya pedido, y en una plataforma para personas
+    // neurodivergentes el movimiento involuntario es justo lo que el PRD §5.2
+    // manda poder controlar. La preferencia de movimiento reducido sigue
+    // ganando por encima de todo esto (defecto `D-F4-020`).
+    <html lang="es-MX" data-scroll-behavior="smooth" {...preferenceAttributes(preferencias)}>
       <body className="min-h-dvh antialiased">
         {/*
           Al recibir el foco tiene que alcanzar los 44 px que exige

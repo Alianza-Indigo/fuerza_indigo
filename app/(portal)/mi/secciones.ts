@@ -16,5 +16,6 @@ export const SECCIONES_DEL_PORTAL = [
   { href: '/mi/directorio', label: 'Mi ficha pública', permiso: 'directory.publication.manage_own' },
   { href: '/mi/credencial', label: 'Mi credencial', permiso: 'credentialing.credential.read_own' },
   { href: '/mi/pagos', label: 'Mis pagos', permiso: 'billing.payment.read_own' },
+  { href: '/mi/consentimientos', label: 'Consentimientos', permiso: 'consent.read_own' },
   { href: '/mi/seguridad', label: 'Seguridad y sesiones', permiso: null },
 ] as const;

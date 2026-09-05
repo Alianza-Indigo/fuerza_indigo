@@ -24,6 +24,7 @@ export {
   grantConsent,
   revokeConsent,
   personConsents,
+  publishedConsentTexts,
   hasLiveConsent,
   grantConsentSchema,
   revokeConsentSchema,
@@ -31,4 +32,5 @@ export {
   type RevokeConsentInput,
   type GrantedConsent,
   type ConsentRow,
+  type ConsentOffer,
 } from './consents';

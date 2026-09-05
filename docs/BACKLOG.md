@@ -216,7 +216,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-CRE-002 | Implementar la descarga digital e imprimible de la credencial | Hecho. SVG en tamaño de tarjeta, generado al pedirlo y nunca archivado (ADR-0091). La descarga deja asiento y se niega si la credencial ya no vale |
 | F4-CRE-003 | Implementar el verificador público con lectura de estado vivo y registro agregado | Hecho. Verificador público sin sesión, con los siete datos del PRD §7.4 y ninguno más. Registro agregado por hora, sin dirección ni identificador de quien escanea |
 | F4-CRE-004 | Implementar la revocación con efecto inmediato en el verificador | Hecho. El estado se deriva al leer, así que la revocación se ve en la consulta siguiente sin ningún trabajo de por medio (ADR-0092). Terminar o vencer la membresía revoca la credencial con asiento |
-| F4-UI-001 | Construir el panel personal con prioridades reales y sus secciones | Pendiente |
+| F4-UI-001 | Construir el panel personal con prioridades reales y sus secciones | Hecho. `/mi` abre con lo que hay que atender —aclaraciones con plazo, documentación devuelta, cuotas en mora, suspensiones, vigencias por caducar— y cada fila lleva a donde se resuelve. Sin contadores: cuando no hay nada, lo dice y se calla (ADR-0095). Se añadió `/mi/consentimientos`, la pantalla que a `D-F4-009` le faltaba |
 | F4-QA-001 | Probar que una persona acumula calidades sin duplicarse | Pendiente |
 | F4-QA-002 | Probar que un afiliado honorario nunca obtiene voto ni computa para el quórum | Pendiente |
 | F4-QA-003 | Probar el ciclo completo de solicitud, pago, activación y verificación | Pendiente |

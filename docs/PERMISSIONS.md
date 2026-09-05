@@ -123,7 +123,10 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `credential.issue` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `credential.revoke` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `consent.grant` · `consent.revoke` | — | O | O | O | O | — | P | — | — | P | — | — | O | — | — | — | — | — | — |
-| `consent.read` | — | O | O | O | O | — | P | — | — | P | — | — | O | — | — | — | — | — | — |
+| `consent.read` (institucional) | — | — | — | — | — | — | P | — | — | P | — | — | — | — | — | — | — | — | — |
+| `consent.read_own` | — | O | O | O | O | — | — | — | — | — | — | — | O | — | — | — | — | — | — |
+| `credential.read_own` | — | O | O | O | O | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `credential.read` (emitidas) | — | — | — | — | — | P | P | — | — | — | — | — | — | — | — | — | — | L | — |
 | `consent.version.manage` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | P | — | — |
 | `unit.create` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `office.appoint` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
@@ -368,6 +371,12 @@ El rol se retira cuando ya no queda ninguna membresía viva de esa calidad. Una 
 Toda persona con cuenta que pueda llegar a una pantalla del portal personal tiene la facultad que esa pantalla exige sobre **lo suyo**. `APPLICANT` incluye `consent.grant_own`, `consent.revoke_own` y `credentialing.credential.read_own` aunque todavía no tenga membresía: quien solicita merece leer «todavía no tienes credencial, se emite al activarse tu membresía» y no «no tienes autorización», que describe una decisión de la organización sobre esa persona en vez de un hecho del trámite (ADR-0094).
 
 Y el portal **filtra sus secciones por la facultad que las abre**, igual que el área de gestión: una pestaña que lleva a una denegación hace perder el tiempo y anuncia algo que no corresponde. La lista vive en `app/(portal)/mi/secciones.ts`, con `permiso: null` para lo que se tiene por tener cuenta —mirar y cerrar las sesiones propias—.
+
+### 7.3 La pareja `X` / `X_own` no es una comodidad de nombres
+
+Cuando el catálogo define las dos, son **dos facultades distintas** y hay que resolverlas por separado. `consent.read` mira los consentimientos de cualquiera y la tiene la Secretaría Ejecutiva y la atención social; `consent.read_own` mira los propios y los de quien se representa con una relación de cuidado viva, y la tienen los roles personales.
+
+Confundirlas tuvo consecuencias: con una sola facultad, y como la persona llega por parámetro, cualquier agremiada podía leer el historial de consentimientos de cualquier otra (`D-F4-019`). El control `C-F4-03` lo impide de forma mecánica: ninguna función que reciba un `personId` puede decidir mencionando solo la facultad institucional cuando existe su pareja.
 
 ---
 

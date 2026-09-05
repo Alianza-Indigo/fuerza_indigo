@@ -104,7 +104,22 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   define('consent.revoke_own', 'Retirar el consentimiento propio o de quien se representa', {
     sensitivity: 'SENSITIVE',
   }),
-  define('consent.read', 'Consultar consentimientos de una persona', { sensitivity: 'SENSITIVE' }),
+  define('consent.read', 'Consultar consentimientos de cualquier persona', { sensitivity: 'SENSITIVE' }),
+  /**
+   * Los propios y los de quien se representa con una relación acreditada
+   * (defecto `D-F4-019`).
+   *
+   * Existía una sola facultad, `consent.read`, y la tenían tanto la Secretaría
+   * como cualquier persona agremiada. Como la consulta recibe el identificador
+   * de la persona por parámetro, eso significaba que **cualquier agremiada
+   * podía leer el historial de consentimientos de cualquier otra**: para qué
+   * autorizó el tratamiento de sus datos, cuándo lo retiró, con qué texto. Es
+   * exactamente el tipo de dato que el PRD §7.3 llama granular y revocable, y
+   * mirarlo de otra persona no es leer lo propio.
+   */
+  define('consent.read_own', 'Consultar los consentimientos propios o de quien se representa', {
+    sensitivity: 'SENSITIVE',
+  }),
 
   // files
   define('files.file.upload', 'Adjuntar un archivo'),

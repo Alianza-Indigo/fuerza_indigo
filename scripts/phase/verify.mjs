@@ -2006,6 +2006,86 @@ const CHECKS = [
         : ok(['Suspensión y vencimiento se derivan al leer la credencial; ninguna ruta los escribe.']);
     },
   },
+
+  {
+    id: 'C-F4-03',
+    title: 'Fase 4: una consulta sobre una persona no se resuelve con la facultad de mirar a cualquiera',
+    phases: [4],
+    run() {
+      // El defecto que impide (`D-F4-019`): `personConsents` recibía el
+      // identificador de la persona **por parámetro** y decidía con una sola
+      // facultad, `consent.read`, que tenían tanto la Secretaría como cualquier
+      // agremiada. Bastaba con pedir el identificador de otra para leer su
+      // historial de consentimientos.
+      //
+      // La regla: si el catálogo define la pareja `X` / `X_own`, ninguna función
+      // que reciba un `personId` puede decidir mencionando solo `X`. O resuelve
+      // las dos, o está tratando lo propio y lo ajeno como la misma cosa.
+      const problems = [];
+
+      const catalogo = read('src/platform/authz/permissions.ts') ?? '';
+      const conPareja = new Set();
+      for (const match of catalogo.matchAll(/define\('([a-z0-9_.]+)_own'/g)) {
+        conPareja.add(match[1]);
+      }
+      if (conPareja.size === 0) {
+        return fail(['El catálogo no declara ninguna facultad sobre lo propio: la pareja no existe.']);
+      }
+
+      const archivos = walk().filter(
+        (file) => /^src\/(modules|platform)\//.test(file) && /\.ts$/.test(file) && !/^src\/generated\//.test(file),
+      );
+
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+        // Se parte por declaración de función: el ámbito de la comprobación es
+        // la función, no el archivo. Un archivo que resuelve la pareja en otra
+        // función no absuelve a esta.
+        const trozos = contenido.split(/\n(?=(?:export )?(?:async )?function )/);
+        for (const trozo of trozos) {
+          const nombre = /(?:export )?(?:async )?function (\w+)/.exec(trozo)?.[1] ?? '(anónima)';
+
+          // Solo las que reciben la persona **por parámetro**: ahí está el
+          // riesgo de que quien pregunta y quien es preguntado se separen.
+          //
+          // La lista de parámetros se recorta contando paréntesis, no cortando
+          // en la primera llave: una firma como `input: { personId: string }`
+          // lleva una llave **dentro** de los parámetros, y cortar ahí dejaba
+          // fuera justo el nombre que se busca. La primera versión de este
+          // control daba verde con `personConsents` delante, que es el defecto
+          // que motivó escribirlo.
+          const abre = trozo.indexOf('(');
+          if (abre === -1) continue;
+          let profundidad = 0;
+          let cierra = -1;
+          for (let i = abre; i < trozo.length; i += 1) {
+            if (trozo[i] === '(') profundidad += 1;
+            if (trozo[i] === ')') {
+              profundidad -= 1;
+              if (profundidad === 0) { cierra = i; break; }
+            }
+          }
+          if (cierra === -1) continue;
+          const firma = trozo.slice(abre, cierra + 1);
+          if (!/\bpersonId\b/.test(firma)) continue;
+
+          for (const match of trozo.matchAll(/\bcan\(\s*[^,]+,\s*'([a-z0-9_.]+)'/g)) {
+            const permiso = match[1];
+            if (permiso.endsWith('_own')) continue;
+            if (!conPareja.has(permiso)) continue;
+            if (trozo.includes(`'${permiso}_own'`)) continue;
+            problems.push(
+              `${file} · ${nombre}() decide con '${permiso}' sobre un personId recibido, sin resolver '${permiso}_own': lo propio y lo ajeno quedan igualados.`,
+            );
+          }
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Toda consulta sobre una persona distingue mirar lo propio de mirar lo ajeno.']);
+    },
+  },
 ];
 
 

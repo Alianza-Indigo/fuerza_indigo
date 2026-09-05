@@ -1208,3 +1208,33 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Y la navegación deja de ofrecer puertas cerradas.** El portal personal filtra sus secciones por la facultad que las abre, igual que hace el área de gestión desde la Fase 1. Una pestaña que lleva a una denegación le hace perder el tiempo a quien la pulsa y le dice que existe algo que no le corresponde. `permiso: null` marca lo que se tiene por tener cuenta —mirar y cerrar las sesiones propias—, que no lo otorga ningún rol.
 
 **La diferencia entre las dos negativas importa.** «No tienes autorización» describe una decisión de la organización sobre esa persona. «Todavía no tienes credencial» describe un hecho del trámite. Confundirlas hace que la plataforma parezca hostil justo con quien acaba de llegar.
+
+---
+
+## ADR-0095 · El panel abre con decisiones, y calla cuando no hay ninguna
+
+**Contexto.** El PRD §5.5 exige que «cada panel abrirá con prioridades reales: pagos pendientes, documentos faltantes, citas próximas, votaciones abiertas, casos que requieren atención o renovaciones», y el §24 lo repite como criterio: «los paneles muestran decisiones accionables, no métricas decorativas».
+
+**Decisión.** `personalAgenda` devuelve una lista de **pendientes**, y cada pendiente lleva obligatoriamente tres cosas: qué pasa, qué ocurre si no se atiende, y **dónde se hace**. No hay contadores. Cuando no hay nada, la lista viene vacía y la pantalla lo dice.
+
+**Por qué la lista vacía se defiende.** La tentación es llenar el panel con «3 solicitudes · 1 credencial · 2 pagos». Eso se ve completo y no sirve para nada: quien lo lee tiene que traducir cada número a una acción, y el día que aparezca algo urgente estará entre el ruido. Un panel que se calla cuando no hay nada enseña a mirarlo cuando habla.
+
+**El orden lo decide el daño de no atenderlo**, no la fecha ni el módulo: primero lo que tiene plazo y se pierde —una aclaración—, después lo que bloquea un trámite en curso, después lo que caduca solo, y al final lo que conviene revisar. Ordenar por fecha pondría un consentimiento opcional por encima de un plazo que vence mañana.
+
+**Una suspensión es un caso que requiere atención.** No la resuelve un clic —la levanta ponerse al corriente, o el fin del procedimiento—, pero enterarse por una etiqueta gris en una tarjeta de abajo no es enterarse. Aparece arriba, con el motivo que se registró y diciendo lo que una suspensión es: una pausa, no una baja.
+
+**Vive en `membership` y no en un módulo nuevo.** Es la calidad de la persona la que ordena su relación con la organización, y el grafo ya permite que `membership` lea de `billing` (`ARCHITECTURE.md` §4). Cada dato se pide al caso de uso de su módulo, nunca por consulta cruzada: eso significa que **cada parte vuelve a decidir sus permisos**, y a quien le falte una facultad sencillamente no le aparece esa parte, sin que el panel entero se caiga.
+
+---
+
+## ADR-0096 · Leer lo propio y leer lo ajeno no son la misma facultad
+
+**Contexto.** `personConsents` recibía el identificador de la persona **por parámetro** y decidía con una sola facultad, `consent.read`, que tenían tanto la Secretaría Ejecutiva como cualquier persona agremiada. Bastaba con pedir el identificador de otra para leer su historial completo de consentimientos: para qué autorizó el tratamiento de sus datos, cuándo lo retiró y con qué texto (defecto `D-F4-019`).
+
+**Decisión.** La pareja se separa, como ya estaba separada para otorgar y revocar (ADR-0077): `consent.read` es institucional y `consent.read_own` cubre lo propio y lo de quien se representa con una relación de cuidado viva. Los roles personales —solicitante, agremiada, honoraria, beneficiaria protegida, usuaria de organización CENI— pasan a la segunda; la Secretaría y la atención social conservan la primera.
+
+**Quien representa también lee.** Si con una relación acreditada se puede otorgar y retirar en nombre de otra persona, hay que poder ver qué hay otorgado: decidir a ciegas sobre los datos de alguien a quien se representa es peor que no poder decidir.
+
+**Por qué el patrón se vuelve control.** Es la tercera vez que aparece la misma forma —`D-F4-009`, `D-F4-017` y ahora esta—: una facultad que mezcla lo propio con lo ajeno. `C-F4-03` la caza mecánicamente: si el catálogo define la pareja `X` / `X_own`, ninguna función que reciba un `personId` puede decidir mencionando solo `X`.
+
+**Su primera versión daba verde con el defecto delante.** Recortaba la firma en la primera llave, y una firma como `input: { personId: string }` lleva una llave **dentro** de los parámetros: el nombre que buscaba quedaba fuera. Se corrigió contando paréntesis. Un control que aprueba sin mirar es peor que no tenerlo, porque además tranquiliza.

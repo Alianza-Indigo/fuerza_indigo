@@ -63,7 +63,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // la persona solo podía registrarlo la organización.
       'consent.grant_own',
       'consent.revoke_own',
-      'consent.read',
+      'consent.read_own',
       'files.file.download_own','files.file.upload'],
   },
   {
@@ -87,7 +87,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // significa. Conserva la lectura de sus pagos por si alguna vez pagó
       // algo con otro rol.
       'billing.payment.read_own',
-      'files.file.download_own','files.file.upload', 'consent.read',
+      'files.file.download_own','files.file.upload', 'consent.read_own',
       'consent.grant_own', 'consent.revoke_own'],
   },
   {
@@ -108,7 +108,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'directory.publication.manage_own',
       'billing.payment.read_own',
       'billing.checkout.start',
-      'files.file.download_own','files.file.upload', 'consent.read',
+      'files.file.download_own','files.file.upload', 'consent.read_own',
       'consent.grant_own', 'consent.revoke_own'],
   },
   {
@@ -132,7 +132,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'billing.accountability.read',
       'billing.payment.read_own',
       'billing.checkout.start',
-      'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read',
+      'files.file.download_own','files.file.upload', 'consent.read_own', 'territory.unit.read',
       'consent.grant_own', 'consent.revoke_own'],
   },
   {
@@ -270,6 +270,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'consent.grant_own',
       'consent.revoke_own',
       'consent.read',
+      'consent.read_own',
       'files.file.upload',
       'files.file.download',
       'files.file.download_sensitive',
@@ -374,7 +375,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'billing.checkout.start',
       'consent.grant_own',
       'consent.revoke_own',
-      'consent.read',
+      'consent.read_own',
       'files.file.download_own','files.file.upload'],
   },
   {

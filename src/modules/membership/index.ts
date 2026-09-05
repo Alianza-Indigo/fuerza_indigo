@@ -171,3 +171,9 @@ export {
   type CredentialFilters,
   type VerificationResult,
 } from './application/credentials';
+export {
+  personalAgenda,
+  type AgendaPersonal,
+  type Pendiente,
+  type UrgenciaDePendiente,
+} from './application/personal-agenda';

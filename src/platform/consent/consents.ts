@@ -382,13 +382,110 @@ export interface ConsentRow {
   readonly live: boolean;
 }
 
+export interface ConsentOffer {
+  readonly consentVersionId: string;
+  readonly code: string;
+  readonly version: number;
+  readonly title: string;
+  readonly bodyMarkdown: string;
+  readonly legalEntity: string;
+  /** Propósitos que este texto cubre. Vacío = sirve para cualquiera. */
+  readonly purposes: readonly ConsentPurpose[];
+  readonly effectiveFrom: Date;
+}
+
+/**
+ * Los textos que la persona **puede aceptar hoy**.
+ *
+ * Solo los publicados y en vigor: un borrador no se puede aceptar y uno
+ * retirado tampoco (regla 2 del archivo). Y se devuelve el texto entero, no un
+ * título con un enlace: lo que se acepta tiene que poder leerse antes de
+ * aceptarlo y recuperarse después tal como se leyó.
+ *
+ * Exige `consent.read_own` porque es la antesala de otorgar: quien no puede
+ * consentir sobre lo suyo tampoco necesita el catálogo.
+ */
+export async function publishedConsentTexts(actor: ActorContext): Promise<UseCaseResult<ConsentOffer[]>> {
+  const recurso = { kind: 'ConsentVersion' as const };
+  const propia = can(actor, 'consent.read_own', recurso);
+  const institucional = can(actor, 'consent.read', recurso);
+  if (!propia.allowed && !institucional.allowed) {
+    return fail(errors.forbidden(explain(propia.reason!)));
+  }
+
+  const ahora = new Date();
+  const filas = await db().consentVersion.findMany({
+    where: {
+      status: 'PUBLISHED',
+      effectiveFrom: { lte: ahora },
+      OR: [{ effectiveTo: null }, { effectiveTo: { gt: ahora } }],
+    },
+    orderBy: [{ code: 'asc' }, { version: 'desc' }],
+    select: {
+      id: true,
+      code: true,
+      version: true,
+      title: true,
+      bodyMarkdown: true,
+      requiredFor: true,
+      effectiveFrom: true,
+      legalEntity: { select: { shortName: true } },
+    },
+  });
+
+  // De cada texto, solo la versión en vigor más reciente: ofrecer dos versiones
+  // del mismo aviso obligaría a la persona a elegir entre dos cosas que no
+  // puede distinguir.
+  const porCodigo = new Map<string, (typeof filas)[number]>();
+  for (const fila of filas) if (!porCodigo.has(fila.code)) porCodigo.set(fila.code, fila);
+
+  return ok(
+    [...porCodigo.values()].map((fila) => ({
+      consentVersionId: fila.id,
+      code: fila.code,
+      version: fila.version,
+      title: fila.title,
+      bodyMarkdown: fila.bodyMarkdown,
+      legalEntity: fila.legalEntity.shortName,
+      purposes: fila.requiredFor,
+      effectiveFrom: fila.effectiveFrom,
+    })),
+  );
+}
+
 /** Consentimientos de una persona, vivos y revocados. */
 export async function personConsents(
   actor: ActorContext,
   input: { personId: string },
 ): Promise<UseCaseResult<ConsentRow[]>> {
-  const decision = can(actor, 'consent.read', { kind: 'Consent', id: input.personId });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+  // Leer lo propio y leer lo ajeno son dos facultades distintas (defecto
+  // `D-F4-019`). Con una sola, y como la persona llega por parámetro, cualquiera
+  // que la tuviera podía pedir el historial de cualquier otra: para qué
+  // autorizó el tratamiento de sus datos, cuándo lo retiró, con qué texto.
+  //
+  // Quien representa con una relación de cuidado viva también lee: si puede
+  // otorgar y retirar en nombre de otra persona (ADR-0077), tiene que poder ver
+  // qué hay otorgado, o estaría decidiendo a ciegas.
+  const propio = input.personId === actor.personId;
+  const representando =
+    propio || actor.personId === null
+      ? false
+      : (await db().careRelationship.count({
+          where: {
+            fromPersonId: actor.personId,
+            toPersonId: input.personId,
+            revokedAt: null,
+            OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+          },
+        })) > 0;
+
+  const recurso = { kind: 'Consent' as const, id: input.personId };
+  const institucional = can(actor, 'consent.read', recurso);
+  const decision =
+    propio || representando ? can(actor, 'consent.read_own', recurso) : institucional;
+  if (!decision.allowed && !institucional.allowed) {
+    return fail(errors.forbidden(explain(decision.reason!)));
+  }
 
   const ahora = new Date();
   const filas = await db().consent.findMany({

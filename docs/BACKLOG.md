@@ -203,8 +203,8 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-AFI-005 | Implementar las relaciones familiares y de cuidado con alcance, vigencia y consentimiento | Hecho |
 | F4-AFI-006 | Implementar la revisión humana, la solicitud de aclaración con plazo y la resolución fundada | Hecho |
 | F4-AFI-007 | Implementar la gestión documental de la solicitud con revisión por documento | Hecho |
-| F4-AFI-008 | Conectar la activación de membresía con el cobro confirmado por webhook | Pendiente |
-| F4-AFI-009 | Implementar bajas, suspensiones, vencimientos y conversiones sin duplicar la persona | Pendiente |
+| F4-AFI-008 | Conectar la activación de membresía con el cobro confirmado por webhook | Hecho |
+| F4-AFI-009 | Implementar bajas, suspensiones, vencimientos y conversiones sin duplicar la persona | Hecho |
 | F4-PAD-001 | Implementar el padrón de agremiados con sus filtros e índices reales | Pendiente |
 | F4-PAD-002 | Implementar el padrón de afiliados honorarios | Pendiente |
 | F4-PAD-003 | Implementar el padrón de beneficiarios protegidos con privacidad reforzada | Pendiente |

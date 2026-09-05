@@ -12,6 +12,7 @@ import { env } from '@/platform/config/env';
 import { logger } from '@/platform/observability/logger';
 import { stripe } from '@/platform/payments/stripe-port';
 import { accountForLegalEntity } from '@/platform/payments/accounts';
+import { announcePaymentSucceeded } from './payment-events';
 import { currentPrice } from './catalog-queries';
 import { priceFor } from './pricing';
 
@@ -246,6 +247,17 @@ export async function startCheckout(
           data: { redemptions: { increment: 1 } },
         });
       }
+
+      // Una exención total es un cobro confirmado como cualquier otro: cubre lo
+      // que había que cubrir. Lo que dependa de que esté cubierto —activar una
+      // membresía— tiene que enterarse igual (ADR-0082).
+      await announcePaymentSucceeded(tx, {
+        paymentId: fila.id,
+        legalEntityId: producto.legalEntityId,
+        origen: 'exención total',
+        correlationId: actor.correlationId,
+        actorId: actor.actorId,
+      });
 
       return fila;
     });

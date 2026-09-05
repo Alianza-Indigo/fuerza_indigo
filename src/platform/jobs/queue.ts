@@ -209,7 +209,16 @@ export async function dispatchOutbox(limit = 25): Promise<{ delivered: number; f
 
     if (forEvent.size === 0) {
       // Sin manejadores no hay nada que entregar, pero tampoco se descarta en
-      // silencio: queda como entregado con constancia de que nadie escuchaba.
+      // silencio: queda como entregado con constancia de que nadie escuchaba, y
+      // se registra como error. Un evento sin quien lo escuche es casi siempre
+      // un registro que no se hizo, no un evento que a nadie le importa, y esa
+      // diferencia solo se nota si alguien se entera.
+      logger.error('Evento de dominio sin manejadores registrados', {
+        module: 'jobs',
+        correlationId: message.correlationId,
+        outcome: 'failed',
+        context: { eventName: message.eventName, outboxMessageId: message.id },
+      });
       await db().outboxMessage.update({
         where: { id: message.id },
         data: { status: 'DELIVERED', lastError: 'Sin manejadores registrados para este evento' },

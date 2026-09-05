@@ -518,4 +518,15 @@ export const JOB_GRANTS: Readonly<Record<string, ReadonlySet<string>>> = {
    * exactamente lo que el PRD §3.2 prohíbe al exigir revisión humana.
    */
   'clarification-due': new Set(['membership.application.review']),
+  /**
+   * Reparto de la bandeja de salida. Los manejadores actúan con este tipo de
+   * trabajo, y lo único que hacen hoy es activar una membresía cuyo cobro quedó
+   * confirmado: un hecho ya ocurrido que solo hay que materializar.
+   */
+  'domain-events': new Set<string>(),
+  /**
+   * Vencimiento de membresías. Solo lee cuáles vencieron y lo constata; no da
+   * de baja a nadie ni termina ninguna, que son facultades de una persona.
+   */
+  'membership-expiry': new Set(['membership.record.read']),
 };

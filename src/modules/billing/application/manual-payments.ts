@@ -7,6 +7,7 @@ import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { newPublicId } from '@/platform/kernel/ids';
 import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
+import { announcePaymentSucceeded } from './payment-events';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { accountForLegalEntity } from '@/platform/payments/accounts';
@@ -231,6 +232,14 @@ export async function approveManualPayment(
     // Aprobarlo es lo que hace que el dinero cuente, así que es aquí y no al
     // registrarlo donde entra al libro.
     await postPaymentEntry(tx, actor, pago.id);
+
+    await announcePaymentSucceeded(tx, {
+      paymentId: pago.id,
+      legalEntityId: pago.legalEntityId,
+      origen: 'aprobación de pago manual',
+      correlationId: actor.correlationId,
+      actorId: actor.actorId,
+    });
 
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.MANUAL_PAYMENT_APPROVED,

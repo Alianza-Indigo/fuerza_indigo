@@ -11,7 +11,7 @@ import {
   Section,
 } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { applicationDetail } from '@/modules/membership';
+import { applicationDetail, pendingChargeFor, personMemberships } from '@/modules/membership';
 import {
   ACCION_DE_REVISION,
   ESTADO_DE_DOCUMENTO,
@@ -22,6 +22,7 @@ import {
   TIPO_DE_DOCUMENTO,
 } from '../etiquetas';
 import { ClarificationForm } from './clarification-form';
+import { FeeForm } from './fee-form';
 import { DocumentForm } from './document-form';
 import { WithdrawForm } from './withdraw-form';
 
@@ -61,6 +62,15 @@ export default async function MiSolicitudPage({ params }: { params: Promise<{ id
   });
 
   const rechazados = solicitud.documentList.filter((documento) => documento.status === 'REJECTED');
+
+  const [cuota, membresias] = await Promise.all([
+    pendingChargeFor(actor, solicitud.id),
+    personMemberships(actor, solicitud.personId),
+  ]);
+  const porPagar =
+    cuota.ok && cuota.data.catalogProductId !== null && !cuota.data.alreadyPaid ? cuota.data : null;
+  // La membresía que nació de esta solicitud, si ya nació.
+  const membresia = membresias.ok ? membresias.data.find((una) => una.status === 'ACTIVE') : undefined;
 
   // La que sigue esperando respuesta, vencida o no. Solo puede haber una: lo
   // garantiza un índice parcial, no una convención.
@@ -138,6 +148,43 @@ export default async function MiSolicitudPage({ params }: { params: Promise<{ id
             </Notice>
           )}
         </Section>
+
+        {porPagar !== null && (
+          <Section
+            title="Falta tu cuota de inscripción"
+            description="Tu solicitud está aprobada. La membresía se activa cuando el pago quede confirmado."
+          >
+            <Card>
+              <FeeForm
+                applicationId={solicitud.id}
+                productId={porPagar.catalogProductId ?? ''}
+                productName={porPagar.productName ?? 'Cuota de inscripción'}
+              />
+            </Card>
+          </Section>
+        )}
+
+        {membresia !== undefined && (
+          <Section title="Tu membresía" description="Nació de esta solicitud.">
+            <Card>
+              <p className="text-lg font-semibold">{membresia.membershipType}</p>
+              <p className="mt-1">
+                Número de miembro <strong className="font-mono">{membresia.memberNumber}</strong>
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Activa desde el {fecha.format(membresia.startedAt)}
+                {membresia.expiresAt === null
+                  ? ' · sin fecha de vencimiento mientras no te des de baja'
+                  : ` · vigente hasta el ${fecha.format(membresia.expiresAt)}`}
+              </p>
+              <p className="mt-2 text-sm">
+                {membresia.grantsPoliticalRights
+                  ? 'Da voz y voto en asambleas mientras estés en pleno goce de derechos.'
+                  : 'No da derechos electorales sindicales: no vota ni computa para el quórum.'}
+              </p>
+            </Card>
+          </Section>
+        )}
 
         {pendiente !== undefined && (
           <Section title="Lo que te pedimos" description="Contesta aquí. Tu respuesta queda en el expediente.">

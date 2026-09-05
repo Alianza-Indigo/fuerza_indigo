@@ -1,8 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { startCheckout } from '@/modules/billing';
 import {
   answerClarification,
+  linkPaymentToApplication,
   attachApplicationDocument,
   submitApplication,
   withdrawApplication,
@@ -178,6 +181,42 @@ export async function answerClarificationAction(
       ? 'Recibimos tu respuesta. El plazo ya había pasado, y aun así tu solicitud sigue su curso.'
       : 'Recibimos tu respuesta. Tu solicitud vuelve a revisión.',
   };
+}
+
+export interface CuotaFormState {
+  readonly status: 'idle' | 'error';
+  readonly message?: string;
+}
+
+/**
+ * Pagar la cuota de inscripción de una solicitud aprobada (PRD §8.1 paso 12).
+ *
+ * El cobro se ata a la solicitud **antes** de mandar a nadie a la pasarela. Sin
+ * ese enlace, la activación tendría que adivinar después a qué trámite
+ * corresponde el dinero, y adivinar falla justo cuando alguien tiene dos
+ * abiertos. Si el enlace falla, no se cobra: cobrar sin saber por qué es peor
+ * que no cobrar.
+ */
+export async function payApplicationFeeAction(
+  _previous: CuotaFormState,
+  formData: FormData,
+): Promise<CuotaFormState> {
+  const actor = await currentActor();
+  const applicationId = textField(formData, 'applicationId');
+
+  const cobro = await startCheckout(actor, {
+    productId: textField(formData, 'productId'),
+    returnPath: `/mi/afiliacion/${applicationId}`,
+  });
+  if (!cobro.ok) return { status: 'error', message: cobro.error.message };
+
+  const atado = await linkPaymentToApplication(actor, {
+    applicationId,
+    paymentPublicId: cobro.data.paymentPublicId,
+  });
+  if (!atado.ok) return { status: 'error', message: atado.error.message };
+
+  redirect(cobro.data.url);
 }
 
 export interface RetiroFormState {

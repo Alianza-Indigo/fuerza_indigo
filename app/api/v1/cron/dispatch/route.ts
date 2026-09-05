@@ -1,4 +1,5 @@
 import { claimBatch, dispatchOutbox, markFailed, markSucceeded } from '@/platform/jobs/queue';
+import { registerDomainEventHandlers } from '@/platform/jobs/domain-event-registry';
 import { cronUnauthorized, isAuthorizedCron } from '@/platform/http/cron-auth';
 import { runJob } from '@/platform/jobs/handlers';
 import { logger } from '@/platform/observability/logger';
@@ -14,6 +15,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request): Promise<Response> {
   if (!isAuthorizedCron(request)) return cronUnauthorized();
+
+  // Antes de repartir, decir quién escucha. El registro vive en memoria del
+  // proceso y aquí cada invocación arranca en frío: sin esta línea, la bandeja
+  // marcaría los mensajes como entregados «sin manejadores registrados» y el
+  // hecho se perdería en silencio (ADR-0082).
+  await registerDomainEventHandlers();
 
   const outbox = await dispatchOutbox();
   const claimed = await claimBatch(`cron-${Date.now()}`);

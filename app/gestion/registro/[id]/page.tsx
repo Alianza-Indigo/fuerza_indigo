@@ -13,12 +13,13 @@ import {
 import { currentActor } from '@/platform/http/request-context';
 import { territoryOptions } from '@/modules/access';
 import { findDuplicates, personRecord, searchPeople } from '@/modules/identity';
-import { careRelationships, relationshipReach } from '@/modules/membership';
+import { careRelationships, personMemberships, relationshipReach } from '@/modules/membership';
 import { consentVersionList, personConsents } from '@/platform/consent';
 import { can } from '@/platform/authz/policy';
 import { PersonForm } from '../person-form';
 import { MergeForm } from './merge-form';
 import { ALCANCE, RELACION } from '../../afiliacion/etiquetas';
+import { ESTADO_DE_MEMBRESIA } from '../../afiliacion/membresias/etiquetas';
 import {
   CareRelationshipForm,
   GrantConsentForm,
@@ -95,14 +96,21 @@ export default async function RegistroMaestroPage({ params }: { params: Promise<
   const puedeVerRelaciones = can(actor, 'membership.relationship.read', { kind: 'CareRelationship' }).allowed;
   const puedeVerConsentimientos = can(actor, 'consent.read', { kind: 'Consent' }).allowed;
 
-  const [duplicados, territorios, relaciones, consentimientos, textos, personas] = await Promise.all([
-    puedeFusionar ? findDuplicates(actor, { personId: id }) : Promise.resolve(null),
-    territoryOptions(actor),
-    puedeVerRelaciones ? careRelationships(actor, { personId: id }) : Promise.resolve(null),
-    puedeVerConsentimientos ? personConsents(actor, { personId: id }) : Promise.resolve(null),
-    puedeConsentir ? consentVersionList(actor) : Promise.resolve(null),
-    puedeRelaciones ? searchPeople(actor, { limit: 200 }) : Promise.resolve(null),
-  ]);
+  const [duplicados, territorios, relaciones, consentimientos, textos, personas, listaDeMembresias] =
+    await Promise.all([
+      puedeFusionar ? findDuplicates(actor, { personId: id }) : Promise.resolve(null),
+      territoryOptions(actor),
+      puedeVerRelaciones ? careRelationships(actor, { personId: id }) : Promise.resolve(null),
+      puedeVerConsentimientos ? personConsents(actor, { personId: id }) : Promise.resolve(null),
+      puedeConsentir ? consentVersionList(actor) : Promise.resolve(null),
+      puedeRelaciones ? searchPeople(actor, { limit: 200 }) : Promise.resolve(null),
+      personMemberships(actor, id),
+    ]);
+
+  // Sin la facultad de leer membresías, la sección no aparece. No se pinta una
+  // tabla vacía diciendo que no hay ninguna: eso afirmaría algo que quien mira
+  // no está en posición de saber.
+  const membresias = listaDeMembresias.ok ? listaDeMembresias.data : [];
 
   // El alcance efectivo se pregunta relación por relación: es una consulta al
   // consentimiento, no un campo de la fila, y presentarlo como si lo fuera es
@@ -199,6 +207,43 @@ export default async function RegistroMaestroPage({ params }: { params: Promise<
           <Notice tone="neutral" title="Este registro absorbió otros">
             <p>Identificadores anteriores: {persona.merge.mergedFrom.join(', ')}.</p>
           </Notice>
+        )}
+
+        {membresias.length > 0 && (
+          <Section
+            title="Membresías"
+            description="Cada una con su número y su historial. Entra para suspender, levantar o terminar."
+          >
+            <ScrollableTable>
+              <thead>
+                <tr className="border-b border-[var(--color-line)] text-left">
+                  <th scope="col" className="p-3 font-medium">Número</th>
+                  <th scope="col" className="p-3 font-medium">Calidad</th>
+                  <th scope="col" className="p-3 font-medium">Estado</th>
+                  <th scope="col" className="p-3 font-medium">Vigencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {membresias.map((membresia) => (
+                  <tr key={membresia.id} className="border-b border-[var(--color-line)] last:border-0">
+                    <td className="p-3 font-mono text-sm">
+                      <Link
+                        href={`/gestion/afiliacion/membresias/${membresia.id}`}
+                        className="underline underline-offset-4"
+                      >
+                        {membresia.memberNumber}
+                      </Link>
+                    </td>
+                    <td className="p-3">{membresia.membershipType}</td>
+                    <td className="p-3">{ESTADO_DE_MEMBRESIA[membresia.status] ?? membresia.status}</td>
+                    <td className="p-3 tabular-nums">
+                      {membresia.expiresAt === null ? 'Sin vencimiento' : formatter.format(membresia.expiresAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </ScrollableTable>
+          </Section>
         )}
 
         <Section title="Calidades" description="Lo que esta persona es hoy dentro del ecosistema.">

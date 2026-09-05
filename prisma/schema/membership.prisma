@@ -372,6 +372,16 @@ enum MembershipEndReason {
   DECEASED
   ADMIN_CORRECTION
   DUPLICATE
+  /// Terminó porque la persona pasó a otra calidad (PRD §8.4). No es una baja
+  /// ni una pérdida: sin este motivo, convertir una afiliación honoraria en
+  /// sindical habría que anotarlo como «corrección administrativa», que dice
+  /// que alguien se equivocó, o como «pérdida de calidad», que suena a castigo.
+  CONVERSION
+  /// Se acabó la vigencia y nadie la renovó. Tampoco es una baja: nadie decidió
+  /// nada, solo pasó el tiempo, y renovar la devuelve. Hace falta como motivo
+  /// propio porque el modelo exige que toda membresía terminada diga por qué, y
+  /// sin él un vencimiento tendría que disfrazarse de decisión de alguien.
+  EXPIRY
 }
 
 /// Bitácora de transición de estado. Inmutable (PRD §3.6).

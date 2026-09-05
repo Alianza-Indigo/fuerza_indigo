@@ -247,6 +247,7 @@ Las rutas viven bajo `/api/v1/cron/*` y exigen `CRON_SECRET` comparado en tiempo
 |---|---|---|
 | `reminders` | Cada hora | Recordatorios de citas, plazos de aclaración, cuotas y vencimientos |
 | `renewals` | Diaria | Renovaciones de membresías, herramientas y certificados CENI |
+| `membership-expiry` | Diaria | Marca vencidas las membresías cuya vigencia terminó, con motivo `EXPIRY`. No da de baja a nadie: renovar la devuelve |
 | `payment-reconciliation` | Diaria | Cotejo del libro auxiliar contra cada cuenta de Stripe |
 | `webhook-retry` | Cada 15 minutos | Reprocesa eventos persistidos con estado `FAILED` |
 | `credential-expiry` | Diaria | Marca credenciales vencidas y notifica antes del vencimiento |

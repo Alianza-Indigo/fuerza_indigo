@@ -12,6 +12,7 @@ import { enqueue } from '@/platform/jobs/queue';
 import { env } from '@/platform/config/env';
 import { logger } from '@/platform/observability/logger';
 import { startOfDayInZone } from '@/platform/i18n/format';
+import { crearMembresiaActiva, solicitudParaActivar } from './memberships';
 
 /**
  * Revisión humana, aclaración con plazo y resolución fundada (PRD §8.1 pasos
@@ -725,14 +726,23 @@ export async function recordRecommendation(
  * - **Quien resuelve escribe por qué.** El fundamento se guarda con la
  *   resolución, no en un comentario aparte que se pierda.
  *
- * Aprobar deja la solicitud en `APPROVED`. Lo que viene después —el cobro
- * cuando hay cuota y la activación con la credencial— es F4-AFI-008, y ocurre
- * cuando el pago se confirma, nunca aquí.
+ * **Aprobar activa, o no, según haya cuota.** Cuando la calidad no tiene costo,
+ * la resolución es lo único que faltaba y la membresía nace aquí mismo: el
+ * «cumplidos resolución y pago» del PRD §8.1 paso 13 se cumple con un pago que
+ * no había que hacer. Cuando sí tiene costo, la solicitud queda en `APPROVED` y
+ * la membresía espera al webhook firmado que confirme el cobro (F4-AFI-008).
  */
 export async function resolveApplication(
   actor: ActorContext,
   input: ResolveApplicationInput,
-): Promise<UseCaseResult<{ applicationId: string; status: 'APPROVED' | 'REJECTED' }>> {
+): Promise<
+  UseCaseResult<{
+    applicationId: string;
+    status: 'APPROVED' | 'REJECTED';
+    /** Número de miembro cuando la aprobación activó la membresía en el acto. */
+    memberNumber: string | null;
+  }>
+> {
   const parsed = resolveApplicationSchema.safeParse(input);
   if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
 
@@ -792,7 +802,7 @@ export async function resolveApplication(
   const aprobada = parsed.data.decision === 'APPROVED';
   const ahora = new Date();
 
-  await transaction(async (tx) => {
+  const activada = await transaction(async (tx) => {
     await tx.applicationReview.create({
       data: {
         applicationId: solicitud.id,
@@ -814,6 +824,14 @@ export async function resolveApplication(
       },
     });
 
+    let membresia: { membershipId: string; memberNumber: string } | null = null;
+    if (aprobada) {
+      const activable = await solicitudParaActivar(tx, solicitud.id);
+      if (activable !== null && !activable.membershipType.requiresPayment) {
+        membresia = await crearMembresiaActiva(tx, actor, activable, 'resolución sin cuota');
+      }
+    }
+
     await recordAudit(tx, actor, {
       action: aprobada ? AUDIT_ACTIONS.APPLICATION_APPROVED : AUDIT_ACTIONS.APPLICATION_REJECTED,
       objectKind: 'MembershipApplication',
@@ -825,6 +843,8 @@ export async function resolveApplication(
       reason: parsed.data.rationale,
       metadata: { folio: solicitud.folio },
     });
+
+    return membresia;
   });
 
   // El aviso de la resolución no lleva clave de aclaración: su clave de negocio
@@ -858,7 +878,11 @@ export async function resolveApplication(
     }
   }
 
-  return ok({ applicationId: solicitud.id, status: aprobada ? 'APPROVED' : 'REJECTED' });
+  return ok({
+    applicationId: solicitud.id,
+    status: aprobada ? 'APPROVED' : 'REJECTED',
+    memberNumber: activada?.memberNumber ?? null,
+  });
 }
 
 /* -------------------------------------------------------------------------- */

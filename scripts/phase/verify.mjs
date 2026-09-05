@@ -771,8 +771,18 @@ const CHECKS = [
       // completos, probados y documentados, y ninguna pantalla los llamaba. Una
       // función que nadie puede invocar es alcance no entregado, aunque el código
       // esté escrito.
+      // Las superficies son las pantallas, las rutas y los guiones… y el
+      // registro de suscripciones a eventos de dominio. Un caso de uso que solo
+      // se invoca desde un manejador de la bandeja de salida sí está entregado:
+      // `C-F1-12` garantiza que ese registro lo llame quien reparte, así que la
+      // cadena hasta una ruta real está comprobada. Sin esta línea, el control
+      // exigiría inventar una pantalla para algo que ocurre solo.
       const superficies = walk().filter(
-        (file) => (file.startsWith('app/') || file.startsWith('scripts/')) && /\.tsx?$/.test(file),
+        (file) =>
+          (file.startsWith('app/') ||
+            file.startsWith('scripts/') ||
+            file === 'src/platform/jobs/domain-event-registry.ts') &&
+          /\.tsx?$/.test(file),
       );
       const invocado = superficies.map((file) => read(file) ?? '').join('\n');
 
@@ -1549,6 +1559,81 @@ const CHECKS = [
       return problems.length
         ? fail(problems)
         : ok(['Los módulos de acciones de servidor exportan solo funciones asíncronas.']);
+    },
+  },
+  {
+    id: 'C-F1-12',
+    title: 'Fase 1: quien reparte la bandeja de salida registra antes a quien escucha',
+    phases: [1],
+    run() {
+      // El defecto que este control impide: el registro de manejadores vive en
+      // memoria del proceso y aquí cada invocación arranca en frío. Un
+      // despachador que reparte sin registrar marca los mensajes como
+      // entregados con la nota «sin manejadores registrados» —y el hecho se
+      // pierde en silencio mientras la bandeja dice que todo fue bien—.
+      const problems = [];
+      const archivos = walk().filter((file) => /^(src|app)\//.test(file) && /\.tsx?$/.test(file));
+
+      let reparte = 0;
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+        if (!/\bdispatchOutbox\s*\(/.test(contenido)) continue;
+        if (file === 'src/platform/jobs/queue.ts') continue;
+        reparte += 1;
+        if (!/registerDomainEventHandlers\s*\(/.test(contenido)) {
+          problems.push(
+            `${file} reparte la bandeja de salida sin llamar a registerDomainEventHandlers(): los mensajes se darían por entregados sin que nadie los escuchara.`,
+          );
+        }
+      }
+
+      if (reparte === 0) problems.push('Nadie reparte la bandeja de salida: los eventos de dominio no llegarían nunca.');
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Quien reparte la bandeja de salida registra primero a quien escucha.']);
+    },
+  },
+  {
+    id: 'C-F3-07',
+    title: 'Fase 3: todo cobro que pasa a confirmado lo anuncia',
+    phases: [3],
+    run() {
+      // Un cobro llega a `SUCCEEDED` desde cinco sitios distintos. Lo que
+      // depende de que esté cobrado —activar una membresía— no puede vivir
+      // pegado a los cinco: añadir un sexto camino dejaría a alguien pagado y
+      // sin lo que pagó, sin que nada fallara (ADR-0082).
+      const problems = [];
+      const archivos = walk().filter(
+        (file) => /^src\/modules\/billing\//.test(file) && /\.ts$/.test(file),
+      );
+
+      for (const file of archivos) {
+        if (file.endsWith('payment-events.ts')) continue;
+        const contenido = read(file) ?? '';
+
+        // Se busca el estado **dentro** de la escritura sobre `payment`, no en
+        // cualquier parte del archivo. La primera versión de este control
+        // señalaba `refunds.ts`, que pone en SUCCEEDED una devolución —no un
+        // cobro— y por separado toca la tabla de cobros: un control que acusa a
+        // un archivo correcto enseña a ignorar los controles.
+        let confirma = false;
+        for (const match of contenido.matchAll(/\bpayment\.(create|update|updateMany)\s*\(/g)) {
+          const bloque = contenido.slice(match.index, match.index + 700);
+          if (/\bstatus:\s*'SUCCEEDED'/.test(bloque)) confirma = true;
+        }
+        if (!confirma) continue;
+
+        if (!/announcePaymentSucceeded\s*\(/.test(contenido)) {
+          problems.push(
+            `${file} deja un cobro en SUCCEEDED y no lo anuncia: lo que dependa de ese cobro no se entera.`,
+          );
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Cada sitio que confirma un cobro publica el hecho en la bandeja de salida.']);
     },
   },
   {

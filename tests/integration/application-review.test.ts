@@ -491,12 +491,18 @@ describe('resolución fundada', () => {
     expect(resuelta.ok, resuelta.ok ? '' : JSON.stringify(resuelta.error)).toBe(true);
     if (!resuelta.ok) return;
     expect(resuelta.data.status).toBe('APPROVED');
+    // Y con ella nació la membresía, porque esta calidad no cobra nada.
+    expect(resuelta.data.memberNumber).not.toBeNull();
 
     const fila = await base.prisma.membershipApplication.findUniqueOrThrow({
       where: { id: applicationId },
       select: { status: true, resolutionAt: true, resolutionReason: true, resolvedById: true },
     });
-    expect(fila.status).toBe('APPROVED');
+    // La calidad de la semilla no tiene cuota, así que aprobar la activa en el
+    // mismo acto: «cumplidos resolución y pago» (PRD §8.1 paso 13) se cumple
+    // con un pago que no había que hacer. Con cuota, se quedaría en `APPROVED`
+    // esperando el cobro, y eso lo prueba la suite de membresías.
+    expect(fila.status).toBe('ACTIVATED');
     expect(fila.resolutionAt).not.toBeNull();
     expect(fila.resolutionReason).toBe(MOTIVO);
     expect(fila.resolvedById).toBe(secretariaPersona.userId);

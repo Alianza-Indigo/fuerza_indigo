@@ -98,3 +98,23 @@ export {
   type RecordRecommendationInput,
   type ResolveApplicationInput,
 } from './application/application-review';
+export {
+  activateFromConfirmedPayment,
+  linkPaymentToApplication,
+  pendingChargeFor,
+  suspendMembership,
+  reinstateMembership,
+  endMembership,
+  expireDueMemberships,
+  personMemberships,
+  membershipDetail,
+  suspendMembershipSchema,
+  reinstateMembershipSchema,
+  endMembershipSchema,
+  payApplicationSchema,
+  type SuspendMembershipInput,
+  type ReinstateMembershipInput,
+  type EndMembershipInput,
+  type PayApplicationInput,
+  type MembershipRow,
+} from './application/memberships';

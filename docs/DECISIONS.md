@@ -1010,3 +1010,38 @@ Es el control que habría cazado también `D-F4-003` —`identity.user.disable` 
 **Cómo se comprobó que las garantías funcionan.** La prueba que necesita un plazo ya vencido tuvo que pelear con las tres capas: los privilegios por columna le negaron el `UPDATE`, el disparador se lo negó también desde la conexión de propietaria, y la restricción `dueAt > requestedAt` la obligó a mover además la fecha de la petición. Ninguna ruta del producto puede hacer eso.
 
 **El contrato de fases se amplía, y se dice.** `ApplicationClarification` no figura en la enumeración de entidades del PRD §18.2: es una entidad que añade la implementación, dentro de lo que el PRD §0.1 deja al agente. Por eso se registra en `scripts/phase/prd-contract.json` —cuyo encabezado exige justamente una decisión escrita para tocarlo— en el apartado §18.2 y en las entidades que migra la Fase 4. Sin esa línea, el control de coherencia `C-COH-03` la vería como una tabla sin fase declarada y fallaría; y hacerla pasar sin registrarla habría sido esconder que el modelo creció.
+
+---
+
+## ADR-0082 · El cobro confirmado se anuncia; quien dependa de él, escucha
+
+**Contexto.** Un cobro llega a `SUCCEEDED` desde cinco sitios: `checkout.session.completed`, `payment_intent.succeeded`, la factura de una renovación, la aprobación de un pago manual y la exención total. La activación de una membresía depende de que uno de ellos ocurra (PRD §8.1 paso 13).
+
+**La solución que no se tomó.** Llamar a la activación desde los cinco. Funciona el primer día y falla el día que aparezca un sexto camino —una conciliación que repara un cobro perdido, por ejemplo—: alguien quedaría pagado y sin membresía, sin que nada fallara ni nadie se enterara. Ese es exactamente el modo de fallo de `D-F4-007` y `D-F4-008`, y aquí se puede evitar antes en vez de descubrirlo después.
+
+**Decisión.** Cada sitio publica el hecho —`billing.payment.succeeded`— en la bandeja de salida, **dentro de la misma transacción** que lo produce. Quien tenga algo que hacer con él se suscribe. Es el mecanismo de la Fase 1 (ADR-0025), que hasta esta fase existía completo, con su despachador y su medición de salud, sin que nadie lo usara.
+
+**La trampa que trae el mecanismo, y cómo se cierra.** El registro de manejadores vive en memoria del proceso, y aquí cada invocación arranca en frío. Si el registro ocurriera como efecto de importar un módulo, el despachador repartiría los mensajes **sin manejadores** en cualquier invocación donde ese módulo no se hubiera importado por otra razón —y los marcaría como entregados, con la nota «sin manejadores registrados»—. El hecho se perdería en silencio mientras la bandeja diría que todo fue bien.
+
+Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede leer entero; el despachador lo llama antes de repartir; y un evento sin manejadores se registra ahora como **error** en la bitácora técnica, porque casi siempre significa un registro que no se hizo, no un evento que a nadie le importa.
+
+**Dos controles de fase.** `C-F1-12` comprueba que quien reparte la bandeja registre primero a quien escucha. `C-F3-07` comprueba que todo sitio que deja un cobro en `SUCCEEDED` publique el hecho. La primera versión de `C-F3-07` señalaba `refunds.ts`, que pone en `SUCCEEDED` una **devolución** —no un cobro— y por separado toca la tabla de cobros: se acotó a buscar el estado dentro de la escritura, porque un control que acusa a un archivo correcto enseña a ignorar los controles. Los dos se verificaron viéndolos fallar con el código que causaría el defecto.
+
+---
+
+## ADR-0083 · Terminar una membresía dice siempre por qué, y vencer no es decidir
+
+**Contexto.** El modelo de la Fase 4 exige que toda membresía que ya no está en curso diga cuándo terminó y por qué: `("endedAt" IS NULL) = ("endReason" IS NULL)`, y `EXPIRED` cae de ese lado. Al construir el vencimiento, esa garantía chocó de frente con la intención de dejar un vencimiento sin fecha ni motivo.
+
+**Decisión.** Gana la garantía, y el vocabulario crece para poder decir la verdad: se añaden dos motivos.
+
+- `EXPIRY` — se acabó la vigencia y nadie la renovó. Sin él, un vencimiento tendría que anotarse como `INACTIVITY` o `ADMIN_CORRECTION`, y las dos afirman que alguien decidió algo. Aquí no decidió nadie: pasó el tiempo.
+- `CONVERSION` — la persona pasó a otra calidad (PRD §8.4). Sin él habría que llamarlo «corrección administrativa», que dice que alguien se equivocó, o «pérdida de calidad», que suena a castigo. Ninguna de las dos es verdad: la persona ganó una calidad.
+
+**Por qué no se aflojó la restricción.** Habría sido más rápido eximir a `EXPIRED` de tener motivo. Pero la restricción dice algo cierto —una membresía que no está en curso terminó, y un final sin explicación no se puede consultar años después— y aflojarla para que encajara una frase escrita más tarde es cambiar el modelo para no cambiar la prosa.
+
+**La fecha de fin de un vencimiento es la del vencimiento**, no la del día en que el trabajo nocturno se enteró. La membresía dejó de estar en vigor cuando se acabó su vigencia; anotar la fecha de la ejecución convertiría un retraso del cron en un dato del expediente.
+
+**Suspender sigue sin fecha de fin**, y por eso está en la lista de estados en curso: es una pausa, no una salida. La distinción no es cosmética: quien consulte el padrón dentro de dos años tiene que poder separar a quien se fue de quien estuvo suspendido tres meses y volvió.
+
+**Los siete motivos no comparten estado final.** Una baja voluntaria termina en `VOLUNTARY_WITHDRAWAL` y una expulsión en `STATUS_LOSS`. Decir que son lo mismo sería mentir en el único registro que va a quedar.

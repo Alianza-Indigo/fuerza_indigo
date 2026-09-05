@@ -6,6 +6,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { systemActorId } from '@/platform/auth/superadmin';
 import { systemContext } from '@/platform/kernel/actor-context';
 import { newPublicId } from '@/platform/kernel/ids';
+import { announcePaymentSucceeded } from './payment-events';
 import { postPaymentEntry } from './ledger';
 import { issueReceipt, noticeFailedCharge } from './receipts';
 import type { PaymentStatus, SubscriptionStatus } from '@prisma-client/enums';
@@ -236,6 +237,13 @@ const sesionTerminada: Manejador = async ({ tx, objeto, correlationId, actorId }
       // El asiento va en la **misma** transacción que la confirmación: no
       // puede existir un cobro confirmado sin su asiento ni al revés.
       await postPaymentEntry(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), pago.id);
+      await announcePaymentSucceeded(tx, {
+        paymentId: pago.id,
+        legalEntityId: null,
+        origen: 'checkout.session.completed',
+        correlationId,
+        actorId,
+      });
       await recordAudit(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), {
         action: AUDIT_ACTIONS.PAYMENT_SUCCEEDED,
         objectKind: 'Payment',
@@ -270,6 +278,13 @@ const intencionPagada: Manejador = async ({ tx, objeto, correlationId, actorId }
   const movido = await marcarPagado(tx, pago.id, new Date(), null);
   if (movido) {
     await postPaymentEntry(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), pago.id);
+    await announcePaymentSucceeded(tx, {
+      paymentId: pago.id,
+      legalEntityId: null,
+      origen: 'payment_intent.succeeded',
+      correlationId,
+      actorId,
+    });
     await recordAudit(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), {
       action: AUDIT_ACTIONS.PAYMENT_SUCCEEDED,
       objectKind: 'Payment',
@@ -502,6 +517,14 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
   });
 
   await postPaymentEntry(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), pago.id);
+
+  await announcePaymentSucceeded(tx, {
+    paymentId: pago.id,
+    legalEntityId: cuenta.legalEntityId,
+    origen: 'invoice.payment_succeeded',
+    correlationId,
+    actorId,
+  });
 
   await recordAudit(tx, systemContext({ actorId, jobType: 'stripe-webhook', correlationId }), {
     action: AUDIT_ACTIONS.PAYMENT_SUCCEEDED,

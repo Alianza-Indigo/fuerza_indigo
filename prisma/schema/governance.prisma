@@ -1,0 +1,273 @@
+/// Vida institucional del sindicato (PRD §9, docs/DATA_MODEL.md §6).
+///
+/// Este archivo contiene el gobierno —órganos, cargos, periodos y poderes—, la
+/// asamblea con su padrón congelado, la votación, la elección, la negociación
+/// colectiva y el régimen disciplinario.
+///
+/// **La garantía que gobierna el archivo entero es el secreto del voto.** No se
+/// sostiene en la interfaz ni en una política de acceso: se sostiene en la
+/// forma de tres tablas. `VoteEligibility` prueba quién podía votar y a quién se
+/// le entregó credencial, pero no guarda la credencial ni la hora. `Ballot` no
+/// tiene identidad **ni tiempo**: ni `createdAt`, ni identificador ordenable.
+/// `SpentVoteCredential` impide el doble depósito guardando solo la huella de
+/// una credencial que nunca se almacenó al emitirse (ADR-0012).
+
+// ---------------------------------------------------------------------------
+// Órganos, cargos y poderes
+// ---------------------------------------------------------------------------
+
+/// Órgano de gobierno (PRD §9.2).
+model UnionBody {
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  code               String        @unique @db.VarChar(60)
+  name               String        @db.VarChar(160)
+  kind               UnionBodyKind
+  territorialUnitId  String        @db.Uuid
+  legalEntityId      String        @db.Uuid
+  /// Reglas estatutarias con las que se instaló el órgano. No se actualiza al
+  /// reformarse el estatuto: lo que rigió su instalación es lo que consta.
+  normativeRuleSetId String        @db.Uuid
+  status             UnionBodyStatus @default(ACTIVE)
+  installedOn        DateTime?     @db.Date
+  dissolvedOn        DateTime?     @db.Date
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  territorialUnit  TerritorialUnit  @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  legalEntity      LegalEntity      @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  normativeRuleSet NormativeRuleSet @relation("UnionBodyRules", fields: [normativeRuleSetId], references: [id], onDelete: Restrict)
+  createdByActor   Actor            @relation("UnionBodyCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor   Actor            @relation("UnionBodyUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  offices               OfficeDefinition[]
+  assemblies            Assembly[]
+  elections             Election[]
+  instructedCases       DisciplinaryCase[]      @relation("DisciplinaryInstructingBody")
+  decisions             DisciplinaryDecision[]
+
+  @@index([territorialUnitId])
+  @@index([kind])
+  @@index([status])
+  @@map("union_body")
+}
+
+enum UnionBodyKind {
+  GENERAL_ASSEMBLY
+  NATIONAL_EXECUTIVE_COMMITTEE
+  OVERSIGHT_COMMISSION
+  ELECTORAL_COMMISSION
+  SECTION_DELEGATION
+  TEMPORARY_COMMISSION
+}
+
+enum UnionBodyStatus {
+  ACTIVE
+  INACTIVE
+  DISSOLVED
+}
+
+/// Cargo o cartera con sus facultades (PRD §9.2).
+///
+/// El conjunto de permisos que el cargo confiere **no** es un arreglo de
+/// identificadores ni un rol entero: es la tabla `OfficeDefinitionPermission`.
+/// Un cargo nunca concede acceso ilimitado, y la matriz por cartera de
+/// `docs/PERMISSIONS.md` §4.1 se lee de ahí, no de una lista en código.
+model OfficeDefinition {
+  id                 String            @id @default(uuid(7)) @db.Uuid
+  code               String            @unique @db.VarChar(60)
+  name               String            @db.VarChar(160)
+  unionBodyId        String            @db.Uuid
+  kind               OfficeKind
+  /// Duración estatutaria del periodo. 48 meses para el Comité Ejecutivo
+  /// Nacional; el valor concreto vive en la versión normativa, no aquí.
+  termMonths         Int
+  reelectionAllowed  Boolean
+  /// Plazas del cargo. 3 para Vigilancia y Electoral.
+  seats              Int               @default(1)
+  /// Rol base que la ocupación del cargo concede mientras dura.
+  grantsRoleCode     RoleCode
+  normativeRuleSetId String            @db.Uuid
+  isActive           Boolean           @default(true)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  unionBody        UnionBody        @relation(fields: [unionBodyId], references: [id], onDelete: Restrict)
+  normativeRuleSet NormativeRuleSet @relation("OfficeDefinitionRules", fields: [normativeRuleSetId], references: [id], onDelete: Restrict)
+  createdByActor   Actor            @relation("OfficeDefinitionCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor   Actor            @relation("OfficeDefinitionUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  permissions       OfficeDefinitionPermission[]
+  terms             OfficeTerm[]
+  incompatibleWith  OfficeIncompatibility[]      @relation("IncompatibilityLeft")
+  incompatibleFrom  OfficeIncompatibility[]      @relation("IncompatibilityRight")
+  slateMembers      SlateMember[]
+
+  @@index([unionBodyId])
+  @@index([kind])
+  @@map("office_definition")
+}
+
+enum OfficeKind {
+  SECRETARY_GENERAL
+  SECRETARY_ORGANIZATION
+  SECRETARY_LABOR_DISPUTES
+  SECRETARY_FINANCE
+  SECRETARY_MINUTES
+  SECRETARY_NEUROINCLUSION
+  SECRETARY_GENDER_EQUITY
+  SECRETARY_PRESS
+  ADDITIONAL_SECRETARY
+  OVERSIGHT_MEMBER
+  ELECTORAL_MEMBER
+  SECTION_DELEGATE
+  COMMISSION_MEMBER
+}
+
+/// Permisos que confiere un cargo. Sustituye al arreglo `permissionSetId`
+/// del contrato: una relación con clave foránea, no una lista de textos.
+model OfficeDefinitionPermission {
+  officeDefinitionId String @db.Uuid
+  permissionId       String @db.Uuid
+
+  officeDefinition OfficeDefinition @relation(fields: [officeDefinitionId], references: [id], onDelete: Cascade)
+  permission       Permission       @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([officeDefinitionId, permissionId])
+  @@index([permissionId])
+  @@map("office_definition_permission")
+}
+
+/// Incompatibilidad entre dos cargos (PRD §9.3).
+///
+/// La pareja se guarda **una sola vez**, con el identificador menor primero:
+/// una incompatibilidad es simétrica, y guardarla dos veces permitiría que una
+/// de las dos filas se borrara y la regla quedara a medias.
+model OfficeIncompatibility {
+  id        String @id @default(uuid(7)) @db.Uuid
+  leftId    String @db.Uuid
+  rightId   String @db.Uuid
+  /// Por qué son incompatibles, en el lenguaje del estatuto.
+  rationale String @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+
+  left  OfficeDefinition @relation("IncompatibilityLeft", fields: [leftId], references: [id], onDelete: Cascade)
+  right OfficeDefinition @relation("IncompatibilityRight", fields: [rightId], references: [id], onDelete: Cascade)
+  createdByActor Actor @relation("OfficeIncompatibilityCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("OfficeIncompatibilityUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([leftId, rightId])
+  @@index([rightId])
+  @@map("office_incompatibility")
+}
+
+/// Ocupación histórica de un cargo por una persona (PRD §9.2, §4.3).
+///
+/// Al llegar `endsOn`, un trabajo programado revoca las `RoleAssignment`
+/// derivadas. El historial permanece intacto: un cargo vencido pierde el
+/// acceso, no la memoria de haberlo tenido.
+model OfficeTerm {
+  id                 String            @id @default(uuid(7)) @db.Uuid
+  officeDefinitionId String            @db.Uuid
+  personId           String            @db.Uuid
+  /// Solo agremiados en pleno goce de derechos ocupan un cargo.
+  membershipId       String            @db.Uuid
+  territorialUnitId  String?           @db.Uuid
+  designationMethod  DesignationMethod
+  electionId         String?           @db.Uuid
+  evidenceDocumentId String?           @db.Uuid
+  startsOn           DateTime          @db.Date
+  endsOn             DateTime          @db.Date
+  /// Periodo al que sustituye, cuando esta ocupación es una suplencia.
+  substitutedTermId  String?           @db.Uuid
+  endedEarlyOn       DateTime?         @db.Date
+  endReason          String?           @db.VarChar(400)
+  /// Asignación de rol que sostiene el acceso mientras dura el periodo.
+  roleAssignmentId   String?           @unique @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  officeDefinition OfficeDefinition   @relation(fields: [officeDefinitionId], references: [id], onDelete: Restrict)
+  person           Person             @relation("OfficeTermPerson", fields: [personId], references: [id], onDelete: Restrict)
+  membership       Membership         @relation("OfficeTermMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+  territorialUnit  TerritorialUnit?   @relation("OfficeTermTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  election         Election?          @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  evidenceDocument GeneratedDocument? @relation("OfficeTermEvidence", fields: [evidenceDocumentId], references: [id], onDelete: Restrict)
+  substitutedTerm  OfficeTerm?        @relation("OfficeSubstitution", fields: [substitutedTermId], references: [id], onDelete: Restrict)
+  substitutes      OfficeTerm[]       @relation("OfficeSubstitution")
+  roleAssignment   RoleAssignment?    @relation("OfficeTermRoleAssignment", fields: [roleAssignmentId], references: [id], onDelete: Restrict)
+  createdByActor   Actor              @relation("OfficeTermCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor   Actor              @relation("OfficeTermUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  powerGrants        PowerGrant[]
+  convenedAssemblies Assembly[]              @relation("AssemblyConvenedBy")
+  reviewedApplications ApplicationReview[]   @relation("ReviewerOfficeTerm")
+  credentials        MemberCredential[]      @relation("CredentialOfficeTerm")
+
+  @@index([officeDefinitionId])
+  @@index([personId])
+  @@index([endsOn])
+  @@index([membershipId])
+  @@map("office_term")
+}
+
+enum DesignationMethod {
+  ELECTION
+  ASSEMBLY_APPOINTMENT
+  SUBSTITUTION
+  INTERIM
+}
+
+/// Poder o representación documentada (PRD §9.2).
+model PowerGrant {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  officeTermId     String    @db.Uuid
+  granteePersonId  String    @db.Uuid
+  scope            String    @db.Text
+  powerKind        PowerKind
+  documentId       String    @db.Uuid
+  notaryReference  String?   @db.VarChar(200)
+  startsOn         DateTime  @db.Date
+  endsOn           DateTime? @db.Date
+  revokedOn        DateTime? @db.Date
+  revokeReason     String?   @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  officeTerm      OfficeTerm        @relation(fields: [officeTermId], references: [id], onDelete: Restrict)
+  granteePerson   Person            @relation("PowerGrantee", fields: [granteePersonId], references: [id], onDelete: Restrict)
+  document        GeneratedDocument @relation("PowerGrantDocument", fields: [documentId], references: [id], onDelete: Restrict)
+  createdByActor  Actor             @relation("PowerGrantCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor             @relation("PowerGrantUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([officeTermId])
+  @@index([granteePersonId])
+  @@map("power_grant")
+}
+
+enum PowerKind {
+  LEGAL_REPRESENTATION
+  BANKING
+  LABOR_AUTHORITY
+  ADMINISTRATIVE
+  SPECIAL
+}

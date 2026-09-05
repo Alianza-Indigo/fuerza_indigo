@@ -1,0 +1,346 @@
+/// Negociación colectiva, obligaciones ante autoridad y régimen disciplinario
+/// (PRD §9.6, §9.7, §9.8).
+
+/// Expediente de contrato colectivo, revisión o conflicto colectivo.
+///
+/// **Ninguna automatización inicia un procedimiento de huelga.** El acuerdo
+/// habilitante es un requisito del dominio: sin `enablingResolutionId` el
+/// expediente no puede entrar en `STRIKE_PROCEDURE`, y lo impide la base, no
+/// una comprobación de la aplicación (PRD §9.6).
+model BargainingFile {
+  id                        String            @id @default(uuid(7)) @db.Uuid
+  folio                     String            @unique @db.VarChar(20)
+  kind                      BargainingKind
+  counterpartOrganizationId String?           @db.Uuid
+  territorialUnitId         String            @db.Uuid
+  /// Padrón congelado de agremiados afectados por la consulta.
+  affectedRosterSnapshotId  String?           @db.Uuid
+  enablingResolutionId      String?           @db.Uuid
+  status                    BargainingStatus  @default(OPEN)
+  authorityCaseNumber       String?           @db.VarChar(80)
+  closedAt                  DateTime?         @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  counterpartOrganization Organization?           @relation("BargainingCounterpart", fields: [counterpartOrganizationId], references: [id], onDelete: Restrict)
+  territorialUnit         TerritorialUnit         @relation("BargainingTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  affectedRosterSnapshot  AssemblyRosterSnapshot? @relation("BargainingAffectedRoster", fields: [affectedRosterSnapshotId], references: [id], onDelete: Restrict)
+  enablingResolution      Resolution?             @relation("BargainingEnabling", fields: [enablingResolutionId], references: [id], onDelete: Restrict)
+  createdByActor          Actor                   @relation("BargainingFileCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor          Actor                   @relation("BargainingFileUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  commissionMembers BargainingCommissionMember[]
+  proposals         BargainingProposal[]
+  consultation      VoteProcess?                 @relation("BargainingConsultation")
+
+  @@index([territorialUnitId])
+  @@index([status])
+  @@index([kind])
+  @@map("bargaining_file")
+}
+
+enum BargainingKind {
+  COLLECTIVE_AGREEMENT_NEGOTIATION
+  CONTRACT_REVIEW
+  WAGE_REVIEW
+  COLLECTIVE_DISPUTE
+  STRIKE_PROCEDURE
+}
+
+enum BargainingStatus {
+  OPEN
+  NEGOTIATION
+  CONSULTATION
+  CONCILIATION
+  STRIKE_PROCEDURE
+  CONCLUDED
+  ARCHIVED
+}
+
+/// Integrante de la comisión negociadora de un expediente.
+model BargainingCommissionMember {
+  fileId       String    @db.Uuid
+  personId     String    @db.Uuid
+  officeTermId String?   @db.Uuid
+  assignedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  unassignedAt DateTime? @db.Timestamptz(3)
+
+  file   BargainingFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  person Person         @relation("BargainingCommissionPerson", fields: [personId], references: [id], onDelete: Restrict)
+
+  @@id([fileId, personId])
+  @@index([personId])
+  @@map("bargaining_commission_member")
+}
+
+/// Propuesta versionada dentro de un expediente de negociación.
+model BargainingProposal {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  fileId      String   @db.Uuid
+  version     Int
+  documentId  String   @db.Uuid
+  submittedAt DateTime @default(now()) @db.Timestamptz(3)
+  submittedBy String   @db.Uuid
+  summary     String   @db.VarChar(600)
+
+  file        BargainingFile    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  document    GeneratedDocument @relation("BargainingProposalDocument", fields: [documentId], references: [id], onDelete: Restrict)
+  submittedByUser User          @relation("BargainingProposalSubmittedBy", fields: [submittedBy], references: [id], onDelete: Restrict)
+
+  @@unique([fileId, version])
+  @@index([fileId])
+  @@map("bargaining_proposal")
+}
+
+/// Obligación frente a la autoridad laboral (PRD §9.7).
+model ComplianceObligation {
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  legalEntityId      String           @db.Uuid
+  kind               ObligationKind
+  /// Acto que la origina, en referencia legible.
+  triggerEventRef    String           @db.VarChar(200)
+  dueAt              DateTime         @db.Timestamptz(3)
+  status             ObligationStatus @default(PENDING)
+  submittedAt        DateTime?        @db.Timestamptz(3)
+  authorityReference String?          @db.VarChar(120)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity    LegalEntity @relation("ObligationLegalEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  createdByActor Actor       @relation("ComplianceObligationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor       @relation("ComplianceObligationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  documents ComplianceObligationDocument[]
+
+  @@index([dueAt])
+  @@index([status])
+  @@map("compliance_obligation")
+}
+
+enum ObligationKind {
+  MEMBER_REGISTRY_UPDATE
+  LEADERSHIP_CHANGE
+  STATUTE_AMENDMENT
+  FINANCIAL_REPORT
+  OTHER
+}
+
+enum ObligationStatus {
+  PENDING
+  PREPARED
+  SUBMITTED
+  ACKNOWLEDGED
+  OBSERVED
+  CLOSED
+}
+
+/// Documento que respalda una obligación ante autoridad.
+model ComplianceObligationDocument {
+  obligationId String   @db.Uuid
+  fileObjectId String   @db.Uuid
+  addedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  obligation ComplianceObligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+  fileObject FileObject           @relation("ObligationDocuments", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([obligationId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("compliance_obligation_document")
+}
+
+// ---------------------------------------------------------------------------
+// Régimen disciplinario
+// ---------------------------------------------------------------------------
+
+/// Procedimiento disciplinario (PRD §9.8).
+///
+/// Siempre reservado. Sin notificación y sin audiencia —o constancia de
+/// renuncia expresa a ella— el dominio impide la transición a resolución.
+/// Ninguna inteligencia artificial impone sanciones ni recomienda culpabilidad.
+model DisciplinaryCase {
+  id                      String             @id @default(uuid(7)) @db.Uuid
+  folio                   String             @unique @db.VarChar(20)
+  membershipId            String             @db.Uuid
+  personId                String             @db.Uuid
+  reportedAt              DateTime           @default(now()) @db.Timestamptz(3)
+  reportedById            String?            @db.Uuid
+  allegedFacts            String             @db.Text
+  normativeRuleSetId      String             @db.Uuid
+  instructingBodyId       String             @db.Uuid
+  /// Control de conflicto de interés de quienes instruyen, con su declaración.
+  conflictOfInterestChecks Json
+  status                  DisciplinaryStatus @default(REPORTED)
+  notifiedAt              DateTime?          @db.Timestamptz(3)
+  hearingScheduledAt      DateTime?          @db.Timestamptz(3)
+  hearingHeldAt           DateTime?          @db.Timestamptz(3)
+  /// Constancia de renuncia expresa a la audiencia, cuando la hay.
+  hearingWaivedAt         DateTime?          @db.Timestamptz(3)
+  /// Acceso del agremiado a su propio expediente.
+  memberAccessGrantedAt   DateTime?          @db.Timestamptz(3)
+  closedAt                DateTime?          @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  membership       Membership       @relation("DisciplinaryMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+  person           Person           @relation("DisciplinaryPerson", fields: [personId], references: [id], onDelete: Restrict)
+  reportedBy       User?            @relation("DisciplinaryReportedBy", fields: [reportedById], references: [id], onDelete: Restrict)
+  normativeRuleSet NormativeRuleSet @relation("DisciplinaryRules", fields: [normativeRuleSetId], references: [id], onDelete: Restrict)
+  instructingBody  UnionBody        @relation("DisciplinaryInstructingBody", fields: [instructingBodyId], references: [id], onDelete: Restrict)
+  createdByActor   Actor            @relation("DisciplinaryCaseCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor   Actor            @relation("DisciplinaryCaseUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  evidence DisciplinaryEvidence[]
+  decision DisciplinaryDecision?
+
+  @@index([membershipId])
+  @@index([status])
+  @@index([personId])
+  @@map("disciplinary_case")
+}
+
+enum DisciplinaryStatus {
+  REPORTED
+  UNDER_INSTRUCTION
+  NOTIFIED
+  HEARING_SCHEDULED
+  HEARING_HELD
+  DECIDED
+  APPEALED
+  CLOSED
+  DISMISSED
+}
+
+/// Prueba ofrecida y su valoración.
+model DisciplinaryEvidence {
+  id                 String            @id @default(uuid(7)) @db.Uuid
+  caseId             String            @db.Uuid
+  offeredBy          EvidenceOfferedBy
+  kind               EvidenceKind
+  description        String            @db.VarChar(600)
+  fileObjectId       String?           @db.Uuid
+  offeredAt          DateTime          @default(now()) @db.Timestamptz(3)
+  /// Nulo mientras no se ha valorado. Admitida o desechada, con razón escrita.
+  admitted           Boolean?
+  admissionRationale String?           @db.VarChar(600)
+  assessedById       String?           @db.Uuid
+  assessedAt         DateTime?         @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           DisciplinaryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  fileObject     FileObject?      @relation("DisciplinaryEvidenceFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  assessedBy     User?            @relation("EvidenceAssessedBy", fields: [assessedById], references: [id], onDelete: Restrict)
+  createdByActor Actor            @relation("DisciplinaryEvidenceCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor            @relation("DisciplinaryEvidenceUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId])
+  @@map("disciplinary_evidence")
+}
+
+enum EvidenceOfferedBy {
+  INSTRUCTING_BODY
+  MEMBER
+  THIRD_PARTY
+}
+
+enum EvidenceKind {
+  DOCUMENT
+  TESTIMONY
+  RECORD
+  OTHER
+}
+
+/// Resolución fundada.
+model DisciplinaryDecision {
+  id                String            @id @default(uuid(7)) @db.Uuid
+  caseId            String            @unique @db.Uuid
+  decidedByBodyId   String            @db.Uuid
+  decidedAt         DateTime          @default(now()) @db.Timestamptz(3)
+  outcome           DisciplinaryOutcome
+  sanctionStartsOn  DateTime?         @db.Date
+  sanctionEndsOn    DateTime?         @db.Date
+  /// Fundamento. Una resolución sin razones escritas no es una resolución.
+  rationale         String            @db.Text
+  documentId        String            @db.Uuid
+  appealDeadlineAt  DateTime?         @db.Timestamptz(3)
+  executedAt        DateTime?         @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           DisciplinaryCase  @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  decidedByBody  UnionBody         @relation(fields: [decidedByBodyId], references: [id], onDelete: Restrict)
+  document       GeneratedDocument @relation("DisciplinaryDecisionDocument", fields: [documentId], references: [id], onDelete: Restrict)
+  createdByActor Actor             @relation("DisciplinaryDecisionCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor             @relation("DisciplinaryDecisionUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  appeals Appeal[]
+
+  @@map("disciplinary_decision")
+}
+
+enum DisciplinaryOutcome {
+  NO_LIABILITY
+  WARNING
+  SUSPENSION_OF_RIGHTS
+  EXPULSION
+  OTHER_STATUTORY
+}
+
+/// Recurso ante la Asamblea.
+model Appeal {
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  decisionId           String       @db.Uuid
+  filedById            String       @db.Uuid
+  filedAt              DateTime     @default(now()) @db.Timestamptz(3)
+  grounds              String       @db.Text
+  status               AppealStatus @default(FILED)
+  resolvedByAssemblyId String?      @db.Uuid
+  resolvedAt           DateTime?    @db.Timestamptz(3)
+  resolutionText       String?      @db.Text
+  rightsRestoredAt     DateTime?    @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  decision           DisciplinaryDecision @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  filedBy            User                 @relation("AppealFiledBy", fields: [filedById], references: [id], onDelete: Restrict)
+  resolvedByAssembly Assembly?            @relation("AppealResolvedByAssembly", fields: [resolvedByAssemblyId], references: [id], onDelete: Restrict)
+  createdByActor     Actor                @relation("AppealCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor     Actor                @relation("AppealUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([decisionId])
+  @@index([status])
+  @@map("appeal")
+}
+
+enum AppealStatus {
+  FILED
+  ADMITTED
+  INADMISSIBLE
+  RESOLVED_CONFIRMED
+  RESOLVED_MODIFIED
+  RESOLVED_REVOKED
+}

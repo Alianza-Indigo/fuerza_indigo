@@ -1,0 +1,343 @@
+/// Asamblea, padrón congelado, quórum, resoluciones y votación (PRD §9.4, §9.5).
+
+/// Sesión de asamblea.
+model Assembly {
+  id                    String           @id @default(uuid(7)) @db.Uuid
+  publicId              String           @unique @db.VarChar(22)
+  unionBodyId           String           @db.Uuid
+  territorialUnitId     String           @db.Uuid
+  type                  AssemblyType
+  convenedByOfficeTermId String?         @db.Uuid
+  /// Convocada por solicitud escrita del porcentaje estatutario de agremiados.
+  convenedByPetition    Boolean          @default(false)
+  scheduledAt           DateTime         @db.Timestamptz(3)
+  modality              AssemblyModality
+  venue                 String?          @db.VarChar(400)
+  status                AssemblyStatus   @default(PLANNED)
+  /// Reglas de quórum y mayorías vigentes **al convocar**. Una reforma
+  /// posterior no cambia el quórum de una asamblea ya convocada.
+  normativeRuleSetId    String           @db.Uuid
+
+  /// El quórum lo declara una persona, no el sistema. El sistema calcula y
+  /// enseña el cálculo; quien firma es quien responde (PRD §9.4).
+  quorumDeclaredById String?   @db.Uuid
+  quorumDeclaredAt   DateTime? @db.Timestamptz(3)
+  quorumBase         Int?
+  quorumPresent      Int?
+  /// Convocatoria con la que se instaló la sesión: primera o segunda.
+  callUsedId         String?   @unique @db.Uuid
+
+  minutesDocumentId String?           @db.Uuid
+  publicationLevel  PublicationLevel  @default(RESERVED)
+  closedAt          DateTime?         @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  unionBody            UnionBody          @relation(fields: [unionBodyId], references: [id], onDelete: Restrict)
+  territorialUnit      TerritorialUnit    @relation("AssemblyTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  convenedByOfficeTerm OfficeTerm?        @relation("AssemblyConvenedBy", fields: [convenedByOfficeTermId], references: [id], onDelete: Restrict)
+  normativeRuleSet     NormativeRuleSet   @relation("AssemblyRules", fields: [normativeRuleSetId], references: [id], onDelete: Restrict)
+  quorumDeclaredBy     User?              @relation("QuorumDeclaredBy", fields: [quorumDeclaredById], references: [id], onDelete: Restrict)
+  callUsed             AssemblyCall?      @relation("AssemblyCallUsed", fields: [callUsedId], references: [id], onDelete: Restrict)
+  minutesDocument      GeneratedDocument? @relation("AssemblyMinutes", fields: [minutesDocumentId], references: [id], onDelete: Restrict)
+  createdByActor       Actor              @relation("AssemblyCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor       Actor              @relation("AssemblyUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  calls          AssemblyCall[]          @relation("AssemblyCalls")
+  agendaItems    AgendaItem[]
+  rosterSnapshot AssemblyRosterSnapshot?
+  attendances    Attendance[]
+  resolutions    Resolution[]
+  voteProcesses  VoteProcess[]           @relation("VoteProcessAssembly")
+  resolvedAppeals Appeal[]               @relation("AppealResolvedByAssembly")
+
+  @@index([unionBodyId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("assembly")
+}
+
+enum AssemblyType {
+  ORDINARY
+  EXTRAORDINARY
+  SECTIONAL
+}
+
+enum AssemblyModality {
+  IN_PERSON
+  REMOTE
+  HYBRID
+}
+
+enum AssemblyStatus {
+  PLANNED
+  CALLED
+  SECOND_CALL
+  IN_SESSION
+  CLOSED
+  PUBLISHED
+  CANCELLED
+}
+
+enum PublicationLevel {
+  RESERVED
+  MEMBERS_ONLY
+  PUBLIC_REDACTED
+}
+
+/// Convocatoria: primera y segunda (PRD §9.4).
+///
+/// La diferencia entre una y otra no es cosmética: cambia la regla de quórum.
+/// La primera exige la mitad más uno del padrón congelado; la segunda se
+/// instala con quienes estén presentes. Por eso el quórum se calcula contra la
+/// convocatoria efectivamente usada, no contra la asamblea en abstracto.
+model AssemblyCall {
+  id         String      @id @default(uuid(7)) @db.Uuid
+  assemblyId String      @db.Uuid
+  ordinal    CallOrdinal
+  issuedAt   DateTime    @db.Timestamptz(3)
+  validFrom  DateTime    @db.Timestamptz(3)
+  /// Anticipación exigida por la versión normativa con la que se convocó.
+  noticeDays Int
+  quorumRule QuorumRule
+  /// Canales por los que se publicó. Valores escalares, no referencias.
+  publishedChannels String[]
+  documentId String?     @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  assembly       Assembly           @relation("AssemblyCalls", fields: [assemblyId], references: [id], onDelete: Cascade)
+  document       GeneratedDocument? @relation("AssemblyCallDocument", fields: [documentId], references: [id], onDelete: Restrict)
+  createdByActor Actor              @relation("AssemblyCallCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor              @relation("AssemblyCallUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  usedByAssembly Assembly? @relation("AssemblyCallUsed")
+
+  @@unique([assemblyId, ordinal])
+  @@index([assemblyId])
+  @@map("assembly_call")
+}
+
+enum CallOrdinal {
+  FIRST
+  SECOND
+}
+
+enum QuorumRule {
+  HALF_PLUS_ONE
+  THOSE_PRESENT
+}
+
+/// Punto del orden del día.
+model AgendaItem {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  assemblyId      String           @db.Uuid
+  position        Int
+  title           String           @db.VarChar(200)
+  description     String           @db.Text
+  kind            AgendaItemKind
+  requiredMajority RequiredMajority
+  status          AgendaItemStatus @default(PENDING)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  assembly       Assembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  createdByActor Actor    @relation("AgendaItemCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor    @relation("AgendaItemUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  documents     AgendaItemDocument[]
+  resolutions   Resolution[]
+  voteProcesses VoteProcess[]        @relation("VoteProcessAgendaItem")
+
+  @@unique([assemblyId, position])
+  @@index([assemblyId])
+  @@map("agenda_item")
+}
+
+enum AgendaItemKind {
+  INFORMATIVE
+  DELIBERATIVE
+  ELECTIVE
+  STATUTE_REFORM
+  FINANCIAL_REPORT
+  DISSOLUTION
+}
+
+enum RequiredMajority {
+  SIMPLE
+  QUALIFIED_TWO_THIRDS
+  QUALIFIED_STATUTORY
+}
+
+enum AgendaItemStatus {
+  PENDING
+  IN_DISCUSSION
+  VOTED
+  DEFERRED
+  WITHDRAWN
+}
+
+/// Documento previo de un punto del orden del día.
+model AgendaItemDocument {
+  agendaItemId String   @db.Uuid
+  fileObjectId String   @db.Uuid
+  addedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  agendaItem AgendaItem @relation(fields: [agendaItemId], references: [id], onDelete: Cascade)
+  fileObject FileObject @relation("AgendaItemDocuments", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([agendaItemId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("agenda_item_document")
+}
+
+/// Padrón congelado de la sesión. Inmutable (PRD §9.4).
+///
+/// El motor retira el privilegio de actualización sobre sus columnas: un padrón
+/// que se puede recalcular después de la sesión no prueba nada. La huella
+/// permite comprobar, mucho después, que el padrón con el que se contó el
+/// quórum es el mismo que se publicó.
+model AssemblyRosterSnapshot {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  assemblyId String   @unique @db.Uuid
+  frozenAt   DateTime @default(now()) @db.Timestamptz(3)
+  frozenById String   @db.Uuid
+  /// Reglas de elegibilidad aplicadas al congelar, tal como se evaluaron.
+  criteria   Json
+  entryCount Int
+  /// `sha256` del contenido canónico de las entradas.
+  hash       String   @db.VarChar(64)
+
+  assembly Assembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  frozenBy User     @relation("RosterFrozenBy", fields: [frozenById], references: [id], onDelete: Restrict)
+
+  entries       AssemblyRosterEntry[]
+  voteProcesses VoteProcess[]         @relation("VoteProcessRoster")
+  bargainingFiles BargainingFile[]    @relation("BargainingAffectedRoster")
+
+  @@map("assembly_roster_snapshot")
+}
+
+/// Entrada del padrón congelado. Una fila por membresía elegible.
+model AssemblyRosterEntry {
+  rosterId          String  @db.Uuid
+  membershipId      String  @db.Uuid
+  memberNumber      String  @db.VarChar(30)
+  territorialUnitId String? @db.Uuid
+  hasVoice          Boolean
+  hasVote           Boolean
+
+  roster     AssemblyRosterSnapshot @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  membership Membership             @relation("RosterEntryMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@id([rosterId, membershipId])
+  @@index([membershipId])
+  @@map("assembly_roster_entry")
+}
+
+/// Registro de asistencia.
+model Attendance {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  assemblyId     String           @db.Uuid
+  membershipId   String           @db.Uuid
+  personId       String           @db.Uuid
+  registeredAt   DateTime         @default(now()) @db.Timestamptz(3)
+  method         AttendanceMethod
+  hasVoice       Boolean
+  hasVote        Boolean
+  registeredById String?          @db.Uuid
+  leftAt         DateTime?        @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  assembly       Assembly   @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  membership     Membership @relation("AttendanceMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+  person         Person     @relation("AttendancePerson", fields: [personId], references: [id], onDelete: Restrict)
+  registeredBy   User?      @relation("AttendanceRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
+  createdByActor Actor      @relation("AttendanceCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor      @relation("AttendanceUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([assemblyId, membershipId])
+  @@index([assemblyId])
+  @@index([membershipId])
+  @@map("attendance")
+}
+
+enum AttendanceMethod {
+  QR_CREDENTIAL
+  MANUAL
+  REMOTE_SESSION
+}
+
+/// Acuerdo o resolución adoptada.
+model Resolution {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  publicId       String            @unique @db.VarChar(22)
+  assemblyId     String            @db.Uuid
+  agendaItemId   String?           @db.Uuid
+  /// Serie por órgano y año. Único parcial: una resolución sin número todavía
+  /// no está numerada, y varias pueden estarlo a la vez.
+  number         String?           @db.VarChar(40)
+  text           String            @db.Text
+  outcome        ResolutionOutcome
+  voteProcessId  String?           @unique @db.Uuid
+  effectiveFrom  DateTime?         @db.Date
+
+  followUpOwnerId  String?          @db.Uuid
+  followUpDueAt    DateTime?        @db.Timestamptz(3)
+  followUpStatus   FollowUpStatus   @default(NOT_REQUIRED)
+  publicationLevel PublicationLevel @default(RESERVED)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  assembly       Assembly     @relation(fields: [assemblyId], references: [id], onDelete: Restrict)
+  agendaItem     AgendaItem?  @relation(fields: [agendaItemId], references: [id], onDelete: Restrict)
+  voteProcess    VoteProcess? @relation("ResolutionVoteProcess", fields: [voteProcessId], references: [id], onDelete: Restrict)
+  followUpOwner  User?        @relation("ResolutionFollowUpOwner", fields: [followUpOwnerId], references: [id], onDelete: Restrict)
+  createdByActor Actor        @relation("ResolutionCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor        @relation("ResolutionUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  enabledTerritorialUnits TerritorialUnit[] @relation("TerritorialEnabling")
+  enabledBargainingFiles  BargainingFile[]  @relation("BargainingEnabling")
+  authorizedProducts      CatalogProduct[]  @relation("ProductAuthorizingResolution")
+  authorizedAssets        AssetRegister[]   @relation("AssetAuthorizingResolution")
+  approvedRuleSets        NormativeRuleSet[] @relation("RuleSetApprovedByResolution")
+
+  @@index([assemblyId])
+  @@index([followUpStatus])
+  @@map("resolution")
+}
+
+enum ResolutionOutcome {
+  APPROVED
+  REJECTED
+  DEFERRED
+}
+
+enum FollowUpStatus {
+  NOT_REQUIRED
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}

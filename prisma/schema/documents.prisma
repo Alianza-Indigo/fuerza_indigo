@@ -1,0 +1,188 @@
+/// Documentos institucionales generados a partir de plantillas versionadas
+/// (PRD §16.2, docs/DATA_MODEL.md §9).
+///
+/// Estas tres entidades estaban contratadas para la Fase 4 y no se crearon
+/// (defecto `D-F5-001`). Se construyen ahora, al abrir la Fase 5, que es donde
+/// la vida institucional empieza a producir documentos de verdad: convocatorias,
+/// actas, poderes, resoluciones disciplinarias y actas de resultados.
+
+/// Plantilla versionada de documento institucional.
+///
+/// Una plantilla publicada **no se edita**: se publica una versión nueva. Lo
+/// que un documento emitido dice tiene que poder reconstruirse años después con
+/// la plantilla exacta que lo produjo.
+model DocumentTemplate {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  code          String              @db.VarChar(60)
+  version       Int
+  legalEntityId String              @db.Uuid
+  name          String              @db.VarChar(160)
+  kind          DocumentKind
+  bodyTemplate  String              @db.Text
+  /// Variables permitidas. Una plantilla que pide una variable no declarada
+  /// no se publica: el error se ve al publicar, no al emitir.
+  variables     Json
+  numberingSeries String?           @db.VarChar(40)
+  status        DocumentTemplateStatus @default(DRAFT)
+  publishedById String?             @db.Uuid
+  publishedAt   DateTime?           @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity    LegalEntity @relation("TemplateLegalEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  publishedBy    User?       @relation("TemplatePublishedBy", fields: [publishedById], references: [id], onDelete: Restrict)
+  createdByActor Actor       @relation("DocumentTemplateCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor       @relation("DocumentTemplateUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  documents GeneratedDocument[]
+
+  @@unique([code, version])
+  @@index([code])
+  @@index([kind])
+  @@map("document_template")
+}
+
+enum DocumentKind {
+  MEMBERSHIP_RESOLUTION
+  CREDENTIAL
+  ASSEMBLY_MINUTES
+  CALL_NOTICE
+  ELECTION_RESULT
+  DISCIPLINARY_DECISION
+  POWER_GRANT
+  RECEIPT
+  CERTIFICATE
+  ATTENDANCE_CONSTANCY
+  REPORT
+}
+
+enum DocumentTemplateStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+/// Documento emitido a partir de una plantilla.
+///
+/// `variablesSnapshot` es inmutable: el motor retira el privilegio de
+/// actualización sobre esa columna. Un documento cuyo contenido puede
+/// reescribirse después no prueba nada.
+model GeneratedDocument {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  publicId          String             @unique @db.VarChar(22)
+  templateId        String             @db.Uuid
+  /// Versión con la que se emitió, copiada al emitir.
+  templateVersion   Int
+  legalEntityId     String             @db.Uuid
+  series            String             @db.VarChar(40)
+  /// Folio de la serie documental. Único parcial por entidad y serie.
+  folio             String?            @db.VarChar(40)
+  subjectKind       DocumentSubject
+  subjectId         String             @db.Uuid
+  renderedFileId    String             @db.Uuid
+  variablesSnapshot Json
+  issuedAt          DateTime           @default(now()) @db.Timestamptz(3)
+  issuedById        String             @db.Uuid
+  status            GeneratedDocumentStatus @default(ISSUED)
+  supersededById    String?            @db.Uuid
+  cancelReason      String?            @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  template       DocumentTemplate   @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity        @relation("DocumentLegalEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  renderedFile   FileObject         @relation("RenderedDocuments", fields: [renderedFileId], references: [id], onDelete: Restrict)
+  issuedBy       User               @relation("DocumentIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  supersededBy   GeneratedDocument? @relation("DocumentSupersession", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes     GeneratedDocument[] @relation("DocumentSupersession")
+  createdByActor Actor              @relation("GeneratedDocumentCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor              @relation("GeneratedDocumentUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  signatures SignatureRecord[]
+
+  // Actos institucionales que este documento respalda (Fase 5).
+  officeTermEvidence      OfficeTerm[]           @relation("OfficeTermEvidence")
+  powerGrants             PowerGrant[]           @relation("PowerGrantDocument")
+  assemblyMinutes         Assembly[]             @relation("AssemblyMinutes")
+  assemblyCalls           AssemblyCall[]         @relation("AssemblyCallDocument")
+  voteResults             VoteProcess[]          @relation("VoteResultDocument")
+  electionCalls           Election[]             @relation("ElectionCallDocument")
+  electionResults         Election[]             @relation("ElectionResultDocument")
+  bargainingProposals     BargainingProposal[]   @relation("BargainingProposalDocument")
+  disciplinaryDecisions   DisciplinaryDecision[] @relation("DisciplinaryDecisionDocument")
+  normativeRuleSets       NormativeRuleSet[]     @relation("RuleSetDocument")
+
+  @@index([templateId])
+  @@index([legalEntityId])
+  @@index([subjectId])
+  @@index([status])
+  @@map("generated_document")
+}
+
+enum DocumentSubject {
+  MEMBERSHIP
+  MEMBERSHIP_APPLICATION
+  CREDENTIAL
+  ASSEMBLY
+  ASSEMBLY_CALL
+  VOTE_PROCESS
+  ELECTION
+  OFFICE_TERM
+  POWER_GRANT
+  DISCIPLINARY_CASE
+  BARGAINING_FILE
+  PAYMENT
+  COMPLIANCE_OBLIGATION
+}
+
+enum GeneratedDocumentStatus {
+  ISSUED
+  SUPERSEDED
+  CANCELLED
+}
+
+/// Firma o certificación de un documento.
+model SignatureRecord {
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  documentId         String        @db.Uuid
+  signerPersonId     String        @db.Uuid
+  signerOfficeTermId String?       @db.Uuid
+  signatureKind      SignatureKind
+  signedAt           DateTime      @default(now()) @db.Timestamptz(3)
+  /// Sesión, correlación y huella del documento firmado, tal como estaba al
+  /// firmarse. Firmar una cosa y conservar otra sería peor que no firmar.
+  evidence           Json
+  fileObjectId       String?       @db.Uuid
+  revokedAt          DateTime?     @db.Timestamptz(3)
+  revokeReason       String?       @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  document       GeneratedDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  signerPerson   Person            @relation("SignatureSigner", fields: [signerPersonId], references: [id], onDelete: Restrict)
+  fileObject     FileObject?       @relation("SignatureFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  createdByActor Actor             @relation("SignatureRecordCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor             @relation("SignatureRecordUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([signerPersonId])
+  @@map("signature_record")
+}
+
+enum SignatureKind {
+  HANDWRITTEN_SCANNED
+  ELECTRONIC_SIMPLE
+  CERTIFIED_COPY
+}

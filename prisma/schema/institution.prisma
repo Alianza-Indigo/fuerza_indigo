@@ -53,6 +53,12 @@ model LegalEntity {
   memberships     Membership[]
   beneficiaries   ProtectedBeneficiary[]
 
+  // Vida institucional (Fase 5).
+  unionBodies           UnionBody[]
+  complianceObligations ComplianceObligation[] @relation("ObligationLegalEntity")
+  documentTemplates     DocumentTemplate[]     @relation("TemplateLegalEntity")
+  generatedDocuments    GeneratedDocument[]    @relation("DocumentLegalEntity")
+
   @@map("legal_entity")
   labourFilings LabourAuthorityFiling[]
 }
@@ -110,6 +116,16 @@ model TerritorialUnit {
   sectionMemberships  Membership[]           @relation("MembershipSection")
   beneficiaries       ProtectedBeneficiary[]
 
+  // Vida institucional (Fase 5).
+  unionBodies     UnionBody[]
+  assemblies      Assembly[]      @relation("AssemblyTerritory")
+  officeTerms     OfficeTerm[]    @relation("OfficeTermTerritory")
+  elections       Election[]      @relation("ElectionTerritory")
+  bargainingFiles BargainingFile[] @relation("BargainingTerritory")
+  /// Acuerdo habilitante de la unidad (PRD §9.1).
+  enablingResolutionId String?    @db.Uuid
+  enablingResolution   Resolution? @relation("TerritorialEnabling", fields: [enablingResolutionId], references: [id], onDelete: Restrict)
+
   @@index([parentId])
   @@index([type])
   @@index([status])
@@ -161,6 +177,18 @@ model NormativeRuleSet {
   /// conserva la versión aceptada, no la vigente hoy: lo que obliga a alguien
   /// es lo que leyó al firmar.
   acceptedByApplications MembershipApplication[]
+
+  // Actos ejecutados con esta versión normativa (Fase 5).
+  unionBodies          UnionBody[]          @relation("UnionBodyRules")
+  officeDefinitions    OfficeDefinition[]   @relation("OfficeDefinitionRules")
+  assemblies           Assembly[]           @relation("AssemblyRules")
+  elections            Election[]           @relation("ElectionRules")
+  disciplinaryCases    DisciplinaryCase[]   @relation("DisciplinaryRules")
+  /// Acuerdo de asamblea que aprobó esta versión, y documento probatorio.
+  approvedByResolutionId String?            @db.Uuid
+  approvedByResolution   Resolution?        @relation("RuleSetApprovedByResolution", fields: [approvedByResolutionId], references: [id], onDelete: Restrict)
+  documentId             String?            @db.Uuid
+  document               GeneratedDocument? @relation("RuleSetDocument", fields: [documentId], references: [id], onDelete: Restrict)
 
   @@index([status])
   @@map("normative_rule_set")

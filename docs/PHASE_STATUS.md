@@ -5,6 +5,77 @@
 ---
 ## Situación actual
 
+- **Fase activa:** 5 — Estructura territorial, gobierno, asambleas y elecciones
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 5 de septiembre de 2026
+- **Fecha de inicio:** 5 de septiembre de 2026
+- **Fase anterior:** 4 — `APPROVED`, cerrada en `cadebbd`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 6 — Defensa, casos, protección y canalización social, **autorizada por la persona usuaria** junto con esta, y que **no se inicia hasta que la Fase 5 esté aprobada** (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 5 contrata: unidades territoriales; secciones, delegaciones y representaciones; órganos y cargos; periodos, suplencias y poderes; convocatorias; asambleas; padrón congelado; asistencia y quórum; orden del día, resoluciones y actas; seguimiento de acuerdos; Comisión Electoral; planillas, candidaturas y elecciones; voto secreto; control de proporcionalidad de género; Comisión de Vigilancia; contratos colectivos, revisión contractual y consultas; expedientes de conflicto colectivo y huelga; régimen disciplinario; archivo histórico; y reportes para autoridad competente.
+
+**Qué cierra esta fase.** La Fase 4 dejó dicho en el dato quién vota —`grantsPoliticalRights` y `countsForQuorum`— y no lo usó para nada. Aquí se usa: el padrón congelado sale de ahí, el quórum se calcula sobre él y la elegibilidad electoral se deriva de la misma columna. También aquí aparecen las entidades que la Fase 4 dejó esperando: `OfficeTerm`, al que apuntan `ApplicationReview.reviewerOfficeTermId` y `MemberCredential.officeTermId`, y `Resolution`, que habilita las cuotas extraordinarias del catálogo financiero.
+
+**La garantía que gobierna la fase.** El voto es secreto y esa promesa se sostiene en el esquema, no en la interfaz: la credencial de voto se firma y se entrega, y **no se almacena al emitirse**; la urna no tiene identidad, ni columna temporal, ni identificador ordenable en el tiempo (ADR-0012). Nadie con acceso total a la base puede reconstruir quién votó qué.
+
+---
+
+## Bloques de trabajo
+
+| Bloque | Contenido | Estado |
+|---|---|---|
+| A | Esquema y migración de gobierno, territorio, votación, negociación y disciplina | En curso |
+| B | Territorio: unidades, jerarquía y panel territorial | Pendiente |
+| C | Órganos, cargos, periodos, poderes e incompatibilidades | Pendiente |
+| D | Convocatorias, asambleas y padrón congelado | Pendiente |
+| E | Asistencia y quórum | Pendiente |
+| F | Resoluciones, actas y seguimiento de acuerdos | Pendiente |
+| G | Comisión Electoral, padrón electoral y planillas | Pendiente |
+| H | Voto secreto, escrutinio, acta e incidencias | Pendiente |
+| I | Negociación colectiva, consulta y huelga | Pendiente |
+| J | Régimen disciplinario | Pendiente |
+| K | Archivo histórico y reportes ante autoridad | Pendiente |
+| L | Pruebas, controles de fase, documentación y cierre | Pendiente |
+
+---
+
+## Defectos abiertos
+
+**Ninguno todavía.** La fase acaba de abrirse.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse `APPROVED`.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
+| 5 | 2026-09-05 | — | `IN_PROGRESS` | — |
+| 6 a 10 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 4
+
+> Afiliación, padrones, directorios y credenciales. Cerrada el 5 de septiembre de 2026 en `cadebbd`, tras una reapertura el mismo día por la corrección de alcance de CIAN y CENI.
+
+## Situación actual
+
 - **Fase activa:** 4 — Afiliación, padrones, directorios y credenciales
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
@@ -211,6 +282,9 @@ Las que gobiernan lo construido aquí, en una línea cada una:
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd`. Afiliación completa de punta a punta: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal. 22 defectos encontrados y cerrados. Cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI, y cerrada de nuevo con ella aplicada |
 | 5 a 10 | — | — | No iniciadas | — |
+
+---
+
 
 ---
 

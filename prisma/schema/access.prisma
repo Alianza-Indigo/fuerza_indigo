@@ -67,6 +67,9 @@ model Permission {
   roles RolePermission[]
 
   @@index([module])
+  /// Cargos que confieren este permiso (PRD §9.2).
+  officeDefinitions OfficeDefinitionPermission[]
+
   @@map("permission")
 }
 
@@ -135,6 +138,9 @@ model RoleAssignment {
   @@index([legalEntityId])
   @@index([organizationId])
   @@index([endsAt])
+  /// Periodo de cargo que sostiene esta asignación, cuando la hay (PRD §4.3).
+  officeTerm OfficeTerm? @relation("OfficeTermRoleAssignment")
+
   @@map("role_assignment")
 }
 

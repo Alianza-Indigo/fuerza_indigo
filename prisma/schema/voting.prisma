@@ -1,0 +1,392 @@
+/// Votación, elección, negociación colectiva y régimen disciplinario
+/// (PRD §9.5, §9.6, §9.8; ADR-0012).
+
+// ---------------------------------------------------------------------------
+// Votación
+// ---------------------------------------------------------------------------
+
+/// Proceso de votación, reutilizable por asambleas, elecciones y consultas.
+model VoteProcess {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  publicId         String            @unique @db.VarChar(22)
+  context          VoteContext
+  assemblyId       String?           @db.Uuid
+  agendaItemId     String?           @db.Uuid
+  electionId       String?           @unique @db.Uuid
+  bargainingFileId String?           @unique @db.Uuid
+  title            String            @db.VarChar(200)
+  method           VoteMethod
+  /// Opciones inmutables al abrir. El motor retira el privilegio de
+  /// actualización sobre esta columna una vez abierto el proceso.
+  options          Json
+  rosterSnapshotId String            @db.Uuid
+  opensAt          DateTime          @db.Timestamptz(3)
+  closesAt         DateTime          @db.Timestamptz(3)
+  status           VoteProcessStatus @default(SCHEDULED)
+  talliedAt        DateTime?         @db.Timestamptz(3)
+  /// Conteo por opción, escrito al escrutar.
+  results          Json?
+  resultDocumentId String?           @db.Uuid
+  certifiedById    String?           @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  assembly       Assembly?              @relation("VoteProcessAssembly", fields: [assemblyId], references: [id], onDelete: Restrict)
+  agendaItem     AgendaItem?            @relation("VoteProcessAgendaItem", fields: [agendaItemId], references: [id], onDelete: Restrict)
+  election       Election?              @relation("ElectionVoteProcess", fields: [electionId], references: [id], onDelete: Restrict)
+  bargainingFile BargainingFile?        @relation("BargainingConsultation", fields: [bargainingFileId], references: [id], onDelete: Restrict)
+  rosterSnapshot AssemblyRosterSnapshot @relation("VoteProcessRoster", fields: [rosterSnapshotId], references: [id], onDelete: Restrict)
+  resultDocument GeneratedDocument?     @relation("VoteResultDocument", fields: [resultDocumentId], references: [id], onDelete: Restrict)
+  certifiedBy    User?                  @relation("VoteCertifiedBy", fields: [certifiedById], references: [id], onDelete: Restrict)
+  createdByActor Actor                  @relation("VoteProcessCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor                  @relation("VoteProcessUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  eligibilities     VoteEligibility[]
+  ballots           Ballot[]
+  spentCredentials  SpentVoteCredential[]
+  receipts          VoteReceipt[]
+  resolution        Resolution?           @relation("ResolutionVoteProcess")
+
+  @@index([context])
+  @@index([closesAt])
+  @@index([status])
+  @@map("vote_process")
+}
+
+enum VoteContext {
+  ASSEMBLY_ITEM
+  ELECTION
+  COLLECTIVE_CONSULTATION
+  DISCIPLINARY_APPEAL
+}
+
+enum VoteMethod {
+  SECRET
+  OPEN_ROLL_CALL
+}
+
+enum VoteProcessStatus {
+  SCHEDULED
+  OPEN
+  CLOSED
+  TALLIED
+  CERTIFIED
+  ANNULLED
+}
+
+/// Derecho a votar de una persona en un proceso.
+///
+/// Prueba elegibilidad y emisión de credencial, **sin vínculo alguno con una
+/// boleta**. No guarda el valor de la credencial, ni su huella, ni la hora de
+/// emisión: la huella permitiría unir esta fila con la boleta que la consumió,
+/// y la hora permitiría correlacionar por proximidad temporal (ADR-0012).
+model VoteEligibility {
+  id                  String                @id @default(uuid(7)) @db.Uuid
+  voteProcessId       String                @db.Uuid
+  membershipId        String                @db.Uuid
+  eligible            Boolean
+  reasonIfNot         IneligibilityReason?
+  credentialIssued    Boolean               @default(false)
+  /// **Solo la fecha civil**, nunca la hora. Deliberado.
+  credentialIssuedOn  DateTime?             @db.Date
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  voteProcess    VoteProcess @relation(fields: [voteProcessId], references: [id], onDelete: Cascade)
+  membership     Membership  @relation("VoteEligibilityMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+  createdByActor Actor       @relation("VoteEligibilityCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor       @relation("VoteEligibilityUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([voteProcessId, membershipId])
+  @@index([voteProcessId])
+  @@index([membershipId])
+  @@map("vote_eligibility")
+}
+
+enum IneligibilityReason {
+  NO_POLITICAL_RIGHTS
+  SUSPENDED
+  DUES_ARREARS
+  NOT_IN_ROSTER
+  HONORARY_AFFILIATE
+  PROTECTED_BENEFICIARY
+}
+
+/// Boleta depositada. Inmutable, **sin identidad y sin tiempo** (PRD §9.5).
+///
+/// `id` es **UUIDv4** —aleatorio puro— y no v7: un identificador ordenable en
+/// el tiempo revelaría el momento del depósito. La tabla no tiene
+/// `membershipId`, ni `personId`, ni `castAt`, ni dirección, ni agente de
+/// usuario, ni referencia a la credencial que la habilitó. **No tiene ninguna
+/// columna temporal:** `createdAt` se omite a propósito, a diferencia de toda
+/// otra entidad del modelo.
+model Ballot {
+  id              String        @id @default(uuid(4)) @db.Uuid
+  voteProcessId   String        @db.Uuid
+  /// Sentido del voto.
+  selection       Json
+  nullifiedReason BallotNullity?
+  /// Código que la persona conserva para comprobar que su boleta fue contada.
+  /// La lista publicada enseña los códigos escrutados, no su sentido: así se
+  /// verifica la inclusión sin poder demostrar ante nadie por quién se votó.
+  verificationCode String       @unique @db.VarChar(40)
+
+  voteProcess VoteProcess @relation(fields: [voteProcessId], references: [id], onDelete: Restrict)
+
+  @@index([voteProcessId])
+  @@map("ballot")
+}
+
+enum BallotNullity {
+  BLANK
+  INVALID
+}
+
+/// Credencial de voto ya utilizada. Impide el doble depósito sin identificar
+/// a nadie.
+///
+/// Se inserta **en la misma transacción** que la boleta y, como ella, carece de
+/// columna temporal y de referencia a persona. Es la única fila que existe por
+/// credencial consumida: la credencial **nunca se almacenó al emitirse**.
+model SpentVoteCredential {
+  id             String @id @default(uuid(4)) @db.Uuid
+  voteProcessId  String @db.Uuid
+  /// `sha256` de la credencial presentada al depositar.
+  credentialHash String @unique @db.VarChar(64)
+
+  voteProcess VoteProcess @relation(fields: [voteProcessId], references: [id], onDelete: Restrict)
+
+  @@index([voteProcessId])
+  @@map("spent_vote_credential")
+}
+
+/// Acuse de **emisión de credencial**, entregado a la persona electora.
+///
+/// Se crea al emitir la credencial, **no** al depositar la boleta: crearlo en
+/// el depósito produciría dos filas nacidas en la misma transacción —una
+/// identificada y otra no— cuyo orden físico de inserción permitiría
+/// emparejarlas.
+model VoteReceipt {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  voteProcessId String   @db.Uuid
+  membershipId  String   @db.Uuid
+  receiptCode   String   @unique @db.VarChar(40)
+  /// Solo la fecha civil.
+  issuedOn      DateTime @db.Date
+
+  voteProcess VoteProcess @relation(fields: [voteProcessId], references: [id], onDelete: Cascade)
+  membership  Membership  @relation("VoteReceiptMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@unique([voteProcessId, membershipId])
+  @@index([voteProcessId])
+  @@index([membershipId])
+  @@map("vote_receipt")
+}
+
+// ---------------------------------------------------------------------------
+// Elección
+// ---------------------------------------------------------------------------
+
+/// Proceso electoral (PRD §9.5).
+model Election {
+  id                 String         @id @default(uuid(7)) @db.Uuid
+  publicId           String         @unique @db.VarChar(22)
+  unionBodyId        String         @db.Uuid
+  territorialUnitId  String         @db.Uuid
+  name               String         @db.VarChar(200)
+  /// Etapas con fechas.
+  calendar           Json
+  callDocumentId     String?        @db.Uuid
+  rosterPublishedAt  DateTime?      @db.Timestamptz(3)
+  status             ElectionStatus @default(PLANNED)
+  resultDocumentId   String?        @db.Uuid
+  normativeRuleSetId String         @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  unionBody        UnionBody          @relation(fields: [unionBodyId], references: [id], onDelete: Restrict)
+  territorialUnit  TerritorialUnit    @relation("ElectionTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  callDocument     GeneratedDocument? @relation("ElectionCallDocument", fields: [callDocumentId], references: [id], onDelete: Restrict)
+  resultDocument   GeneratedDocument? @relation("ElectionResultDocument", fields: [resultDocumentId], references: [id], onDelete: Restrict)
+  normativeRuleSet NormativeRuleSet   @relation("ElectionRules", fields: [normativeRuleSetId], references: [id], onDelete: Restrict)
+  createdByActor   Actor              @relation("ElectionCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor   Actor              @relation("ElectionUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  commissionMembers ElectionCommissionMember[]
+  slates            CandidateSlate[]
+  incidents         ElectionIncident[]
+  voteProcess       VoteProcess?               @relation("ElectionVoteProcess")
+  officeTerms       OfficeTerm[]
+
+  @@index([territorialUnitId])
+  @@index([status])
+  @@map("election")
+}
+
+enum ElectionStatus {
+  PLANNED
+  CALL_ISSUED
+  REGISTRATION_OPEN
+  CAMPAIGN
+  VOTING
+  TALLYING
+  RESULTS_DECLARED
+  CHALLENGED
+  CLOSED
+  ANNULLED
+}
+
+/// Integrante de la Comisión Electoral de un proceso.
+///
+/// La declaración de no tener candidatura incompatible se guarda como hecho,
+/// con fecha: sin ella, la integración de la comisión no se puede auditar.
+model ElectionCommissionMember {
+  electionId          String    @db.Uuid
+  personId            String    @db.Uuid
+  officeTermId        String?   @db.Uuid
+  assignedAt          DateTime  @default(now()) @db.Timestamptz(3)
+  unassignedAt        DateTime? @db.Timestamptz(3)
+  noCandidacyDeclared Boolean   @default(false)
+  declaredAt          DateTime? @db.Timestamptz(3)
+
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  person   Person   @relation("ElectionCommissionPerson", fields: [personId], references: [id], onDelete: Restrict)
+
+  @@id([electionId, personId])
+  @@index([personId])
+  @@map("election_commission_member")
+}
+
+/// Planilla o candidatura.
+///
+/// La determinación formal de cumplimiento corresponde al órgano competente:
+/// el sistema **alerta, no decide** (PRD §9.3).
+model CandidateSlate {
+  id               String      @id @default(uuid(7)) @db.Uuid
+  electionId       String      @db.Uuid
+  name             String      @db.VarChar(200)
+  registeredAt     DateTime    @default(now()) @db.Timestamptz(3)
+  status           SlateStatus @default(SUBMITTED)
+  rejectionReason  String?     @db.VarChar(400)
+  /// Instantánea del cálculo de proporcionalidad al registrar.
+  genderComposition Json
+  /// Alertas mostradas antes de registrar. Se conservan aunque se registre.
+  complianceWarnings Json
+  validatedById    String?     @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  election       Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  validatedBy    User?    @relation("SlateValidatedBy", fields: [validatedById], references: [id], onDelete: Restrict)
+  createdByActor Actor    @relation("CandidateSlateCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor    @relation("CandidateSlateUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  members SlateMember[]
+
+  @@index([electionId])
+  @@map("candidate_slate")
+}
+
+enum SlateStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  VALIDATED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Integrante de una planilla, con el cargo al que aspira.
+model SlateMember {
+  slateId            String  @db.Uuid
+  personId           String  @db.Uuid
+  officeDefinitionId String  @db.Uuid
+  position           Int
+  isSubstitute       Boolean @default(false)
+
+  slate            CandidateSlate   @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  person           Person           @relation("SlateMemberPerson", fields: [personId], references: [id], onDelete: Restrict)
+  officeDefinition OfficeDefinition @relation(fields: [officeDefinitionId], references: [id], onDelete: Restrict)
+
+  @@id([slateId, personId, officeDefinitionId])
+  @@unique([slateId, officeDefinitionId, isSubstitute])
+  @@index([personId])
+  @@map("slate_member")
+}
+
+/// Incidencia o impugnación interna.
+model ElectionIncident {
+  id           String          @id @default(uuid(7)) @db.Uuid
+  electionId   String          @db.Uuid
+  reportedById String          @db.Uuid
+  reportedAt   DateTime        @default(now()) @db.Timestamptz(3)
+  kind         IncidentKind
+  description  String          @db.Text
+  status       IncidentStatus  @default(OPEN)
+  resolution   String?         @db.Text
+  resolvedById String?         @db.Uuid
+  resolvedAt   DateTime?       @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  election       Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  reportedBy     User     @relation("IncidentReportedBy", fields: [reportedById], references: [id], onDelete: Restrict)
+  resolvedBy     User?    @relation("IncidentResolvedBy", fields: [resolvedById], references: [id], onDelete: Restrict)
+  createdByActor Actor    @relation("ElectionIncidentCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor    @relation("ElectionIncidentUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  evidence ElectionIncidentEvidence[]
+
+  @@index([electionId])
+  @@index([status])
+  @@map("election_incident")
+}
+
+enum IncidentKind {
+  PROCEDURAL
+  ELIGIBILITY
+  TECHNICAL
+  CONDUCT
+  CHALLENGE
+}
+
+enum IncidentStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+  ESCALATED
+}
+
+/// Evidencia adjunta a una incidencia electoral.
+model ElectionIncidentEvidence {
+  incidentId   String   @db.Uuid
+  fileObjectId String   @db.Uuid
+  addedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  incident   ElectionIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  fileObject FileObject       @relation("IncidentEvidence", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([incidentId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("election_incident_evidence")
+}

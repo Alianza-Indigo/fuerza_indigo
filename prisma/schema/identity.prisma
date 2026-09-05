@@ -66,6 +66,57 @@ model Actor {
   createdCredentials          MemberCredential[]      @relation("CredentialCreatedBy")
   updatedCredentials          MemberCredential[]      @relation("CredentialUpdatedBy")
 
+
+  // Vida institucional (Fase 5).
+  createdUnionBodies             UnionBody[]                    @relation("UnionBodyCreatedBy")
+  updatedUnionBodies             UnionBody[]                    @relation("UnionBodyUpdatedBy")
+  createdOfficeDefinitions       OfficeDefinition[]             @relation("OfficeDefinitionCreatedBy")
+  updatedOfficeDefinitions       OfficeDefinition[]             @relation("OfficeDefinitionUpdatedBy")
+  createdOfficeIncompatibilities OfficeIncompatibility[]        @relation("OfficeIncompatibilityCreatedBy")
+  updatedOfficeIncompatibilities OfficeIncompatibility[]        @relation("OfficeIncompatibilityUpdatedBy")
+  createdOfficeTerms             OfficeTerm[]                   @relation("OfficeTermCreatedBy")
+  updatedOfficeTerms             OfficeTerm[]                   @relation("OfficeTermUpdatedBy")
+  createdPowerGrants             PowerGrant[]                   @relation("PowerGrantCreatedBy")
+  updatedPowerGrants             PowerGrant[]                   @relation("PowerGrantUpdatedBy")
+  createdAssemblies              Assembly[]                     @relation("AssemblyCreatedBy")
+  updatedAssemblies              Assembly[]                     @relation("AssemblyUpdatedBy")
+  createdAssemblyCalls           AssemblyCall[]                 @relation("AssemblyCallCreatedBy")
+  updatedAssemblyCalls           AssemblyCall[]                 @relation("AssemblyCallUpdatedBy")
+  createdAgendaItems             AgendaItem[]                   @relation("AgendaItemCreatedBy")
+  updatedAgendaItems             AgendaItem[]                   @relation("AgendaItemUpdatedBy")
+  createdAttendances             Attendance[]                   @relation("AttendanceCreatedBy")
+  updatedAttendances             Attendance[]                   @relation("AttendanceUpdatedBy")
+  createdResolutions             Resolution[]                   @relation("ResolutionCreatedBy")
+  updatedResolutions             Resolution[]                   @relation("ResolutionUpdatedBy")
+  createdVoteProcesses           VoteProcess[]                  @relation("VoteProcessCreatedBy")
+  updatedVoteProcesses           VoteProcess[]                  @relation("VoteProcessUpdatedBy")
+  createdVoteEligibilities       VoteEligibility[]              @relation("VoteEligibilityCreatedBy")
+  updatedVoteEligibilities       VoteEligibility[]              @relation("VoteEligibilityUpdatedBy")
+  createdElections               Election[]                     @relation("ElectionCreatedBy")
+  updatedElections               Election[]                     @relation("ElectionUpdatedBy")
+  createdCandidateSlates         CandidateSlate[]               @relation("CandidateSlateCreatedBy")
+  updatedCandidateSlates         CandidateSlate[]               @relation("CandidateSlateUpdatedBy")
+  createdElectionIncidents       ElectionIncident[]             @relation("ElectionIncidentCreatedBy")
+  updatedElectionIncidents       ElectionIncident[]             @relation("ElectionIncidentUpdatedBy")
+  createdBargainingFiles         BargainingFile[]               @relation("BargainingFileCreatedBy")
+  updatedBargainingFiles         BargainingFile[]               @relation("BargainingFileUpdatedBy")
+  createdComplianceObligations   ComplianceObligation[]         @relation("ComplianceObligationCreatedBy")
+  updatedComplianceObligations   ComplianceObligation[]         @relation("ComplianceObligationUpdatedBy")
+  createdDisciplinaryCases       DisciplinaryCase[]             @relation("DisciplinaryCaseCreatedBy")
+  updatedDisciplinaryCases       DisciplinaryCase[]             @relation("DisciplinaryCaseUpdatedBy")
+  createdDisciplinaryEvidence    DisciplinaryEvidence[]         @relation("DisciplinaryEvidenceCreatedBy")
+  updatedDisciplinaryEvidence    DisciplinaryEvidence[]         @relation("DisciplinaryEvidenceUpdatedBy")
+  createdDisciplinaryDecisions   DisciplinaryDecision[]         @relation("DisciplinaryDecisionCreatedBy")
+  updatedDisciplinaryDecisions   DisciplinaryDecision[]         @relation("DisciplinaryDecisionUpdatedBy")
+  createdAppeals                 Appeal[]                       @relation("AppealCreatedBy")
+  updatedAppeals                 Appeal[]                       @relation("AppealUpdatedBy")
+  createdDocumentTemplates       DocumentTemplate[]             @relation("DocumentTemplateCreatedBy")
+  updatedDocumentTemplates       DocumentTemplate[]             @relation("DocumentTemplateUpdatedBy")
+  createdGeneratedDocuments      GeneratedDocument[]            @relation("GeneratedDocumentCreatedBy")
+  updatedGeneratedDocuments      GeneratedDocument[]            @relation("GeneratedDocumentUpdatedBy")
+  createdSignatureRecords        SignatureRecord[]              @relation("SignatureRecordCreatedBy")
+  updatedSignatureRecords        SignatureRecord[]              @relation("SignatureRecordUpdatedBy")
+
   @@index([kind])
   @@map("actor")
   labourFilingsCreated LabourAuthorityFiling[] @relation("LabourFilingCreatedBy")
@@ -160,6 +211,17 @@ model Person {
 
   @@index([familyName, givenName])
   @@index([matchKey])
+
+  // Vida institucional (Fase 5).
+  officeTerms                OfficeTerm[]                 @relation("OfficeTermPerson")
+  grantedPowers              PowerGrant[]                 @relation("PowerGrantee")
+  assemblyAttendances        Attendance[]                 @relation("AttendancePerson")
+  electionCommissionSeats    ElectionCommissionMember[]   @relation("ElectionCommissionPerson")
+  slateMemberships           SlateMember[]                @relation("SlateMemberPerson")
+  bargainingCommissionSeats  BargainingCommissionMember[] @relation("BargainingCommissionPerson")
+  disciplinaryCases          DisciplinaryCase[]           @relation("DisciplinaryPerson")
+  documentSignatures         SignatureRecord[]            @relation("SignatureSigner")
+
   @@index([territorialUnitId])
   @@index([primaryEmail])
   @@map("person")
@@ -232,6 +294,22 @@ model User {
   verifiedProfessionalProfiles ProfessionalProfile[] @relation("ProfessionalProfileVerifiedBy")
 
   @@index([status])
+  // Vida institucional (Fase 5).
+  declaredQuorums          Assembly[]               @relation("QuorumDeclaredBy")
+  frozenRosters            AssemblyRosterSnapshot[] @relation("RosterFrozenBy")
+  registeredAttendances    Attendance[]             @relation("AttendanceRegisteredBy")
+  ownedResolutionFollowUps Resolution[]             @relation("ResolutionFollowUpOwner")
+  certifiedVoteProcesses   VoteProcess[]            @relation("VoteCertifiedBy")
+  validatedSlates          CandidateSlate[]         @relation("SlateValidatedBy")
+  reportedIncidents        ElectionIncident[]       @relation("IncidentReportedBy")
+  resolvedIncidents        ElectionIncident[]       @relation("IncidentResolvedBy")
+  submittedProposals       BargainingProposal[]     @relation("BargainingProposalSubmittedBy")
+  reportedDisciplinaryCases DisciplinaryCase[]      @relation("DisciplinaryReportedBy")
+  assessedEvidence         DisciplinaryEvidence[]   @relation("EvidenceAssessedBy")
+  filedAppeals             Appeal[]                 @relation("AppealFiledBy")
+  publishedTemplates       DocumentTemplate[]       @relation("TemplatePublishedBy")
+  issuedDocuments          GeneratedDocument[]      @relation("DocumentIssuedBy")
+
   @@map("user_account")
 }
 
@@ -360,6 +438,9 @@ model Organization {
   @@index([legalEntityId])
   @@index([taxId])
   @@index([territorialUnitId])
+  /// Expedientes de negociación en los que es contraparte (Fase 5).
+  bargainingFiles BargainingFile[] @relation("BargainingCounterpart")
+
   @@map("organization")
 
   // Finanzas (Fase 3). Una organización puede ser titular económico.
@@ -407,6 +488,7 @@ model OrganizationUser {
   person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
+
   @@index([personId])
   @@map("organization_user")
 }

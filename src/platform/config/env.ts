@@ -17,7 +17,7 @@ import { z } from 'zod';
  * descubría el problema en el primer cobro, que es el peor momento posible
  * (defecto `D-F4-002`).
  */
-const ACTIVE_PHASE = 4;
+const ACTIVE_PHASE = 5;
 
 /** 32 bytes en base64url producen 43 caracteres. Se exige ese mínimo. */
 const secret = (purpose: string) =>

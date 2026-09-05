@@ -224,6 +224,9 @@ model ApplicationReview {
   id            String                  @id @default(uuid(7)) @db.Uuid
   applicationId String                  @db.Uuid
   reviewerId    String                  @db.Uuid
+  /// Cartera desde la que se revisó, cuando quien revisa ocupa un cargo. Es
+  /// la columna que la Fase 4 declaró esperando a `OfficeTerm` (Fase 5).
+  reviewerOfficeTermId String?           @db.Uuid
   action        ApplicationReviewAction
   /// Fundamento y motivo. Una resolución sin motivo no es una resolución.
   rationale     String                  @db.Text
@@ -235,6 +238,8 @@ model ApplicationReview {
 
   @@index([applicationId])
   @@index([reviewerId])
+  reviewerOfficeTerm OfficeTerm? @relation("ReviewerOfficeTerm", fields: [reviewerOfficeTermId], references: [id], onDelete: Restrict)
+
   @@map("application_review")
 }
 
@@ -355,6 +360,14 @@ model Membership {
   @@index([expiresAt])
   @@index([territorialUnitId])
   @@index([sectionId])
+  // Vida institucional (Fase 5).
+  officeTerms       OfficeTerm[]          @relation("OfficeTermMembership")
+  rosterEntries     AssemblyRosterEntry[] @relation("RosterEntryMembership")
+  attendances       Attendance[]          @relation("AttendanceMembership")
+  voteEligibilities VoteEligibility[]     @relation("VoteEligibilityMembership")
+  voteReceipts      VoteReceipt[]         @relation("VoteReceiptMembership")
+  disciplinaryCases DisciplinaryCase[]    @relation("DisciplinaryMembership")
+
   @@map("membership")
 }
 
@@ -792,6 +805,10 @@ model MemberCredential {
   @@index([status])
   @@index([expiresAt])
   @@index([signingKeyId])
+  /// Cargo que la credencial acredita, cuando acredita uno (Fase 5).
+  officeTermId String?  @db.Uuid
+  officeTerm   OfficeTerm? @relation("CredentialOfficeTerm", fields: [officeTermId], references: [id], onDelete: Restrict)
+
   @@map("member_credential")
 }
 

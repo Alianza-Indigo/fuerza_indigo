@@ -44,6 +44,14 @@ model FileObject {
   @@index([classification])
   @@index([contextKind, contextId])
   @@index([legalHoldId])
+  // Vida institucional y documentos (Fase 5).
+  agendaItemDocuments   AgendaItemDocument[]           @relation("AgendaItemDocuments")
+  incidentEvidence      ElectionIncidentEvidence[]     @relation("IncidentEvidence")
+  obligationDocuments   ComplianceObligationDocument[] @relation("ObligationDocuments")
+  disciplinaryEvidence  DisciplinaryEvidence[]         @relation("DisciplinaryEvidenceFile")
+  renderedDocuments     GeneratedDocument[]            @relation("RenderedDocuments")
+  signatureFiles        SignatureRecord[]              @relation("SignatureFile")
+
   @@map("file_object")
 
   // Finanzas (Fase 3). Evidencias, acuerdos y comprobantes.

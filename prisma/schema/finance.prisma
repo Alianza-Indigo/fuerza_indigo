@@ -97,6 +97,9 @@ model CatalogProduct {
 
   @@index([legalEntityId, isActive])
   @@index([kind])
+  /// Acuerdo habilitante: las cuotas extraordinarias lo exigen (PRD §11.1).
+  authorizingResolution Resolution? @relation("ProductAuthorizingResolution", fields: [requiresAuthorizingResolutionId], references: [id], onDelete: Restrict)
+
   @@map("catalog_product")
 }
 
@@ -673,6 +676,9 @@ model AssetRegister {
 
   @@index([legalEntityId, status])
   @@index([assetKind])
+  /// Acuerdo que aprobó el acto patrimonial (PRD §11.6).
+  authorizingResolution Resolution? @relation("AssetAuthorizingResolution", fields: [authorizingResolutionId], references: [id], onDelete: Restrict)
+
   @@map("asset_register")
 }
 

@@ -60,3 +60,9 @@ pnpm-debug.log*
 # Archivos temporales de agentes
 .claude/local/
 tmp/
+
+# Generados por next.config (agentRules): son notas para herramientas de IA
+# sobre la versión de Next instalada, no código del proyecto. Se regeneran en
+# cada compilación, así que versionarlos solo produce ruido en cada diff.
+/AGENTS.md
+/CLAUDE.md

@@ -9,6 +9,7 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { startOfDayInZone } from '@/platform/i18n/format';
+import { entitiesFor } from '@/platform/institution/entities';
 
 /**
  * Catálogo de calidades de membresía (PRD §3.2, §3.3).
@@ -413,11 +414,7 @@ export async function membershipTypeFormOptions(
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const [entidades, productos] = await Promise.all([
-    db().legalEntity.findMany({
-      where: { isActive: true },
-      orderBy: { code: 'asc' },
-      select: { id: true, code: true, shortName: true },
-    }),
+    entitiesFor(actor, 'membership.type.manage', 'MembershipType'),
     db().catalogProduct.findMany({
       where: { isActive: true, moduleBinding: { in: ['MEMBERSHIP', 'HONORARY_AFFILIATION'] } },
       orderBy: { name: 'asc' },
@@ -425,13 +422,5 @@ export async function membershipTypeFormOptions(
     }),
   ]);
 
-  return ok({
-    legalEntities: entidades
-      .filter(
-        (entidad) =>
-          can(actor, 'membership.type.manage', { kind: 'MembershipType', legalEntityId: entidad.id }).allowed,
-      )
-      .map((entidad) => ({ id: entidad.id, code: entidad.code, name: entidad.shortName })),
-    catalogProducts: productos,
-  });
+  return ok({ legalEntities: entidades, catalogProducts: productos });
 }

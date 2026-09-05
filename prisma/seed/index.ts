@@ -338,6 +338,126 @@ const VERSION_POR_ENTIDAD: Record<string, number> = { FUERZA_INDIGO: 1, ALIANZA_
  * y una instalación nueva no debe poder cobrarle a nadie antes de que alguien
  * con facultades lo decida.
  */
+/**
+ * Textos de consentimiento que la Fase 4 necesita (PRD §7.3).
+ *
+ * Se siembran en **borrador**, como el aviso de la entrada pública y por la
+ * misma razón: publicar un texto es comprometerse con lo que dice, y eso lo hace
+ * la organización desde la pantalla de avisos, no una migración (ADR-0045).
+ *
+ * La diferencia con aquel es que estos sí declaran propósito: sirven para
+ * otorgar consentimiento, no solo para informar. Un texto sin propósito es un
+ * aviso, y el caso de uso se niega a aceptar consentimientos sobre él.
+ */
+async function seedConsentTexts(): Promise<void> {
+  const fuerza = await prisma.legalEntity.findUnique({
+    where: { code: 'FUERZA_INDIGO' },
+    select: { id: true, shortName: true },
+  });
+  if (fuerza === null) throw new Error('No existe la entidad FUERZA_INDIGO.');
+
+  const textos = [
+    {
+      code: 'CONSENT_DIRECTORY_PUBLICATION',
+      version: 1,
+      title: `Consentimiento para aparecer en el directorio público — ${fuerza.shortName}`,
+      requiredFor: ['DIRECTORY_PUBLICATION' as const],
+      plainLanguageSummary: [
+        'Tú decides si tu nombre aparece en el directorio público de Fuerza Índigo, y qué se ve de ti.',
+        'Puedes elegir que no aparezca nada, solo tu nombre y tu territorio, o también tu perfil profesional.',
+        'Por separado decides si se muestra tu foto, si se muestra tu contacto profesional y si los buscadores pueden encontrarte.',
+        'Puedes retirar este permiso cuando quieras. Al hacerlo, tu ficha deja de publicarse ese mismo día y pedimos a los buscadores que la quiten.',
+        'Retirar el permiso no te da de baja de nada: sigues afiliada igual.',
+      ].join('\n'),
+      bodyMarkdown: [
+        '## Qué autorizas',
+        '',
+        'Autorizas a Fuerza Índigo a publicar en su directorio público los datos que tú elijas, y **solo** esos:',
+        '',
+        '- tu nombre, o el nombre con el que prefieres que te llamen;',
+        '- tu unidad territorial;',
+        '- tu perfil profesional, si decides publicarlo;',
+        '- tu fotografía, si la autorizas por separado;',
+        '- tu contacto profesional, si lo autorizas por separado.',
+        '',
+        'No se publica tu domicilio, tu fecha de nacimiento, tu correo personal, tu teléfono personal ni ningún dato de tus expedientes.',
+        '',
+        '## Indexación por buscadores',
+        '',
+        'Aparte de lo anterior, decides si los buscadores pueden incluir tu ficha en sus resultados. Si dices que no, la página lleva la señal técnica que se lo pide.',
+        '',
+        '## Cómo lo retiras',
+        '',
+        'Desde tu portal, cuando quieras y sin dar explicaciones. Al retirarlo:',
+        '',
+        '- tu ficha deja de publicarse ese mismo día;',
+        '- se invalida la copia guardada en la caché del sitio;',
+        '- se emite la señal de no indexación.',
+        '',
+        'Queda constancia de qué estuvo publicado y hasta cuándo. Esa constancia no es tu ficha: es la prueba de que se retiró.',
+        '',
+        '## Qué no cambia si lo retiras',
+        '',
+        'Nada de tu afiliación. Sigues siendo lo que eras, con los mismos derechos.',
+      ].join('\n'),
+    },
+    {
+      code: 'CONSENT_MINOR_REPRESENTATION',
+      version: 1,
+      title: `Consentimiento de representación — ${fuerza.shortName}`,
+      requiredFor: ['MINOR_REPRESENTATION' as const],
+      plainLanguageSummary: [
+        'Este permiso sirve para que otra persona pueda actuar en nombre de alguien que no puede hacerlo por sí misma.',
+        'Se apoya siempre en una relación registrada: madre, padre, tutor, cuidadora principal o representante autorizada.',
+        'Dice a qué llega esa representación, y no llega a nada que no esté escrito aquí.',
+        'Se puede retirar cuando quiera la persona representada o quien la representa, y termina sola si la relación termina.',
+      ].join('\n'),
+      bodyMarkdown: [
+        '## Para qué es este permiso',
+        '',
+        'Para que una persona registrada como madre, padre, tutora, cuidadora principal o representante autorizada pueda actuar ante Fuerza Índigo en nombre de otra: presentar solicitudes, recibir avisos y consultar lo que aquí se autorice.',
+        '',
+        '## A qué llega',
+        '',
+        'Únicamente a los módulos que se marcaron al registrar la relación. Una relación familiar **no** abre expedientes por sí sola: hace falta este permiso, y este permiso solo alcanza lo que dice.',
+        '',
+        '## Qué no autoriza',
+        '',
+        '- No autoriza a votar en nombre de otra persona. El voto es personal e indelegable.',
+        '- No autoriza a leer notas clínicas ni expedientes de casos reservados, que tienen su propio consentimiento.',
+        '- No autoriza a nadie más que a la persona nombrada en la relación.',
+        '',
+        '## Cómo termina',
+        '',
+        'Se retira en cualquier momento. Además termina solo cuando termina la relación en la que se apoya: si esa relación se revoca, este permiso cae con ella el mismo día.',
+      ].join('\n'),
+    },
+  ];
+
+  for (const texto of textos) {
+    const existente = await prisma.consentVersion.findUnique({
+      where: { code_version: { code: texto.code, version: texto.version } },
+      select: { id: true },
+    });
+    if (existente !== null) continue;
+
+    await prisma.consentVersion.create({
+      data: {
+        code: texto.code,
+        version: texto.version,
+        legalEntityId: fuerza.id,
+        title: texto.title,
+        requiredFor: texto.requiredFor,
+        plainLanguageSummary: texto.plainLanguageSummary,
+        bodyMarkdown: texto.bodyMarkdown,
+        // Época cero: la vigencia la pone quien publique.
+        effectiveFrom: new Date(0),
+        status: 'DRAFT',
+      },
+    });
+  }
+}
+
 async function seedStripeAccounts(): Promise<void> {
   const configuraciones = [
     { code: 'FUERZA_INDIGO' as const, accountKey: 'FUERZA' as const, descriptor: 'FUERZA INDIGO' },
@@ -707,6 +827,7 @@ async function main(): Promise<void> {
   await seedMembershipTypes();
   await seedNotificationTemplates();
   await seedPublicIntakePrivacyNotice();
+  await seedConsentTexts();
   await seedStripeAccounts();
 
   const counts = {
@@ -718,7 +839,7 @@ async function main(): Promise<void> {
     especialidades: await prisma.specialtyCatalog.count(),
     calidadesDeMembresia: await prisma.membershipType.count(),
     plantillasDeMensaje: await prisma.notificationTemplate.count(),
-    avisosDePrivacidadEnBorrador: await prisma.consentVersion.count({ where: { status: 'DRAFT' } }),
+    textosDeConsentimientoEnBorrador: await prisma.consentVersion.count({ where: { status: 'DRAFT' } }),
     cuentasDeCobro: await prisma.stripeAccountConfiguration.count(),
     productosDelCatalogo: await prisma.catalogProduct.count(),
     reglasNormativas: await prisma.normativeRuleSet.count(),

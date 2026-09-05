@@ -75,7 +75,7 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `membership` (beneficiarias) | `beneficiary.create`, `beneficiary.create_own`, `beneficiary.read`, `beneficiary.read_own`, `beneficiary.update`, `relationship.read`, `relationship.read_own`, `relationship.manage`, `relationship.manage_own` | Sensible |
 | `directory` | `internal.read`, `internal.export`, `publication.manage`, `publication.manage_own` | Sensible · Crítica en `internal.export`, que exige motivo, y en `publication.manage` |
 | `credentialing` | `credential.issue`, `credential.revoke`, `credential.read`, `credential.read_own` | Crítica en `issue` y `revoke`; `revoke` exige motivo |
-| `consent` | `grant`, `revoke`, `read`, `version.manage` | Sensible · Crítica en `version.manage` |
+| `consent` | `grant`, `grant_own`, `revoke`, `revoke_own`, `read`, `version.manage` | Sensible · Crítica en `version.manage`. Las parejas `_own` existen porque decidir sobre lo propio —o sobre quien se representa con una relación de cuidado acreditada— no es la misma facultad que registrar el sí de cualquier persona (defecto `D-F4-009`) |
 | `territory` | `unit.create`, `unit.update`, `unit.dissolve`, `unit.read` | Normal · Crítica en `dissolve` |
 | `governance` | `body.manage`, `office.appoint`, `office.end`, `power.grant`, `power.revoke` | Crítica |
 | `assembly` | `assembly.convene`, `assembly.freeze_roster`, `attendance.register`, `quorum.declare`, `resolution.record`, `minutes.publish` | Crítica en `freeze_roster`, `quorum.declare`, `minutes.publish` |
@@ -121,6 +121,9 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `directory.publish` | — | — | — | O | O | — | P | — | — | — | — | — | — | — | — | — | P | — | — |
 | `credential.issue` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `credential.revoke` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
+| `consent.grant` · `consent.revoke` | — | O | O | O | O | — | P | — | — | P | — | — | O | — | — | — | — | — | — |
+| `consent.read` | — | O | O | O | O | — | P | — | — | P | — | — | O | — | — | — | — | — | — |
+| `consent.version.manage` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | P | — | — |
 | `unit.create` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `office.appoint` | — | — | — | — | — | — | P | — | — | — | — | — | — | — | — | — | — | — | — |
 | `assembly.convene` | — | — | — | — | — | P | P | P | — | — | — | — | — | — | — | — | — | — | — |

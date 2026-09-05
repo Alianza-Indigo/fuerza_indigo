@@ -110,6 +110,15 @@ export const AUDIT_ACTIONS = {
   BENEFICIARY_REGISTERED: 'membership.beneficiary.registered',
   BENEFICIARY_UPDATED: 'membership.beneficiary.updated',
   BENEFICIARY_CLOSED: 'membership.beneficiary.closed',
+  /**
+   * Abrir el expediente de una atención con privacidad reforzada.
+   *
+   * Se registra la lectura, no solo la escritura: eso es lo que «controles
+   * reforzados de privacidad» (PRD §3.4) significa en concreto. Quien contó algo
+   * de su vida tiene derecho a saber quién lo ha leído; sin este asiento, esa
+   * pregunta no tiene respuesta.
+   */
+  BENEFICIARY_FILE_READ: 'membership.beneficiary.file_read',
   CARE_RELATIONSHIP_REGISTERED: 'membership.relationship.registered',
   CARE_RELATIONSHIP_REVOKED: 'membership.relationship.revoked',
   ROSTER_READ: 'membership.roster.read',

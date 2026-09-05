@@ -51,3 +51,29 @@ export {
   type ApplicationRow,
   type ApplicationDetail,
 } from './application/application-queries';
+export {
+  registerBeneficiary,
+  updateBeneficiary,
+  closeBeneficiary,
+  beneficiaryDetail,
+  beneficiaryRegistry,
+  registerBeneficiarySchema,
+  updateBeneficiarySchema,
+  closeBeneficiarySchema,
+  type RegisterBeneficiaryInput,
+  type UpdateBeneficiaryInput,
+  type CloseBeneficiaryInput,
+  type BeneficiaryRow,
+} from './application/beneficiaries';
+export {
+  registerCareRelationship,
+  revokeCareRelationship,
+  careRelationships,
+  relationshipReach,
+  registerCareRelationshipSchema,
+  revokeCareRelationshipSchema,
+  type RegisterCareRelationshipInput,
+  type RevokeCareRelationshipInput,
+  type CareRelationshipRow,
+  type RelationshipReach,
+} from './application/care-relationships';

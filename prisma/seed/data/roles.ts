@@ -53,6 +53,12 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.relationship.manage_own',
       'billing.payment.read_own',
       'billing.checkout.start',
+      // Quien solicita acepta el aviso de privacidad al solicitar, y tiene que
+      // poder retirarlo después (defecto `D-F4-009`). Sin esta pareja, el sí de
+      // la persona solo podía registrarlo la organización.
+      'consent.grant_own',
+      'consent.revoke_own',
+      'consent.read',
       'files.file.download_own','files.file.upload'],
   },
   {
@@ -76,7 +82,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // significa. Conserva la lectura de sus pagos por si alguna vez pagó
       // algo con otro rol.
       'billing.payment.read_own',
-      'files.file.download_own','files.file.upload', 'consent.read'],
+      'files.file.download_own','files.file.upload', 'consent.read',
+      'consent.grant_own', 'consent.revoke_own'],
   },
   {
     code: 'HONORARY_AFFILIATE',
@@ -96,7 +103,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'directory.publication.manage_own',
       'billing.payment.read_own',
       'billing.checkout.start',
-      'files.file.download_own','files.file.upload', 'consent.read'],
+      'files.file.download_own','files.file.upload', 'consent.read',
+      'consent.grant_own', 'consent.revoke_own'],
   },
   {
     code: 'UNION_MEMBER',
@@ -119,7 +127,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'billing.accountability.read',
       'billing.payment.read_own',
       'billing.checkout.start',
-      'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read'],
+      'files.file.download_own','files.file.upload', 'consent.read', 'territory.unit.read',
+      'consent.grant_own', 'consent.revoke_own'],
   },
   {
     code: 'TERRITORIAL_DELEGATE',
@@ -237,6 +246,20 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'territory.unit.update',
       'territory.unit.read',
       'territory.unit.dissolve',
+      // Registrar el sí de otra persona y retirarlo son facultades distintas de
+      // consultarlo, y esta cartera lleva el padrón: es quien recoge un
+      // consentimiento en papel y quien lo retira cuando la persona lo pide por
+      // escrito (defecto `D-F4-009`). `consent.revoke` no lo tenía nadie en toda
+      // la instalación, así que la pantalla de retiro no habría podido usarse.
+      'consent.grant',
+      'consent.revoke',
+      // También las variantes propias, y no por simetría decorativa: esta es la
+      // única cartera que nombra, y la regla de no elevación le impide otorgar
+      // un rol con un permiso que ella no tenga. Sin estas dos no podría nombrar
+      // a ningún agremiado ni afiliado honorario. Además es cierto de por sí:
+      // quien lleva el padrón también es una persona con consentimientos suyos.
+      'consent.grant_own',
+      'consent.revoke_own',
       'consent.read',
       'files.file.upload',
       'files.file.download',
@@ -304,7 +327,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.relationship.manage',
       'support.request.read',
       'support.request.triage',
-      'files.file.download_own','identity.person.read', 'consent.grant', 'consent.read', 'files.file.upload', 'files.file.download'],
+      'files.file.download_own','identity.person.read', 'consent.grant', 'consent.revoke', 'consent.read', 'files.file.upload', 'files.file.download'],
   },
   {
     code: 'CIAN_PROFESSIONAL',
@@ -340,6 +363,9 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
     permissions: [
       'billing.payment.read_own',
       'billing.checkout.start',
+      'consent.grant_own',
+      'consent.revoke_own',
+      'consent.read',
       'files.file.download_own','files.file.upload'],
   },
   {

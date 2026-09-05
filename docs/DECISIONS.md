@@ -912,3 +912,60 @@ Ninguna prueba lo detectaba porque las fixtures fijaban `legalEntityId: null` co
 **Cómo se elige, y por qué no con una variable nueva.** Por la forma del token. Un `BLOB_READ_WRITE_TOKEN` vacío o de relleno significa exactamente «aquí no hay almacén». Una variable aparte permitiría la combinación incoherente de siempre —token real con adaptador de memoria, o al revés— y habría que documentar cuál manda.
 
 **Lo que el adaptador de memoria promete y lo que no.** Guarda y devuelve dentro del proceso, y lo pierde todo al reiniciar. Lo declara como `IN_MEMORY` y el panel de salud lo dice con esas palabras: un almacén que pierde lo guardado no es un fallo mientras se anuncie; lo que sería un fallo es que pareciera persistente.
+
+---
+
+## ADR-0077 · Consentir sobre lo propio es un permiso distinto de registrar el sí de otra persona
+
+**Contexto.** El catálogo tenía `consent.grant` y `consent.revoke` desde la Fase 1. Al construir el bloque de consentimientos de la Fase 4 quedó a la vista lo que nadie había ejercido nunca: `consent.grant` solo lo tenía el personal de atención social, y `consent.revoke` **no lo tenía absolutamente nadie** —ni un rol, ni el actor raíz, ni un trabajo programado— (defecto `D-F4-009`).
+
+Traducido a lo que le pasa a una persona: no podía aceptar la publicación de sus propios datos en el directorio, y una vez aceptada no había forma de retirarla. Un consentimiento que solo puede otorgar y retirar la organización no es un consentimiento; es el registro de lo que la organización decidió por ti, y el PRD §7.3 pide justo lo contrario.
+
+**Decisión.** Se separan dos facultades donde antes había una:
+
+- `consent.grant` · `consent.revoke` — **registrar el sí de cualquier persona.** La tienen la Secretaría Ejecutiva, que lleva el padrón y recoge consentimientos en papel, y el personal de atención social.
+- `consent.grant_own` · `consent.revoke_own` — **decidir sobre lo propio**, y sobre quien se representa con una relación de cuidado viva. La tienen todos los roles que representan a una persona hablando por sí misma.
+
+**Por qué separadas y no una sola repartida a todo el mundo.** Quien atiende un mostrador necesita anotar el sí de otra persona; esa es una potestad mucho mayor que la de decidir sobre lo propio, y una sola facultad repartida a todos los roles la habría concedido a cualquiera con cuenta.
+
+**Consecuencia en el caso de uso.** `grantConsent` resuelve las dos y decide con cuál se sostiene el acto. De ahí salen tres caminos honestos donde antes había uno:
+
+1. La propia persona consiente. `grantedById` es ella.
+2. Alguien consiente **en representación**, invocando una relación de cuidado viva que encabeza. `grantedById` es la persona representante.
+3. La organización **registra** el sí que dio la persona —en papel, por teléfono con testigo, en el mostrador—. `grantedById` sigue siendo la persona: la bitácora ya dice quién lo tecleó, y la columna dice de quién es el sí, que es la pregunta que se hace cuando alguien reclama.
+
+Antes el tercer camino no existía: quien no fuera la titular tenía que invocar una relación de cuidado, lo que dejaba inservible el medio «papel firmado» para cualquier persona adulta capaz.
+
+**El error que se conserva.** Quien tiene la facultad propia y no dice en qué relación se apoya no recibe una denegación, sino el dato que le falta. Una denegación ahí sería mentira: puede consentir, solo que no ha dicho por qué.
+
+**El control que impide la recaída.** `C-F1-11` recorre los permisos que el código **exige de verdad** —los que aparecen en una llamada a `can`— y comprueba que cada uno tenga al menos un titular posible: un rol de la semilla, la lista cerrada del actor raíz o la concesión de un trabajo programado. No mira el catálogo entero a propósito: hay permisos declarados para fases que aún no se construyen, y exigirles titular hoy obligaría a repartir facultades antes de que exista la función que ejercen.
+
+Es el control que habría cazado también `D-F4-003` —`identity.user.disable` sin ningún rol que lo tuviera—, y se comprobó quitando ambos permisos de la semilla para verlo fallar por los dos. Una puerta cerrada con una llave que no existe no la detecta nada más: los tipos pasan, la pantalla se pinta, y las pruebas positivas ni siquiera llegan ahí.
+
+---
+
+## ADR-0078 · Las constantes compartidas entre pantalla y servidor viven fuera del módulo de cliente
+
+**Contexto.** La lista de los once propósitos de consentimiento estaba declarada dentro del formulario, un archivo marcado `'use client'`. La página —componente de servidor— la importaba de ahí para traducir códigos a etiquetas.
+
+**Lo que pasa en ejecución.** Un módulo de cliente no exporta valores al servidor. Lo que llega ahí es una referencia al cliente, no el arreglo, así que `PROPOSITOS.map` lanza `map is not a function` y la página devuelve un 500 (defecto `D-F4-010`).
+
+**Por qué no lo vio nada.** Del lado de los tipos el arreglo sigue siendo un arreglo: `tsc` pasa. El linter no modela la frontera. Las pruebas de integración prueban casos de uso, no pantallas. Solo aparece abriendo la página en un navegador, que es exactamente como apareció.
+
+**Decisión.** Toda constante que necesiten las dos orillas vive en un módulo **sin directiva** —`etiquetas.ts` junto a la pantalla— y se importa desde ambas. El módulo de cliente exporta componentes; los datos, no.
+
+**De regalo, una duplicación menos.** Los mismos once códigos estaban otra vez en la acción del servidor. Añadir un propósito obligaba a tocar dos sitios, y olvidar el segundo dejaba una casilla que se marca y no se guarda.
+
+**El control que impide la recaída.** `C-F2-07` recorre los módulos `'use client'`, recoge lo que exportan que **no** sea componente ni hook, y comprueba que ningún módulo de servidor lo importe. La primera versión del control daba verde con el defecto delante: descartaba todo identificador que empezara por mayúscula, y `PROPOSITOS` empieza por mayúscula. Un componente es `NombreAsi`; una constante, `NOMBRE_ASI`. La distinción es la mayúscula seguida de minúscula, y el control se verificó viéndolo fallar con el código que causó el defecto.
+
+---
+
+## ADR-0079 · Ocultar en la lista y mostrar en el expediente son reglas distintas
+
+**Contexto.** El padrón de atenciones protegidas oculta la necesidad inicial cuando la privacidad es reforzada: lo que alguien contó de su vida no es una columna de una tabla que se recorre buscando otra cosa. La pantalla de expediente leía su fila de ese mismo padrón.
+
+**La consecuencia.** El expediente no podía enseñar la necesidad **nunca**, y en su lugar mostraba un aviso proponiendo bajar la privacidad a estándar para poder leerla. Es decir: la pantalla que existe para leer el caso invitaba a desproteger a la persona para leer lo que quien abre el expediente ya tenía derecho a ver (defecto `D-F4-011`). De paso, buscaba la fila entre las doscientas que devuelve el padrón, así que habría dejado de encontrar expedientes en cuanto hubiera más.
+
+**Decisión.** `beneficiaryDetail` lee esa atención y solo esa, con la necesidad incluida. La regla de la lista sigue igual.
+
+**Lo que se añade al leer.** Abrir un expediente con privacidad reforzada deja asiento en la bitácora. El PRD §3.4 promete «controles reforzados de privacidad» sin decir cuáles; registrar la lectura y no solo la escritura es la traducción concreta de esa frase: quien contó algo de su vida puede saber quién lo ha leído. Con privacidad estándar no se anota, porque entonces el asiento no distinguiría nada.

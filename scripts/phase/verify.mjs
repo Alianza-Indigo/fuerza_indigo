@@ -1170,6 +1170,68 @@ const CHECKS = [
         : ok(['Lo que la documentación promete del entorno y del despliegue está implementado.']);
     },
   },
+  {
+    id: 'C-F1-11',
+    title: 'Fase 1: ningún permiso comprobado en código se queda sin titular posible',
+    phases: [1],
+    run() {
+      // El defecto que este control impide (`D-F4-003`, `D-F4-009`): una puerta
+      // cerrada con una llave que no existe. El código comprueba el permiso, la
+      // pantalla lo respeta, los tipos pasan, las pruebas positivas ni siquiera
+      // llegan ahí porque nadie puede ejercerlo —y la función queda muerta sin
+      // que se caiga nada. Pasó dos veces: `identity.user.disable` sin ningún
+      // rol que lo tuviera, y `consent.revoke`, que no lo tenía absolutamente
+      // nadie en toda la instalación.
+      //
+      // Titular posible es cualquiera de los tres: un rol de la semilla, la
+      // lista cerrada del actor raíz o la concesión de un trabajo programado.
+      const permisos = read('src/platform/authz/permissions.ts');
+      if (permisos === null) return fail(['No se encontró el catálogo de permisos.']);
+      const declarados = new Set([...permisos.matchAll(/define\('([^']+)'/g)].map((m) => m[1]));
+
+      const corte = permisos.indexOf('SUPERADMIN_GRANTED');
+      const otrasConcesiones = new Set(
+        corte === -1
+          ? []
+          : [...permisos.slice(corte).matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]),
+      );
+
+      const semilla = read('prisma/seed/data/roles.ts');
+      if (semilla === null) return fail(['No se encontró la semilla de roles.']);
+      const enRoles = new Set([...semilla.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]));
+
+      // Solo se miran los permisos que el código **exige de verdad**, no todo el
+      // catálogo: hay permisos declarados para fases que aún no se construyen, y
+      // exigirles titular hoy obligaría a repartir facultades antes de que exista
+      // la función que ejercen.
+      const exigidos = new Set();
+      for (const file of walk()) {
+        if (!/^(src|app)\//.test(file) || !/\.tsx?$/.test(file)) continue;
+        if (file === 'src/platform/authz/permissions.ts') continue;
+        const contenido = read(file) ?? '';
+        for (const match of contenido.matchAll(/can\(\s*[^,]+,\s*(?:[^,]*\?\s*)?'([a-z_]+\.[a-z_.]+)'/g)) {
+          exigidos.add(match[1]);
+        }
+        for (const match of contenido.matchAll(/'([a-z_]+\.[a-z_.]+)'\s*:\s*'([a-z_]+\.[a-z_.]+)'/g)) {
+          exigidos.add(match[1]);
+          exigidos.add(match[2]);
+        }
+      }
+
+      const problems = [];
+      for (const permiso of [...exigidos].sort()) {
+        if (!declarados.has(permiso)) continue;
+        if (enRoles.has(permiso) || otrasConcesiones.has(permiso)) continue;
+        problems.push(
+          `"${permiso}" se comprueba en código y no lo tiene ningún rol, ni el actor raíz, ni un trabajo: la función que protege no puede ejercerla nadie.`,
+        );
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok([`Los ${exigidos.size} permisos que el código exige tienen al menos un titular posible.`]);
+    },
+  },
 
   /* ---------------------------------------------------------------- */
   /* Fase 2 — Sistema de diseño, PWA, CMS y sitio público             */
@@ -1366,6 +1428,75 @@ const CHECKS = [
       return problems.length
         ? fail(problems)
         : ok(['Los umbrales se ejecutan en cada verificación y la medición no guarda nada personal.']);
+    },
+  },
+  {
+    id: 'C-F2-07',
+    title: 'Fase 2: ningún módulo de servidor importa un valor de un módulo de cliente',
+    phases: [2],
+    run() {
+      // El defecto que este control impide (`D-F4-010`): un componente de
+      // servidor importaba un arreglo declarado en un archivo `'use client'`. Del
+      // lado de los tipos es un arreglo y todo compila; en ejecución lo que llega
+      // al servidor es una referencia al cliente, así que el `.map` revienta y la
+      // página devuelve un 500. No lo ve `tsc`, no lo ve el linter y no lo ven
+      // las pruebas de integración: solo aparece abriendo la página.
+      //
+      // Se miran los valores, no los componentes: exportar un componente de
+      // cliente y usarlo desde el servidor es justo para lo que sirve la
+      // directiva. Lo que no cruza la frontera son las constantes.
+      const problems = [];
+      const declaraCliente = (contenido) => /^\s*['"]use client['"]/.test(contenido);
+      const archivos = walk().filter((file) => /^(src|app)\//.test(file) && /\.tsx?$/.test(file));
+
+      const valoresDeCliente = new Map();
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+        if (!declaraCliente(contenido)) continue;
+        const nombres = [];
+        for (const match of contenido.matchAll(/export\s+(?:const|let|var|function)\s+([A-Za-z_$][\w$]*)/g)) {
+          const nombre = match[1];
+          // `NombreEnMayusculaInicial` es un componente y `useAlgo` un hook: los
+          // dos son cliente por definición y sí se importan desde el servidor.
+          // `NOMBRE_EN_MAYUSCULAS` no: eso es una constante, y empezar por
+          // mayúscula no la convierte en componente —confundirlos fue lo que
+          // dejó pasar el defecto la primera vez que se escribió este control.
+          if (/^[A-Z][a-z]/.test(nombre) || /^use[A-Z]/.test(nombre)) continue;
+          nombres.push(nombre);
+        }
+        if (nombres.length > 0) valoresDeCliente.set(file.replace(/\.tsx?$/, ''), nombres);
+      }
+
+      for (const file of valoresDeCliente.size === 0 ? [] : archivos) {
+        const contenido = read(file) ?? '';
+        if (declaraCliente(contenido)) continue;
+        const carpeta = file.slice(0, file.lastIndexOf('/'));
+        for (const match of contenido.matchAll(/import\s+\{([^}]*)\}\s+from\s+'(\.[^']+)'/g)) {
+          const relativa = `${carpeta}/${match[2]}`;
+          const destino = relativa
+            .split('/')
+            .reduce((acc, parte) => {
+              if (parte === '.' || parte === '') return acc;
+              if (parte === '..') return acc.slice(0, -1);
+              return [...acc, parte];
+            }, [])
+            .join('/');
+          const exportados = valoresDeCliente.get(destino);
+          if (exportados === undefined) continue;
+          for (const bruto of match[1].split(',')) {
+            const nombre = bruto.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]?.trim() ?? '';
+            if (bruto.trim().startsWith('type ')) continue;
+            if (!exportados.includes(nombre)) continue;
+            problems.push(
+              `${file} importa "${nombre}" de ${destino}, que es un módulo de cliente: en el servidor eso no es un valor sino una referencia, y la página falla al pintarse.`,
+            );
+          }
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Ningún módulo de servidor lee constantes declaradas dentro de un módulo de cliente.']);
     },
   },
   {

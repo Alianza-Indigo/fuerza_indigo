@@ -81,8 +81,29 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   }),
 
   // consent
-  define('consent.grant', 'Registrar un consentimiento', { sensitivity: 'SENSITIVE' }),
-  define('consent.revoke', 'Revocar un consentimiento', { sensitivity: 'SENSITIVE' }),
+  define('consent.grant', 'Registrar un consentimiento de cualquier persona', { sensitivity: 'SENSITIVE' }),
+  define('consent.revoke', 'Revocar el consentimiento de cualquier persona', { sensitivity: 'SENSITIVE' }),
+  /**
+   * La `O` de la matriz: **el consentimiento propio y el de quien se representa
+   * con una relación de cuidado acreditada** (defecto `D-F4-009`).
+   *
+   * Sin esta pareja, consentir era una facultad institucional y nada más:
+   * ninguna persona afiliada podía aceptar la publicación de sus propios datos
+   * ni retirarla después, porque `consent.grant` era de personal de atención y
+   * `consent.revoke` no lo tenía absolutamente nadie. Un consentimiento que
+   * solo puede otorgar y retirar la organización no es consentimiento; es un
+   * registro de lo que la organización decidió por ti.
+   *
+   * Que exista aparte de la facultad institucional también importa: quien
+   * atiende un mostrador necesita registrar el sí de otra persona, y esa es una
+   * potestad distinta —y mucho mayor— que la de decidir sobre lo propio.
+   */
+  define('consent.grant_own', 'Otorgar el consentimiento propio o de quien se representa', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('consent.revoke_own', 'Retirar el consentimiento propio o de quien se representa', {
+    sensitivity: 'SENSITIVE',
+  }),
   define('consent.read', 'Consultar consentimientos de una persona', { sensitivity: 'SENSITIVE' }),
 
   // files

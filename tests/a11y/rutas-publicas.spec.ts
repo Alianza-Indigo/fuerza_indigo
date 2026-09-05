@@ -31,6 +31,9 @@ const RUTAS = [
   '/que-es-fuerza-indigo',
   // Un documento legal sin texto publicado todavía.
   '/legales/privacidad',
+  // Fase 4: las dos puertas públicas que abre.
+  '/directorio',
+  '/verificar',
 ];
 
 async function violacionesGraves(page: Page) {

@@ -6,10 +6,11 @@
 ## Situación actual
 
 - **Fase activa:** 4 — Afiliación, padrones, directorios y credenciales
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 4 de septiembre de 2026
 - **Fecha de inicio:** 4 de septiembre de 2026
-- **SHA del punto de control:** se registra al aprobarse
+- **Fecha de cierre:** 5 de septiembre de 2026
+- **SHA del punto de control:** se registra en el commit de cierre
 - **Fase anterior:** 3 — `APPROVED`, cerrada en `85cf196`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 5 — Estructura territorial, gobierno, asambleas y elecciones, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -31,15 +32,15 @@ El PRD §24 Fase 4 contrata: registro maestro de persona; solicitud de agremiado
 
 Criterios específicos del PRD §24 Fase 4:
 
-| # | Criterio | Estado |
-|---|---|---|
-| 1 | Una misma persona puede tener varias relaciones sin duplicarse | Pendiente |
-| 2 | Un beneficiario recibe atención sin afiliación ni pago | Pendiente |
-| 3 | Un afiliado honorario nunca obtiene voto por error | Pendiente |
-| 4 | Solo agremiados elegibles aparecen en el padrón sindical correspondiente | Pendiente |
-| 5 | Retirar consentimiento elimina la publicación pública y la indexación controlada | Pendiente |
-| 6 | Una credencial revocada se refleja inmediatamente en el verificador | Pendiente |
-| 7 | Todos los estados y transiciones están auditados | Pendiente |
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | Una misma persona puede tener varias relaciones sin duplicarse | **Cumplido** | `fase4-criterios` lleva a una misma persona a ser beneficiaria, honoraria, cuidadora y titular de credencial: cuatro relaciones, una fila de persona, sin fusión de por medio (`F4-QA-001`) |
+| 2 | Un beneficiario recibe atención sin afiliación ni pago | **Cumplido** | Un alta protegida sin membresía, sin solicitud y sin un solo cobro asociado; y afiliarse después **no** cierra la atención |
+| 3 | Un afiliado honorario nunca obtiene voto por error | **Cumplido** | Probado en los cuatro sitios donde podría colarse: la comprobación de la base rechaza derechos políticos, quórum y padrón ante la autoridad en una calidad honoraria —también al crear una nueva—, el padrón sindical no la trae y su rol no tiene ninguna facultad electoral (`F4-QA-002`) |
+| 4 | Solo agremiados elegibles aparecen en el padrón sindical correspondiente | **Cumplido** | `rosters` prueba los tres padrones por separado y el filtro de elegibilidad; el criterio se vuelve a comprobar de extremo a extremo en `fase4-criterios` |
+| 5 | Retirar consentimiento elimina la publicación pública y la indexación controlada | **Cumplido** | `directory` comprueba que la ficha deja de servirse, sale del listado, deja de ser indexable y que las direcciones afectadas se devuelven para invalidar la caché (ADR-0087) |
+| 6 | Una credencial revocada se refleja inmediatamente en el verificador | **Cumplido** | `credentials` verifica el mismo código antes y después de revocar, sin ningún trabajo de por medio. El estado se deriva al leer (ADR-0092) y los controles `C-F4-01` y `C-F4-02` impiden que vuelva a guardarse o a cachearse |
+| 7 | Todos los estados y transiciones están auditados | **Cumplido** | El ciclo completo deja los cinco asientos —enviada, tomada, aprobada, activada, credencial emitida— y su `MembershipStatusEvent`, que es inmutable por privilegios de columna |
 
 ---
 
@@ -53,7 +54,16 @@ Las veinticuatro tareas de la Fase 4 del backlog, de `F4-DAT-001` a `F4-DOC-001`
 
 | Qué se afirma | Cómo se comprobó |
 |---|---|
-| — | Se completa al cerrar la fase |
+| Las migraciones funcionan desde cero | Cada archivo de pruebas de integración crea una base efímera y aplica las **dieciséis** migraciones en orden sobre un esquema vacío. No es una comprobación aparte: es la única forma en que corren las 613 pruebas |
+| Las migraciones funcionan desde la fase anterior | La base de desarrollo viene de la Fase 3 y recibió las cuatro migraciones nuevas de esta fase con `migrate deploy`, sin reconstruirse. Es la base sobre la que se hicieron todos los recorridos en navegador |
+| Los permisos se prueban en positivo y en negativo | Cada suite de la fase incluye su prueba de denegación: quien no tiene la facultad no lee el padrón, no revoca una credencial ajena, no descarga la credencial de otra persona, no lee los consentimientos de otra, no exporta el directorio. `C-F1-05` comprueba que existen |
+| La interfaz se revisó en móvil y en escritorio | Las 232 pruebas de extremo a extremo corren en los dos perfiles de `playwright.config.ts` —Pixel 7 y escritorio de 1280 px—, incluidas las 38 pantallas con sesión de esta fase |
+| La accesibilidad se validó, no se declaró | `tests/a11y` recorre 12 rutas públicas y 19 pantallas con sesión, en tema claro y oscuro, con umbral de **cero violaciones críticas o serias**. Encontró `D-F4-021`, que ninguna otra puerta veía |
+| Los estados vacíos y de error están terminados | Cada pantalla nueva declara su estado vacío con texto propio —no un guion— y su denegación. El recorrido en navegador de cada bloque los atravesó |
+| La auditoría está conectada | El ciclo completo deja asiento de cada acto; `C-F1-11` comprueba además que ningún permiso exigido en código se quede sin titular posible |
+| No hay secretos ni datos reales en el repositorio | `C-REPO-04` y `C-ENV-02`. La contraseña de las cuentas de prueba se genera en cada corrida y viaja por el entorno del proceso, nunca por un archivo |
+| La prohibición del proveedor vetado se sostiene | `C-REPO-03`, sobre código, dependencias y documentación |
+| Cada pantalla se abrió de verdad en un navegador | Cinco recorridos guiados en Chromium —bloques D, E, G, H, I y J—, que encontraron ocho de los defectos de la fase. Ninguno lo veían los tipos, el linter ni las pruebas de dominio |
 
 ---
 
@@ -61,11 +71,21 @@ Las veinticuatro tareas de la Fase 4 del backlog, de `F4-DAT-001` a `F4-DOC-001`
 
 | Puerta | Resultado |
 |---|---|
-| — | Se completa al cerrar la fase |
+| `npx tsc --noEmit` | Sin errores, con `strict`, `noUncheckedIndexedAccess` y `exactOptionalPropertyTypes` |
+| `npm run lint` | Sin errores ni avisos |
+| `npm test` (unitarias) | 20 archivos · **335 pruebas** |
+| `npm run test:integration` | 35 archivos · **613 pruebas** |
+| `npm run test:e2e` | **232 pruebas** en los dos perfiles, 8 omitidas por referencia visual ausente |
+| `npm run build` | Compila y genera las 82 rutas del mapa |
+| `npm run phase:verify` | **53 controles aprobados, 0 fallidos**, 1 no aplicable |
+
+Los cuatro controles nuevos de la fase —`C-F4-01` a `C-F4-04`— se comprobaron **viéndolos fallar** contra el código que causó cada defecto. Uno de ellos, `C-F4-03`, aprobó en su primera versión con el defecto delante: se reescribió hasta que señaló la línea exacta.
 
 ---
 
 ## Defectos abiertos
+
+**Ninguno abierto.** Los veintiuno que aparecieron durante la construcción se corrigieron dentro de la fase, como exige el PRD §0 punto 6, y quedan registrados porque cada uno enseñó algo. Ocho los encontró abrir la pantalla en un navegador; tres, un control de fase; dos, la suite de accesibilidad al extenderse; uno, el propio registro del servidor.
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
@@ -88,13 +108,55 @@ Las veinticuatro tareas de la Fase 4 del backlog, de `F4-DAT-001` a `F4-DOC-001`
 | `D-F4-018` | Media | En la credencial impresa, la línea «Verifica en …» se salía por el borde derecho: iba centrada bajo el QR y el SVG no ajusta ni recorta. Lo que se perdía era precisamente la dirección que alguien tendría que teclear. Un nombre largo se habría metido dentro del recuadro del QR por la misma razón | Corregido. La dirección baja a la columna de texto, alineada a la izquierda, y toda línea que puede crecer se comprime con `textLength` cuando no cabe —y solo cuando no cabe— (ADR-0091). Dos pruebas nuevas fijan que ningún texto entra en la zona del QR. Se vio dibujando las cuatro tarjetas y mirándolas: ni los tipos ni las pruebas de dominio ven un texto que se sale |
 | `D-F4-019` | **Alta** | `personConsents` recibía el identificador de la persona **por parámetro** y decidía con una sola facultad, `consent.read`, que tenían tanto la Secretaría como cualquier agremiada: bastaba con pedir el identificador de otra para leer su historial completo de consentimientos —para qué autorizó el tratamiento de sus datos, cuándo lo retiró, con qué texto—. Lo destapó una sonda escrita al preparar la pantalla de consentimientos de la persona, no una prueba existente: todas pasaban el identificador de quien preguntaba. La matriz de `PERMISSIONS.md` §4 **siempre dijo `O`** —solo sobre lo propio— para los roles personales: lo que se había separado del contrato eran el catálogo y la semilla | Corregido separando la pareja `consent.read` · `consent.read_own`, como ya estaba separada para otorgar y revocar (ADR-0096). Quien representa con una relación viva también lee. El control `C-F4-03` impide la recaída y se comprobó **dos veces**: la primera versión daba verde con el defecto delante —recortaba la firma en la primera llave, y `input: { personId: string }` lleva una llave dentro de los parámetros—, así que se reescribió contando paréntesis |
 | `D-F4-020` | Baja | El enrutador animaba el desplazamiento en **cada cambio de ruta**: la hoja de estilos declara desplazamiento suave y Next necesita `data-scroll-behavior="smooth"` en `<html>` para desactivarlo durante las transiciones. En una plataforma para personas neurodivergentes, el movimiento involuntario es justo lo que el PRD §5.2 manda poder controlar. Lo dijo el propio servidor de desarrollo en su registro; ninguna prueba lo mira | Corregido declarando el atributo. La preferencia de movimiento reducido sigue ganando por encima de todo |
+| `D-F4-021` | Media | Dos pantallas de afiliación pedían `--color-on-accent`, un token que **nunca se declaró**. Un `var()` roto no falla: la propiedad se queda sin valor y el navegador hereda lo que hubiera, así que el texto del botón principal salía en tinta oscura sobre el índigo del acento. Contraste insuficiente en el llamado a la acción más importante de la pantalla, invisible para los tipos, el linter y toda prueba de dominio | Corregido usando `--color-ink-inverse`, que es el token que existe. Lo destapó la suite de accesibilidad al extenderse a las pantallas con sesión. El control `C-F4-04` lo caza antes y sin levantar un navegador: comprueba que todo token que una pantalla pide esté declarado en la hoja de estilos. Se verificó viéndolo fallar |
 | `D-F4-004` | Media | `identity.person.merge` tampoco lo tenía ningún rol: la pantalla de fusión de duplicados no la habría podido usar nadie. Lo detectó una prueba de integración al fallar con `FORBIDDEN` | Corregido. Lo recibe `EXECUTIVE_SECRETARY`, que es quien lleva el padrón, y la matriz de `PERMISSIONS.md` §4 registra la fila que le faltaba |
 
 ---
 
 ## Decisiones
 
-Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a partir de ADR-0064.
+Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md), de ADR-0064 a ADR-0096.
+
+Las que gobiernan lo construido aquí, en una línea cada una:
+
+- **ADR-0074** · El acuse vive fuera del formulario que la acción se lleva por delante. Apareció tres veces —`D-F4-006`, `D-F4-013`, `D-F4-015`— y acabó como regla en ADR-0089.
+- **ADR-0080** · Un plazo vencido hace visible una situación; no decide sobre nadie. El trabajo recuerda una vez y no rechaza.
+- **ADR-0082** · Un cobro confirmado anuncia el hecho por la bandeja de salida; `billing` no llama a `membership`.
+- **ADR-0083** · Terminar dice siempre por qué, y vencer no es decidir: `EXPIRY` y `CONVERSION` existen para no disfrazar un vencimiento de decisión de alguien.
+- **ADR-0086 · ADR-0087** · El directorio público se deriva de la autorización, y retirarla invalida la caché o no es retirar.
+- **ADR-0088** · El rol sigue a la calidad y se va con ella; no es un nombramiento.
+- **ADR-0090 · ADR-0091** · La codificación del QR no se escribe a mano; el dibujo sí, y la credencial se compone al pedirla.
+- **ADR-0092 · ADR-0093** · La credencial no tiene vida propia: su estado se deriva al leer, y la firma precede a la base sin sustituirla.
+- **ADR-0094 · ADR-0096** · Mirar lo propio no es un privilegio del rango, y leer lo propio no es la misma facultad que leer lo ajeno.
+- **ADR-0095** · El panel abre con decisiones y calla cuando no hay ninguna.
+
+---
+
+## Informe de cierre (PRD §23.3)
+
+**Qué queda funcionando.** Una persona llega, es identificada sin duplicarse, solicita afiliación —por su cuenta o con alguien capturando a su lado—, adjunta documentación, recibe una revisión humana con plazo si hace falta aclarar algo, y una resolución fundada. Si su calidad tiene cuota, la membresía nace cuando un webhook firmado confirma el cobro; si no la tiene, con la resolución. Al activarse recibe su número de miembro, el rol que su calidad le da y una credencial con QR que cualquiera puede verificar sin sesión. Entra a su panel y ve lo que tiene pendiente, decide si aparece en el directorio público y para qué autoriza el uso de sus datos, y puede retirarlo. La organización lleva tres padrones separados, prepara las altas y bajas ante la autoridad laboral, y todo cambio de estado queda con motivo, actor y fecha.
+
+**Lo que la puerta universal exige, punto por punto** (PRD §23.2):
+
+| Punto | Estado |
+|---|---|
+| Todo el alcance implementado | Los diecinueve puntos del alcance del PRD §24 Fase 4, en veinticuatro tareas del backlog |
+| Sin defectos críticos, altos o medios abiertos | Ninguno abierto: 21 encontrados, 21 cerrados dentro de la fase |
+| Sin botones, rutas ni acciones incompletas | `C-REPO-02` y `C-F1-02`; cada pantalla se abrió en un navegador |
+| Migraciones desde cero y desde la fase anterior | Las dos, y no como comprobación aparte: la suite de integración exige la primera y la base de desarrollo probó la segunda |
+| Permisos positivos y negativos probados | En cada suite de la fase; `C-F1-05` comprueba que existen |
+| Interfaz revisada en móvil y escritorio | 232 pruebas en los dos perfiles |
+| Accesibilidad validada | 12 rutas públicas y 19 pantallas con sesión, dos temas, cero violaciones críticas o serias |
+| Estados vacíos y de error terminados | Cada pantalla nueva los declara con texto propio |
+| Auditoría conectada | El ciclo completo deja los cinco asientos y su evento de estado inmutable |
+| Documentación refleja el código real | `DATA_MODEL`, `PERMISSIONS`, `INTEGRATIONS`, `DECISIONS`, `BACKLOG` actualizados; se corrigió lo que la documentación prometía y el código había decidido de otro modo |
+| Lint, tipos, pruebas y compilación | Todo en verde |
+| Sin secretos ni datos reales | `C-REPO-04`, `C-ENV-02`; la contraseña de las cuentas de prueba se genera en cada corrida |
+| Informe de cierre | Este |
+
+**Lo que esta fase deliberadamente no hace, y no es una omisión.** No convoca asambleas ni celebra elecciones —Fase 5—, pero deja dicho en el dato quién vota: `grantsPoliticalRights` y `countsForQuorum`, con una comprobación de la base que impide que una calidad honoraria los obtenga por error. No abre expedientes de caso —Fase 6—: un beneficiario protegido se da de alta aquí con su origen y su necesidad inicial, y la atención empieza allá.
+
+**Una cosa que queda dicha y no hecha.** El aviso previo al vencimiento de una credencial —«te quedan quince días»— no está construido. No pertenece a `F4-CRE-001`…`004` y el propio contrato de trabajos lo asigna a `reminders`, que tampoco existe todavía. Se corrigió la descripción del trabajo `credential-expiry` en `INTEGRATIONS.md`, que prometía marcar credenciales vencidas: no marca nada, porque el vencimiento se deriva al leer. Quien abra la fase que construya `reminders` encontrará el sitio señalado.
 
 ---
 
@@ -106,7 +168,7 @@ Las decisiones de esta fase se registran en [`DECISIONS.md`](DECISIONS.md) a par
 | 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
 | 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
-| 4 | 2026-09-04 | — | `IN_PROGRESS` | — |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | Afiliación completa de punta a punta: registro maestro, solicitud con revisión humana y plazo, activación por cobro confirmado, vigencias y bajas, tres padrones, directorio interno y público opt-in, credenciales con QR verificable y panel personal. 21 defectos encontrados y cerrados dentro de la fase |
 | 5 a 12 | — | — | No iniciadas | — |
 
 ---

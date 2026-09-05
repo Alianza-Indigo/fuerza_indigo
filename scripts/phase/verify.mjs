@@ -2086,6 +2086,46 @@ const CHECKS = [
         : ok(['Toda consulta sobre una persona distingue mirar lo propio de mirar lo ajeno.']);
     },
   },
+
+  {
+    id: 'C-F4-04',
+    title: 'Fase 4: ninguna pantalla usa un token de color que no existe',
+    phases: [4],
+    run() {
+      // Un `var(--color-que-no-existe)` **no falla**: la propiedad se queda sin
+      // valor y el navegador hereda lo que hubiera. Dos pantallas pedían
+      // `--color-on-accent`, que nunca se declaró, y el texto de su botón
+      // principal salía en tinta oscura sobre el índigo del acento: contraste
+      // insuficiente en el llamado a la acción más importante de la pantalla
+      // (defecto `D-F4-021`).
+      //
+      // No lo ven los tipos, ni el linter, ni ninguna prueba de dominio. Lo vio
+      // la suite de accesibilidad, que llegó tarde: este control lo caza antes,
+      // y sin necesidad de levantar un navegador.
+      const css = read('app/globals.css') ?? '';
+      if (css === '') return fail(['No se encuentra la hoja de estilos con los tokens.']);
+
+      const declarados = new Set();
+      for (const match of css.matchAll(/(--[\w-]+)\s*:/g)) declarados.add(match[1]);
+
+      const problems = [];
+      const archivos = walk().filter((file) => /^(app|src)\//.test(file) && /\.tsx?$/.test(file));
+
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+        for (const match of contenido.matchAll(/var\((--color-[\w-]+)\)/g)) {
+          const token = match[1];
+          if (!declarados.has(token)) {
+            problems.push(`${file} usa ${token}, que no está declarado: el color se hereda en silencio.`);
+          }
+        }
+      }
+
+      return problems.length
+        ? fail([...new Set(problems)])
+        : ok(['Todo token de color que una pantalla pide está declarado en la hoja de estilos.']);
+    },
+  },
 ];
 
 

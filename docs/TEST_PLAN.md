@@ -90,6 +90,21 @@ Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y
 
 ---
 
+## 4.1 Dónde vive hoy cada flujo de la Fase 4
+
+Un flujo E2E global es el recorrido completo con navegador; lo que sigue dice **qué parte de cada uno ya está probada y con qué**, para que nadie lo dé por cubierto de más ni de menos.
+
+| Flujo | Qué está probado hoy | Con qué |
+|---|---|---|
+| `E2E-01` | El ciclo entero de dominio: solicitud, revisión, aclaración con plazo, resolución fundada, cobro confirmado por webhook, activación, emisión de credencial y verificación pública del QR. Los tres asertos del flujo | `tests/integration/fase4-criterios.test.ts`, `membership-applications`, `application-review`, `membership-lifecycle`, `credentials`. En navegador, el recorrido guiado de los bloques E, F e I |
+| `E2E-02` | Que la calidad honoraria no obtenga voto **por ninguna vía**: comprobación de la base, padrón sindical y catálogo de permisos de su rol. La credencial honoraria tiene diseño propio, probado por etiqueta, franja y símbolo | `fase4-criterios`, `rosters`, `tests/unit/credentials/design.test.ts`. `VoteEligibility` es de la Fase 5: el aserto que la nombra se completa allá |
+| `E2E-03` | Alta protegida sin membresía, sin solicitud y sin cobro; privacidad reforzada; ausencia del padrón que se remite a la autoridad | `fase4-criterios`, `beneficiaries`, `rosters` |
+| `E2E-06` | Ausencia por omisión, publicación de solo los campos autorizados, retiro que deja de responder e invalida la caché, y señal de no indexación | `directory`, y el recorrido guiado del bloque H en navegador |
+
+Los recorridos con navegador de esta fase se hicieron guiados, paso a paso, sobre la base de desarrollo. Las suites automatizadas de `tests/e2e` y `tests/a11y` cubren las rutas públicas y las pantallas con sesión en los dos perfiles de pantalla; convertir los cuatro flujos completos en especificaciones permanentes es trabajo de la Fase 12, que el PRD §22.2 contrata como condición de liberación.
+
+---
+
 ## 5. Pruebas de autorización negativas
 
 Las trece pruebas negativas obligatorias están enumeradas en [`PERMISSIONS.md`](PERMISSIONS.md) §9 y las catorce amenazas con su prueba y fase propietaria en [`SECURITY.md`](SECURITY.md) §8. Ambas listas son condición de cierre de sus fases: `phase:verify` las exige y la revisión de la puerta universal las verifica.

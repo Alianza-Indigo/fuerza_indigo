@@ -107,7 +107,7 @@ export default async function SolicitarPage({
                     <p className="mt-4">
                       <Link
                         href={`/mi/afiliacion/solicitar?calidad=${fila.id}`}
-                        className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-5 font-medium text-[var(--color-on-accent)]"
+                        className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-5 font-medium text-[var(--color-ink-inverse)]"
                       >
                         Empezar esta solicitud
                       </Link>

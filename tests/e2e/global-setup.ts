@@ -1,11 +1,12 @@
 import { Client } from 'pg';
 
 import { loadLocalEnv } from '@/platform/config/local-env';
+import { prepararCuentas } from './cuentas';
 
 /**
  * Preparación única de las pruebas de extremo a extremo.
  *
- * Hace dos cosas, y las dos existen por una razón concreta:
+ * Hace tres cosas, y las tres existen por una razón concreta:
  *
  * 1. **Deja la entrada pública en cero.** El formulario corta el envío en serie
  *    desde un mismo origen, y en estas pruebas todos los envíos vienen del
@@ -14,7 +15,13 @@ import { loadLocalEnv } from '@/platform/config/local-env';
  *    desactivarlo sería quitar una protección real para que las pruebas
  *    pasaran; borrar lo que ellas mismas escribieron no quita nada.
  *
- * 2. **Comprueba que el aviso de privacidad esté publicado**, y si no lo está
+ * 2. **Prepara las cuentas de las pantallas con sesión.** La Fase 4 construye
+ *    casi todo detrás de una sesión, y la puerta universal exige validar la
+ *    accesibilidad y las dos anchuras de pantalla: sin cuentas, esa validación
+ *    dejaría fuera la mayor parte de la fase. La contraseña se pasa a las
+ *    pruebas por `E2E_PASSWORD`, nunca por un archivo del repositorio.
+ *
+ * 3. **Comprueba que el aviso de privacidad esté publicado**, y si no lo está
  *    lo dice con todas sus letras en vez de dejar que cinco pruebas fallen con
  *    un mensaje que no explica nada. Publicarlo es un acto de la organización y
  *    la semilla lo deja en borrador a propósito (ADR-0045), así que en una
@@ -51,4 +58,11 @@ export default async function globalSetup(): Promise<void> {
   } finally {
     await client.end();
   }
+
+  const cuentas = await prepararCuentas(connectionString);
+  // Se comparte por el entorno del proceso: las pruebas corren en el mismo, y
+  // así la contraseña no toca el disco ni el repositorio.
+  process.env['E2E_PASSWORD'] = cuentas.password;
+  process.env['E2E_EMAIL_PERSONA'] = cuentas.persona;
+  process.env['E2E_EMAIL_SECRETARIA'] = cuentas.secretaria;
 }

@@ -48,6 +48,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.application.create_own',
       'membership.application.read_own',
       'membership.record.read_own',
+      // Mirar lo propio no es un privilegio de la membresía (defecto
+      // `D-F4-017`). Quien todavía no tiene credencial merece leer «todavía no
+      // tienes credencial, se emite al activarse tu membresía», no «no tienes
+      // autorización», que dice que la organización le niega algo suyo.
+      'credentialing.credential.read_own',
       'membership.beneficiary.create_own',
       'membership.relationship.read_own',
       'membership.relationship.manage_own',

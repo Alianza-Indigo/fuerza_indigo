@@ -363,6 +363,12 @@ Esto es deliberado y no pasa por `assignRole`. Ese caso de uso modela un acto de
 
 El rol se retira cuando ya no queda ninguna membresía viva de esa calidad. Una membresía **suspendida cuenta como viva**: suspender es una pausa, no una salida (ADR-0083).
 
+### 7.2 Las facultades sobre lo propio no son de un rango
+
+Toda persona con cuenta que pueda llegar a una pantalla del portal personal tiene la facultad que esa pantalla exige sobre **lo suyo**. `APPLICANT` incluye `consent.grant_own`, `consent.revoke_own` y `credentialing.credential.read_own` aunque todavía no tenga membresía: quien solicita merece leer «todavía no tienes credencial, se emite al activarse tu membresía» y no «no tienes autorización», que describe una decisión de la organización sobre esa persona en vez de un hecho del trámite (ADR-0094).
+
+Y el portal **filtra sus secciones por la facultad que las abre**, igual que el área de gestión: una pestaña que lleva a una denegación hace perder el tiempo y anuncia algo que no corresponde. La lista vive en `app/(portal)/mi/secciones.ts`, con `permiso: null` para lo que se tiene por tener cuenta —mirar y cerrar las sesiones propias—.
+
 ---
 
 ## 8. Superadmin (PRD §4.4)

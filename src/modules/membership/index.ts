@@ -152,3 +152,22 @@ export {
   type WithdrawDirectoryInput,
   type ExportDirectoryInput,
 } from './application/directory';
+export {
+  issueCredential,
+  revokeCredential,
+  replaceCredential,
+  verifyCredential,
+  personCredentials,
+  credentialForDownload,
+  credentialRegistry,
+  verificationSummary,
+  issueCredentialSchema,
+  revokeCredentialSchema,
+  replaceCredentialSchema,
+  type IssueCredentialInput,
+  type RevokeCredentialInput,
+  type ReplaceCredentialInput,
+  type CredentialRow,
+  type CredentialFilters,
+  type VerificationResult,
+} from './application/credentials';

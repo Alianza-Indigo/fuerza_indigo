@@ -9,6 +9,7 @@ import { withReason, type ActorContext } from '@/platform/kernel/actor-context';
 import { newPublicId } from '@/platform/kernel/ids';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Registro maestro de persona (PRD §3.1, F4-AFI-001).
@@ -159,17 +160,6 @@ function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
   for (const issue of error.issues) (salida[issue.path.join('.') || 'form'] ??= []).push(issue.message);
   return salida;
-}
-
-function nombreCompleto(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
 }
 
 interface CriteriosDeBusqueda {

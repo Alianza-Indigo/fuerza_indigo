@@ -245,12 +245,12 @@ Las rutas viven bajo `/api/v1/cron/*` y exigen `CRON_SECRET` comparado en tiempo
 
 | Trabajo | Frecuencia prevista | Qué hace |
 |---|---|---|
-| `reminders` | Cada hora | Recordatorios de citas, plazos de aclaración, cuotas y vencimientos |
+| `reminders` | Cada hora | Recordatorios de citas, plazos de aclaración, cuotas y vencimientos —incluido el aviso previo al vencimiento de una credencial— |
 | `renewals` | Diaria | Renovaciones de membresías, herramientas y certificados CENI |
 | `membership-expiry` | Diaria | Marca vencidas las membresías cuya vigencia terminó, con motivo `EXPIRY`. No da de baja a nadie: renovar la devuelve |
 | `payment-reconciliation` | Diaria | Cotejo del libro auxiliar contra cada cuenta de Stripe |
 | `webhook-retry` | Cada 15 minutos | Reprocesa eventos persistidos con estado `FAILED` |
-| `credential-expiry` | Diaria | Marca credenciales vencidas y notifica antes del vencimiento |
+| `credential-expiry` | Diaria | **No marca nada**: que una credencial esté vencida se deriva al leerla, de su vigencia y de la membresía que acredita (ADR-0092). Le queda avisar con antelación a quien está por quedarse sin credencial, y ese aviso vive con los demás recordatorios en `reminders` |
 | `role-expiry` | Diaria | Revoca asignaciones cuyo nombramiento concluyó |
 | `clarification-due` | Diaria | Recuerda, **una sola vez**, un plazo de aclaración vencido. No rechaza, no cierra y no resuelve: un plazo vencido hace visible una situación, no decide sobre nadie (ADR-0080) |
 | `retention` | Diaria | Aplica políticas de conservación respetando bloqueos legales |

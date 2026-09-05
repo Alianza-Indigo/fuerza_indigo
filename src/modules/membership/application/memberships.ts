@@ -11,6 +11,8 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { MembershipCategory, MembershipEndReason, MembershipStatus } from '@prisma-client/enums';
 import { openAuthorityFiling } from './rosters';
+import { emitirCredencialDeMembresia, revocarCredencialesDeMembresia } from './credentials';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Vida de una membresía: activación, vigencia, suspensión, baja y conversión
@@ -230,7 +232,20 @@ export async function crearMembresiaActiva(
       createdByActorId: actor.actorId,
       updatedByActorId: actor.actorId,
     },
-    select: { id: true, memberNumber: true },
+    select: { id: true, memberNumber: true, expiresAt: true },
+  });
+
+  // Y la credencial nace con la membresía (PRD §8.1 paso 13: «se activa la
+  // membresía y se emite credencial»). En la misma transacción, no en un
+  // trabajo posterior: de otro modo habría un rato en el que la persona es
+  // miembro y no puede demostrarlo, que es cuando más falta le hace.
+  await emitirCredencialDeMembresia(tx, actor, {
+    id: creada.id,
+    personId: solicitud.personId,
+    legalEntityId: solicitud.legalEntityId,
+    category: solicitud.category,
+    expiresAt: creada.expiresAt,
+    territorialUnitId: solicitud.territorialUnitId,
   });
 
   await tx.membershipStatusEvent.create({
@@ -718,6 +733,16 @@ export async function endMembership(
       exceptoMembershipId: fila.id,
     });
 
+    // Y la credencial deja de acreditar lo que ya no existe. El estado vigente
+    // lo diría solo, pero revocar deja asiento: un documento que deja de valer
+    // sin que conste el acto es un documento que nadie puede explicar después.
+    await revocarCredencialesDeMembresia(
+      tx,
+      actor,
+      fila,
+      `Terminó la membresía ${fila.memberNumber} que acreditaba: ${parsed.data.reason}`,
+    );
+
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.MEMBERSHIP_TERMINATED,
       objectKind: 'Membership',
@@ -804,6 +829,13 @@ export async function expireDueMemberships(
         exceptoMembershipId: fila.id,
       });
 
+      await revocarCredencialesDeMembresia(
+        tx,
+        actor,
+        fila,
+        `Venció el ${cuando.toISOString().slice(0, 10)} la membresía ${fila.memberNumber} que acreditaba.`,
+      );
+
       await recordAudit(tx, actor, {
         action: AUDIT_ACTIONS.MEMBERSHIP_EXPIRED,
         objectKind: 'Membership',
@@ -846,17 +878,6 @@ export interface MembershipRow {
     readonly reason: string;
     readonly occurredAt: Date;
   }[];
-}
-
-function nombre(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
 }
 
 const SELECCION = {
@@ -910,7 +931,7 @@ function aFila(fila: FilaCruda): MembershipRow {
     publicId: fila.publicId,
     memberNumber: fila.memberNumber,
     personId: fila.personId,
-    personName: nombre(fila.person),
+    personName: nombreCompleto(fila.person),
     category: fila.category,
     membershipType: fila.membershipType.name,
     legalEntity: fila.legalEntity.shortName,

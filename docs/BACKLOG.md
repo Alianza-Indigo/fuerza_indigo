@@ -198,7 +198,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-DAT-001 | Migrar las entidades de membresías, padrones, relaciones y credenciales | Hecho |
 | F4-AFI-001 | Implementar el registro maestro de persona con detección y resolución de duplicidad | Hecho |
 | F4-AFI-002 | Implementar la solicitud de agremiado con sus catorce pasos y el resumen inmutable | Hecho |
-| F4-AFI-003 | Implementar la afiliación honoraria con sus tres perfiles y su credencial diferenciada | En curso. Perfiles, solicitud y consentimientos hechos; la credencial diferenciada es F4-CRE-001 y la activación por cobro es F4-AFI-008 |
+| F4-AFI-003 | Implementar la afiliación honoraria con sus tres perfiles y su credencial diferenciada | Hecho. Perfiles, solicitud y consentimientos en el bloque D; la credencial honoraria tiene diseño propio —etiqueta, franja y símbolo distintos del sindical— y nace al activarse la membresía (F4-CRE-001) |
 | F4-AFI-004 | Implementar el alta de beneficiario protegido desde los siete orígenes previstos | Hecho |
 | F4-AFI-005 | Implementar las relaciones familiares y de cuidado con alcance, vigencia y consentimiento | Hecho |
 | F4-AFI-006 | Implementar la revisión humana, la solicitud de aclaración con plazo y la resolución fundada | Hecho |
@@ -212,10 +212,10 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 | F4-DIR-001 | Implementar el directorio interno con búsqueda, filtros y exportación auditada | Hecho |
 | F4-DIR-002 | Implementar las preferencias de publicación granulares y la publicación pública | Hecho |
 | F4-DIR-003 | Implementar el retiro del consentimiento con invalidación de caché y señal de no indexación | Hecho |
-| F4-CRE-001 | Implementar la emisión de credenciales con código opaco firmado y sus cuatro diseños | Pendiente |
-| F4-CRE-002 | Implementar la descarga digital e imprimible de la credencial | Pendiente |
-| F4-CRE-003 | Implementar el verificador público con lectura de estado vivo y registro agregado | Pendiente |
-| F4-CRE-004 | Implementar la revocación con efecto inmediato en el verificador | Pendiente |
+| F4-CRE-001 | Implementar la emisión de credenciales con código opaco firmado y sus cuatro diseños | Hecho. Código opaco firmado con llavero rotable, cuatro diseños diferenciados por etiqueta, franja y símbolo (ADR-0090, ADR-0093). Las de agremiado y honoraria nacen con la membresía; las de cargo y profesionales se emiten con motivo escrito |
+| F4-CRE-002 | Implementar la descarga digital e imprimible de la credencial | Hecho. SVG en tamaño de tarjeta, generado al pedirlo y nunca archivado (ADR-0091). La descarga deja asiento y se niega si la credencial ya no vale |
+| F4-CRE-003 | Implementar el verificador público con lectura de estado vivo y registro agregado | Hecho. Verificador público sin sesión, con los siete datos del PRD §7.4 y ninguno más. Registro agregado por hora, sin dirección ni identificador de quien escanea |
+| F4-CRE-004 | Implementar la revocación con efecto inmediato en el verificador | Hecho. El estado se deriva al leer, así que la revocación se ve en la consulta siguiente sin ningún trabajo de por medio (ADR-0092). Terminar o vencer la membresía revoca la credencial con asiento |
 | F4-UI-001 | Construir el panel personal con prioridades reales y sus secciones | Pendiente |
 | F4-QA-001 | Probar que una persona acumula calidades sin duplicarse | Pendiente |
 | F4-QA-002 | Probar que un afiliado honorario nunca obtiene voto ni computa para el quórum | Pendiente |

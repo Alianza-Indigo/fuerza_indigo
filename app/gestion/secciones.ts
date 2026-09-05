@@ -27,6 +27,7 @@ export const SECCIONES = [
     permiso: 'membership.roster.read',
   },
   { href: '/gestion/directorio', label: 'Directorio interno', permiso: 'directory.internal.read' },
+  { href: '/gestion/credenciales', label: 'Credenciales', permiso: 'credentialing.credential.read' },
   { href: '/gestion/consentimientos', label: 'Avisos y consentimientos', permiso: 'consent.version.manage' },
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },

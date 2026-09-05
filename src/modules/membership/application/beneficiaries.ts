@@ -10,6 +10,7 @@ import { newPublicId } from '@/platform/kernel/ids';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { BeneficiaryOrigin, BeneficiaryStatus, BeneficiaryUrgency } from '@prisma-client/enums';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Beneficiario protegido (PRD §3.4, §8.3; F4-AFI-004).
@@ -395,17 +396,6 @@ export interface BeneficiaryRow {
   readonly initialNeed: string | null;
 }
 
-function nombre(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
-}
-
 /**
  * El expediente de **una** atención, con la necesidad inicial incluida.
  *
@@ -483,7 +473,7 @@ export async function beneficiaryDetail(
     id: fila.id,
     publicId: fila.publicId,
     personId: fila.personId,
-    personName: nombre(fila.person),
+    personName: nombreCompleto(fila.person),
     legalEntity: fila.legalEntity.shortName,
     originKind: fila.originKind,
     urgencyLevel: fila.urgencyLevel,
@@ -491,7 +481,7 @@ export async function beneficiaryDetail(
     privacyLevel: fila.privacyLevel,
     territory: fila.territorialUnit?.name ?? null,
     hasDigitalAccount: fila.hasDigitalAccount,
-    responsiblePersonName: fila.responsiblePerson === null ? null : nombre(fila.responsiblePerson),
+    responsiblePersonName: fila.responsiblePerson === null ? null : nombreCompleto(fila.responsiblePerson),
     registeredAt: fila.createdAt,
     initialNeed: fila.initialNeed,
   });
@@ -550,7 +540,7 @@ export async function beneficiaryRegistry(
       id: fila.id,
       publicId: fila.publicId,
       personId: fila.personId,
-      personName: nombre(fila.person),
+      personName: nombreCompleto(fila.person),
       legalEntity: fila.legalEntity.shortName,
       originKind: fila.originKind,
       urgencyLevel: fila.urgencyLevel,
@@ -558,7 +548,7 @@ export async function beneficiaryRegistry(
       privacyLevel: fila.privacyLevel,
       territory: fila.territorialUnit?.name ?? null,
       hasDigitalAccount: fila.hasDigitalAccount,
-      responsiblePersonName: fila.responsiblePerson === null ? null : nombre(fila.responsiblePerson),
+      responsiblePersonName: fila.responsiblePerson === null ? null : nombreCompleto(fila.responsiblePerson),
       registeredAt: fila.createdAt,
       initialNeed: fila.privacyLevel === 'REINFORCED' ? null : fila.initialNeed,
     })),

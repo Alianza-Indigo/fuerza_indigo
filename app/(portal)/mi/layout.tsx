@@ -7,6 +7,7 @@ import { can } from '@/platform/authz/policy';
 import { SubmitButton } from '@/design-system/primitives';
 import { logoutAction } from '../../(auth)/acceso/actions';
 import { SECCIONES } from '../../gestion/secciones';
+import { SECCIONES_DEL_PORTAL } from './secciones';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,19 +20,25 @@ export const dynamic = 'force-dynamic';
  * lista que dibuja esa área: a quien no tiene facultades no se le enseña una
  * puerta cerrada, se le ahorra la puerta.
  */
-const SECCIONES_DEL_PORTAL = [
-  { href: '/mi/afiliacion', label: 'Mi afiliación' },
-  { href: '/mi/directorio', label: 'Mi ficha pública' },
-  { href: '/mi/pagos', label: 'Mis pagos' },
-  { href: '/mi/seguridad', label: 'Seguridad y sesiones' },
-] as const;
-
 export default async function PortalLayout({ children }: { children: ReactNode }) {
   const actor = await currentActor();
   if (!isAuthenticated(actor)) redirect('/acceso');
 
   const sondeo = { ...actor, reason: 'acceso al área de gestión' };
   const alcanzaGestion = SECCIONES.some((seccion) => can(sondeo, seccion.permiso, { kind: 'Gestion' }).allowed);
+
+  // Las secciones del portal se filtran igual que las de gestión. Las
+  // facultades sobre lo propio exigen «asignación viva» sobre el recurso, y
+  // aquí el recurso es la persona misma: por eso el sondeo la afirma. No es un
+  // atajo —cada pantalla vuelve a decidir con el titular real delante—, es la
+  // pregunta correcta: «¿esta persona podría abrir esto sobre lo suyo?».
+  const seccionesVisibles = SECCIONES_DEL_PORTAL.filter(
+    (seccion) =>
+      seccion.permiso === null ||
+      can({ ...actor, reason: 'navegación del portal personal' }, seccion.permiso, { kind: 'Portal' }, {
+        hasLiveAssignment: () => true,
+      }).allowed,
+  );
 
   return (
     <div className="min-h-dvh">
@@ -54,7 +61,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
         </div>
         <nav aria-label="Secciones de mi cuenta" className="mx-auto w-full max-w-5xl overflow-x-auto px-4 sm:px-6">
           <ul className="flex gap-1 pb-2">
-            {SECCIONES_DEL_PORTAL.map((seccion) => (
+            {seccionesVisibles.map((seccion) => (
               <li key={seccion.href}>
                 <Link
                   href={seccion.href}

@@ -10,6 +10,7 @@ import { newPublicId } from '@/platform/kernel/ids';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { MembershipCategory, MembershipStatus } from '@prisma-client/enums';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Padrones separados (PRD §7.1; F4-PAD-001, F4-PAD-002, F4-PAD-004).
@@ -48,17 +49,6 @@ export interface RosterFilters {
   readonly status?: MembershipStatus;
   readonly territorialUnitId?: string;
   readonly query?: string;
-}
-
-function nombre(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
 }
 
 const SELECCION = {
@@ -113,7 +103,7 @@ function aFila(fila: FilaCruda): RosterRow {
     membershipId: fila.id,
     memberNumber: fila.memberNumber,
     personId: fila.personId,
-    personName: nombre(fila.person),
+    personName: nombreCompleto(fila.person),
     membershipType: fila.membershipType.name,
     status: fila.status,
     startedAt: fila.startedAt,
@@ -475,7 +465,7 @@ export async function authorityFilings(
     filas.map((fila) => ({
       id: fila.id,
       publicId: fila.publicId,
-      personName: nombre(fila.person),
+      personName: nombreCompleto(fila.person),
       memberNumber: fila.membership.memberNumber,
       kind: fila.kind,
       status: fila.status,

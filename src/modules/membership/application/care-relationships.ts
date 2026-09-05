@@ -10,6 +10,7 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { hasLiveConsent } from '@/platform/consent';
 import type { CareRelationshipKind } from '@prisma-client/enums';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Relaciones familiares y de cuidado (PRD §3.5; F4-AFI-005).
@@ -282,17 +283,6 @@ export interface CareRelationshipRow {
   readonly live: boolean;
 }
 
-function nombre(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
-}
-
 const PERSONA = {
   select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true },
 } as const;
@@ -342,9 +332,9 @@ export async function careRelationships(
       id: fila.id,
       kind: fila.kind,
       fromPersonId: fila.fromPersonId,
-      fromPersonName: nombre(fila.fromPerson),
+      fromPersonName: nombreCompleto(fila.fromPerson),
       toPersonId: fila.toPersonId,
-      toPersonName: nombre(fila.toPerson),
+      toPersonName: nombreCompleto(fila.toPerson),
       declaredScope: alcanceDeclarado(fila.scope),
       startsAt: fila.startsAt,
       endsAt: fila.endsAt,

@@ -4,6 +4,7 @@ import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import type { ApplicationStatus, MembershipCategory } from '@prisma-client/enums';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Consultas de solicitudes (PRD §8.1).
@@ -30,17 +31,6 @@ export interface ApplicationRow {
   readonly submittedAt: Date | null;
   readonly clarificationDueAt: Date | null;
   readonly documents: { readonly total: number; readonly pending: number; readonly rejected: number };
-}
-
-function nombre(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
 }
 
 const SELECCION = {
@@ -85,7 +75,7 @@ function aFila(fila: FilaCruda): ApplicationRow {
     category: fila.category,
     membershipType: fila.membershipType.name,
     legalEntity: fila.legalEntity.shortName,
-    personName: nombre(fila.person),
+    personName: nombreCompleto(fila.person),
     personPublicId: fila.person.publicId,
     territory: fila.territorialUnit?.name ?? null,
     submittedAt: fila.submittedAt,

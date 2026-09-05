@@ -89,6 +89,13 @@ export const SITE_NAV: readonly NavSection[] = [
         module: 'sindicato',
         dataFrom: 4,
       },
+      {
+        href: '/verificar',
+        label: 'Verificar una credencial',
+        description: 'Comprueba si una credencial de Fuerza Índigo está vigente en este momento.',
+        module: 'sindicato',
+        dataFrom: 4,
+      },
     ],
   },
   {

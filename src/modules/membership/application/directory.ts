@@ -9,6 +9,7 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { MembershipCategory, MembershipStatus } from '@prisma-client/enums';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Directorio interno, publicación pública y retiro del consentimiento
@@ -65,17 +66,6 @@ export interface DirectoryFilters {
   readonly availability?: string;
   /** Solo quienes tienen credencial vigente hoy. */
   readonly withValidCredential?: boolean;
-}
-
-function nombre(persona: {
-  givenName: string;
-  middleName: string | null;
-  familyName: string;
-  secondFamilyName: string | null;
-}): string {
-  return [persona.givenName, persona.middleName, persona.familyName, persona.secondFamilyName]
-    .filter((parte): parte is string => parte !== null && parte !== '')
-    .join(' ');
 }
 
 function habilidades(valor: unknown): string[] {
@@ -195,7 +185,7 @@ export async function internalDirectory(
   return ok(
     filas.map((fila) => ({
       personId: fila.personId,
-      personName: nombre(fila.person),
+      personName: nombreCompleto(fila.person),
       memberNumber: fila.memberNumber,
       category: fila.category,
       membershipStatus: fila.status,
@@ -592,11 +582,11 @@ export async function publishDirectoryEntry(
     },
   });
 
-  const nombreCompleto = nombre(persona);
+  const titular = nombreCompleto(persona);
   const perfil = persona.professionalProfile;
 
   const campos: Record<string, unknown> = {
-    nombre: nombreCompleto,
+    nombre: titular,
     territorio: persona.territorialUnit?.name ?? null,
   };
   if (preferencia.visibility === 'PROFESSIONAL_PROFILE' && perfil !== null) {
@@ -612,7 +602,7 @@ export async function publishDirectoryEntry(
   }
   campos['muestraFoto'] = preferencia.showPhoto;
 
-  const base = aDireccion(nombreCompleto) || 'persona';
+  const base = aDireccion(titular) || 'persona';
   const ocupadas = await db().directoryPublication.findMany({
     where: { slug: { startsWith: base } },
     select: { slug: true },

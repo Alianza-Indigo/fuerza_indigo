@@ -1142,3 +1142,69 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Por qué es más que estética.** Un acuse que solo existe en la respuesta de la acción desaparece con una recarga, con un `revalidatePath`, o con volver mañana. Quien retiró su ficha necesita poder comprobar **que la retiró**, no solo que ya no aparece: no aparecer es también lo que le pasa a quien nunca autorizó nada, y las dos situaciones son distintas para quien las vive. Derivarlo del hecho hace que la respuesta esté ahí cada vez que se pregunte.
 
 **Y por eso el caso de uso devuelve la fecha.** `myDirectoryState` informa de la última retirada cuando ya no hay ficha viva. No es un dato para adornar: es la diferencia entre «no apareces» y «retiramos tu autorización el día tal, y se avisó a los buscadores».
+
+---
+
+## ADR-0090 · La codificación del QR no se escribe a mano; el dibujo sí
+
+**Contexto.** El PRD §7.4 exige un código QR firmado en cada credencial. Un QR no es un dibujo: es la norma ISO/IEC 18004, con corrección de errores Reed-Solomon, ocho máscaras entre las que hay que elegir por penalización y patrones de alineación cuya posición depende de la versión.
+
+**Decisión.** La **codificación** la hace `qrcode-generator` —sin dependencias, MIT, con tipos propios—. El **dibujo** lo componemos aquí, a partir de la matriz de módulos que la biblioteca devuelve.
+
+**Por qué no se escribe la codificación.** Una implementación propia que se equivoque produce códigos que ningún lector acepta, y eso **no lo descubre ninguna prueba**: para comprobarlo haría falta un decodificador, que es el mismo problema otra vez. Lo descubriría una persona plantada en una oficina con el teléfono en la mano y una credencial que no se deja leer. El PRD §0.1 pide evitar dependencias innecesarias; esta no lo es, y es la única de todo el bloque.
+
+**Por qué el dibujo sí es nuestro.** Con el SVG en nuestras manos, el código lleva `title` y `aria-label` —un lector de pantalla dice qué es en vez de anunciar una imagen sin nombre—, la zona tranquila es la que la norma exige, los colores salen de los tokens del sistema y `shape-rendering="crispEdges"` evita que el suavizado emborrone los módulos al imprimir, que es la causa más común de un QR impreso ilegible.
+
+---
+
+## ADR-0091 · La credencial se dibuja en SVG y se compone al pedirla
+
+**Contexto.** El PRD §7.4 exige que las credenciales «podrán descargarse en formato digital e imprimible».
+
+**Decisión.** Se entrega un **SVG** en tamaño ID-1 —85,6 × 54 mm, el de una tarjeta bancaria—, generado en el momento de la descarga. No se archiva ninguna copia.
+
+**Por qué SVG y no PDF.** Imprime igual de bien a cualquier tamaño, lo abre cualquier navegador sin instalar nada, pesa unos kilobytes, y no obliga a añadir una biblioteca de composición de documentos para dibujar seis líneas de texto y un cuadrado de módulos. Un PDF aquí sería una dependencia grande al servicio de un requisito que el formato que ya sabemos generar cumple entero.
+
+**Por qué no se archiva el dibujo.** La columna `renderedFileId` existe y se queda vacía a propósito. Un archivo guardado envejece: conserva el diseño de hace dos años y una vigencia que ya pasó, y alguien acaba enseñándolo. Lo que hay que poder demostrar es el **código** —está guardado, firmado y es inmutable por privilegios de columna—, no la imagen. El dibujo se deriva del estado actual cada vez, y por eso una credencial revocada sencillamente no se dibuja.
+
+**El texto no se sale nunca de la tarjeta.** Un SVG no ajusta ni recorta: lo que no cabe se sale por el borde y desaparece al imprimir. Cada línea que puede crecer —el nombre, el territorio, la dirección del verificador— se comprime con `textLength` cuando hace falta, y solo cuando hace falta (defecto `D-F4-018`).
+
+---
+
+## ADR-0092 · La credencial no tiene vida propia: acredita una membresía
+
+**Contexto.** El PRD §24 Fase 4 contrata que «una credencial revocada se refleja inmediatamente en el verificador», y el §7.4 que el verificador distinga vigencia, suspensión, vencimiento y revocación.
+
+**Decisión.** El estado que se enseña **se deriva al leer**, no se guarda. La columna `status` solo recoge lo que le pasa al documento en sí —que se revoque, que se reponga—; que esté suspendida o vencida sale de la membresía que acredita y del calendario, en el instante de la consulta.
+
+**Por qué no lo escribe un trabajo nocturno.** Un estado guardado abre una ventana —minutos u horas— en la que la pantalla pública dice que vale algo que ya no vale. Esa ventana es exactamente lo que el criterio de aceptación prohíbe, y no la delataría ninguna prueba de dominio: la base diría «suspendida» mientras el verificador sigue diciendo «vigente». El control `C-F4-02` impide la recaída: ninguna ruta puede escribir `SUSPENDED` ni `EXPIRED` en una credencial.
+
+**Suspender no toca la credencial; terminar sí.** Una suspensión es una pausa reversible: derivarla evita tener que acordarse de deshacerla al levantarla. El fin de la membresía, en cambio, **revoca** la credencial dentro de la misma transacción. El estado vigente ya lo diría, pero revocar deja **asiento**: quién, cuándo y por qué. Un documento que deja de valer sin que conste el acto es un documento que nadie puede explicar después.
+
+**Y por eso el verificador no se cachea.** El control `C-F4-01` comprueba que toda ruta que responde una verificación se declare dinámica: una copia guardada convertiría «efecto inmediato» en «efecto cuando expire la caché».
+
+---
+
+## ADR-0093 · La firma del código precede a la base de datos, no la sustituye
+
+**Contexto.** El PRD §7.4 pide que el QR contenga «un identificador opaco y firmado, no datos personales».
+
+**Decisión.** El QR lleva `código.clave.firma`. La firma se comprueba **antes** de tocar la base: un código inventado se descarta sin consultar nada. Lo que decide si la credencial vale sigue siendo su estado, leído en vivo.
+
+**Qué protege la firma y qué no.** Protege contra fabricar un QR con un código plausible y contra convertir cada intento de adivinar en una consulta a la base. **No** protege contra alguien que lea un código real de una credencial real: para eso está el verificador, que es justamente para lo que existe.
+
+**Por eso se acepta un código tecleado sin firma.** El alfabeto se eligió para poder dictarlo por teléfono —sin I, L, O ni U— y va impreso en bloques de cinco. En una oficina territorial sin cámara, teclearlo es la única puerta que hay. Negarse a comprobarlo convertiría una medida de seguridad en una barrera de accesibilidad sin ganar nada: el estado guardado es igual de autoritativo por los dos caminos.
+
+**Un código falso y uno inexistente reciben la misma respuesta.** Distinguirlos le diría a quien prueba códigos si acertó el formato, que es la mitad del trabajo.
+
+---
+
+## ADR-0094 · Mirar lo propio no es un privilegio del rango
+
+**Contexto.** Es la segunda vez que aparece la misma forma. En `D-F4-009`, ninguna persona podía consentir sobre sus propios datos porque la facultad vivía solo en el personal de atención. En `D-F4-017`, quien todavía no tenía membresía abría «Mi credencial» y leía **«No tienes autorización para realizar esta acción»**, cuando la verdad era que aún no tenía ninguna credencial que enseñar.
+
+**Decisión.** Las facultades `_own` acompañan a **toda persona con cuenta** que pueda llegar a la pantalla, no solo a quien ya alcanzó la calidad. `APPLICANT` recibe `credentialing.credential.read_own`: quien solicita merece leer «todavía no tienes credencial, se emite al activarse tu membresía», que le dice qué esperar, en vez de una negativa que suena a castigo.
+
+**Y la navegación deja de ofrecer puertas cerradas.** El portal personal filtra sus secciones por la facultad que las abre, igual que hace el área de gestión desde la Fase 1. Una pestaña que lleva a una denegación le hace perder el tiempo a quien la pulsa y le dice que existe algo que no le corresponde. `permiso: null` marca lo que se tiene por tener cuenta —mirar y cerrar las sesiones propias—, que no lo otorga ningún rol.
+
+**La diferencia entre las dos negativas importa.** «No tienes autorización» describe una decisión de la organización sobre esa persona. «Todavía no tienes credencial» describe un hecho del trámite. Confundirlas hace que la plataforma parezca hostil justo con quien acaba de llegar.

@@ -1917,6 +1917,95 @@ const CHECKS = [
         : ok(['Los cinco estados se recorren enteros y se comprueba lo que la persona ve de cada uno.']);
     },
   },
+
+  {
+    id: 'C-F4-01',
+    title: 'Fase 4: el verificador de credenciales no se sirve de una copia',
+    phases: [4],
+    run() {
+      // El PRD §24 Fase 4 contrata que «una credencial revocada se refleja
+      // inmediatamente en el verificador». Una página cacheada convierte
+      // «inmediatamente» en «cuando expire la caché», y eso no lo delata
+      // ninguna prueba de dominio: la base diría que está revocada mientras la
+      // pantalla pública sigue enseñándola como buena.
+      // Se miran las rutas que **responden** una verificación, no todas las del
+      // área: el formulario de entrada no afirma nada sobre ninguna credencial,
+      // y exigirle la declaración sería ruido que enseña a ignorar el control.
+      // Buscar por la llamada, y no por la carpeta, además cubre cualquier ruta
+      // que alguien añada mañana en otro sitio.
+      const problems = [];
+      const archivos = walk().filter(
+        (file) =>
+          /^app\//.test(file) &&
+          /\/(page|route)\.tsx?$/.test(file) &&
+          /\bverifyCredential\s*\(/.test(read(file) ?? ''),
+      );
+
+      if (archivos.length === 0) {
+        return fail(['Ninguna ruta responde una verificación: el verificador del PRD §7.4 no existe.']);
+      }
+
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+
+        if (!/export const dynamic\s*=\s*'force-dynamic'/.test(contenido)) {
+          problems.push(`${file} no se declara dinámica: su respuesta se puede servir de una copia.`);
+        }
+        const revalidate = /export const revalidate\s*=\s*(\d+)/.exec(contenido);
+        if (revalidate !== null && Number(revalidate[1]) > 0) {
+          problems.push(`${file} declara revalidate=${revalidate[1]}: la revocación tardaría eso en verse.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['El verificador se lee en vivo: ninguna de sus rutas admite copia cacheada.']);
+    },
+  },
+
+  {
+    id: 'C-F4-02',
+    title: 'Fase 4: los estados derivados de una credencial no se guardan',
+    phases: [4],
+    run() {
+      // Una credencial no tiene vida propia: acredita una membresía. Que esté
+      // suspendida o vencida se **deriva** al leerla —de la membresía y del
+      // calendario— y nunca se escribe. Escribirlo crearía una segunda verdad
+      // que el verificador ignora, y la pantalla de gestión y la pública
+      // pasarían a decir cosas distintas de la misma credencial.
+      const problems = [];
+      const archivos = walk().filter(
+        (file) => /^(src|app)\//.test(file) && /\.tsx?$/.test(file) && !/^src\/generated\//.test(file),
+      );
+
+      for (const file of archivos) {
+        const contenido = read(file) ?? '';
+        for (const match of contenido.matchAll(/\bmemberCredential\.(create|update|updateMany|upsert)\s*\(/g)) {
+          const bloque = contenido.slice(match.index, match.index + 900);
+          const derivado = /\bstatus:\s*'(SUSPENDED|EXPIRED)'/.exec(bloque);
+          if (derivado !== null) {
+            problems.push(
+              `${file} escribe status: '${derivado[1]}' en una credencial: ese estado se deriva al leerla, no se guarda.`,
+            );
+          }
+        }
+      }
+
+      // Y la derivación tiene que existir y usarse: si nadie llama a
+      // `estadoVigente`, el estado que se enseña vuelve a ser el de la columna.
+      const modulo = read('src/modules/membership/application/credentials.ts') ?? '';
+      if (!/export function estadoVigente\s*\(/.test(modulo)) {
+        problems.push('No existe `estadoVigente`: el estado que se enseña saldría de la columna.');
+      }
+      if ((modulo.match(/estadoVigente\s*\(/g) ?? []).length < 3) {
+        problems.push('`estadoVigente` apenas se usa: alguna ruta de lectura está leyendo la columna.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Suspensión y vencimiento se derivan al leer la credencial; ninguna ruta los escribe.']);
+    },
+  },
 ];
 
 

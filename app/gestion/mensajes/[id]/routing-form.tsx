@@ -1,7 +1,16 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { ErrorNotice, Notice, RadioGroup, SubmitButton, SuccessNotice, TextArea } from '@/design-system/primitives';
+import {
+  ErrorNotice,
+  Notice,
+  RadioGroup,
+  Select,
+  SubmitButton,
+  SuccessNotice,
+  TextArea,
+} from '@/design-system/primitives';
+import type { OpcionDeTerritorio } from '@/modules/support';
 import type { LegalEntityCode, SupportUrgency } from '@prisma-client/enums';
 import { confirmRoutingAction, type RequestState } from '../actions';
 
@@ -27,6 +36,8 @@ const NOMBRE: Record<LegalEntityCode, string> = {
 export function RoutingForm({
   requestId,
   propuesta,
+  territoryHint,
+  territorios,
 }: {
   requestId: string;
   propuesta: {
@@ -35,6 +46,9 @@ export function RoutingForm({
     motivo: string;
     alternativa: LegalEntityCode | null;
   } | null;
+  /** Lo que la persona escribió sobre dónde vive. Se enseña al lado del desplegable. */
+  territoryHint: string | null;
+  territorios: readonly OpcionDeTerritorio[];
 }) {
   const [estado, accion, pendiente] = useActionState(confirmRoutingAction, INICIAL);
   const [elegida, setElegida] = useState<string>(propuesta?.entidad ?? 'FUERZA_INDIGO');
@@ -101,6 +115,24 @@ export function RoutingForm({
         ]}
         value={propuesta?.urgencia ?? 'ROUTINE'}
         {...(errores['urgency'] === undefined ? {} : { errors: errores['urgency'] })}
+      />
+
+      <Select
+        name="territorialUnitId"
+        label="¿De qué territorio es el asunto?"
+        hint={
+          territoryHint === null
+            ? 'Determina qué delegación puede llevarlo. Si no lo sabes todavía, déjalo en blanco.'
+            : `Quien escribió dijo: «${territoryHint}». Elige la unidad que le corresponde.`
+        }
+        options={[
+          { value: '', label: 'Todavía no se sabe' },
+          ...territorios.map((territorio) => ({
+            value: territorio.value,
+            label: `${'\u00a0\u00a0'.repeat(territorio.nivel)}${territorio.label}`,
+          })),
+        ]}
+        {...(errores['territorialUnitId'] === undefined ? {} : { errors: errores['territorialUnitId'] })}
       />
 
       <TextArea

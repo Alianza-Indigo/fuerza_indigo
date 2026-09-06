@@ -11,7 +11,9 @@ export {
 export {
   confirmRouting,
   confirmRoutingSchema,
+  territoriesForRouting,
   type ConfirmRoutingInput,
+  type OpcionDeTerritorio,
 } from './application/routing';
 export {
   requestList,

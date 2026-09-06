@@ -10,9 +10,8 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import type { CaseMembershipQuality, CaseParticipantRole } from '@prisma-client/enums';
-import { compartimentoDe } from '../domain/access';
 import { EXIGEN_REPRESENTACION, VEN_EL_EXPEDIENTE } from '../domain/participation';
-import { estaAsignada } from './assignment';
+import { CAMPOS_PARA_DECIDIR, estaAsignada, recursoDelExpediente } from './assignment';
 
 /**
  * Participantes de un expediente y su calidad (PRD §10.2).
@@ -129,7 +128,7 @@ export async function addParticipant(
 
   const expediente = await db().case.findUnique({
     where: { id: data.caseId },
-    select: { id: true, folio: true, domain: true, legalEntityId: true, status: true },
+    select: { ...CAMPOS_PARA_DECIDIR, folio: true, status: true },
   });
   if (expediente === null) return fail(errors.notFound('Ese expediente no existe.'));
   if (expediente.status === 'CLOSED') {
@@ -141,12 +140,7 @@ export async function addParticipant(
   const decision = can(
     contexto,
     'cases.participant.manage',
-    {
-      kind: 'CaseParticipant',
-      id: expediente.id,
-      legalEntityId: expediente.legalEntityId,
-      compartment: compartimentoDe(expediente.domain),
-    },
+    { ...recursoDelExpediente(expediente), kind: 'CaseParticipant' },
     { hasLiveAssignment: () => asignada },
   );
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
@@ -266,7 +260,7 @@ export async function removeParticipant(
       id: true,
       role: true,
       removedAt: true,
-      case: { select: { id: true, folio: true, domain: true, legalEntityId: true } },
+      case: { select: { ...CAMPOS_PARA_DECIDIR, folio: true } },
     },
   });
   if (participante === null) return fail(errors.notFound('Ese participante no existe.'));
@@ -286,12 +280,7 @@ export async function removeParticipant(
   const decision = can(
     contexto,
     'cases.participant.manage',
-    {
-      kind: 'CaseParticipant',
-      id: participante.case.id,
-      legalEntityId: participante.case.legalEntityId,
-      compartment: compartimentoDe(participante.case.domain),
-    },
+    { ...recursoDelExpediente(participante.case), kind: 'CaseParticipant' },
     { hasLiveAssignment: () => asignada },
   );
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));

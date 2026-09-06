@@ -370,7 +370,17 @@ Eso hizo inalcanzable el módulo disciplinario entero: siete casos de uso y una 
 
 En materia disciplinaria la asignación es **tener cargo vivo en el órgano que instruye**. Y una lista no es un expediente: para quien tiene la facultad pero ningún expediente a cargo, la lista sale vacía, no prohibida (ADR-0102).
 
-### 7.6 Un permiso con `requiresReason` necesita que alguien escriba el motivo
+### 7.6 Un recurso sin territorio no se niega: se permite
+
+La comprobación de territorio es la tercera del motor, y solo se ejecuta cuando el recurso declara `territorialPath`. Un recurso que no lo declara pasa de largo. Eso es correcto para lo que no ocurre en ningún sitio —una regla estatutaria, un producto del catálogo— y es un agujero silencioso para lo que sí: un expediente armado sin su ruta territorial se abre a cualquiera con la facultad, esté donde esté nombrada.
+
+No lo detecta el compilador —el campo es opcional— ni ninguna prueba que no se escriba justo para él, porque la comprobación que falta no falla: permite. Por eso el recurso del expediente se arma en **un solo sitio**, `recursoDelExpediente`, y el control `C-F6-01` impide que vuelva a escribirse a mano en el módulo de casos.
+
+La misma regla vale para las listas. Una consulta que liste no puede preguntar `can` fila por fila, así que filtra en la consulta con `territorialReach`, derivado de la misma resolución de concesiones que usa la decisión. Si el filtro y la comprobación discreparan, la lista enseñaría un expediente que al abrirlo responde que no existe, y sería una vía para averiguar qué hay fuera del propio territorio (ADR-0111).
+
+**Una excepción declarada, no tolerada.** La lectura de quien es **parte** de su propio expediente no se acota por territorio ni por compartimento: esas fronteras separan áreas de la organización entre sí, no a una persona de lo suyo.
+
+### 7.7 Un permiso con `requiresReason` necesita que alguien escriba el motivo
 
 El motor niega un permiso con `requiresReason` cuando el actor llega sin motivo. Quien lo adjunta es la acción de servidor, con `withReason`, porque es la capa que sabe qué se está haciendo. Si no lo hace, el botón existe, se pulsa y **siempre** falla: pasó con declarar quórum y con certificar un escrutinio (defecto `D-F5-005`). El control `C-F5-08` recorre las llamadas desde `app/` y lo exige.
 

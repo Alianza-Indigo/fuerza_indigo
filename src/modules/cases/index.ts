@@ -9,6 +9,16 @@ export {
   type AddParticipantInput,
   type RemoveParticipantInput,
 } from './application/participants';
+export {
+  assignCase,
+  unassignCase,
+  assignableUsers,
+  assignCaseSchema,
+  unassignCaseSchema,
+  type AssignCaseInput,
+  type UnassignCaseInput,
+  type Candidatura,
+} from './application/assign';
 export { peopleForCase, type Opcion } from './application/options';
 export {
   caseList,

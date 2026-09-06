@@ -1336,3 +1336,69 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Contexto.** Las primitivas de formulario ataban la etiqueta al control usando el nombre del campo como identificador. Con dos formularios en la misma pantalla —redactar una versión de reglas y editar su borrador— los nombres tienen que repetirse, porque es lo que el caso de uso lee; el identificador se repetía con ellos y la etiqueta quedaba atada solo al primero.
 
 **Decisión.** El identificador es un dato aparte, que por omisión vale el nombre y que cada formulario puede prefijar. La comprobación que lo sostiene no es una lectura del código: es la revisión con axe de las pantallas con sesión, que es la que encontró el defecto.
+
+---
+
+## ADR-0106 · Una propuesta de canalización no ejecuta nada
+
+**Contexto.** La entrada pública clasifica el mensaje y propone a qué entidad corresponde. El PRD §24 fija como criterio de la fase que «la propuesta automática de canalización no sustituye confirmación humana», y una propuesta que cambiara el estado, fijara la prioridad o abriera el expediente ya lo habría sustituido, dijera lo que dijera la pantalla.
+
+**Decisión.** La propuesta se guarda en `suggestedRouting` y **no toca ninguna otra columna**. Nada ocurre hasta que una persona con facultad confirma: es la confirmación la que fija la prioridad, resuelve el territorio y deja constancia de quién y cuándo. Abrir un expediente sin canalización confirmada se niega en el caso de uso, no en la pantalla.
+
+**Y confirmar no es estar de acuerdo.** Quien confirma puede apartarse de la propuesta, y el asiento de auditoría registra que se apartó. Si ocurre a menudo, la tabla de clasificación está mal y hay que corregirla; un registro que solo dijera «confirmado» no lo diría nunca.
+
+---
+
+## ADR-0107 · El relato original y la valoración son dos columnas
+
+**Contexto.** Un expediente contiene lo que la persona contó y lo que la organización concluyó. Guardarlos en el mismo campo obligaría a elegir: o la valoración reescribe el relato, o el relato impide valorar.
+
+**Decisión.** `originalSummary` guarda lo que se contó, tal cual, y la migración **retira a la aplicación el privilegio de actualizarlo**. `humanAssessment` se escribe al lado y cambia cuantas veces haga falta. La garantía no la da el código, que puede olvidarse: la da el motor de la base, que no tiene la orden.
+
+**La primera respuesta se marca una vez.** `firstResponseAt` mide cuánto tardó la organización en contestar, y una segunda valoración no lo reescribe: si lo hiciera, el indicador mediría la última vez que alguien tocó el expediente, que es justo lo contrario de lo que se quiere saber.
+
+---
+
+## ADR-0108 · La calidad con la que alguien interviene se deriva del padrón y se copia
+
+**Contexto.** Cada participante de un expediente interviene con una calidad —agremiada, afiliación honoraria, persona beneficiaria o ninguna— y esa calidad ya consta en la afiliación. Pedirla a mano invita a poner lo que a quien registra le parece, y produce expedientes que contradicen el padrón.
+
+**Decisión.** La calidad se **lee del padrón** al agregar a la persona y se **copia** en la fila del participante. No se recalcula al leer el expediente: si la persona pierde después la membresía, el expediente tiene que seguir diciendo con qué calidad intervino. Un expediente de hace tres años que se leyera con la situación de hoy contaría otra historia.
+
+---
+
+## ADR-0109 · Figurar en un expediente y verlo son dos cosas
+
+**Contexto.** Una contraparte figura en el expediente porque es parte del conflicto; una persona beneficiaria figura porque es de quien se trata. La primera no debe verlo y la segunda sí. Con una casilla que alguien marca al registrar, tarde o temprano una contraparte acaba con acceso y nadie lo nota.
+
+**Decisión.** El acceso lo decide **el papel**, no una casilla: `VEN_EL_EXPEDIENTE` enumera los papeles que miran, y la fila se escribe en consecuencia. Retirar a alguien del expediente le quita también el acceso; si lo conservara, retirar sería un cambio de etiqueta. A quien pidió la ayuda no se le retira: el expediente existe porque esa persona lo pidió.
+
+**Y quien representa tiene que poder acreditarlo.** Una relación de cuidado o representación viva es lo que separa a una representante de alguien que dice serlo. Sin ella no se agrega como representante: se agrega como testigo, como familiar, o no se agrega.
+
+---
+
+## ADR-0110 · El territorio se resuelve al canalizar, y el expediente lo hereda
+
+**Contexto.** Quien escribe dice dónde vive con sus palabras —«por el norte de Guadalajara»—, y eso es lo único que hay. La unidad territorial que le corresponde la determina una persona. Resolverla al abrir el expediente obligaría a tenerla delante allí, donde ya no está el texto que la persona escribió.
+
+**Decisión.** El territorio se resuelve **al confirmar la canalización**, que es donde se tiene delante lo que la persona contó, y se guarda junto a `territoryHint`, que no se borra: al lado queda lo que se determinó que era. El expediente lo **hereda** de la solicitud y abrirlo en otro territorio se niega; teclearlo dos veces sería dejar la solicitud en un sitio y el expediente en otro, y con ellos el reparto por delegación.
+
+**Ninguno no es cualquiera.** Un expediente sin unidad territorial no está fuera de ningún territorio, porque no está en ninguno: el motor no comprueba territorio cuando el recurso no lo declara, y lo puede llevar cualquiera con competencia.
+
+---
+
+## ADR-0111 · Competencia y territorio se comprueban al asignar, no al abrir
+
+**Contexto.** El motor de permisos ya niega el acceso a un expediente fuera del alcance de quien lo pide. Bastaría con eso para que nadie leyera lo que no le toca. Pero una asignación mal hecha no falla al asignar: falla mucho después, cuando quien la recibió intenta abrir el expediente y no puede. Mientras tanto el asunto está sin atender y alguien cree que lo lleva.
+
+**Decisión.** `assignCase` comprueba **antes de crear la asignación** que quien la recibe tiene la facultad en la entidad responsable, el compartimento del expediente y alcance territorial sobre él. La lista de candidaturas se deriva de los nombramientos vivos —no de una lista de personas «del área», que se quedaría atrás en cuanto alguien cambiara de cargo— y enseña cuántos expedientes lleva ya cada quien: sin ese número, el reparto acaba siempre en la primera de la lista.
+
+**El recurso se arma en un solo sitio.** Un recurso sin `territorialPath` no se niega: **se permite**. Por eso `recursoDelExpediente` es la única forma de construirlo, y el control `C-F6-01` impide que vuelva a escribirse a mano. La lista filtra por el mismo alcance que comprueba el detalle: si discreparan, aparecería en la lista un expediente que al abrirlo responde que no existe, y la lista sería una vía para averiguar qué hay fuera del propio territorio.
+
+---
+
+## ADR-0112 · Nombrar a quien responde releva a quien respondía
+
+**Contexto.** Un expediente tiene una persona responsable, y solo una. Relevarla y nombrar a la siguiente en dos actos deja un instante —o una tarde— en el que el asunto no es de nadie. Prohibir el relevo sin nombramiento previo y a la vez el nombramiento sin relevo previo lo deja bloqueado.
+
+**Decisión.** Nombrar a quien responde **es** el relevo: una sola operación que cierra la asignación anterior con su motivo y abre la nueva. Relevar a la única persona responsable se niega, y el mensaje dice qué hacer en su lugar. La asignación anterior no desaparece: queda cerrada con fecha y motivo, porque quién llevó un expediente y hasta cuándo es parte de lo que el expediente tiene que poder contar.

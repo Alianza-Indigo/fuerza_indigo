@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Badge, Card, ErrorNotice, Notice, PageShell, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import type { SupportRequestStatus } from '@prisma-client/enums';
-import { requestDetail } from '@/modules/support';
+import { requestDetail, territoriesForRouting } from '@/modules/support';
 import { REQUEST_TYPE_LABELS } from '../../../(publico)/contacto/labels';
 import { ResolveForm } from './resolve-form';
 import { RoutingForm } from './routing-form';
@@ -55,6 +55,11 @@ export default async function MensajePage({ params }: { params: Promise<{ id: st
     timeStyle: 'short',
     timeZone: actor.timeZone,
   });
+
+  // El catálogo territorial solo hace falta mientras el mensaje está sin
+  // canalizar; después el territorio ya quedó resuelto y no se vuelve a elegir.
+  const catalogo = datos.status === 'RECEIVED' ? await territoriesForRouting(actor) : null;
+  const territorios = catalogo !== null && catalogo.ok ? catalogo.data : [];
 
   return (
     <PageShell
@@ -140,6 +145,8 @@ export default async function MensajePage({ params }: { params: Promise<{ id: st
             <Card>
               <RoutingForm
                 requestId={datos.id}
+                territoryHint={datos.territoryHint}
+                territorios={territorios}
                 propuesta={
                   datos.propuesta === null
                     ? null

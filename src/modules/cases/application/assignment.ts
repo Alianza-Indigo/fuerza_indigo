@@ -1,5 +1,9 @@
+import type { Prisma } from '@prisma-client/client';
+import type { CaseDomain } from '@prisma-client/enums';
 import { db } from '@/platform/db/client';
+import type { Resource, TerritorialReach } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
+import { compartimentoDe } from '../domain/access';
 
 /**
  * Quién está a cargo de un expediente (PRD §10.3).
@@ -35,4 +39,68 @@ export async function esParteDelExpediente(actor: ActorContext, caseId: string):
     select: { id: true },
   });
   return participacion !== null;
+}
+
+/**
+ * Lo mínimo que hay que saber de un expediente para decidir sobre él.
+ *
+ * Cuatro datos, y los cuatro se leen de la misma fila: quién responde, de qué
+ * lado está, dónde ocurre y cuál es. Se agrupan porque cada caso de uso que
+ * decide sobre un expediente necesita exactamente estos y ninguno más.
+ */
+export interface ExpedienteParaDecidir {
+  readonly id: string;
+  readonly legalEntityId: string;
+  readonly domain: CaseDomain;
+  readonly territorialUnit: { readonly path: string } | null;
+}
+
+/** Qué seleccionar de un expediente para poder decidir sobre él. */
+export const CAMPOS_PARA_DECIDIR = {
+  id: true,
+  legalEntityId: true,
+  domain: true,
+  territorialUnit: { select: { path: true } },
+} as const satisfies Prisma.CaseSelect;
+
+/**
+ * El expediente como recurso, con su territorio.
+ *
+ * El territorio se pasa **siempre**, y por eso vive en una función y no copiado
+ * en cada caso de uso. El PRD §24 exige probar acceso denegado para
+ * territorios ajenos; con el recurso armado a mano en cada sitio, bastaba
+ * olvidar una línea en uno de ellos para que ese sitio dejara de comprobarlo, y
+ * nada lo habría advertido: la comprobación que falta no falla, simplemente
+ * permite.
+ *
+ * Una unidad territorial nula no es «cualquier territorio», es «ninguno»: el
+ * motor no comprueba territorio cuando el recurso no lo declara, que es lo
+ * correcto para un expediente que no ocurre en ningún sitio concreto.
+ */
+export function recursoDelExpediente(expediente: ExpedienteParaDecidir): Resource {
+  return {
+    kind: 'Case',
+    id: expediente.id,
+    legalEntityId: expediente.legalEntityId,
+    territorialPath: expediente.territorialUnit?.path ?? null,
+    compartment: compartimentoDe(expediente.domain),
+  };
+}
+
+/**
+ * Filtro de territorio para una consulta que lista expedientes.
+ *
+ * Devuelve `null` cuando no hay nada que filtrar —alcance total— y un `OR`
+ * cuando lo hay. Un expediente sin territorio entra siempre: no está fuera de
+ * ninguno, porque no está en ninguno.
+ */
+export function filtroTerritorial(alcance: TerritorialReach): Prisma.CaseWhereInput | null {
+  if (alcance === 'ALL') return null;
+  const rutas = alcance.flatMap((ambito) =>
+    ambito.includesDescendants
+      ? [{ path: ambito.path }, { path: { startsWith: `${ambito.path}/` } }]
+      : [{ path: ambito.path }],
+  );
+  if (rutas.length === 0) return { territorialUnitId: null };
+  return { OR: [{ territorialUnitId: null }, { territorialUnit: { OR: rutas } }] };
 }

@@ -4,8 +4,7 @@ import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { nombreCompleto } from '@/platform/i18n/person-name';
-import { compartimentoDe } from '../domain/access';
-import { estaAsignada } from './assignment';
+import { CAMPOS_PARA_DECIDIR, estaAsignada, recursoDelExpediente } from './assignment';
 
 export interface Opcion {
   readonly value: string;
@@ -23,22 +22,14 @@ export async function peopleForCase(
   actor: ActorContext,
   caseId: string,
 ): Promise<UseCaseResult<readonly Opcion[]>> {
-  const expediente = await db().case.findUnique({
-    where: { id: caseId },
-    select: { id: true, domain: true, legalEntityId: true },
-  });
+  const expediente = await db().case.findUnique({ where: { id: caseId }, select: CAMPOS_PARA_DECIDIR });
   if (expediente === null) return fail(errors.notFound('Ese expediente no existe.'));
 
   const asignada = await estaAsignada(actor, expediente.id);
   const decision = can(
     { ...actor, reason: 'consulta de personas para el expediente' },
     'cases.participant.manage',
-    {
-      kind: 'CaseParticipant',
-      id: expediente.id,
-      legalEntityId: expediente.legalEntityId,
-      compartment: compartimentoDe(expediente.domain),
-    },
+    { ...recursoDelExpediente(expediente), kind: 'CaseParticipant' },
     { hasLiveAssignment: () => asignada },
   );
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));

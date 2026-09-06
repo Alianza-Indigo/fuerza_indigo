@@ -2592,6 +2592,66 @@ const CHECKS = [
   },
 
   {
+    id: 'C-F6-01',
+    title: 'Fase 6: toda decisión sobre un expediente lleva su territorio',
+    phases: [6],
+    run() {
+      // El PRD §24 exige probar acceso denegado para territorios ajenos, y el
+      // motor solo comprueba el territorio cuando el recurso lo declara: un
+      // recurso sin `territorialPath` no se niega, **se permite**. Es la clase
+      // de fallo que no rompe nada y no aparece en ninguna prueba salvo la que
+      // se escriba justo para él.
+      //
+      // Por eso el recurso del expediente se arma en un solo sitio,
+      // `recursoDelExpediente`, y este control impide que vuelva a escribirse a
+      // mano: un `kind: 'Case'` suelto en un caso de uso es una decisión que ha
+      // dejado de mirar dónde ocurre el asunto.
+      //
+      // Dos excepciones, y las dos se declaran aquí en vez de tolerarse por
+      // omisión: la lectura de quien **es parte** de su propio expediente —que
+      // no se acota por territorio ni por compartimento, porque esas fronteras
+      // separan áreas de la organización, no a una persona de lo suyo— y la
+      // comprobación previa de la lista, que decide si hay facultad antes de
+      // saber de qué expedientes se habla.
+      const EXCEPCIONES = new Set(['cases.case.read_own']);
+
+      const ficheros = walk().filter((f) => /^src\/modules\/cases\/application\/.+\.ts$/.test(f));
+      if (ficheros.length === 0) return fail(['No se encuentra el módulo de casos.']);
+
+      const problemas = [];
+      let comprobados = 0;
+      for (const ruta of ficheros) {
+        const fuente = read(ruta) ?? '';
+        for (const match of fuente.matchAll(/can\(([^;]{0,800}?)\)\s*;/gs)) {
+          const cuerpo = match[1] ?? '';
+          const citados = [...cuerpo.matchAll(/'(cases\.[a-z_]+\.[a-z_]+)'/g)].map((c) => c[1]);
+          if (citados.length === 0) continue;
+          if (citados.every((codigo) => EXCEPCIONES.has(codigo))) continue;
+
+          // Una llamada sin `id` no decide sobre un expediente concreto: es la
+          // comprobación de facultad que antecede a una lista.
+          if (!/\bid:\s/.test(cuerpo) && !cuerpo.includes('recursoDelExpediente')) continue;
+
+          comprobados += 1;
+          if (!cuerpo.includes('recursoDelExpediente') && !cuerpo.includes('territorialPath')) {
+            const linea = fuente.slice(0, match.index).split('\n').length;
+            problemas.push(
+              `${ruta}:${linea} decide sobre «${citados.join('», «')}» con un recurso armado a mano y sin territorio: el motor no comprobará dónde ocurre el asunto.`,
+            );
+          }
+        }
+      }
+
+      if (comprobados === 0) {
+        return fail(['Ninguna decisión sobre un expediente concreto se está comprobando.']);
+      }
+      return problemas.length
+        ? fail(problemas)
+        : ok([`Las ${comprobados} decisiones sobre un expediente concreto declaran su territorio.`]);
+    },
+  },
+
+  {
     id: 'C-COH-14',
     title: 'La integración continua tiene toda variable que la fase activa exige',
     phases: 'all',

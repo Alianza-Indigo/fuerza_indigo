@@ -34,6 +34,13 @@ export const confirmRoutingSchema = z.object({
   }),
   /** Prioridad que fija la valoración humana. */
   urgency: z.enum(['ROUTINE', 'PRIORITY', 'URGENT'] as const satisfies readonly SupportUrgency[]),
+  /**
+   * Territorio ya resuelto. `territoryHint` es lo que la persona escribió —«por
+   * el norte de Guadalajara»—; esto es la unidad territorial que quien confirma
+   * determina que era. Se resuelve aquí y no al abrir el expediente porque aquí
+   * es donde se tiene delante lo que la persona escribió, y ahí ya no.
+   */
+  territorialUnitId: z.uuid().nullable().default(null),
   note: z
     .string()
     .trim()
@@ -43,7 +50,7 @@ export const confirmRoutingSchema = z.object({
     .max(1000),
 });
 
-export type ConfirmRoutingInput = z.infer<typeof confirmRoutingSchema>;
+export type ConfirmRoutingInput = z.input<typeof confirmRoutingSchema>;
 
 function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
@@ -126,6 +133,19 @@ export async function confirmRouting(
   });
   if (destino === null) return fail(errors.notFound('Esa entidad no existe.'));
 
+  if (data.territorialUnitId !== null) {
+    const unidad = await db().territorialUnit.findUnique({
+      where: { id: data.territorialUnitId },
+      select: { status: true },
+    });
+    if (unidad === null) return fail(errors.notFound('Esa unidad territorial no existe.'));
+    if (unidad.status !== 'ACTIVE') {
+      return fail(
+        errors.conflict('Esa unidad territorial no está activa. Elige la que atiende hoy ese territorio.'),
+      );
+    }
+  }
+
   const propuesta = leerPropuesta(solicitud.suggestedRouting);
   const coincide = propuesta !== null && propuesta.entidad === data.legalEntity;
 
@@ -136,6 +156,7 @@ export async function confirmRouting(
       data: {
         status: 'TRIAGE',
         urgency: data.urgency,
+        territorialUnitId: data.territorialUnitId,
         confirmedRoutingLegalEntityId: destino.id,
         confirmedById: quienConfirma,
         confirmedAt: confirmadoEl,
@@ -158,6 +179,7 @@ export async function confirmRouting(
         // corregirla. Un registro que solo dijera «confirmado» no lo diría.
         seApartoDeLaPropuesta: !coincide,
         urgencia: data.urgency,
+        territorio: data.territorialUnitId,
       },
     });
   });
@@ -167,3 +189,41 @@ export async function confirmRouting(
 
 /** Cómo se lee una entidad en la pantalla que confirma. */
 export { NOMBRE_DE_ENTIDAD };
+
+/** Una unidad territorial como la ofrece el desplegable que canaliza. */
+export interface OpcionDeTerritorio {
+  readonly value: string;
+  readonly label: string;
+  /** Profundidad en el árbol, para sangrar la lista y que se lea la jerarquía. */
+  readonly nivel: number;
+}
+
+/**
+ * Unidades territoriales activas, para resolver el territorio al canalizar.
+ *
+ * Va aquí y no en el módulo institucional porque quien canaliza tiene la
+ * facultad de clasificar mensajes, no necesariamente la de consultar la
+ * estructura territorial. Pedirle las dos para poder decir «esto es de
+ * Guadalajara» le daría, de paso, el padrón de delegaciones entero.
+ *
+ * Solo las activas: una unidad disuelta no atiende a nadie, y ofrecerla en la
+ * lista invita a mandarle un asunto.
+ */
+export async function territoriesForRouting(
+  actor: ActorContext,
+): Promise<UseCaseResult<readonly OpcionDeTerritorio[]>> {
+  const decision = can(
+    { ...actor, reason: 'consulta del catálogo territorial para canalizar' },
+    'support.request.triage',
+    { kind: 'SupportRequest' },
+  );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const filas = await db().territorialUnit.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: { path: 'asc' },
+    select: { id: true, name: true, depth: true },
+  });
+
+  return ok(filas.map((fila) => ({ value: fila.id, label: fila.name, nivel: fila.depth })));
+}

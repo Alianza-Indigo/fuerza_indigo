@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { Badge, Card, ErrorNotice, Notice, PageShell, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { caseDetail, peopleForCase } from '@/modules/cases';
+import { assignableUsers, caseDetail, peopleForCase } from '@/modules/cases';
 import {
+  NOMBRE_DE_ASIGNACION,
   NOMBRE_DE_DOMINIO,
   NOMBRE_DE_ESTADO,
   NOMBRE_DE_PRIORIDAD,
@@ -13,6 +14,7 @@ import {
 import { REQUEST_TYPE_LABELS } from '../../(publico)/contacto/labels';
 import { AssessmentForm } from './assessment-form';
 import { AddParticipantForm, RemoveParticipantForm } from './participants-forms';
+import { AssignCaseForm, UnassignCaseForm } from './assignment-forms';
 
 /** Cómo se nombra en pantalla la calidad con la que alguien interviene. */
 const NOMBRE_DE_CALIDAD: Record<string, string> = {
@@ -24,13 +26,6 @@ const NOMBRE_DE_CALIDAD: Record<string, string> = {
 
 export const metadata = { title: 'Expediente', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
-
-const ROL_EN_EL_EQUIPO: Record<string, string> = {
-  OWNER: 'Responsable',
-  SUPPORT: 'Apoyo',
-  SUPERVISOR: 'Supervisión',
-  OBSERVER: 'Observa',
-};
 
 /**
  * Un expediente (PRD §10.2).
@@ -63,6 +58,11 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
   const opciones = puedeValorar ? await peopleForCase(actor, datos.id) : null;
   const personas = opciones !== null && opciones.ok ? opciones.data : [];
 
+  // Quien no tiene la facultad de asignar no ve la sección: enseñar un
+  // formulario que va a rechazar el envío no informa de nada.
+  const candidaturas = puedeValorar ? await assignableUsers(actor, datos.id) : null;
+  const puedeAsignar = candidaturas !== null && candidaturas.ok;
+
   return (
     <PageShell
       title={datos.folio}
@@ -91,20 +91,34 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
 
         <Section title="Quién lo lleva" level={2}>
           <Card>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {datos.equipo.map((integrante) => (
-                <li key={`${integrante.nombre}-${integrante.rol}`}>
+                <li key={integrante.id} className="border-b border-[var(--color-line)] pb-3 last:border-0 last:pb-0">
                   <span className="font-medium">{integrante.nombre}</span>
-                  <span className="text-[var(--color-ink-soft)]"> · {ROL_EN_EL_EQUIPO[integrante.rol] ?? integrante.rol}</span>
+                  <span className="text-[var(--color-ink-soft)]"> · {NOMBRE_DE_ASIGNACION[integrante.rol]}</span>
+                  {puedeAsignar && (
+                    <div className="mt-3">
+                      <UnassignCaseForm assignmentId={integrante.id} nombre={integrante.nombre} />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
             <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
               Solo quien está asignado alcanza este expediente. Pertenecer al área no basta, y tu lectura de ahora
               queda registrada con tu nombre.
+              {datos.territorio !== null && ` El expediente es de ${datos.territorio}.`}
             </p>
           </Card>
         </Section>
+
+        {puedeAsignar && candidaturas.ok && (
+          <Section title="Encomendarlo a alguien" level={2}>
+            <Card>
+              <AssignCaseForm caseId={datos.id} candidatas={candidaturas.data} />
+            </Card>
+          </Section>
+        )}
 
         {datos.status === 'CLOSED' && datos.closeOutcome !== null && (
           <Notice title={`Cerrado: ${NOMBRE_DE_RESULTADO[datos.closeOutcome]}`} tone="neutral" live="none">

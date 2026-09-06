@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addParticipant, assessCase, removeParticipant } from '@/modules/cases';
+import { addParticipant, assessCase, assignCase, removeParticipant, unassignCase } from '@/modules/cases';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -102,4 +102,60 @@ export async function removeParticipantAction(_previo: CaseFormState, formData: 
 
   revalidatePath('/casos');
   return { status: 'ok', message: 'Deja de figurar en el expediente y deja de verlo.' };
+}
+
+/**
+ * Encomienda el expediente a alguien.
+ *
+ * Ni la competencia ni el territorio viajan en el formulario: los comprueba el
+ * módulo contra los nombramientos vivos. Un formulario que los enviara podría
+ * mentir, y el desplegable ya solo ofrece a quien puede.
+ */
+export async function assignCaseAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await assignCase(actor, {
+    caseId: textField(formData, 'caseId'),
+    userId: textField(formData, 'userId'),
+    assignmentRole: textField(formData, 'assignmentRole') as never,
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message:
+      resultado.data.relevoDe === null
+        ? 'Entra al equipo del expediente.'
+        : 'Queda a cargo del expediente y releva a quien lo llevaba. El relevo consta en la bitácora.',
+  };
+}
+
+/** Releva a alguien del expediente, con su motivo. */
+export async function unassignCaseAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await unassignCase(actor, {
+    assignmentId: textField(formData, 'assignmentId'),
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Deja de llevar el expediente.' };
 }

@@ -6,6 +6,7 @@
  * los casos de uso (ARCHITECTURE §4.2).
  */
 export { compartimentoDe } from './access';
+export { NOMBRE_DE_ASIGNACION, QUE_HACE_CADA_PAPEL } from './team';
 export { EXIGEN_REPRESENTACION, NOMBRE_DE_PAPEL, VEN_EL_EXPEDIENTE } from './participation';
 export {
   NOMBRE_DE_DOMINIO,

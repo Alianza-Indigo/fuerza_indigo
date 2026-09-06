@@ -111,6 +111,7 @@ export async function openCase(
 
   let relato = data.summary;
   let personaSolicitante: string | null = null;
+  let territorio = data.territorialUnitId;
 
   if (data.supportRequestId !== null) {
     const solicitud = await db().supportRequest.findUnique({
@@ -121,6 +122,7 @@ export async function openCase(
         narrative: true,
         status: true,
         personId: true,
+        territorialUnitId: true,
         confirmedRoutingLegalEntityId: true,
         case: { select: { id: true } },
       },
@@ -149,7 +151,47 @@ export async function openCase(
     // El relato es el de la persona, no el que alguien reescriba al abrir.
     relato = solicitud.narrative;
     personaSolicitante = solicitud.personId;
+
+    // El territorio ya se resolvió al canalizar, mirando lo que la persona
+    // escribió. Cambiarlo aquí en silencio dejaría el expediente en un sitio y
+    // la solicitud en otro, y con ellos el reparto por delegación.
+    if (solicitud.territorialUnitId !== null) {
+      if (territorio !== null && territorio !== solicitud.territorialUnitId) {
+        return fail(
+          errors.conflict(
+            'El expediente se abre en un territorio distinto del que se resolvió al canalizar. Corrige la canalización o abre donde se canalizó.',
+          ),
+        );
+      }
+      territorio = solicitud.territorialUnitId;
+    }
   }
+
+  // Una unidad territorial disuelta no recibe expedientes nuevos: el asunto
+  // quedaría a cargo de una delegación que ya no existe.
+  let rutaDelTerritorio: string | null = null;
+  if (territorio !== null) {
+    const unidad = await db().territorialUnit.findUnique({
+      where: { id: territorio },
+      select: { path: true, status: true },
+    });
+    if (unidad === null) return fail(errors.notFound('Esa unidad territorial no existe.'));
+    if (unidad.status !== 'ACTIVE') {
+      return fail(errors.conflict('Esa unidad territorial no está activa. Elige la que atiende hoy ese territorio.'));
+    }
+    rutaDelTerritorio = unidad.path;
+  }
+
+  // Segunda comprobación, ya con el territorio resuelto. La primera no podía
+  // hacerla: el territorio del expediente sale de la solicitud, y la solicitud
+  // no se lee sin facultad. Esta es la que decide.
+  const conTerritorio = can(contexto, 'cases.case.open', {
+    kind: 'Case',
+    legalEntityId: data.legalEntityId,
+    territorialPath: rutaDelTerritorio,
+    compartment: compartimentoDe(data.domain),
+  });
+  if (!conTerritorio.allowed) return fail(errors.forbidden(explain(conTerritorio.reason!)));
 
   if (relato === null || relato.trim().length < 30) {
     return fail(
@@ -176,7 +218,7 @@ export async function openCase(
         domain: data.domain,
         caseType: data.caseType,
         priority: data.priority,
-        territorialUnitId: data.territorialUnitId,
+        territorialUnitId: territorio,
         originalSummary: relato,
         status: 'OPEN',
         createdByActorId: actor.actorId,
@@ -244,7 +286,12 @@ export async function openCase(
       outcome: 'SUCCESS',
       legalEntityId: entidad.id,
       reason: data.reason,
-      metadata: { folio: fila.folio, dominio: data.domain, materia: data.caseType },
+      metadata: {
+        folio: fila.folio,
+        dominio: data.domain,
+        materia: data.caseType,
+        territorio: rutaDelTerritorio,
+      },
     });
 
     return fila;

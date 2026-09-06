@@ -2,12 +2,13 @@ import { db } from '@/platform/db/client';
 import { transaction } from '@/platform/db/unit-of-work';
 import { errors } from '@/platform/errors/app-error';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
-import { can, explain } from '@/platform/authz/policy';
+import { can, explain, territorialReach } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import type {
+  CaseAssignmentRole,
   CaseDomain,
   CaseMembershipQuality,
   CaseOutcome,
@@ -19,7 +20,12 @@ import type {
 } from '@prisma-client/enums';
 import type { Prisma } from '@prisma-client/client';
 import { compartimentoDe } from '../domain/access';
-import { esParteDelExpediente, estaAsignada } from './assignment';
+import {
+  esParteDelExpediente,
+  estaAsignada,
+  filtroTerritorial,
+  recursoDelExpediente,
+} from './assignment';
 
 /**
  * Lectura de expedientes (PRD §10.2, §10.3).
@@ -60,7 +66,12 @@ export interface CaseDetail extends CaseRow {
   readonly reopenCount: number;
   readonly territorio: string | null;
   readonly folioDeLaSolicitud: string | null;
-  readonly equipo: readonly { readonly nombre: string; readonly rol: string }[];
+  readonly equipo: readonly {
+    /** Identificador de la asignación: es lo que releva, no la persona. */
+    readonly id: string;
+    readonly nombre: string;
+    readonly rol: CaseAssignmentRole;
+  }[];
   readonly participantes: readonly {
     readonly id: string;
     readonly nombre: string;
@@ -191,10 +202,17 @@ export async function caseList(actor: ActorContext): Promise<UseCaseResult<reado
   // consulta de abajo devuelve una lista vacía, que es la respuesta correcta.
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
+  // El territorio se filtra **en la consulta**, con el mismo alcance que
+  // comprueba el detalle. Traer los expedientes de fuera para descartarlos
+  // después sería traerlos igual, y bastaría un descuido en la pantalla para
+  // que se vieran.
+  const territorio = filtroTerritorial(territorialReach(actor, 'cases.case.read'));
+
   const filas = await db().case.findMany({
     where: {
       domain: { in: dominios },
       assignments: { some: { userId, unassignedAt: null } },
+      ...(territorio ?? {}),
     },
     orderBy: ORDEN,
     take: 200,
@@ -224,7 +242,7 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       closeOutcome: true,
       closeReason: true,
       reopenCount: true,
-      territorialUnit: { select: { name: true } },
+      territorialUnit: { select: { name: true, path: true } },
       supportRequest: { select: { folio: true } },
       participants: {
         where: { removedAt: null },
@@ -248,7 +266,9 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       },
       assignments: {
         where: { unassignedAt: null },
+        orderBy: { assignedAt: 'asc' },
         select: {
+          id: true,
           assignmentRole: true,
           user: {
             select: {
@@ -282,17 +302,7 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
         { kind: 'Case', id: fila.id, legalEntityId: fila.legalEntityId },
         { hasLiveAssignment: () => true },
       )
-    : can(
-        actor,
-        'cases.case.read',
-        {
-          kind: 'Case',
-          id: fila.id,
-          legalEntityId: fila.legalEntityId,
-          compartment: compartimentoDe(fila.domain),
-        },
-        { hasLiveAssignment: () => asignada },
-      );
+    : can(actor, 'cases.case.read', recursoDelExpediente(fila), { hasLiveAssignment: () => asignada });
 
   // Fuera de alcance e inexistente responden igual: decir «existe pero no es
   // tuyo» confirmaría que hay un expediente sobre alguien.
@@ -321,6 +331,7 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
     territorio: fila.territorialUnit?.name ?? null,
     folioDeLaSolicitud: fila.supportRequest?.folio ?? null,
     equipo: fila.assignments.map((asignacion) => ({
+      id: asignacion.id,
       nombre: nombreCompleto(asignacion.user.person),
       rol: asignacion.assignmentRole,
     })),

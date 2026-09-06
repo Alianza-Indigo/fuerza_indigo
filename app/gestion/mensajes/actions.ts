@@ -55,10 +55,13 @@ export async function resolveRequestAction(_previo: RequestState, formData: Form
 export async function confirmRoutingAction(_previo: RequestState, formData: FormData): Promise<RequestState> {
   const actor = await currentActor();
 
+  const territorio = textField(formData, 'territorialUnitId');
+
   const resultado = await confirmRouting(actor, {
     requestId: textField(formData, 'requestId'),
     legalEntity: textField(formData, 'legalEntity') as never,
     urgency: textField(formData, 'urgency') as never,
+    territorialUnitId: territorio === '' ? null : territorio,
     note: textField(formData, 'note'),
   });
 

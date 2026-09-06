@@ -85,6 +85,43 @@ export function isCurrentlyEffective(assignment: RoleAssignmentSnapshot, now: Da
   return true;
 }
 
+/** Hasta dónde llega territorialmente una facultad del actor. */
+export type TerritorialReach =
+  | 'ALL'
+  | readonly { readonly path: string; readonly includesDescendants: boolean }[];
+
+/**
+ * Alcance territorial de una facultad, del MISMO origen que usa la decisión.
+ *
+ * Una consulta que lista no puede preguntar `can` fila por fila: traería de la
+ * base lo que después tacharía en memoria, y con doscientos expedientes eso es
+ * traer doscientos expedientes ajenos para no enseñarlos. Necesita **filtrar en
+ * la consulta**, y para filtrar necesita saber hasta dónde llega quien
+ * pregunta.
+ *
+ * Derivarlo aquí, de `resolveGrants`, es lo que impide que el filtro de la
+ * lista y la comprobación del detalle discrepen. Si discreparan, aparecería en
+ * la lista un expediente que al abrirlo responde que no existe —o, peor, al
+ * revés—, y la lista pasaría a ser una vía para averiguar qué hay fuera del
+ * propio territorio.
+ *
+ * Sin la facultad no alcanza **nada**, que no es lo mismo que alcanzarlo todo:
+ * la lista vacía es la respuesta, no el catálogo entero.
+ */
+export function territorialReach(
+  actor: ActorContext,
+  permissionCode: string,
+  now: Date = new Date(),
+): TerritorialReach {
+  const alcances: { path: string; includesDescendants: boolean }[] = [];
+  for (const grant of resolveGrants(actor, now)) {
+    if (!grant.permissions.has(permissionCode)) continue;
+    if (grant.territories === 'ALL') return 'ALL';
+    alcances.push(...grant.territories);
+  }
+  return alcances;
+}
+
 interface Grant {
   readonly permissions: ReadonlySet<string>;
   readonly legalEntities: readonly string[] | 'ALL';

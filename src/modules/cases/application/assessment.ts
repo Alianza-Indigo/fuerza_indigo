@@ -10,8 +10,7 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { CasePriority, CaseStatus } from '@prisma-client/enums';
 import type { Prisma } from '@prisma-client/client';
-import { compartimentoDe } from '../domain/access';
-import { estaAsignada } from './assignment';
+import { CAMPOS_PARA_DECIDIR, estaAsignada, recursoDelExpediente } from './assignment';
 
 /**
  * Valoración humana del expediente (PRD §10.2).
@@ -62,10 +61,8 @@ export async function assessCase(
   const expediente = await db().case.findUnique({
     where: { id: data.caseId },
     select: {
-      id: true,
+      ...CAMPOS_PARA_DECIDIR,
       folio: true,
-      domain: true,
-      legalEntityId: true,
       status: true,
       priority: true,
       firstResponseAt: true,
@@ -77,17 +74,9 @@ export async function assessCase(
   }
 
   const asignada = await estaAsignada(actor, expediente.id);
-  const decision = can(
-    actor,
-    'cases.case.update',
-    {
-      kind: 'Case',
-      id: expediente.id,
-      legalEntityId: expediente.legalEntityId,
-      compartment: compartimentoDe(expediente.domain),
-    },
-    { hasLiveAssignment: () => asignada },
-  );
+  const decision = can(actor, 'cases.case.update', recursoDelExpediente(expediente), {
+    hasLiveAssignment: () => asignada,
+  });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const ahora = new Date();

@@ -246,7 +246,7 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
           {solicitud.documentList.length === 0 ? (
             <EmptyState title="Sin documentos" description="Esta solicitud no lleva ninguno todavía." />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Documentos de la solicitud, con su estado y el resultado de su revisión">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Documento</th>

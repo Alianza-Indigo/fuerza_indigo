@@ -93,6 +93,22 @@ export async function resolveActor(input: ResolveActorInput): Promise<ActorConte
           permissions: { select: { permission: { select: { code: true } } } },
         },
       },
+      // Las facultades del cargo, cuando el nombramiento nace de uno.
+      //
+      // `OfficeDefinitionPermission` existe para que la matriz por cartera de
+      // docs/PERMISSIONS.md §4.1 se lea de la base y no de una lista en código
+      // —el rol dice qué clase de persona es, el cargo dice de qué responde—.
+      // Durante un tiempo la tabla se escribía al definir el cargo y no la leía
+      // nadie: `defineOffice` exigía al menos una facultad, la pantalla las
+      // pedía, y ninguna llegaba jamás a un contexto. Un cargo que no abre
+      // ninguna puerta, con formulario y todo.
+      officeTerm: {
+        select: {
+          officeDefinition: {
+            select: { permissions: { select: { permission: { select: { code: true } } } } },
+          },
+        },
+      },
       territorialScopes: {
         select: {
           territorialUnitId: true,
@@ -106,7 +122,10 @@ export async function resolveActor(input: ResolveActorInput): Promise<ActorConte
   const roles: RoleAssignmentSnapshot[] = assignments.map((assignment) => ({
     assignmentId: assignment.id,
     role: assignment.role.code,
-    permissions: new Set(assignment.role.permissions.map((link) => link.permission.code)),
+    permissions: new Set([
+      ...assignment.role.permissions.map((link) => link.permission.code),
+      ...(assignment.officeTerm?.officeDefinition.permissions ?? []).map((link) => link.permission.code),
+    ]),
     legalEntityId: assignment.legalEntityId,
     organizationId: assignment.organizationId,
     territories: assignment.territorialScopes.map((scope) => ({

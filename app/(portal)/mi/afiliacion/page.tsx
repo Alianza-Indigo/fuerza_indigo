@@ -50,7 +50,7 @@ export default async function MiAfiliacionPage() {
           />
         ) : (
           <>
-            <ScrollableTable>
+            <ScrollableTable caption="Tus solicitudes de afiliación, con su folio, su estado y su fecha de envío">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Folio</th>

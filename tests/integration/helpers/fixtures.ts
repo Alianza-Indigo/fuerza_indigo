@@ -177,6 +177,16 @@ export async function contextoDe(
       legalEntityId: true,
       organizationId: true,
       role: { select: { code: true, permissions: { select: { permission: { select: { code: true } } } } } },
+      // Las facultades del cargo se suman a las del rol, igual que en el
+      // resolvedor real: si la prueba las olvidara, dejaría de notar que un
+      // cargo no abre ninguna puerta.
+      officeTerm: {
+        select: {
+          officeDefinition: {
+            select: { permissions: { select: { permission: { select: { code: true } } } } },
+          },
+        },
+      },
       territorialScopes: {
         select: {
           territorialUnitId: true,
@@ -190,7 +200,10 @@ export async function contextoDe(
   const roles: RoleAssignmentSnapshot[] = asignaciones.map((asignacion) => ({
     assignmentId: asignacion.id,
     role: asignacion.role.code,
-    permissions: new Set(asignacion.role.permissions.map((link) => link.permission.code)),
+    permissions: new Set([
+      ...asignacion.role.permissions.map((link) => link.permission.code),
+      ...(asignacion.officeTerm?.officeDefinition.permissions ?? []).map((link) => link.permission.code),
+    ]),
     legalEntityId: asignacion.legalEntityId,
     organizationId: asignacion.organizationId,
     territories: asignacion.territorialScopes.map((scope) => ({

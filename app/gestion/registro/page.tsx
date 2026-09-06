@@ -79,7 +79,7 @@ export default async function RegistroDePersonasPage({
               description="Registra a la primera persona con el formulario de abajo."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Personas registradas, con su identificador, su territorio y sus calidades">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Persona</th>

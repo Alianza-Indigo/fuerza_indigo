@@ -91,9 +91,27 @@ describe('los once estados obligatorios del PRD §5.4', () => {
 
 describe('formularios accesibles', () => {
   it('la etiqueta se asocia al control y el error se anuncia con él', () => {
-    expect(PRIMITIVAS).toContain('htmlFor={name}');
+    // El identificador no es el nombre del campo: dos formularios en la misma
+    // pantalla comparten nombres —«motivo» en los tres de reglas estatutarias—
+    // y el identificador repetido deja al segundo control sin etiqueta. Lo que
+    // importa es que la etiqueta apunte al mismo identificador que lleva el
+    // control, sea cual sea.
+    expect(PRIMITIVAS).toContain('const idCampo = id ?? name;');
+    expect(PRIMITIVAS).toContain('htmlFor={idCampo}');
+    expect(PRIMITIVAS).toContain('id={id}');
     expect(PRIMITIVAS).toContain('aria-describedby={describedBy}');
     expect(PRIMITIVAS).toContain('aria-invalid={invalid}');
+  });
+
+  it('la tabla que se desplaza se alcanza con el teclado y tiene nombre', () => {
+    // Una caja con `overflow-x` que no es enfocable esconde de quien navega con
+    // teclado exactamente lo que el ratón sí alcanza. Y una región sin nombre
+    // no sirve para orientarse: por eso el pie de tabla es obligatorio.
+    const tabla = PRIMITIVAS.slice(PRIMITIVAS.indexOf('export function ScrollableTable'));
+    expect(tabla).toContain('tabIndex={0}');
+    expect(tabla).toContain('role="region"');
+    expect(tabla).toContain('aria-label={caption}');
+    expect(tabla).toContain('caption: string;');
   });
 
   it('las opciones excluyentes van en fieldset con legend', () => {

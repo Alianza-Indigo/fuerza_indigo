@@ -46,6 +46,32 @@ const DE_GESTION = [
   '/gestion/consentimientos',
 ];
 
+/**
+ * Rutas de la vida institucional (Fase 5). Son las pantallas donde la
+ * organización delibera y decide, y se abren con las mismas facultades que las
+ * de gestión: quien lleva el padrón convoca, asienta y publica.
+ *
+ * Las rutas con parámetro —una asamblea concreta, una elección concreta— no
+ * entran en esta lista: dependen de datos que la semilla no crea, porque
+ * convocar una asamblea es un acto de la organización y no una fila sembrada.
+ * Su marcado sale de las mismas primitivas que estas.
+ */
+const DE_LA_VIDA_INSTITUCIONAL = [
+  '/institucional',
+  '/institucional/territorio',
+  '/institucional/reglas',
+  '/institucional/organos',
+  '/institucional/nombramientos',
+  '/institucional/asambleas',
+  '/institucional/acuerdos',
+  '/institucional/elecciones',
+  '/institucional/documentos',
+  '/institucional/negociacion',
+  '/institucional/disciplina',
+  '/institucional/cumplimiento',
+  '/institucional/archivo',
+];
+
 async function entrar(page: Page, quien: 'persona' | 'secretaria'): Promise<void> {
   const email =
     quien === 'persona' ? process.env['E2E_EMAIL_PERSONA'] : process.env['E2E_EMAIL_SECRETARIA'];
@@ -86,8 +112,9 @@ function describir(violaciones: Awaited<ReturnType<typeof violacionesGraves>>): 
 for (const [quien, rutas] of [
   ['persona', DE_LA_PERSONA],
   ['secretaria', DE_GESTION],
+  ['secretaria', DE_LA_VIDA_INSTITUCIONAL],
 ] as const) {
-  test.describe(`pantallas de ${quien}`, () => {
+  test.describe(`pantallas de ${quien} · ${rutas[0]}`, () => {
     test.beforeEach(async ({ page }) => {
       await entrar(page, quien);
     });

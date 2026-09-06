@@ -11,6 +11,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import { leerReglas } from '@/modules/governance/domain';
 import { issueDocument } from '@/modules/documents';
+import { bodiesWithLiveOffice } from './assignment';
 import type { AppealStatus, DisciplinaryOutcome, DisciplinaryStatus } from '@prisma-client/enums';
 
 /**
@@ -263,11 +264,6 @@ export async function fileAppeal(
   if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
 
   const data = parsed.data;
-  const decision = can({ ...actor, reason: 'interposición de recurso' }, 'discipline.case.read_own', {
-    kind: 'Appeal',
-  });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
-
   const quienRecurre = actor.userId;
   if (quienRecurre === null || quienRecurre === undefined) {
     return fail(errors.forbidden('Recurrir es un acto personal: exige una cuenta.'));
@@ -283,6 +279,16 @@ export async function fileAppeal(
     },
   });
   if (resolucion === null) return fail(errors.notFound('Esa resolución no existe.'));
+
+  // «Lo propio» es la asignación que exige el permiso: se recurre la resolución
+  // que recayó sobre una misma, no la de otra persona.
+  const decision = can(
+    { ...actor, reason: 'interposición de recurso' },
+    'discipline.case.read_own',
+    { kind: 'Appeal', legalEntityId: resolucion.case.instructingBody.legalEntityId },
+    { hasLiveAssignment: () => actor.personId !== null && actor.personId === resolucion.case.personId },
+  );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const cuenta = await db().user.findUnique({ where: { id: quienRecurre }, select: { personId: true } });
   if (cuenta === null) return fail(errors.notFound('No se encontró a la persona titular de la cuenta.'));
@@ -472,15 +478,32 @@ export interface DisciplinaryCaseRow {
   readonly dueProcessComplete: boolean;
 }
 
+/**
+ * Los expedientes que instruye quien pregunta, y ninguno más.
+ *
+ * Sin cargo vivo en ningún órgano instructor la lista sale **vacía**, no
+ * prohibida: no es que no puedas mirar, es que no instruyes nada. Prohibir sería
+ * decirle «no tienes autorización» a quien simplemente no tiene expedientes, y
+ * una pantalla que la navegación ofrece no debe recibir a nadie con una
+ * negativa.
+ */
 export async function disciplinaryCaseList(
   actor: ActorContext,
 ): Promise<UseCaseResult<readonly DisciplinaryCaseRow[]>> {
-  const decision = can({ ...actor, reason: 'consulta de procedimientos disciplinarios' }, 'discipline.case.read', {
-    kind: 'DisciplinaryCase',
-  });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+  const organos = await bodiesWithLiveOffice(actor);
+  const decision = can(
+    { ...actor, reason: 'consulta de procedimientos disciplinarios' },
+    'discipline.case.read',
+    { kind: 'DisciplinaryCase' },
+    { hasLiveAssignment: () => organos.length > 0 },
+  );
+  if (!decision.allowed) {
+    if (decision.reason === 'SIN_ASIGNACION') return ok([]);
+    return fail(errors.forbidden(explain(decision.reason!)));
+  }
 
   const filas = await db().disciplinaryCase.findMany({
+    where: { instructingBodyId: { in: [...organos] } },
     orderBy: { reportedAt: 'desc' },
     take: 100,
     select: {

@@ -71,7 +71,7 @@ export default async function PeoplePage() {
               description="Las cuentas se crean por invitación desde la Secretaría de Organización o desde una delegación. Cuando exista la primera, aparecerá aquí."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Cuentas del sistema, con su estado y sus nombramientos vigentes">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Persona</th>

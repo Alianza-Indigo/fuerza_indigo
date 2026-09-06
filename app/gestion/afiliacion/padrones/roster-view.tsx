@@ -36,7 +36,7 @@ export function RosterView({
   }
 
   return (
-    <ScrollableTable>
+    <ScrollableTable caption="Padrón, con el número, la calidad exacta y el estado de cada persona">
       <thead>
         <tr className="border-b border-[var(--color-line)] text-left">
           <th scope="col" className="p-3 font-medium">Número</th>

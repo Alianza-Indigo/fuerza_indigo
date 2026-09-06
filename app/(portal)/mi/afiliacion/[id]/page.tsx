@@ -291,7 +291,7 @@ export default async function MiSolicitudPage({ params }: { params: Promise<{ id
           {solicitud.documentList.length === 0 ? (
             <EmptyState title="Sin documentos" description="Adjunta lo que te pidan con el formulario de abajo." />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Documentos adjuntos a tu solicitud, con su estado y la nota de quien la revisa">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Documento</th>

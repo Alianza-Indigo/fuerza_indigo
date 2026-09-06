@@ -20,7 +20,7 @@ import {
   registerAttendance,
 } from '@/modules/assembly';
 import { huellaDePadron } from '@/modules/assembly/domain';
-import { appointOffice, createUnionBody, defineOffice } from '@/modules/governance';
+import { appointOffice, createUnionBody, defineOffice, endOfficeTerm } from '@/modules/governance';
 import { expireDueRoleAssignments } from '@/modules/access';
 import {
   castBallot,
@@ -57,6 +57,11 @@ let comision: ActorContext;
 let organoId: string;
 
 const MANANA = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000);
+
+/** Los permisos que el contexto concede, vengan del rol o del cargo. */
+function permisosDe(contexto: ActorContext): string[] {
+  return [...new Set(contexto.roles.flatMap((rol) => [...rol.permissions]))];
+}
 
 async function ponerReglasEnVigor(): Promise<void> {
   const autor = await actorDeMigracion(base.prisma);
@@ -510,8 +515,72 @@ describe('F5-QA-003 · un cargo vencido pierde el acceso sin que nadie interveng
     // Y el contexto que el sistema construye para esa persona ya no lleva el
     // permiso del cargo: eso es «perder el acceso», no una bandera.
     const contexto = await contextoDe(base.prisma, persona);
-    const permisos = new Set(contexto.roles.flatMap((rol) => [...rol.permissions]));
-    expect([...permisos]).not.toContain('territory.unit.read');
+    expect(permisosDe(contexto)).not.toContain('territory.unit.read');
+  });
+});
+
+describe('un cargo confiere sus propias facultades, no solo las de su rol', () => {
+  it('la facultad que declara el cargo llega al contexto y se va con el periodo', async () => {
+    const persona = await crearPersonaConCuenta(base.prisma, {
+      givenName: 'Titular',
+      familyName: 'Con Cartera',
+    });
+    const membresia = await crearMembresia(base.prisma, {
+      personId: persona.personId,
+      legalEntityId: entidadId,
+      typeCode: 'AGREMIADO',
+      territorialUnitId: unidadId,
+    });
+
+    // `documents.template.manage` no está en el rol que el cargo concede: si
+    // llega al contexto, llega **por el cargo**. La tabla
+    // `OfficeDefinitionPermission` se escribía y no la leía nadie; un cargo con
+    // formulario, con facultades obligatorias y sin efecto alguno.
+    const cargo = await defineOffice(secretaria, {
+      code: 'DELEGACION_CON_CARTERA',
+      name: 'Delegación con cartera documental',
+      unionBodyId: organoId,
+      kind: 'SECTION_DELEGATE',
+      termMonths: 12,
+      reelectionAllowed: false,
+      seats: 1,
+      grantsRoleCode: 'TERRITORIAL_DELEGATE',
+      permissionCodes: ['documents.template.manage'],
+    });
+    expect(cargo.ok, cargo.ok ? '' : cargo.error.message).toBe(true);
+    if (!cargo.ok) return;
+
+    const sinCargo = await contextoDe(base.prisma, persona);
+    expect(permisosDe(sinCargo)).not.toContain('documents.template.manage');
+
+    const designacion = await appointOffice(secretaria, {
+      officeDefinitionId: cargo.data.officeDefinitionId,
+      membershipId: membresia.id,
+      territorialUnitId: unidadId,
+      designationMethod: 'ASSEMBLY_APPOINTMENT',
+      electionId: null,
+      substitutedTermId: null,
+      startsOn: new Date().toISOString().slice(0, 10),
+      reason: 'Designación para comprobar que el cargo confiere sus facultades.',
+    });
+    expect(designacion.ok, designacion.ok ? '' : designacion.error.message).toBe(true);
+    if (!designacion.ok) return;
+
+    const conCargo = await contextoDe(base.prisma, persona);
+    expect(permisosDe(conCargo)).toContain('documents.template.manage');
+    // Y la del rol también: el cargo suma, no sustituye.
+    expect(permisosDe(conCargo)).toContain('territory.unit.read');
+
+    // Concluido el periodo, la facultad se va con él.
+    const terminado = await endOfficeTerm(secretaria, {
+      officeTermId: designacion.data.officeTermId,
+      endedOn: new Date().toISOString().slice(0, 10),
+      reason: 'Conclusión anticipada para comprobar que la facultad del cargo no sobrevive al cargo.',
+    });
+    expect(terminado.ok, terminado.ok ? '' : terminado.error.message).toBe(true);
+
+    const despues = await contextoDe(base.prisma, persona);
+    expect(permisosDe(despues)).not.toContain('documents.template.manage');
   });
 });
 

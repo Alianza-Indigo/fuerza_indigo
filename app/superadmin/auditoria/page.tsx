@@ -107,7 +107,7 @@ export default async function AuditPage({
               />
             )
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Bitácora de auditoría, con el instante, la acción, el objeto y el actor de cada asiento">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Cuándo</th>
@@ -155,7 +155,7 @@ export default async function AuditPage({
               description="Aquí aparecen accesos, intentos fallidos, límites de tasa y denegaciones."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Eventos de seguridad, con su tipo, su sujeto y su gravedad">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Cuándo</th>

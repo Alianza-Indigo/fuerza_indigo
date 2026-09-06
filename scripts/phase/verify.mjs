@@ -2524,6 +2524,72 @@ const CHECKS = [
         : ok(['Ninguna prueba usa TRUNCATE en cascada para limpiar entre casos.']);
     },
   },
+
+  {
+    id: 'C-F5-10',
+    title: 'Fase 5: un permiso que exige asignación se comprueba con su sonda',
+    phases: [5],
+    run() {
+      // `needsAssignment` significa «además de la facultad, estar a cargo de
+      // este expediente». El motor lo resuelve con una sonda que aporta el caso
+      // de uso; si no la aporta, la respuesta es siempre `SIN_ASIGNACION`. El
+      // módulo disciplinario entero era así: seis casos de uso, una pantalla
+      // completa y ningún camino que llegara a ellos. No lo vio el compilador
+      // —la sonda es opcional— ni ninguna prueba, porque ninguna abría la lista
+      // con una sesión de verdad.
+      const catalogo = read('src/platform/authz/permissions.ts') ?? '';
+      if (catalogo === '') return fail(['No se encuentra el catálogo de permisos.']);
+
+      const exigenAsignacion = new Set();
+      for (const match of catalogo.matchAll(/define\(\s*'([^']+)'[^)]*?\)/gs)) {
+        if ((match[0] ?? '').includes('needsAssignment: true')) exigenAsignacion.add(match[1] ?? '');
+      }
+      if (exigenAsignacion.size === 0) {
+        return fail(['Ningún permiso exige asignación: el catálogo no se está leyendo bien.']);
+      }
+
+      const problemas = [];
+      let comprobados = 0;
+      for (const ruta of walk().filter((f) => /^src\/modules\/[^/]+\/application\/.+\.ts$/.test(f))) {
+        const fuente = read(ruta) ?? '';
+        for (const match of fuente.matchAll(/can\(([^;]{0,800}?)\)\s*;/gs)) {
+          const cuerpo = match[1] ?? '';
+          // Todos los permisos citados en la llamada, no solo el primero: el
+          // código elige a veces entre dos —según quien ofrezca la prueba— y
+          // mirar solo uno deja el otro sin comprobar. Se cuentan además los
+          // que la llamada recibe por variable, resolviéndolos en el archivo.
+          const citados = new Set([...cuerpo.matchAll(/'([a-z_]+\.[a-z_]+\.[a-z_]+)'/g)].map((c) => c[1]));
+          for (const variable of cuerpo.matchAll(/,\s*([a-zA-Z_$][\w$]*)\s*,/g)) {
+            const nombre = variable[1] ?? '';
+            const asignacion = new RegExp(`const ${nombre}\\s*=([^;]*);`, 's').exec(fuente);
+            if (asignacion === null) continue;
+            for (const codigo of (asignacion[1] ?? '').matchAll(/'([a-z_]+\.[a-z_]+\.[a-z_]+)'/g)) {
+              citados.add(codigo[1]);
+            }
+          }
+
+          const conAsignacion = [...citados].filter((codigo) => exigenAsignacion.has(codigo));
+          if (conAsignacion.length === 0) continue;
+          comprobados += conAsignacion.length;
+          if (!cuerpo.includes('hasLiveAssignment')) {
+            const linea = fuente.slice(0, match.index).split('\n').length;
+            problemas.push(
+              `${ruta}:${linea} comprueba «${conAsignacion.join('», «')}», que exige asignación, sin aportar la sonda: se negará siempre.`,
+            );
+          }
+        }
+      }
+
+      if (comprobados === 0) {
+        return fail(['Ningún caso de uso comprueba un permiso que exija asignación.']);
+      }
+      return problemas.length
+        ? fail(problemas)
+        : ok([
+            `${exigenAsignacion.size} permisos exigen asignación y las ${comprobados} comprobaciones aportan su sonda.`,
+          ]);
+    },
+  },
 ];
 
 

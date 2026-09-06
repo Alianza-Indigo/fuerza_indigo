@@ -211,7 +211,7 @@ export default async function RegistroMaestroPage({ params }: { params: Promise<
             title="Membresías"
             description="Cada una con su número y su historial. Entra para suspender, levantar o terminar."
           >
-            <ScrollableTable>
+            <ScrollableTable caption="Membresías de esta persona, con su número, su estado y su vigencia">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Número</th>
@@ -250,7 +250,7 @@ export default async function RegistroMaestroPage({ params }: { params: Promise<
               description="No es agremiada, ni honoraria, ni está registrada como persona beneficiaria."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Calidades de esta persona, con su estado y la fecha desde la que las tiene">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Calidad</th>

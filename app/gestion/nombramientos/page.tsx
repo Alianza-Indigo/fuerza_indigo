@@ -76,7 +76,7 @@ export default async function AppointmentsPage() {
               description="Cuando otorgues el primero aparecerá aquí, con su motivo y su vigencia."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Nombramientos vigentes, con su alcance, su vigencia y el motivo por el que se otorgaron">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Persona</th>

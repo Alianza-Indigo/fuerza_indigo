@@ -112,7 +112,7 @@ export default async function SolicitudesPage({
               description="Aparecerán aquí en cuanto alguien envíe la suya."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Solicitudes de afiliación, con su folio, su persona, su calidad y su estado">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Folio</th>

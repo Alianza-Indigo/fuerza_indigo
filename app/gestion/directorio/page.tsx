@@ -189,7 +189,7 @@ export default async function DirectorioInternoPage({
                   />
                 )
               ) : (
-                <ScrollableTable>
+                <ScrollableTable caption="Directorio interno de personas con membresía, con su calidad, su estado y su territorio">
                   <thead>
                     <tr className="border-b border-[var(--color-line)] text-left">
                       <th scope="col" className="p-3 font-medium">Persona</th>

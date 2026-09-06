@@ -124,7 +124,7 @@ export default async function BeneficiariosPage({
               description="Registra la primera con el formulario de abajo."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Atenciones registradas, con su urgencia, su estado y su origen">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Persona</th>

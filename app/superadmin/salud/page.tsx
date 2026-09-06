@@ -29,7 +29,7 @@ export default async function HealthPage() {
           </div>
         </Card>
 
-        <ScrollableTable>
+        <ScrollableTable caption="Comprobaciones de salud del sistema, con su estado, su detalle y su duración">
           <thead>
             <tr className="border-b border-[var(--color-line)] text-left">
               <th scope="col" className="p-3 font-medium">Comprobación</th>

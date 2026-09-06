@@ -12,6 +12,7 @@ import { nombreCompleto } from '@/platform/i18n/person-name';
 import { uploadFile } from '@/platform/files';
 import { leerReglas } from '@/modules/governance/domain';
 import type { DisciplinaryStatus, EvidenceKind, EvidenceOfferedBy } from '@prisma-client/enums';
+import { bodiesWithLiveOffice, instruyeEn } from './assignment';
 
 /**
  * Procedimiento disciplinario (PRD §9.8; F5-DIS-001, F5-DIS-002).
@@ -200,8 +201,6 @@ export async function notifyDisciplinaryCase(
 
   const data = parsed.data;
   const contexto = { ...actor, reason: data.note };
-  const decision = can(contexto, 'discipline.case.read', { kind: 'DisciplinaryCase' });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const expediente = await db().disciplinaryCase.findUnique({
     where: { id: data.caseId },
@@ -210,11 +209,21 @@ export async function notifyDisciplinaryCase(
       folio: true,
       status: true,
       notifiedAt: true,
+      instructingBodyId: true,
       normativeRuleSet: { select: { version: true, rules: true } },
       instructingBody: { select: { legalEntityId: true } },
     },
   });
   if (expediente === null) return fail(errors.notFound('Ese expediente no existe.'));
+
+  const organos = await bodiesWithLiveOffice(actor);
+  const decision = can(
+    contexto,
+    'discipline.case.read',
+    { kind: 'DisciplinaryCase', legalEntityId: expediente.instructingBody.legalEntityId },
+    { hasLiveAssignment: instruyeEn(organos, expediente.instructingBodyId) },
+  );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
   if (expediente.notifiedAt !== null) return fail(errors.conflict('Esa persona ya fue notificada.'));
   if (expediente.status === 'CLOSED' || expediente.status === 'DISMISSED') {
     return fail(errors.conflict('Ese expediente está cerrado.'));
@@ -297,8 +306,6 @@ export async function recordHearing(
 
   const data = parsed.data;
   const contexto = { ...actor, reason: data.note };
-  const decision = can(contexto, 'discipline.case.read', { kind: 'DisciplinaryCase' });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const expediente = await db().disciplinaryCase.findUnique({
     where: { id: data.caseId },
@@ -309,10 +316,21 @@ export async function recordHearing(
       notifiedAt: true,
       hearingHeldAt: true,
       hearingWaivedAt: true,
+      instructingBodyId: true,
       instructingBody: { select: { legalEntityId: true } },
     },
   });
   if (expediente === null) return fail(errors.notFound('Ese expediente no existe.'));
+
+  const organos = await bodiesWithLiveOffice(actor);
+  const decision = can(
+    contexto,
+    'discipline.case.read',
+    { kind: 'DisciplinaryCase', legalEntityId: expediente.instructingBody.legalEntityId },
+    { hasLiveAssignment: instruyeEn(organos, expediente.instructingBodyId) },
+  );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
   if (expediente.notifiedAt === null) {
     return fail(errors.conflict('No se ha notificado a la persona señalada. La audiencia va después de la notificación.'));
   }
@@ -371,9 +389,6 @@ export async function offerEvidence(
   if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
 
   const data = parsed.data;
-  const permiso = data.offeredBy === 'MEMBER' ? 'discipline.case.read_own' : 'discipline.evidence.manage';
-  const decision = can({ ...actor, reason: 'ofrecimiento de prueba' }, permiso, { kind: 'DisciplinaryEvidence' });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const expediente = await db().disciplinaryCase.findUnique({
     where: { id: data.caseId },
@@ -382,23 +397,42 @@ export async function offerEvidence(
       folio: true,
       status: true,
       personId: true,
+      instructingBodyId: true,
       instructingBody: { select: { legalEntityId: true } },
       decision: { select: { id: true } },
     },
   });
   if (expediente === null) return fail(errors.notFound('Ese expediente no existe.'));
+
+  // Quien ofrece como persona señalada tiene que serlo, y quien ofrece como
+  // órgano instructor tiene que instruirlo: las dos son la misma pregunta —«¿es
+  // tuyo este expediente?»— y las dos las exige el catálogo con
+  // `needsAssignment`. Se resuelven antes de autorizar porque la respuesta está
+  // en el expediente, no en el rol.
+  const organos = data.offeredBy === 'MEMBER' ? [] : await bodiesWithLiveOffice(actor);
+  const propio = actor.personId !== null && actor.personId === expediente.personId;
+  const decision =
+    data.offeredBy === 'MEMBER'
+      ? can(
+          { ...actor, reason: 'ofrecimiento de prueba' },
+          'discipline.case.read_own',
+          { kind: 'DisciplinaryEvidence', legalEntityId: expediente.instructingBody.legalEntityId },
+          { hasLiveAssignment: () => propio },
+        )
+      : can(
+          { ...actor, reason: 'ofrecimiento de prueba' },
+          'discipline.evidence.manage',
+          { kind: 'DisciplinaryEvidence', legalEntityId: expediente.instructingBody.legalEntityId },
+          { hasLiveAssignment: instruyeEn(organos, expediente.instructingBodyId) },
+        );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
   if (expediente.decision !== null) {
     return fail(errors.conflict('El expediente ya está resuelto. Las pruebas se ofrecen antes de resolver.'));
   }
 
-  // Quien ofrece como persona señalada tiene que serlo.
-  if (data.offeredBy === 'MEMBER') {
-    const quien = actor.userId;
-    if (quien === null || quien === undefined) return fail(errors.forbidden('Exige una cuenta.'));
-    const cuenta = await db().user.findUnique({ where: { id: quien }, select: { personId: true } });
-    if (cuenta === null || cuenta.personId !== expediente.personId) {
-      return fail(errors.forbidden('Solo la persona señalada ofrece pruebas en su nombre.'));
-    }
+  if (data.offeredBy === 'MEMBER' && !propio) {
+    return fail(errors.forbidden('Solo la persona señalada ofrece pruebas en su nombre.'));
   }
 
   const archivo = input.file ?? null;
@@ -464,8 +498,6 @@ export async function assessEvidence(
 
   const data = parsed.data;
   const contexto = { ...actor, reason: data.admissionRationale };
-  const decision = can(contexto, 'discipline.evidence.manage', { kind: 'DisciplinaryEvidence' });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const quienValora = actor.userId;
   if (quienValora === null || quienValora === undefined) {
@@ -477,10 +509,28 @@ export async function assessEvidence(
     select: {
       id: true,
       admitted: true,
-      case: { select: { id: true, folio: true, instructingBody: { select: { legalEntityId: true } }, decision: { select: { id: true } } } },
+      case: {
+        select: {
+          id: true,
+          folio: true,
+          instructingBodyId: true,
+          instructingBody: { select: { legalEntityId: true } },
+          decision: { select: { id: true } },
+        },
+      },
     },
   });
   if (prueba === null) return fail(errors.notFound('Esa prueba no existe.'));
+
+  const organos = await bodiesWithLiveOffice(actor);
+  const decision = can(
+    contexto,
+    'discipline.evidence.manage',
+    { kind: 'DisciplinaryEvidence', legalEntityId: prueba.case.instructingBody.legalEntityId },
+    { hasLiveAssignment: instruyeEn(organos, prueba.case.instructingBodyId) },
+  );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
   if (prueba.admitted !== null) return fail(errors.conflict('Esa prueba ya está valorada.'));
   if (prueba.case.decision !== null) {
     return fail(errors.conflict('El expediente ya está resuelto. Las pruebas se valoran antes de resolver.'));
@@ -528,9 +578,19 @@ export async function evidenceList(
   actor: ActorContext,
   caseId: string,
 ): Promise<UseCaseResult<readonly EvidenceRow[]>> {
-  const decision = can({ ...actor, reason: 'consulta de pruebas' }, 'discipline.case.read', {
-    kind: 'DisciplinaryEvidence',
+  const expediente = await db().disciplinaryCase.findUnique({
+    where: { id: caseId },
+    select: { instructingBodyId: true, instructingBody: { select: { legalEntityId: true } } },
   });
+  if (expediente === null) return fail(errors.notFound('Ese expediente no existe.'));
+
+  const organos = await bodiesWithLiveOffice(actor);
+  const decision = can(
+    { ...actor, reason: 'consulta de pruebas' },
+    'discipline.case.read',
+    { kind: 'DisciplinaryEvidence', legalEntityId: expediente.instructingBody.legalEntityId },
+    { hasLiveAssignment: instruyeEn(organos, expediente.instructingBodyId) },
+  );
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
   const filas = await db().disciplinaryEvidence.findMany({

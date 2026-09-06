@@ -54,7 +54,7 @@ export default async function PeopleManagementPage() {
               description="Invita a la primera persona con el formulario de abajo."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Cuentas de la organización, con su estado, su último acceso y sus nombramientos">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Persona</th>

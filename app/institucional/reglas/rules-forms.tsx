@@ -52,10 +52,19 @@ const OPCIONES_QUORUM: readonly Option[] = QUORUMS.map((valor) => ({
  * «el estatuto todavía no lo aporta». Lo que sí es obligatorio es completarlos
  * para poner la versión en vigor, y el caso de uso lo exige entonces.
  */
+/**
+ * Los mismos umbrales se piden dos veces en esta pantalla: al redactar una
+ * versión nueva y al editar el borrador. Los nombres de campo tienen que ser
+ * los mismos —es lo que el caso de uso lee—, así que lo que distingue a un
+ * control de su gemelo es el prefijo del identificador. Sin él la etiqueta
+ * queda atada solo al primero y el segundo se navega a ciegas.
+ */
 function CamposDeReglas({
+  prefijo,
   valores,
   errores,
 }: {
+  prefijo: string;
   valores: Partial<Record<keyof NormativeRules, unknown>>;
   errores: Record<string, string[]> | undefined;
 }) {
@@ -76,7 +85,13 @@ function CamposDeReglas({
           return (
             <div key={clave}>
               <input type="hidden" name={`presente_${clave}`} value="si" />
-              <Checkbox name={clave} label={etiqueta} defaultChecked={valor === true} errors={camposErroneos} />
+              <Checkbox
+                name={clave}
+                id={`${prefijo}-${clave}`}
+                label={etiqueta}
+                defaultChecked={valor === true}
+                errors={camposErroneos}
+              />
             </div>
           );
         }
@@ -86,6 +101,7 @@ function CamposDeReglas({
             <Select
               key={clave}
               name={clave}
+              id={`${prefijo}-${clave}`}
               label={etiqueta}
               options={forma === 'mayoria' ? OPCIONES_MAYORIA : OPCIONES_QUORUM}
               defaultValue={typeof valor === 'string' ? valor : ''}
@@ -99,6 +115,7 @@ function CamposDeReglas({
           <Field
             key={clave}
             name={clave}
+            id={`${prefijo}-${clave}`}
             label={etiqueta}
             type="number"
             inputMode="numeric"
@@ -136,16 +153,18 @@ export function DraftRuleSetForm() {
 
       <Field
         name="version"
+        id="redactar-version"
         label="Versión"
         required
         hint="Año, punto y número. Por ejemplo: 2026.2."
         errors={estado.fieldErrors?.['version']}
       />
 
-      <CamposDeReglas valores={{}} errores={estado.fieldErrors} />
+      <CamposDeReglas prefijo="redactar" valores={{}} errores={estado.fieldErrors} />
 
       <TextArea
         name="reason"
+        id="redactar-reason"
         label="Motivo de la reforma"
         required
         rows={3}
@@ -175,10 +194,11 @@ export function EditRuleDraftForm({
       {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Listo'} />}
       <Pendientes missing={estado.missing} />
 
-      <CamposDeReglas valores={valores} errores={estado.fieldErrors} />
+      <CamposDeReglas prefijo="editar" valores={valores} errores={estado.fieldErrors} />
 
       <TextArea
         name="reason"
+        id="editar-reason"
         label="Motivo del cambio"
         required
         rows={3}
@@ -241,7 +261,14 @@ export function PutInForceForm({
         options={acuerdos}
         errors={estado.fieldErrors?.['approvedByResolutionId']}
       />
-      <TextArea name="reason" label="Motivo" required rows={2} errors={estado.fieldErrors?.['reason']} />
+      <TextArea
+        name="reason"
+        id="vigor-reason"
+        label="Motivo"
+        required
+        rows={2}
+        errors={estado.fieldErrors?.['reason']}
+      />
 
       <SubmitButton>{pendiente ? 'Poniendo en vigor…' : `Poner en vigor la versión ${version}`}</SubmitButton>
     </form>

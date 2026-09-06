@@ -43,7 +43,7 @@ export default async function CalidadesPage() {
               description="Crea la primera con el formulario de abajo."
             />
           ) : (
-            <ScrollableTable>
+            <ScrollableTable caption="Calidades de membresía, con sus derechos y su forma de cobro">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Calidad</th>

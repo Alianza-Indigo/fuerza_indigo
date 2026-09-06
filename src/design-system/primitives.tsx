@@ -227,24 +227,40 @@ interface CampoBase {
   hint?: string | undefined;
   errors?: readonly string[] | undefined;
   required?: boolean | undefined;
+  /**
+   * Identificador del control en el documento. Por omisión es el nombre del
+   * campo, que basta mientras haya un solo formulario en la pantalla.
+   *
+   * Cuando conviven dos —redactar un borrador y editarlo, en la misma página de
+   * reglas estatutarias— los dos campos «motivo» se llamarían igual, el
+   * identificador se repetiría y la etiqueta quedaría atada solo al primero: el
+   * segundo control se queda sin etiqueta y quien usa lector de pantalla no
+   * sabe qué se le pide. Lo encontró la revisión con axe de las pantallas
+   * institucionales. En ese caso cada formulario da su propio prefijo.
+   */
+  id?: string | undefined;
 }
 
 /** Estructura común: etiqueta visible, ayuda y error, todos asociados al control. */
 function Envoltura({
   name,
+  id,
   label,
   hint,
   errors,
   required,
   children,
-}: CampoBase & { children: (ids: { describedBy: string | undefined; invalid: boolean }) => ReactNode }) {
-  const idAyuda = hint === undefined ? undefined : `${name}-ayuda`;
-  const idError = errors === undefined || errors.length === 0 ? undefined : `${name}-error`;
+}: CampoBase & {
+  children: (ids: { id: string; describedBy: string | undefined; invalid: boolean }) => ReactNode;
+}) {
+  const idCampo = id ?? name;
+  const idAyuda = hint === undefined ? undefined : `${idCampo}-ayuda`;
+  const idError = errors === undefined || errors.length === 0 ? undefined : `${idCampo}-error`;
   const describedBy = [idAyuda, idError].filter((v) => v !== undefined).join(' ') || undefined;
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="block font-medium">
+      <label htmlFor={idCampo} className="block font-medium">
         {label}
         {required === true && (
           <>
@@ -262,7 +278,7 @@ function Envoltura({
         </p>
       )}
 
-      {children({ describedBy, invalid: idError !== undefined })}
+      {children({ id: idCampo, describedBy, invalid: idError !== undefined })}
 
       {idError !== undefined && (
         <ul id={idError} className="space-y-1 text-sm font-medium text-[var(--color-danger)]">
@@ -299,9 +315,9 @@ export function Field({
 }) {
   return (
     <Envoltura {...base}>
-      {({ describedBy, invalid }) => (
+      {({ id, describedBy, invalid }) => (
         <input
-          id={base.name}
+          id={id}
           name={base.name}
           type={type}
           required={base.required}
@@ -325,9 +341,9 @@ export function TextArea({
 }: CampoBase & { rows?: number | undefined; defaultValue?: string | undefined; maxLength?: number | undefined }) {
   return (
     <Envoltura {...base}>
-      {({ describedBy, invalid }) => (
+      {({ id, describedBy, invalid }) => (
         <textarea
-          id={base.name}
+          id={id}
           name={base.name}
           rows={rows}
           required={base.required}
@@ -368,9 +384,9 @@ export function Select({
 }) {
   return (
     <Envoltura {...base}>
-      {({ describedBy, invalid }) => (
+      {({ id, describedBy, invalid }) => (
         <select
-          id={base.name}
+          id={id}
           name={base.name}
           required={base.required}
           defaultValue={defaultValue ?? ''}
@@ -398,6 +414,7 @@ export function Select({
  */
 export function RadioGroup({
   name,
+  id,
   legend,
   help,
   options,
@@ -406,6 +423,8 @@ export function RadioGroup({
   onChange,
 }: {
   name: string;
+  /** Identificador base del grupo. Por omisión, el nombre. Ver `CampoBase`. */
+  id?: string | undefined;
   legend: string;
   help?: string | undefined;
   options: readonly Option[];
@@ -419,8 +438,9 @@ export function RadioGroup({
    */
   onChange?: ((value: string) => void) | undefined;
 }) {
-  const idAyuda = help === undefined ? undefined : `${name}-ayuda`;
-  const idError = errors === undefined || errors.length === 0 ? undefined : `${name}-error`;
+  const idCampo = id ?? name;
+  const idAyuda = help === undefined ? undefined : `${idCampo}-ayuda`;
+  const idError = errors === undefined || errors.length === 0 ? undefined : `${idCampo}-error`;
   const describedBy = [idAyuda, idError].filter((v) => v !== undefined).join(' ') || undefined;
   const conExplicacion = options.some((opcion) => opcion.hint !== undefined);
 
@@ -443,7 +463,7 @@ export function RadioGroup({
               name={name}
               value={opcion.value}
               defaultChecked={value === opcion.value}
-              aria-describedby={opcion.hint === undefined ? undefined : `${name}-${opcion.value}-detalle`}
+              aria-describedby={opcion.hint === undefined ? undefined : `${idCampo}-${opcion.value}-detalle`}
               onChange={onChange === undefined ? undefined : () => onChange(opcion.value)}
               className={`size-4 shrink-0 accent-[var(--color-accent)] ${conExplicacion ? 'mt-1' : ''}`}
             />
@@ -451,7 +471,7 @@ export function RadioGroup({
               {opcion.label}
               {opcion.hint !== undefined && (
                 <span
-                  id={`${name}-${opcion.value}-detalle`}
+                  id={`${idCampo}-${opcion.value}-detalle`}
                   className="mt-0.5 block text-sm font-normal text-[var(--color-ink-soft)]"
                 >
                   {opcion.hint}
@@ -474,6 +494,7 @@ export function RadioGroup({
 
 export function Checkbox({
   name,
+  id,
   label,
   help,
   defaultChecked = false,
@@ -481,21 +502,24 @@ export function Checkbox({
   errors,
 }: {
   name: string;
+  /** Identificador del control. Por omisión, el nombre. Ver `CampoBase`. */
+  id?: string | undefined;
   label: ReactNode;
   help?: string | undefined;
   defaultChecked?: boolean | undefined;
   required?: boolean | undefined;
   errors?: readonly string[] | undefined;
 }) {
-  const idAyuda = help === undefined ? undefined : `${name}-ayuda`;
-  const idError = errors === undefined || errors.length === 0 ? undefined : `${name}-error`;
+  const idCampo = id ?? name;
+  const idAyuda = help === undefined ? undefined : `${idCampo}-ayuda`;
+  const idError = errors === undefined || errors.length === 0 ? undefined : `${idCampo}-error`;
   const describedBy = [idAyuda, idError].filter((v) => v !== undefined).join(' ') || undefined;
 
   return (
     <div className="space-y-1.5">
       <label className="flex min-h-11 items-start gap-3 py-2">
         <input
-          id={name}
+          id={idCampo}
           name={name}
           type="checkbox"
           defaultChecked={defaultChecked}
@@ -723,12 +747,31 @@ export function ModuleBadge({ module, children }: { module: Module; children: Re
   );
 }
 
-/** Tabla con desplazamiento propio: el cuerpo de la página nunca se desplaza en horizontal. */
-export function ScrollableTable({ caption, children }: { caption?: string | undefined; children: ReactNode }) {
+/**
+ * Tabla con desplazamiento propio: el cuerpo de la página nunca se desplaza en
+ * horizontal.
+ *
+ * La caja que se desplaza es **enfocable** y se anuncia como región con nombre.
+ * Sin eso, quien navega con teclado no puede llegar al contenido que queda
+ * fuera de la vista: el ratón lo alcanza y el teclado no, que es exactamente la
+ * clase de barrera que el PRD §5.2 prohíbe. La revisión con axe de las
+ * pantallas institucionales lo encontró en el archivo histórico, cuya tabla es
+ * la primera lo bastante ancha como para desbordar de verdad.
+ *
+ * Por eso `caption` es obligatorio: es el nombre de la región y el resumen que
+ * oye quien no ve la tabla. Una región sin nombre es tan inútil como una sin
+ * foco.
+ */
+export function ScrollableTable({ caption, children }: { caption: string; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--color-line)]">
+    <div
+      className="overflow-x-auto rounded-xl border border-[var(--color-line)]"
+      tabIndex={0}
+      role="region"
+      aria-label={caption}
+    >
       <table className="w-full min-w-[40rem] border-collapse text-sm">
-        {caption !== undefined && <caption className="sr-only">{caption}</caption>}
+        <caption className="sr-only">{caption}</caption>
         {children}
       </table>
     </div>

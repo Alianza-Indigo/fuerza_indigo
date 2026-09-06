@@ -52,7 +52,7 @@ export default async function SecurityPage() {
                 description="Cuando entres desde otro dispositivo aparecerá aquí."
               />
             ) : (
-              <ScrollableTable>
+              <ScrollableTable caption="Sesiones abiertas en otros dispositivos">
                 <thead>
                   <tr className="border-b border-[var(--color-line)] text-left">
                     <th scope="col" className="p-3 font-medium">Dispositivo</th>

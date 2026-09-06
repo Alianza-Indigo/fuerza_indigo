@@ -27,10 +27,20 @@ export interface CuentasDePrueba {
   readonly password: string;
   readonly persona: string;
   readonly secretaria: string;
+  readonly comunicacion: string;
 }
 
 const PERSONA = 'e2e-agremiada@ejemplo.invalid';
 const SECRETARIA = 'e2e-secretaria@ejemplo.invalid';
+/**
+ * Cuenta de comunicación (Fase 7).
+ *
+ * Existe porque el catálogo del ecosistema lo administra `COMMUNICATIONS` y no
+ * la secretaría ejecutiva. Se podría haber ampliado la facultad de la
+ * secretaría para que las pruebas alcanzaran la pantalla con la cuenta que ya
+ * había; sería dejar que una prueba decida quién manda en el sitio público.
+ */
+const COMUNICACION = 'e2e-comunicacion@ejemplo.invalid';
 
 async function actorDeMigracion(client: Client): Promise<string> {
   const { rows } = await client.query<{ id: string }>(
@@ -124,6 +134,9 @@ export async function prepararCuentas(connectionString: string): Promise<Cuentas
     const secretaria = await cuenta(client, SECRETARIA, 'Secretaria', 'De Pruebas', password);
     await rol(client, secretaria.userId, 'EXECUTIVE_SECRETARY', secretaria.userId);
 
+    const comunicacion = await cuenta(client, COMUNICACION, 'Comunicacion', 'De Pruebas', password);
+    await rol(client, comunicacion.userId, 'COMMUNICATIONS', secretaria.userId);
+
     const persona = await cuenta(client, PERSONA, 'Agremiada', 'De Pruebas', password);
     await rol(client, persona.userId, 'UNION_MEMBER', secretaria.userId);
 
@@ -141,7 +154,7 @@ export async function prepararCuentas(connectionString: string): Promise<Cuentas
       [newPublicId(20), `FI-E2E-${newPublicId(6)}`, persona.personId],
     );
 
-    return { password, persona: PERSONA, secretaria: SECRETARIA };
+    return { password, persona: PERSONA, secretaria: SECRETARIA, comunicacion: COMUNICACION };
   } finally {
     await client.end();
   }

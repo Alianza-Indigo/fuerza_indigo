@@ -50,6 +50,16 @@ export const AUDIT_ACTIONS = {
   CONTENT_REDIRECT_CREATED: 'content.redirect.created',
   CONTENT_REDIRECT_DELETED: 'content.redirect.deleted',
 
+  // Catálogo del ecosistema (Fase 7). La dirección de acceso se audita aparte
+  // de la ficha: cambiarla es lo único que decide **a dónde** se manda a la
+  // gente, y si un día alguien acaba en un sitio que no debía, la pregunta va a
+  // ser quién puso esa dirección y cuándo.
+  ECOSYSTEM_LINK_CREATED: 'ecosystem.link.created',
+  ECOSYSTEM_LINK_UPDATED: 'ecosystem.link.updated',
+  ECOSYSTEM_LINK_URL_CHANGED: 'ecosystem.link.url_changed',
+  ECOSYSTEM_LINK_PUBLISHED: 'ecosystem.link.published',
+  ECOSYSTEM_LINK_HIDDEN: 'ecosystem.link.hidden',
+
   // Entrada única de ayuda — Fase 2. El envío no se audita: quien escribe no
   // ejecuta un acto institucional, y la fila con su fecha ya es el registro. Lo
   // que sí es acto de la organización es leer lo que alguien contó y hacerse

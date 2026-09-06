@@ -292,11 +292,11 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 |---|---|---|
 | F7-DAT-001 | Migrar la entidad `EcosystemLink` del catálogo configurable de plataformas y herramientas | Terminada |
 | F7-CAT-001 | Implementar la ficha con nombre, logotipo o imagen, descripción breve, público al que se dirige y estado operativo | Terminada |
-| F7-CAT-002 | Implementar la dirección externa configurable desde el CMS, sin direcciones escritas en componentes | Pendiente |
+| F7-CAT-002 | Implementar la dirección externa configurable desde el CMS, sin direcciones escritas en componentes | Terminada |
 | F7-CAT-003 | Implementar el botón de acceso con indicación accesible de que se abre otra plataforma | Terminada |
 | F7-CAT-004 | Cargar las fichas de CIAN, CENI, NeuroPlan, ADIA y NEXO con el mismo patrón, sin casos especiales en código | Terminada |
 | F7-UI-001 | Construir la página pública del catálogo y su repetición en el portal personal, adaptable y neuroinclusiva | Terminada |
-| F7-UI-002 | Construir la administración del catálogo dentro de la superficie de contenidos existente | Pendiente |
+| F7-UI-002 | Construir la administración del catálogo dentro de la superficie de contenidos existente | Terminada |
 | F7-DOC-001 | Documentar cómo agregar una plataforma o herramienta nueva sin tocar el núcleo | Pendiente |
 | F7-QA-001 | Probar que una ficha sin dirección real configurada no muestra botón de acceso | Pendiente |
 | F7-QA-002 | Probar que el acceso es únicamente redirección externa, sin datos personales en la dirección y con `rel="noopener noreferrer"` | Pendiente |

@@ -142,3 +142,78 @@ test.describe('catálogo del ecosistema', () => {
     await expect(page.getByText(/tu cuenta de Fuerza Índigo no entra/i)).toBeVisible();
   });
 });
+
+/**
+ * La administración del catálogo, en el navegador (F7-UI-002).
+ *
+ * Se prueba desde la pantalla y no solo desde la integración porque lo que aquí
+ * puede fallar es de pantalla: que el formulario no llegue al caso de uso, que
+ * el cambio no se vea en el sitio público hasta el siguiente despliegue, o que
+ * cinco formularios iguales en una misma página se pisen los identificadores y
+ * dejen campos sin etiqueta.
+ */
+const DIRECCION_ADMIN = 'https://adia-de-prueba.invalid/entrar';
+
+test.afterAll(async () => {
+  // La prueba de administración escribe de verdad, porque escribir de verdad es
+  // lo que prueba. Se deshace al terminar para que la base quede como estaba.
+  await conLaBase((cliente) =>
+    cliente.query('UPDATE ecosystem_link SET "externalUrl" = NULL WHERE code = $1', ['ADIA']),
+  );
+});
+
+test.describe('administrar el catálogo', () => {
+  test('cambiar la dirección desde el gestor se ve en el sitio público sin desplegar nada', async ({
+    page,
+  }) => {
+    const correo = process.env['E2E_EMAIL_COMUNICACION'];
+    const clave = process.env['E2E_PASSWORD'];
+    test.skip(correo === undefined || clave === undefined, 'Faltan las credenciales de prueba.');
+
+    await page.goto('/acceso');
+    await page.fill('#email', correo!);
+    await page.fill('#password', clave!);
+    await page.click('button[type=submit]');
+    await page.waitForURL((url) => !url.pathname.startsWith('/acceso'), { timeout: 30_000 });
+
+    await page.goto('/gestion/contenidos/ecosistema');
+    await expect(page.getByRole('heading', { level: 1, name: /catálogo del ecosistema/i })).toBeVisible();
+
+    // ADIA llega sin dirección: en el sitio público no tiene botón.
+    await page.goto('/herramientas');
+    await expect(
+      page.getByRole('link', { name: /Ir a ADIA \(se abre otra plataforma/i }),
+    ).toHaveCount(0);
+
+    await page.goto('/gestion/contenidos/ecosistema');
+    const tarjetaAdia = page.locator('li', { has: page.getByRole('heading', { name: 'ADIA', exact: true }) });
+    // Se busca por su etiqueta y no por un identificador: si las cinco fichas
+    // compartieran identificador, esto encontraría el campo de otra ficha —o
+    // ninguno—, que es justo el defecto que se quiere que no vuelva.
+    await tarjetaAdia.getByLabel(/dirección de acceso/i).fill(DIRECCION_ADMIN);
+    await tarjetaAdia.getByRole('button', { name: /guardar ficha/i }).click();
+
+    await expect(page.getByText(/ficha guardada/i).first()).toBeVisible();
+
+    await page.goto('/herramientas');
+    const acceso = page.getByRole('link', { name: /Ir a ADIA \(se abre otra plataforma/i });
+    await expect(acceso).toHaveAttribute('href', DIRECCION_ADMIN);
+    await expect(acceso).toHaveAttribute('rel', /noopener/);
+  });
+
+  test('quien no administra el catálogo no llega a la pantalla', async ({ page }) => {
+    const correo = process.env['E2E_EMAIL_PERSONA'];
+    const clave = process.env['E2E_PASSWORD'];
+    test.skip(correo === undefined || clave === undefined, 'Faltan las credenciales de prueba.');
+
+    await page.goto('/acceso');
+    await page.fill('#email', correo!);
+    await page.fill('#password', clave!);
+    await page.click('button[type=submit]');
+    await page.waitForURL((url) => !url.pathname.startsWith('/acceso'), { timeout: 30_000 });
+
+    await page.goto('/gestion/contenidos/ecosistema');
+    await expect(page.getByRole('link', { name: /catálogo del ecosistema/i })).toHaveCount(0);
+    await expect(page.getByText(/no tienes autorización|no encontrada/i).first()).toBeVisible();
+  });
+});

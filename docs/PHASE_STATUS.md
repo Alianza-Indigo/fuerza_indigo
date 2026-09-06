@@ -30,7 +30,7 @@ El PRD §24 Fase 7 contrata: catálogo único de plataformas y herramientas del 
 |---|---|---|
 | A | Entidad `EcosystemLink`, migración, permiso `ecosystem.link.manage` y semilla del catálogo | Completo |
 | B | Catálogo público y su repetición en el portal personal, con el botón que dice que se sale | Completo |
-| C | Administración del catálogo en la superficie de contenidos | Pendiente |
+| C | Administración del catálogo en la superficie de contenidos | Completo |
 | D | Pruebas, controles de fase, documentación y cierre | Pendiente |
 
 ---
@@ -67,6 +67,7 @@ gestor de contenidos.
 |---|---|---|---|
 | `D-F7-001` | Media | `npm run db:seed` no cargaba `.env.local`: solo funcionaba si quien lo ejecutaba había exportado las variables a mano en su terminal. El README y `docs/HANDOFF.md` lo documentan como paso de la puesta en marcha, y en una instalación nueva fallaba con un mensaje que hablaba de una variable **que sí estaba escrita en el archivo**. | Corregido en el bloque A. La semilla usa `loadLocalEnv()`, el mismo cargador que ya usan las migraciones y las pruebas de integración, y el mensaje de error dice ahora dónde se busca. |
 | `D-F7-002` | Alta | Nada impedía publicar en el gestor de contenidos una dirección que ya sirve una pantalla del código. La página se guardaba, el gestor la daba por publicada y quien abría la dirección veía otra cosa: una página fantasma que solo se descubre cuando alguien pregunta por qué la suya no aparece. Era un riesgo latente desde la Fase 2 y dejó de serlo al servir el catálogo desde `/herramientas`. | Corregido en el bloque B. Crear una página o una redirección en una dirección del código se rechaza con su motivo. El control `C-F7-01` obliga a que **toda** ruta pública esté clasificada: o sirve contenido propio, y entonces el gestor no publica ahí, o es una forma de publicar lo del gestor —como `legales/:param`— y entonces sí. Una pantalla nueva obliga a decidir en vez de heredar un comportamiento que nadie eligió. |
+| `D-F7-003` | Baja | Las acciones del catálogo llamaban a `revalidatePath` sobre las tres rutas donde vive, con un comentario que explicaba por qué hacía falta. Las tres pantallas son dinámicas y se construyen en cada petición: no había ninguna página guardada que invalidar. Código que no hacía nada, y una explicación que afirmaba lo contrario. | Corregido en el bloque C. Se retiraron las tres llamadas y el comentario dice ahora por qué **no** se revalida, y qué habría que hacer si alguna de esas rutas dejara de ser dinámica. Apareció al intentar romperlo: quitar la revalidación no ponía en rojo ninguna prueba. |
 
 ---
 

@@ -31,6 +31,7 @@ export const SECCIONES = [
   { href: '/gestion/consentimientos', label: 'Avisos y consentimientos', permiso: 'consent.version.manage' },
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
+  { href: '/gestion/contenidos/ecosistema', label: 'Catálogo del ecosistema', permiso: 'ecosystem.link.manage' },
   { href: '/gestion/redirecciones', label: 'Redirecciones', permiso: 'content.redirect.manage' },
   { href: '/gestion/finanzas', label: 'Finanzas', permiso: 'billing.payment.read' },
   { href: '/gestion/finanzas/catalogo', label: 'Catálogo de cobros', permiso: 'billing.catalog.manage' },

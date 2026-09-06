@@ -1586,3 +1586,29 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Por qué obligar a clasificar y no elegir un valor por omisión.** Cualquiera de los dos por omisión es una equivocación silenciosa. Si por omisión se reserva, una ruta nueva que sirva contenido del gestor deja de poder publicarse y nadie sabe por qué. Si por omisión no se reserva, vuelve la página fantasma. Obligar a decidir convierte el descuido en un fallo de la puerta de salida, que es donde se puede corregir.
 
 **La comparación es por ruta exacta, con su profundidad.** `legales/:param` casa con `legales/privacidad` y no con `legales/terminos/fuerza-indigo`, que tiene tres segmentos y cae en la atrapatodo. Un segmento variable casa con cualquier valor, pero con uno.
+
+---
+
+## ADR-0127 · Cambiar una dirección de acceso se audita aparte del resto de la ficha
+
+**Contexto.** Administrar el catálogo del ecosistema es editar textos y una dirección. Casi todos los cambios son de redacción —una errata, un resumen más claro, el orden— y uno no lo es: la dirección de acceso es lo único de esa pantalla que decide **a dónde** se manda a una persona que confía en el sitio.
+
+**Decisión.** Guardar la ficha deja un asiento, y cambiar la dirección deja **otro**, con su propia acción, el valor anterior y el nuevo. Un solo asiento genérico obligaría, el día que alguien acabe donde no debía, a reconstruir por diferencias entre versiones cuál de los veinte cambios movió el destino. Con el asiento propio, la pregunta —quién puso esa dirección y cuándo— tiene respuesta directa.
+
+**Y el formulario lo dice.** El campo advierte que el cambio queda registrado con nombre y fecha. No es una amenaza: es lo que uno quiere saber que existe cuando administra algo que manda gente fuera del sitio.
+
+**Vaciar el campo retira el acceso.** No guarda una cadena vacía, que pasaría el «tiene dirección» de cualquier comprobación descuidada y produciría el botón que no lleva a ninguna parte. La ausencia se representa con nulo y con nada más, y la ayuda del campo lo dice con esas palabras.
+
+**Publicar sin dirección se permite, a propósito.** Una ficha sirve para saber qué es esa plataforma aunque su acceso todavía no esté configurado, y la tarjeta lo dice en voz alta. Negarlo obligaría a inventar una dirección para poder contar que la plataforma existe, que es exactamente lo que la semilla evita.
+
+---
+
+## ADR-0128 · Una prueba no decide quién manda en el sitio público
+
+**Contexto.** El catálogo del ecosistema lo administra `COMMUNICATIONS`, no la secretaría ejecutiva. Las pruebas de extremo a extremo tenían dos cuentas —una persona agremiada y una secretaría— y ninguna alcanzaba la pantalla nueva.
+
+**La salida fácil, y por qué no.** Bastaba añadir `ecosystem.link.manage` al rol de la secretaría y las pruebas pasaban. Sería dejar que la comodidad de una prueba decida quién puede cambiar a dónde manda el sitio público a la gente. Un permiso se concede porque alguien lo necesita para su trabajo, no porque un fixture no llegaba.
+
+**Decisión.** Una cuenta de prueba más, con el rol que de verdad administra el catálogo. La suite de accesibilidad la usa para esa pantalla y las de extremo a extremo para la de administración; la denegación se comprueba con la cuenta de una persona agremiada, que es quien no debe llegar.
+
+**Efecto secundario que vale la pena.** La revisión de accesibilidad cubre ahora una pantalla que repite el mismo formulario una vez por ficha —cinco campos «Dirección de acceso» en la misma página—, que es exactamente la forma en que aparecieron los identificadores duplicados de `D-F5-010`.

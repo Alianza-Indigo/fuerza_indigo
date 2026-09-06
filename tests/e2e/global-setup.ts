@@ -65,4 +65,5 @@ export default async function globalSetup(): Promise<void> {
   process.env['E2E_PASSWORD'] = cuentas.password;
   process.env['E2E_EMAIL_PERSONA'] = cuentas.persona;
   process.env['E2E_EMAIL_SECRETARIA'] = cuentas.secretaria;
+  process.env['E2E_EMAIL_COMUNICACION'] = cuentas.comunicacion;
 }

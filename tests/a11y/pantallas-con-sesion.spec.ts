@@ -31,6 +31,17 @@ const DE_LA_PERSONA = [
   '/mi/seguridad',
 ];
 
+/**
+ * Rutas de quien mantiene el sitio público (Fase 7).
+ *
+ * Van aparte porque las abre `COMMUNICATIONS` y no la secretaría ejecutiva. La
+ * pantalla del catálogo entra en la revisión porque repite el mismo formulario
+ * una vez por ficha, que es exactamente donde aparecieron los identificadores
+ * duplicados de `D-F5-010`: cinco campos «Dirección de acceso» con el mismo
+ * identificador dejarían a cuatro de ellos sin etiqueta.
+ */
+const DE_COMUNICACION = ['/gestion/contenidos/ecosistema'];
+
 /** Rutas de gestión. Exigen facultades institucionales. */
 const DE_GESTION = [
   '/gestion',
@@ -72,9 +83,14 @@ const DE_LA_VIDA_INSTITUCIONAL = [
   '/institucional/archivo',
 ];
 
-async function entrar(page: Page, quien: 'persona' | 'secretaria'): Promise<void> {
-  const email =
-    quien === 'persona' ? process.env['E2E_EMAIL_PERSONA'] : process.env['E2E_EMAIL_SECRETARIA'];
+const CORREO_DE = {
+  persona: 'E2E_EMAIL_PERSONA',
+  secretaria: 'E2E_EMAIL_SECRETARIA',
+  comunicacion: 'E2E_EMAIL_COMUNICACION',
+} as const;
+
+async function entrar(page: Page, quien: keyof typeof CORREO_DE): Promise<void> {
+  const email = process.env[CORREO_DE[quien]];
   const password = process.env['E2E_PASSWORD'];
   if (email === undefined || password === undefined) {
     throw new Error(
@@ -113,6 +129,7 @@ for (const [quien, rutas] of [
   ['persona', DE_LA_PERSONA],
   ['secretaria', DE_GESTION],
   ['secretaria', DE_LA_VIDA_INSTITUCIONAL],
+  ['comunicacion', DE_COMUNICACION],
 ] as const) {
   test.describe(`pantallas de ${quien} · ${rutas[0]}`, () => {
     test.beforeEach(async ({ page }) => {

@@ -189,6 +189,7 @@ export const AUDIT_ACTIONS = {
   BARGAINING_FILE_OPENED: 'bargaining.file.opened',
   BARGAINING_FILE_ADVANCED: 'bargaining.file.advanced',
   BARGAINING_PROPOSAL_ADDED: 'bargaining.proposal.added',
+  BARGAINING_COMMISSION_ASSIGNED: 'bargaining.commission.assigned',
   BARGAINING_CONSULTATION_OPENED: 'bargaining.consultation.opened',
   STRIKE_PROCEDURE_OPENED: 'bargaining.strike.opened',
 

@@ -48,6 +48,11 @@ export interface RequestDetail extends RequestRow {
   /** Quién confirmó la canalización y cuándo, si ya se confirmó. */
   readonly confirmadaPor: string | null;
   readonly confirmadaEl: Date | null;
+  /**
+   * Entidad a la que se canalizó. Es la que manda para abrir el expediente,
+   * aunque no sea la que propuso el sistema ni la que eligió quien escribió.
+   */
+  readonly canalizadaA: { readonly id: string; readonly code: string } | null;
   readonly contactEmail: string | null;
   readonly contactPhone: string | null;
   readonly preferredChannel: 'EMAIL' | 'PHONE';
@@ -181,6 +186,7 @@ export async function requestDetail(
       privacyNoticeVersion: { select: { version: true } },
       suggestedRouting: true,
       confirmedAt: true,
+      confirmedRoutingLegalEntity: { select: { id: true, code: true } },
       confirmedBy: {
         select: {
           person: {
@@ -235,6 +241,10 @@ export async function requestDetail(
     confirmadaPor:
       fila.confirmedBy === null ? null : nombreCompleto(fila.confirmedBy.person),
     confirmadaEl: fila.confirmedAt,
+    canalizadaA:
+      fila.confirmedRoutingLegalEntity === null
+        ? null
+        : { id: fila.confirmedRoutingLegalEntity.id, code: fila.confirmedRoutingLegalEntity.code },
   });
 }
 

@@ -60,6 +60,18 @@ export const AUDIT_ACTIONS = {
   /** Confirmación humana de la canalización propuesta (PRD §10.1, Fase 6). */
   SUPPORT_ROUTING_CONFIRMED: 'support.routing.confirmed',
 
+  // Defensa, casos y atención social — Fase 6. El expediente lleva su propia
+  // bitácora legible (`CaseEvent`), que no sustituye a esta: aquella cuenta el
+  // asunto a quien lo lleva, esta registra el acto para quien audita.
+  CASE_OPENED: 'cases.case.opened',
+  CASE_ASSESSED: 'cases.case.assessed',
+  CASE_ASSIGNED: 'cases.case.assigned',
+  CASE_UNASSIGNED: 'cases.case.unassigned',
+  CASE_STATUS_CHANGED: 'cases.case.status_changed',
+  CASE_CLOSED: 'cases.case.closed',
+  CASE_REOPENED: 'cases.case.reopened',
+  CASE_READ: 'cases.case.read',
+
   // Finanzas — Fase 3. Todo lo que mueve dinero o el libro deja rastro.
   CATALOG_PRODUCT_CREATED: 'billing.catalog.product_created',
   CATALOG_PRODUCT_UPDATED: 'billing.catalog.product_updated',

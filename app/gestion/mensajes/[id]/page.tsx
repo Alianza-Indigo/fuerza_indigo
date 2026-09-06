@@ -6,6 +6,7 @@ import { requestDetail } from '@/modules/support';
 import { REQUEST_TYPE_LABELS } from '../../../(publico)/contacto/labels';
 import { ResolveForm } from './resolve-form';
 import { RoutingForm } from './routing-form';
+import { OpenCaseForm } from './open-case-form';
 
 export const metadata = { title: 'Mensaje recibido', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -154,12 +155,26 @@ export default async function MensajePage({ params }: { params: Promise<{ id: st
           </Section>
         )}
 
-        {datos.confirmadaPor !== null && datos.confirmadaEl !== null && (
+        {datos.confirmadaPor !== null && datos.confirmadaEl !== null && datos.canalizadaA !== null && (
           <Section title="Canalización confirmada" level={2}>
             <Card>
               <p>
-                La confirmó {datos.confirmadaPor} el {formatter.format(datos.confirmadaEl)}.
+                La confirmó {datos.confirmadaPor} el {formatter.format(datos.confirmadaEl)}, hacia{' '}
+                {datos.canalizadaA.code === 'FUERZA_INDIGO' ? 'Fuerza Índigo' : 'Alianza Índigo'}.
               </p>
+            </Card>
+          </Section>
+        )}
+
+        {datos.status === 'TRIAGE' && datos.canalizadaA !== null && (
+          <Section title="Abrir expediente" level={2}>
+            <Card>
+              <OpenCaseForm
+                requestId={datos.id}
+                legalEntityId={datos.canalizadaA.id}
+                domain={datos.canalizadaA.code === 'FUERZA_INDIGO' ? 'UNION_DEFENSE' : 'SOCIAL_ATTENTION'}
+                caseType={datos.requestType}
+              />
             </Card>
           </Section>
         )}

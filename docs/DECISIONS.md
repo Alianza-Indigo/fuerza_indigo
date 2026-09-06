@@ -1512,3 +1512,17 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Reabrir cuenta las veces.** No devuelve el expediente a su estado anterior: lo reabre incrementando `reopenCount` y dejando en la bitácora con qué resultado se había cerrado. Reabrir el mismo asunto muchas veces suele querer decir que no se resolvió, no que vuelva a pasar, y la cuenta a la vista es lo que permite verlo.
 
 **Y no todo cierre admite reapertura.** Lo que se cerró porque el asunto no era competencia de la organización no se reabre: reabrirlo no la vuelve competente. Lo que procede es abrirlo donde corresponda o canalizarlo, y las dos cosas se pueden hacer.
+
+---
+
+## ADR-0122 · Un panel de coordinación es un recorte declarado, no una pantalla más
+
+**Contexto.** El PRD §24 pide tres paneles: Trabajo y Conflictos, Neuroinclusión y Enlace Familiar, y el social de Alianza Índigo. La forma directa de hacerlos es escribir tres pantallas.
+
+**Decisión.** Los tres se declaran en una tabla —entidad, dominio y materias— y una sola pantalla los sirve. El día que la organización cree una secretaría nueva se añade una entrada, no se copia una pantalla; copiar una pantalla es como dos paneles empiezan a contar cosas distintas por el mismo nombre.
+
+**Las materias no se solapan, y no dejan huecos.** Un expediente que apareciera en dos paneles se atendería dos veces o ninguna, y cada secretaría creería que lo lleva la otra; uno que no apareciera en ninguno no estaría en ninguna bandeja de coordinación y nadie lo sabría hasta que alguien preguntara por él. Las dos cosas se comprueban ejecutando, sobre la tabla.
+
+**Lo abre quien reparte, no quien atiende.** «Mis expedientes» solo trae los asignados; el panel trae los del área, incluidos los que **no lleva nadie**, que son justamente los que no aparecen en ninguna otra pantalla. Por eso lo gobierna `cases.case.assign`, la única facultad de caso que no exige asignación: quien reparte necesita ver lo que hay que repartir, y quien no reparte no tiene por qué ver el área entera.
+
+**Y coordinar no es una llave maestra.** El panel sigue acotado por entidad, compartimento y territorio: una delegación de Jalisco coordina Jalisco.

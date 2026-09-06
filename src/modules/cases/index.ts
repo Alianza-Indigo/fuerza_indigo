@@ -82,6 +82,7 @@ export {
   type CloseCaseInput,
   type ReopenCaseInput,
 } from './application/closure';
+export { casePanel, panelsForActor, type PanelData, type FilaDePanel } from './application/panels';
 export { caseAlerts, type Alerta, type ClaseDeAlerta } from './application/alerts';
 export { peopleForCase, entitiesForReferral, type Opcion } from './application/options';
 export {

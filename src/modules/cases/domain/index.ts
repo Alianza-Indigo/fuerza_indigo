@@ -24,6 +24,12 @@ export {
   EXIGEN_CANALIZACION_ACEPTADA,
   RESULTADOS_QUE_ADMITEN_REAPERTURA,
 } from './closure';
+export {
+  PANELES,
+  panelPorCodigo,
+  materiasSinPanel,
+  type PanelDeCoordinacion,
+} from './panels';
 export { NOMBRE_DE_DOCUMENTO, CLASIFICACION_MINIMA, SE_ENSENAN_A_LA_PERSONA } from './documents';
 export { NOMBRE_DE_TAREA, DESTINOS_DE_TAREA, TAREAS_CERRADAS } from './tasks';
 export {

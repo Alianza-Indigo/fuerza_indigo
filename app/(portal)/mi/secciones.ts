@@ -17,5 +17,9 @@ export const SECCIONES_DEL_PORTAL = [
   { href: '/mi/credencial', label: 'Mi credencial', permiso: 'credentialing.credential.read_own' },
   { href: '/mi/pagos', label: 'Mis pagos', permiso: 'billing.payment.read_own' },
   { href: '/mi/consentimientos', label: 'Consentimientos', permiso: 'consent.read_own' },
+  // El catálogo del ecosistema no lo abre ningún permiso: es público y es el
+  // mismo para todo el mundo (PRD §12.4). Está aquí para que quien entró a ver
+  // su afiliación no tenga que volver al sitio público para encontrarlo.
+  { href: '/mi/herramientas', label: 'Plataformas y herramientas', permiso: null },
   { href: '/mi/seguridad', label: 'Seguridad y sesiones', permiso: null },
 ] as const;

@@ -1572,3 +1572,17 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Y ninguno de los dos dice en qué fase estamos.** El estado del proyecto lo declara `docs/PHASE_STATUS.md` y ningún otro documento. Un manual que además lo declarara se quedaría atrás en el primer cierre y le contaría una versión distinta de la verdad justo a quien más depende de él —alguien que llega sin contexto y no tiene con qué contrastarla—. Es la misma lección de `D-F6-006`, aplicada antes de cometerla: `C-COH-17` exige que los dos documentos existan y remitan a lo que rige, y rechaza que cualquiera de ellos declare una fase activa, un estado o una fase concreta.
 
 **Por qué un manual y no más comentarios en el código.** Los comentarios explican una decisión donde vive. No explican cómo arrancar, en qué orden se construye ni qué significa «terminado» aquí, que es justamente lo que alguien necesita en los primeros diez minutos y lo que ningún archivo suelto contesta.
+
+---
+
+## ADR-0126 · Una ruta del código no puede robarle una dirección al gestor de contenidos, y hay dos maneras de no robarla
+
+**Contexto.** El sitio público resuelve las páginas del gestor por una ruta atrapatodo. Cualquier otra ruta que case con la misma dirección gana, **sin error y sin aviso**: la página se publica, el gestor la da por publicada, y quien abre la dirección ve otra cosa. Nadie se entera hasta que alguien pregunta por qué su página no aparece. Era un riesgo latente desde la Fase 2 y dejó de serlo cuando el catálogo del ecosistema pasó a servirse desde `/herramientas`, que hasta entonces era una dirección del gestor como cualquier otra.
+
+**El primer intento estuvo mal, y vale la pena que quede escrito.** Reservar el **primer segmento** parecía suficiente y rompió las páginas legales: `legales/:param` no roba nada, **es una forma de publicar lo del gestor** —busca la página cuyo slug es `legales/<documento>` y la enseña con su selector por entidad—. Lo encontraron las pruebas de la Fase 2, que siguen corriendo, y no una revisión.
+
+**Decisión.** Dos listas y una obligación de clasificar. `RUTAS_DEL_CODIGO` son las que sirven contenido propio: el gestor no publica ahí, y crear una página o una redirección en esa dirección se rechaza con su motivo. `RUTAS_QUE_SIRVEN_CONTENIDO` son las que existen para publicar lo del gestor con otra presentación: ahí sí. El control `C-F7-01` exige que **toda** ruta pública esté en una de las dos, y que ninguna esté en las dos.
+
+**Por qué obligar a clasificar y no elegir un valor por omisión.** Cualquiera de los dos por omisión es una equivocación silenciosa. Si por omisión se reserva, una ruta nueva que sirva contenido del gestor deja de poder publicarse y nadie sabe por qué. Si por omisión no se reserva, vuelve la página fantasma. Obligar a decidir convierte el descuido en un fallo de la puerta de salida, que es donde se puede corregir.
+
+**La comparación es por ruta exacta, con su profundidad.** `legales/:param` casa con `legales/privacidad` y no con `legales/terminos/fuerza-indigo`, que tiene tres segmentos y cae en la atrapatodo. Un segmento variable casa con cualquier valor, pero con uno.

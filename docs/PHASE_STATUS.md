@@ -29,7 +29,7 @@ El PRD §24 Fase 7 contrata: catálogo único de plataformas y herramientas del 
 | Bloque | Contenido | Estado |
 |---|---|---|
 | A | Entidad `EcosystemLink`, migración, permiso `ecosystem.link.manage` y semilla del catálogo | Completo |
-| B | Catálogo público y su repetición en el portal personal, con el botón que dice que se sale | Pendiente |
+| B | Catálogo público y su repetición en el portal personal, con el botón que dice que se sale | Completo |
 | C | Administración del catálogo en la superficie de contenidos | Pendiente |
 | D | Pruebas, controles de fase, documentación y cierre | Pendiente |
 
@@ -54,9 +54,10 @@ Los del PRD §24 Fase 7 se comprobarán ejecutando el sistema, no leyendo el có
 
 ## Defectos abiertos
 
-**Ninguno.** El que apareció durante la construcción está corregido dentro de la misma fase y se registra abajo. Lo
-encontró ejecutar por primera vez la puesta en marcha **tal como el manual la describe**, que es la única forma de saber
-si un manual dice la verdad.
+**Ninguno.** Los que han aparecido durante la construcción están corregidos dentro de la misma fase y se registran
+abajo. Al primero lo encontró ejecutar por primera vez la puesta en marcha **tal como el manual la describe**, que es la
+única forma de saber si un manual dice la verdad. Al segundo lo destapó servir una dirección que hasta entonces era del
+gestor de contenidos.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -65,6 +66,7 @@ si un manual dice la verdad.
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
 | `D-F7-001` | Media | `npm run db:seed` no cargaba `.env.local`: solo funcionaba si quien lo ejecutaba había exportado las variables a mano en su terminal. El README y `docs/HANDOFF.md` lo documentan como paso de la puesta en marcha, y en una instalación nueva fallaba con un mensaje que hablaba de una variable **que sí estaba escrita en el archivo**. | Corregido en el bloque A. La semilla usa `loadLocalEnv()`, el mismo cargador que ya usan las migraciones y las pruebas de integración, y el mensaje de error dice ahora dónde se busca. |
+| `D-F7-002` | Alta | Nada impedía publicar en el gestor de contenidos una dirección que ya sirve una pantalla del código. La página se guardaba, el gestor la daba por publicada y quien abría la dirección veía otra cosa: una página fantasma que solo se descubre cuando alguien pregunta por qué la suya no aparece. Era un riesgo latente desde la Fase 2 y dejó de serlo al servir el catálogo desde `/herramientas`. | Corregido en el bloque B. Crear una página o una redirección en una dirección del código se rechaza con su motivo. El control `C-F7-01` obliga a que **toda** ruta pública esté clasificada: o sirve contenido propio, y entonces el gestor no publica ahí, o es una forma de publicar lo del gestor —como `legales/:param`— y entonces sí. Una pantalla nueva obliga a decidir en vez de heredar un comportamiento que nadie eligió. |
 
 ---
 

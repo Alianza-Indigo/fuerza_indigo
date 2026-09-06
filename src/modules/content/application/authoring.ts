@@ -6,6 +6,7 @@ import { errors } from '@/platform/errors/app-error';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
+import { estaReservada } from '../domain/reserved-routes';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 
@@ -93,6 +94,19 @@ export async function createPage(
       errors.ruleViolation(
         'Un contenido debe tener una autoría identificada.',
         'el actor no tiene cuenta: no puede figurar como autoría de una versión (ADR-0042)',
+      ),
+    );
+  }
+
+  // Una dirección que sirve el propio código gana siempre sobre la ruta
+  // atrapatodo del gestor, sin error y sin aviso: la página se publicaría, el
+  // gestor la daría por publicada, y quien abriera la dirección vería otra
+  // cosa. Se rechaza al crearla, que es cuando todavía se puede elegir otra.
+  if (estaReservada(data.slug)) {
+    return fail(
+      errors.conflict(
+        'Esa dirección la sirve la propia plataforma y no puede usarse para un contenido. Elige otra.',
+        `slug reservado por una ruta del código: ${data.slug}`,
       ),
     );
   }

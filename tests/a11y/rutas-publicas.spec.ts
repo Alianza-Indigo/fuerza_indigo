@@ -31,6 +31,10 @@ const RUTAS = [
   '/que-es-fuerza-indigo',
   // Un documento legal sin texto publicado todavía.
   '/legales/privacidad',
+  // Fase 7: el catálogo del ecosistema. Entra en la revisión porque es la
+  // pantalla desde la que se sale del sitio, y el aviso de salida solo sirve si
+  // llega también a quien navega con lector de pantalla.
+  '/herramientas',
   // Fase 4: las dos puertas públicas que abre.
   '/directorio',
   '/verificar',

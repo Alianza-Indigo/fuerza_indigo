@@ -2912,6 +2912,94 @@ const CHECKS = [
         : ok(['AGENTS.md y docs/HANDOFF.md existen, remiten a los documentos que rigen y no declaran el estado del proyecto.']);
     },
   },
+
+  {
+    id: 'C-F7-01',
+    title: 'Fase 7: toda ruta pública del código está reservada frente al gestor de contenidos',
+    phases: [7],
+    run() {
+      // El sitio público resuelve las páginas del gestor por una ruta
+      // atrapatodo. Otra ruta que case con la misma dirección gana siempre,
+      // **sin error y sin aviso**: la página se publica, el gestor la da por
+      // publicada, y quien abre la dirección ve otra cosa.
+      //
+      // Era un riesgo latente hasta que el catálogo del ecosistema pasó a
+      // servirse desde `/herramientas`. La lista de rutas del código existe por
+      // eso, y este control la deriva de los directorios que hay de verdad: una
+      // pantalla nueva sin declarar falla aquí, y no meses después en forma de
+      // página fantasma que nadie sabe por qué no aparece.
+      //
+      // La comparación es por **ruta exacta**, con su profundidad. Reservar el
+      // primer segmento sería más simple y estaría mal: `legales/:param` sirve
+      // los documentos legales leyéndolos del propio gestor, así que reservar
+      // `legales` entero prohibiría justo lo que esa ruta publica.
+      const fuente = read('src/modules/content/domain/reserved-routes.ts');
+      if (fuente === null) {
+        return fail('No existe src/modules/content/domain/reserved-routes.ts.');
+      }
+
+      const listar = (nombre) => {
+        const bloque = new RegExp(`export const ${nombre}[^=]*=\\s*\\[([\\s\\S]*?)\\];`).exec(fuente);
+        return bloque === null ? null : [...bloque[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+      };
+      const reservadas = listar('RUTAS_DEL_CODIGO');
+      const deContenido = listar('RUTAS_QUE_SIRVEN_CONTENIDO');
+      if (reservadas === null || deContenido === null) {
+        return fail('reserved-routes.ts no declara RUTAS_DEL_CODIGO y RUTAS_QUE_SIRVEN_CONTENIDO.');
+      }
+      const declaradas = new Set([...reservadas, ...deContenido]);
+
+      const raiz = join(ROOT, 'app/(publico)');
+      if (!existsSync(raiz)) return fail('No existe app/(publico).');
+
+      // Recorre el árbol y anota cada ruta que sirve una pantalla, con su
+      // profundidad. La atrapatodo del gestor —`[...slug]`— se salta: es la que
+      // atiende todo lo demás y reservarla no tendría sentido.
+      const enDisco = new Set();
+      const recorrer = (directorio, prefijo) => {
+        for (const entrada of readdirSync(directorio, { withFileTypes: true })) {
+          if (!entrada.isDirectory()) continue;
+          if (entrada.name.startsWith('[...')) continue;
+          const segmento = entrada.name.startsWith('[') ? ':param' : entrada.name;
+          const ruta = prefijo === '' ? segmento : `${prefijo}/${segmento}`;
+          const completo = join(directorio, entrada.name);
+          const sirve = ['page.tsx', 'page.ts', 'route.ts'].some((archivo) =>
+            existsSync(join(completo, archivo)),
+          );
+          if (sirve) enDisco.add(ruta);
+          recorrer(completo, ruta);
+        }
+      };
+      recorrer(raiz, '');
+
+      const problems = [];
+      for (const ruta of enDisco) {
+        if (!declaradas.has(ruta)) {
+          problems.push(
+            `app/(publico)/${ruta} no está clasificada: decide si sirve contenido propio —y va a RUTAS_DEL_CODIGO, para que el gestor no publique una página que nadie vería— o si es una forma de publicar lo del gestor, y va a RUTAS_QUE_SIRVEN_CONTENIDO.`,
+          );
+        }
+      }
+      for (const ruta of declaradas) {
+        if (!enDisco.has(ruta)) {
+          problems.push(
+            `reserved-routes.ts declara "${ruta}" y ninguna pantalla la sirve: o sobra, o la pantalla se borró y quedó la declaración.`,
+          );
+        }
+      }
+      for (const ruta of reservadas) {
+        if (deContenido.includes(ruta)) {
+          problems.push(`"${ruta}" está en las dos listas: o el gestor puede publicar ahí o no puede.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok([
+            `Las ${enDisco.size} rutas públicas están clasificadas: ${reservadas.length} sirven contenido propio y ${deContenido.length} publican lo del gestor.`,
+          ]);
+    },
+  },
 ];
 
 

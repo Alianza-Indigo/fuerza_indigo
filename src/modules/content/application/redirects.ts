@@ -6,6 +6,7 @@ import { errors } from '@/platform/errors/app-error';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
+import { estaReservada } from '../domain/reserved-routes';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 
@@ -109,6 +110,18 @@ export async function createRedirect(
 
   const decision = can(actor, 'content.redirect.manage', { kind: 'ContentRedirect', legalEntityId: null });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  // Mismo motivo que al crear una página: una ruta del código atiende primero,
+  // así que la redirección nunca llegaría a usarse. Un encaminamiento que no
+  // encamina es peor que ninguno, porque se da por hecho que funciona.
+  if (estaReservada(data.fromSlug)) {
+    return fail(
+      errors.conflict(
+        'Esa dirección la sirve la propia plataforma: la redirección nunca se usaría.',
+        `slug de origen reservado por una ruta del código: ${data.fromSlug}`,
+      ),
+    );
+  }
 
   const ocupado = await db().contentPage.findUnique({ where: { slug: data.fromSlug }, select: { status: true } });
   if (ocupado !== null && ocupado.status === 'PUBLISHED') {

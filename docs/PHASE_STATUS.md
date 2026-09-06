@@ -6,9 +6,11 @@
 ## Situación actual
 
 - **Fase activa:** 6 — Defensa, casos, protección y canalización social
-- **Estado:** `IN_PROGRESS` — construcción terminada; a la espera de la autorización de la persona usuaria (PRD §23.3)
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026, junto con la Fase 5; confirmada al aprobarse esta
 - **Fecha de inicio:** 6 de septiembre de 2026
+- **Fecha de cierre:** 6 de septiembre de 2026
+- **SHA del punto de control:** `a7e8031`
 - **Fase anterior:** 5 — `APPROVED`, cerrada en `6c5b18c`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 7 — Herramientas tecnológicas y accesos externos, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -128,7 +130,7 @@ nadie, fue que existían dos fuentes para el mismo hecho.
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
 | 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
-| 6 | 2026-09-06 | — | `IN_PROGRESS` | — |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `a7e8031` |
 | 7 a 10 | — | — | No iniciadas | — |
 
 ---

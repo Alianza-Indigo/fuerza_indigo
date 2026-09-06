@@ -14,6 +14,7 @@ import {
   TextArea,
 } from '@/design-system/primitives';
 import type { SupportRequestType } from '@prisma-client/enums';
+import { TIPOS_QUE_MUESTRAN_EL_PROTOCOLO } from '@/modules/cases/domain';
 import { REQUEST_TYPE_LABELS } from './labels';
 import { submitRequestAction, type RequestState } from './actions';
 
@@ -52,7 +53,22 @@ const ORDEN_APOYO: readonly SupportRequestType[] = [
  * Las preguntas son de información, no técnicas ni jurídicas: nadie tiene que
  * saber si lo suyo es un «conflicto colectivo» para pedir ayuda.
  */
-export function RequestForm({ modo }: { modo: 'contacto' | 'apoyo' }) {
+export function RequestForm({
+  modo,
+  protocolo = null,
+}: {
+  modo: 'contacto' | 'apoyo';
+  /**
+   * El protocolo de riesgo publicado en el gestor de contenidos.
+   *
+   * Llega como dato y no escrito aquí: los teléfonos, las instituciones y los
+   * horarios cambian, y un número en el código obliga a un despliegue para
+   * corregirlo mientras la pantalla sigue diciendo a quién llamar. El 911 sí se
+   * escribe —es un número nacional, no una ruta de la organización—; lo que la
+   * organización configura vive en el gestor.
+   */
+  protocolo?: { titulo: string; cuerpo: string } | null;
+}) {
   const [estado, accion, pendiente] = useActionState(submitRequestAction, INICIAL);
   const [asunto, setAsunto] = useState<SupportRequestType>(modo === 'apoyo' ? 'INDIVIDUAL_LABOR_DISPUTE' : 'GENERAL_CONTACT');
   const idUrgencia = useId();
@@ -101,13 +117,19 @@ export function RequestForm({ modo }: { modo: 'contacto' | 'apoyo' }) {
         {...(errores['requestType'] === undefined ? {} : { errors: errores['requestType'] })}
       />
 
-      {asunto === 'VIOLENCE_OR_URGENCY' && (
+      {TIPOS_QUE_MUESTRAN_EL_PROTOCOLO.includes(asunto) && (
         <div id={idUrgencia}>
           <Notice title="Si estás en peligro ahora mismo, llama al 911" tone="danger">
             <p>
               Este formulario no es un canal de urgencias y no está atendido las veinticuatro horas. El 911 sí lo está,
               en todo México y sin costo.
             </p>
+            {protocolo !== null && (
+              <>
+                <p className="mt-3 font-medium">{protocolo.titulo}</p>
+                <p className="mt-1 whitespace-pre-wrap">{protocolo.cuerpo}</p>
+              </>
+            )}
             <p className="mt-2">
               Puedes mandarnos tu mensaje igualmente: lo leeremos y te acompañaremos en lo que sigue.
             </p>

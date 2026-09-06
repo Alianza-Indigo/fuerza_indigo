@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, Notice, PageShell, Prose, Section } from '@/design-system/primitives';
+import { protocoloDeRiesgo } from '@/modules/cases';
 import { RequestForm } from './request-form';
 import { socialMetadata } from '@/platform/seo';
 
@@ -18,7 +19,13 @@ export const metadata: Metadata = socialMetadata({
  * las dos se quedara atrás. Lo que cambia es qué asuntos se ofrecen y cómo se
  * presenta la página.
  */
-export default function ContactoPage() {
+export default async function ContactoPage() {
+  // El protocolo con las rutas configuradas de la organización. Si no hay
+  // ninguno publicado, la pantalla no se inventa uno: enseña el 911, que es un
+  // número nacional y no una ruta que nadie tenga que configurar, y la
+  // comprobación de salud señala la falta para que se corrija.
+  const protocolo = await protocoloDeRiesgo();
+
   return (
     <PageShell
       title="Contacto"
@@ -47,7 +54,7 @@ export default function ContactoPage() {
         </Section>
 
         <Card>
-          <RequestForm modo="contacto" />
+          <RequestForm modo="contacto" protocolo={protocolo} />
         </Card>
       </div>
     </PageShell>

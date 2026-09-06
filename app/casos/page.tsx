@@ -1,8 +1,14 @@
 import Link from 'next/link';
 import { Badge, Card, EmptyState, ErrorNotice, PageShell, ScrollableTable, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { caseList } from '@/modules/cases';
-import { NOMBRE_DE_ESTADO, NOMBRE_DE_PRIORIDAD, NOMBRE_DE_DOMINIO, TONO_DE_PRIORIDAD } from '@/modules/cases/domain';
+import { caseAlerts, caseList } from '@/modules/cases';
+import {
+  NOMBRE_DE_ESTADO,
+  NOMBRE_DE_PRIORIDAD,
+  NOMBRE_DE_DOMINIO,
+  NOMBRE_DE_RIESGO,
+  TONO_DE_PRIORIDAD,
+} from '@/modules/cases/domain';
 import { REQUEST_TYPE_LABELS } from '../(publico)/contacto/labels';
 
 export const metadata = { title: 'Mis expedientes', robots: { index: false, follow: false } };
@@ -18,7 +24,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function CasosPage() {
   const actor = await currentActor();
-  const expedientes = await caseList(actor);
+  const [expedientes, alertas] = await Promise.all([caseList(actor), caseAlerts(actor)]);
 
   if (!expedientes.ok) {
     return (
@@ -29,6 +35,7 @@ export default async function CasosPage() {
   }
 
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: actor.timeZone });
+  const pendientes = alertas.ok ? alertas.data : [];
 
   return (
     <PageShell
@@ -36,6 +43,39 @@ export default async function CasosPage() {
       description="Lo que llevas a tu cargo, ordenado por lo que más daño hace si no se atiende."
       width="ancha"
     >
+      {pendientes.length > 0 && (
+        <Section title="Atiende esto primero" level={2}>
+          <Card>
+            <ul className="space-y-3">
+              {pendientes.map((alerta) => (
+                <li
+                  key={`${alerta.caseId}-${alerta.clase}-${alerta.desde.getTime()}`}
+                  className="border-b border-[var(--color-line)] pb-3 last:border-0 last:pb-0"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link href={`/casos/${alerta.publicId}`} className="font-medium underline underline-offset-4">
+                      {alerta.folio}
+                    </Link>
+                    <Badge tone={alerta.clase === 'RIESGO_SIN_RECOGER' ? 'danger' : 'warning'}>
+                      {alerta.clase === 'RIESGO_SIN_RECOGER' && alerta.riesgo !== null
+                        ? NOMBRE_DE_RIESGO[alerta.riesgo]
+                        : NOMBRE_DE_PRIORIDAD[alerta.prioridad]}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-[var(--color-ink-soft)]">
+                    {alerta.detalle} Desde el {fecha.format(alerta.desde)}.
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
+              Esta lista se calcula al abrirla, no la mantiene ningún proceso: lo que ves es la situación de ahora,
+              no la de la última vez que algo se ejecutó.
+            </p>
+          </Card>
+        </Section>
+      )}
+
       <Section title="A tu cargo" level={2}>
         {expedientes.data.length === 0 ? (
           <EmptyState

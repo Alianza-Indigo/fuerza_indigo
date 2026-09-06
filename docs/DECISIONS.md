@@ -1476,3 +1476,27 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **La acepta quien recibe, en su entidad, su compartimento y el territorio del asunto.** Que la aceptara quien envía sería mandarse un expediente por correo. El territorio importa aunque la entidad receptora sea la propia: el asunto sigue ocurriendo donde ocurría, y un nombramiento que no lo alcanza no puede hacerse cargo de él.
 
 **Nada se descarta en silencio.** Rechazar —antes de aceptar— y devolver —después— exigen motivo, y la base lo impone: una devolución sin motivo no se puede escribir. Se distinguen en el estado porque para quien envió no significan lo mismo.
+
+---
+
+## ADR-0119 · El protocolo de riesgo se administra en el gestor, y sin él no hay marca
+
+**Contexto.** El PRD §10.3 exige un protocolo visible para riesgo inmediato, y el §24 que los casos urgentes muestren rutas humanas y de emergencia **configuradas**. Un teléfono escrito en un componente obliga a un despliegue para corregirlo, y hasta entonces la pantalla dice a quién llamar cuando ese alguien ya no atiende.
+
+**Decisión.** El protocolo es una página del gestor de contenidos con una dirección estable, y cada marca de riesgo guarda **cuál** se mostró: el texto se edita y hay que poder saber qué decía ese día. Sin protocolo publicado la marca no se levanta —una alarma sin salida es peor que ninguna— y para que esa falta no se descubra durante una urgencia, la comprobación de salud la señala antes, como degradación y no como fallo: en una instalación recién desplegada todavía no hay nada redactado, y un rojo que aparece siempre se aprende a ignorar.
+
+**El 911 sí se escribe.** Es un número nacional, no una ruta de la organización. Lo que la organización configura —sus guardias, las instituciones con las que trabaja, los horarios— vive en el gestor y se enseña debajo.
+
+**Y la pantalla dice qué no hace.** Marcar el riesgo no llama a nadie ni avisa a ninguna autoridad: pone el expediente el primero en la bandeja de quien lo lleva. Un botón que pareciera un botón de emergencia dejaría a alguien esperando una ayuda que este sistema no presta.
+
+---
+
+## ADR-0120 · Una alerta se deriva al leer; guardarla es prometer que alguien mira
+
+**Contexto.** «Lo que hay que atender primero» se puede guardar en una columna que un trabajo periódico mantiene, o calcular cada vez que alguien abre la bandeja.
+
+**Decisión.** Se deriva al leer. Un plazo vencido, un expediente crítico sin contestar, una marca de riesgo sin recoger y una tarea fuera de plazo son comparaciones sobre datos que ya están; guardarlas obligaría a un proceso que las refrescara, y entre pasada y pasada la pantalla diría que no hay nada urgente cuando sí lo hay. Eso es peor que no tener alertas, porque es una promesa de que alguien está mirando.
+
+**El orden lo decide el daño.** Primero el riesgo inmediato que nadie ha recogido, después lo vencido, después lo crítico sin primera respuesta, después las tareas. Y una sola alerta de tareas por expediente: una por tarea llenaría la bandeja con el mismo folio diez veces y enterraría lo demás.
+
+**Y nada cruza la frontera.** Las alertas salen del mismo alcance —compartimento, entidad, territorio, asignación— que la lista y el detalle. Una bandeja de urgencias es exactamente el sitio donde una frontera olvidada haría más daño.

@@ -15,6 +15,7 @@ import type {
   CaseOutcome,
   CaseParticipantRole,
   CasePriority,
+  CaseRiskKind,
   CaseStatus,
   CaseDocumentKind,
   CaseTaskStatus,
@@ -95,6 +96,21 @@ export interface CaseDetail extends CaseRow {
    * aceptaron, la devolvieron o sigue esperando, y eso no le da acceso a nada
    * que no viajara.
    */
+  /**
+   * Marcas de riesgo inmediato vivas o cerradas (PRD §10.3).
+   *
+   * Se le enseñan también a quien es parte: saber que la organización tomó en
+   * serio lo que contó, y qué hizo, es lo mínimo que se le debe.
+   */
+  readonly riesgos: readonly {
+    readonly id: string;
+    readonly clase: CaseRiskKind;
+    readonly levantadaEl: Date;
+    readonly recogidaPor: string | null;
+    readonly recogidaEl: Date | null;
+    readonly resolucion: string | null;
+    readonly cerradaEl: Date | null;
+  }[];
   readonly canalizaciones: readonly {
     readonly id: string;
     readonly estado: ReferralStatus;
@@ -397,6 +413,32 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
   if (clase === null) return fail(errors.notFound('Ese expediente no existe.'));
   const parte = clase === 'PERSONA';
 
+  const riesgos = await db().emergencyFlag.findMany({
+    where: { caseId: fila.id },
+    orderBy: { raisedAt: 'desc' },
+    select: {
+      id: true,
+      riskKind: true,
+      raisedAt: true,
+      acknowledgedAt: true,
+      resolution: true,
+      closedAt: true,
+      acknowledgedBy: {
+        select: {
+          person: {
+            select: {
+              givenName: true,
+              middleName: true,
+              familyName: true,
+              secondFamilyName: true,
+              preferredName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
   // Las canalizaciones solo se le enseñan a quien lleva el expediente: para la
   // persona, el estado de un trámite entre áreas es ruido, y lo que necesita
   // saber se le comunica.
@@ -505,6 +547,15 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       rol: asignacion.assignmentRole,
     })),
     lectura: clase,
+    riesgos: riesgos.map((marca) => ({
+      id: marca.id,
+      clase: marca.riskKind,
+      levantadaEl: marca.raisedAt,
+      recogidaPor: marca.acknowledgedBy === null ? null : nombreCompleto(marca.acknowledgedBy.person),
+      recogidaEl: marca.acknowledgedAt,
+      resolucion: marca.resolution,
+      cerradaEl: marca.closedAt,
+    })),
     canalizaciones: canalizaciones.map((canalizacion) => ({
       id: canalizacion.id,
       estado: canalizacion.status,

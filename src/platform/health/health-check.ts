@@ -6,6 +6,7 @@ import { stripeCapability } from '@/platform/payments';
 import { stuckJobs } from '@/platform/jobs/queue';
 import { GLOBAL_CHAIN, verifyAuditChain } from '@/platform/audit/audit-service';
 import { transaction } from '@/platform/db/unit-of-work';
+import { RUTA_DEL_PROTOCOLO_DE_RIESGO } from '@/modules/cases/domain';
 
 /**
  * Salud técnica del sistema (docs/ARCHITECTURE.md §12).
@@ -86,6 +87,34 @@ export async function healthReport(): Promise<HealthReport> {
             status: 'failed' as const,
             detail: `cadena rota en la posición ${result.brokenAtSequence}: ${result.reason}`,
           };
+    }),
+
+    timed('protocolo_de_riesgo', async () => {
+      // Una marca de riesgo inmediato no se puede levantar sin un protocolo
+      // publicado que enseñar, y descubrir que falta **durante** una urgencia
+      // es descubrirlo tarde. La comprobación existe para que se sepa antes,
+      // cuando no hay nadie esperando.
+      const pagina = await db().contentPage.findFirst({
+        where: {
+          slug: RUTA_DEL_PROTOCOLO_DE_RIESGO,
+          status: 'PUBLISHED',
+          archivedAt: null,
+          currentVersionId: { not: null },
+        },
+        select: { publishedAt: true },
+      });
+      if (pagina === null) {
+        // `degraded` y no `failed`: el sistema funciona, y en una instalación
+        // recién desplegada todavía no hay nada redactado. Marcarlo como fallo
+        // haría que un despliegue correcto pareciera roto, y con el tiempo se
+        // aprendería a ignorar el rojo, que es como se pierde una comprobación.
+        // Lo que sí es tajante es levantar la marca: eso se niega en seco.
+        return {
+          status: 'degraded' as const,
+          detail: `no hay protocolo de riesgo publicado: no se pueden levantar marcas de riesgo hasta publicar «${RUTA_DEL_PROTOCOLO_DE_RIESGO}» en el gestor de contenidos`,
+        };
+      }
+      return { status: 'ok' as const, detail: 'protocolo de riesgo inmediato publicado y vigente' };
     }),
 
     timed('trabajos_programados', async () => {

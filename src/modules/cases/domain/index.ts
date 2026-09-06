@@ -13,6 +13,12 @@ export {
   CANALIZACIONES_CERRADAS,
   type CampoTransferible,
 } from './referral';
+export {
+  RUTA_DEL_PROTOCOLO_DE_RIESGO,
+  NOMBRE_DE_RIESGO,
+  QUE_SIGNIFICA_EL_RIESGO,
+  TIPOS_QUE_MUESTRAN_EL_PROTOCOLO,
+} from './risk';
 export { NOMBRE_DE_DOCUMENTO, CLASIFICACION_MINIMA, SE_ENSENAN_A_LA_PERSONA } from './documents';
 export { NOMBRE_DE_TAREA, DESTINOS_DE_TAREA, TAREAS_CERRADAS } from './tasks';
 export {

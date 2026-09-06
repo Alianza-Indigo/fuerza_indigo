@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Badge, Card, ErrorNotice, Notice, PageShell, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { assignableUsers, caseDetail, entitiesForReferral, peopleForCase } from '@/modules/cases';
+import { assignableUsers, caseDetail, entitiesForReferral, peopleForCase, protocoloDeRiesgo } from '@/modules/cases';
 import {
   NOMBRE_DE_ASIGNACION,
   CANALIZACIONES_CERRADAS,
@@ -13,6 +13,7 @@ import {
   NOMBRE_DE_DOMINIO,
   NOMBRE_DE_ESTADO,
   NOMBRE_DE_PRIORIDAD,
+  NOMBRE_DE_RIESGO,
   NOMBRE_DE_PAPEL,
   NOMBRE_DE_RESULTADO,
   TONO_DE_PRIORIDAD,
@@ -24,6 +25,7 @@ import { AssignCaseForm, UnassignCaseForm } from './assignment-forms';
 import { AdvanceTaskForm, AssignTaskForm, CreateTaskForm } from './task-forms';
 import { EditMessageForm, SendMessageForm } from './message-forms';
 import { AttachDocumentForm, OpenClinicalDocumentForm, RemoveDocumentForm } from './document-forms';
+import { AcknowledgeEmergencyForm, CloseEmergencyForm, RaiseEmergencyForm } from './emergency-forms';
 import {
   AcceptReferralForm,
   CloseReferralForm,
@@ -90,6 +92,12 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
   // Las entidades que pueden recibir una canalización y los documentos que
   // pueden viajar con ella. Se piden solo cuando hay a quién ofrecérselos.
   const entidades = puedeComunicar ? await entitiesForReferral(actor, datos.id) : null;
+
+  // El protocolo se enseña **entero, en la pantalla**, cuando hay una marca de
+  // riesgo viva: quien tiene delante una urgencia no debería tener que
+  // navegar a otra página para saber a dónde acudir.
+  const hayRiesgoVivo = datos.riesgos.some((marca) => marca.cerradaEl === null);
+  const protocolo = hayRiesgoVivo ? await protocoloDeRiesgo() : null;
   const documentosCanalizables = datos.documentos.map((documento) => ({
     value: documento.archivoId,
     label: documento.descripcion,
@@ -200,6 +208,63 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
           <Section title="Agregar a alguien" level={2}>
             <Card>
               <AddParticipantForm caseId={datos.id} personas={personas} />
+            </Card>
+          </Section>
+        )}
+
+        <Section title="Riesgo inmediato" level={2}>
+          {protocolo !== null && (
+            <Notice title={protocolo.titulo} tone="danger" live="alert">
+              <p className="whitespace-pre-wrap">{protocolo.cuerpo}</p>
+              <p className="mt-2">
+                Estas rutas las atienden personas e instituciones, no este sistema. Marcar el riesgo aquí no llama a
+                ninguna de ellas.
+              </p>
+            </Notice>
+          )}
+          <Card>
+            {datos.riesgos.length === 0 ? (
+              <p className="text-[var(--color-ink-soft)]">No hay marcas de riesgo en este expediente.</p>
+            ) : (
+              <ul className="space-y-4">
+                {datos.riesgos.map((marca) => (
+                  <li key={marca.id} className="border-b border-[var(--color-line)] pb-4 last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={marca.cerradaEl === null ? 'danger' : 'neutral'}>
+                        {NOMBRE_DE_RIESGO[marca.clase]}
+                      </Badge>
+                      <span className="text-sm text-[var(--color-ink-soft)]">
+                        Marcado el {fecha.format(marca.levantadaEl)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                      {marca.recogidaPor === null
+                        ? 'Todavía nadie se ha hecho cargo.'
+                        : `Se hizo cargo ${marca.recogidaPor}${marca.recogidaEl === null ? '' : ` el ${fecha.format(marca.recogidaEl)}`}.`}
+                    </p>
+                    {marca.resolucion !== null && (
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{marca.resolucion}</p>
+                    )}
+                    {puedeComunicar && marca.cerradaEl === null && (
+                      <div className="mt-4 space-y-4">
+                        {marca.recogidaEl === null ? (
+                          <AcknowledgeEmergencyForm flagId={marca.id} />
+                        ) : (
+                          <CloseEmergencyForm flagId={marca.id} />
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </Section>
+
+        {puedeComunicar && (
+          <Section title="Marcar riesgo inmediato" level={2}>
+            <Card>
+              <RaiseEmergencyForm caseId={datos.id} />
             </Card>
           </Section>
         )}

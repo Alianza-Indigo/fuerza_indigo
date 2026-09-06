@@ -4,16 +4,19 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   acceptReferral,
+  acknowledgeEmergency,
   addParticipant,
   advanceTask,
   assessCase,
   attachDocument,
   assignCase,
   assignTask,
+  closeEmergency,
   closeReferral,
   createTask,
   editMessage,
   proposeReferral,
+  raiseEmergency,
   removeDocument,
   removeParticipant,
   requestReferralConsent,
@@ -533,4 +536,81 @@ export async function closeReferralAction(_previo: CaseFormState, formData: Form
 
   revalidatePath('/casos');
   return { status: 'ok', message: 'Canalización cerrada.' };
+}
+
+/**
+ * Marca riesgo inmediato en el expediente.
+ *
+ * No avisa a nadie ni llama a ningún sitio: deja el asunto señalado para que
+ * una persona lo vea antes que el resto, y devuelve el protocolo con las rutas
+ * humanas y de emergencia configuradas. Presentar un automatismo como si
+ * atendiera la urgencia dejaría a alguien esperando.
+ */
+export async function raiseEmergencyAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await raiseEmergency(actor, {
+    caseId: textField(formData, 'caseId'),
+    riskKind: textField(formData, 'riskKind') as never,
+    note: textField(formData, 'note'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message: 'Marcado. Aparece el primero en la bandeja de quien lo lleva, y el protocolo queda registrado.',
+  };
+}
+
+/** Alguien se hace cargo de la marca de riesgo. */
+export async function acknowledgeEmergencyAction(
+  _previo: CaseFormState,
+  formData: FormData,
+): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await acknowledgeEmergency(actor, {
+    flagId: textField(formData, 'flagId'),
+    note: textField(formData, 'note'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Queda constancia de que te haces cargo.' };
+}
+
+/** Cierra la marca diciendo qué se hizo. */
+export async function closeEmergencyAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await closeEmergency(actor, {
+    flagId: textField(formData, 'flagId'),
+    resolution: textField(formData, 'resolution'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Marca cerrada, con lo que se hizo escrito.' };
 }

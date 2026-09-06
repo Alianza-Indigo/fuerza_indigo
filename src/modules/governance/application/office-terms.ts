@@ -196,7 +196,7 @@ export async function appointOffice(
             ...(data.territorialUnitId === null
               ? {}
               : {
-                  scopes: {
+                  territorialScopes: {
                     create: [{ territorialUnitId: data.territorialUnitId, includesDescendants: true }],
                   },
                 }),

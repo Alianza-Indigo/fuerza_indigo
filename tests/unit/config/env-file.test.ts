@@ -30,6 +30,20 @@ for (const nombre of nombres) salida[nombre] = combinedEnv[nombre] ?? null;
 process.stdout.write(JSON.stringify(salida));
 `;
 
+/**
+ * El cargador de Next marca el entorno con `__NEXT_PROCESSED_ENV` en cuanto lo
+ * procesa una vez, y al verla vuelve a salir sin leer archivo alguno. El hijo
+ * hereda esa marca del proceso que lo lanza, así que si alguna otra prueba del
+ * mismo trabajador ya cargó la configuración, el hijo no leía el `.env.local`
+ * de esta prueba y devolvía todo nulo. Aislado pasaba; en la ejecución completa
+ * fallaba, que es la peor forma de fallar.
+ */
+function sinMarcaDeCargaPrevia(entorno: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const copia = { ...entorno };
+  delete copia['__NEXT_PROCESSED_ENV'];
+  return copia;
+}
+
 function cargarEnProcesoNuevo(directorio: string, nombres: readonly string[]): Record<string, string | null> {
   // El hijo hereda el entorno de la máquina **menos** las variables que esta
   // prueba está examinando. No es una comodidad: una variable ya puesta gana
@@ -37,7 +51,7 @@ function cargarEnProcesoNuevo(directorio: string, nombres: readonly string[]): R
   // `SUPERADMIN_PASSWORD_HASH` —la integración continua lo hace— la prueba
   // dejaba de leer lo que el archivo decía y pasaba a leer lo de la máquina.
   // Fallaba allí y pasaba aquí, que es la peor forma de fallar.
-  const entorno = { ...process.env, NODE_ENV: 'production' as const };
+  const entorno = sinMarcaDeCargaPrevia({ ...process.env, NODE_ENV: 'production' as const });
   for (const nombre of nombres) delete (entorno as Record<string, string | undefined>)[nombre];
 
   const salida = execFileSync(process.execPath, ['-e', CARGADOR, directorio, JSON.stringify(nombres)], {
@@ -63,7 +77,7 @@ function cargarConVariableDeEntorno(
   const salida = execFileSync(process.execPath, ['-e', CARGADOR, directorio, JSON.stringify([nombre])], {
     cwd: process.cwd(),
     encoding: 'utf8',
-    env: { ...process.env, NODE_ENV: 'production' as const, [nombre]: valorDelEntorno },
+    env: sinMarcaDeCargaPrevia({ ...process.env, NODE_ENV: 'production' as const, [nombre]: valorDelEntorno }),
   });
   return (JSON.parse(salida) as Record<string, string | null>)[nombre] ?? null;
 }

@@ -30,7 +30,7 @@ async function existe(consulta: string, parametros: unknown[] = []): Promise<boo
 }
 
 describe('instalación limpia', () => {
-  it('crea las 73 tablas de las fases 1 a 4', async () => {
+  it('crea las 110 tablas de las fases 1 a 5', async () => {
     const { rows } = await base.sql.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'
@@ -66,10 +66,22 @@ describe('instalación limpia', () => {
       'directory_preference', 'directory_publication',
       'member_credential', 'credential_verification',
       'labour_authority_filing',
+      // Fase 5 · gobierno, asambleas, elecciones, negociación y disciplina
+      'union_body', 'office_definition', 'office_definition_permission',
+      'office_incompatibility', 'office_term', 'power_grant',
+      'document_template', 'generated_document', 'signature_record',
+      'assembly', 'assembly_call', 'agenda_item', 'agenda_item_document',
+      'assembly_roster_snapshot', 'assembly_roster_entry', 'attendance', 'resolution',
+      'vote_process', 'vote_eligibility', 'spent_vote_credential', 'ballot', 'vote_receipt',
+      'election', 'election_commission_member', 'candidate_slate', 'slate_member',
+      'election_incident', 'election_incident_evidence',
+      'bargaining_file', 'bargaining_commission_member', 'bargaining_proposal',
+      'disciplinary_case', 'disciplinary_evidence', 'disciplinary_decision', 'appeal',
+      'compliance_obligation', 'compliance_obligation_document',
     ]) {
       expect(tablas, `falta la tabla ${esperada}`).toContain(esperada);
     }
-    expect(tablas).toHaveLength(73);
+    expect(tablas).toHaveLength(110);
   });
 
   it('deja registradas todas las migraciones del repositorio, ninguna a medias', async () => {
@@ -143,7 +155,7 @@ describe('índice de prefijo de la jerarquía territorial (ADR-0027)', () => {
     // usa el índice en instalaciones con configuración regional distinta de C,
     // y el filtro territorial de cada consulta pasa a recorrer la tabla entera.
     const { rows } = await base.sql.query<{ indexdef: string }>(
-      `SELECT indexdef FROM pg_indexes WHERE indexname = 'territorial_unit_path_prefix_idx'`,
+      `SELECT indexdef FROM pg_indexes WHERE indexname = 'territorial_unit_path_prefijo'`,
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]?.indexdef).toContain('text_pattern_ops');
@@ -200,7 +212,7 @@ describe('el esquema y las migraciones no se separan', () => {
       // escribe a mano porque Prisma no sabe expresar `text_pattern_ops`
       // (ADR-0027). Cualquier otra sentencia es una separación real entre lo que
       // el código cree y lo que la base tiene.
-      const inesperadas = sentencias.filter((linea) => !linea.includes('territorial_unit_path_prefix_idx'));
+      const inesperadas = sentencias.filter((linea) => !linea.includes('territorial_unit_path_prefijo'));
       expect(inesperadas, `el esquema y las migraciones divergen:\n${inesperadas.join('\n')}`).toEqual([]);
     } finally {
       await sombra.drop();

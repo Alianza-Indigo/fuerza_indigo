@@ -2175,6 +2175,355 @@ const CHECKS = [
         : ok(['Todo token de color que una pantalla pide está declarado en la hoja de estilos.']);
     },
   },
+
+  {
+    id: 'C-F5-01',
+    title: 'Fase 5: la urna no guarda tiempo ni identidad',
+    phases: [5],
+    run() {
+      // La garantía del PRD §9.5 no se sostiene en una política de acceso: se
+      // sostiene en la forma de dos tablas. Si alguien añadiera `createdAt` a
+      // `Ballot` «para depurar», o le cambiara la clave primaria a UUIDv7, el
+      // secreto del voto quedaría roto sin que ninguna prueba de dominio lo
+      // notara: los conteos seguirían saliendo bien.
+      const esquema = read('prisma/schema/voting.prisma') ?? '';
+      if (esquema === '') return fail(['No se encuentra el esquema de votación.']);
+
+      const problems = [];
+
+      const ballot = esquema.match(/model Ballot \{([\s\S]*?)\n\}/);
+      if (ballot === null) return fail(['No existe el modelo Ballot.']);
+      const cuerpo = ballot[1] ?? '';
+
+      for (const prohibida of ['createdAt', 'updatedAt', 'castAt', 'membershipId', 'personId', 'userId', 'ipHash']) {
+        if (new RegExp(`\\b${prohibida}\\b`).test(cuerpo)) {
+          problems.push(`Ballot tiene "${prohibida}": basta para emparejar una boleta con quien la depositó.`);
+        }
+      }
+      if (!/@default\(uuid\(4\)\)/.test(cuerpo)) {
+        problems.push('Ballot no usa UUIDv4: un identificador ordenable codifica el instante del depósito.');
+      }
+
+      const gastada = esquema.match(/model SpentVoteCredential \{([\s\S]*?)\n\}/);
+      if (gastada === null) return fail(['No existe el modelo SpentVoteCredential.']);
+      const cuerpoGastada = gastada[1] ?? '';
+      for (const prohibida of ['createdAt', 'updatedAt', 'membershipId', 'personId', 'spentAt']) {
+        if (new RegExp(`\\b${prohibida}\\b`).test(cuerpoGastada)) {
+          problems.push(`SpentVoteCredential tiene "${prohibida}": permitiría correlacionar por proximidad temporal.`);
+        }
+      }
+      if (!/@default\(uuid\(4\)\)/.test(cuerpoGastada)) {
+        problems.push('SpentVoteCredential no usa UUIDv4.');
+      }
+
+      // El acuse se emite al entregar la credencial, no al depositar: si
+      // naciera en la transacción de la boleta, el orden físico las emparejaría.
+      const acuse = esquema.match(/model VoteReceipt \{([\s\S]*?)\n\}/);
+      if (acuse !== null && !/issuedOn\s+DateTime\s+@db\.Date/.test(acuse[1] ?? '')) {
+        problems.push('VoteReceipt guarda la hora de emisión y no solo la fecha civil.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['La urna no tiene tiempo ni identidad, y su identificador no codifica el instante del depósito.']);
+    },
+  },
+
+  {
+    id: 'C-F5-02',
+    title: 'Fase 5: el depósito de la boleta no recibe actor ni deja asiento',
+    phases: [5],
+    run() {
+      // Complemento del anterior, del lado del código. Un asiento de auditoría
+      // nacido en la misma transacción que la boleta lleva actor e instante, y
+      // eso deshace en la bitácora lo que el modelo protege en la urna. Que el
+      // caso de uso ni siquiera **reciba** un actor es la forma de que nadie lo
+      // use por descuido.
+      const fuente = read('src/modules/voting/application/processes.ts') ?? '';
+      if (fuente === '') return fail(['No se encuentra el módulo de votación.']);
+
+      const firma = fuente.match(/export async function castBallot\(([\s\S]*?)\)\s*:/);
+      if (firma === null) return fail(['No existe el caso de uso que deposita la boleta.']);
+      const problems = [];
+      if (/ActorContext/.test(firma[1] ?? '')) {
+        problems.push('castBallot recibe un actor: tenerlo invita a usarlo, y usarlo crea el vínculo.');
+      }
+
+      const cuerpo = fuente.slice(fuente.indexOf('export async function castBallot'));
+      const hastaSiguiente = cuerpo.slice(0, cuerpo.indexOf('\nexport ', 10));
+      if (/recordAudit/.test(hastaSiguiente)) {
+        problems.push('El depósito escribe un asiento de auditoría: llevaría actor e instante junto a la boleta.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['El depósito no recibe actor ni deja asiento; lo demás del proceso sí se asienta.']);
+    },
+  },
+
+  {
+    id: 'C-F5-03',
+    title: 'Fase 5: el padrón congelado es inmutable en el motor, no en la aplicación',
+    phases: [5],
+    run() {
+      // «El padrón no se recalcula» es una promesa hasta que la base la impone.
+      // Se comprueba que la migración retire el privilegio de actualización y
+      // borrado sobre las tablas cuya inmutabilidad sostiene el quórum y el
+      // voto.
+      const migraciones = walk().filter((file) => /^prisma\/migrations\/.*\/migration\.sql$/.test(file));
+      const sql = migraciones.map((file) => read(file) ?? '').join('\n');
+      if (sql === '') return fail(['No hay migraciones que revisar.']);
+
+      const problems = [];
+      for (const tabla of ['ballot', 'spent_vote_credential', 'assembly_roster_snapshot', 'assembly_roster_entry']) {
+        const patron = new RegExp(`REVOKE\\s+UPDATE\\s*,\\s*DELETE\\s+ON\\s+"${tabla}"`, 'i');
+        if (!patron.test(sql)) {
+          problems.push(`Nadie retira UPDATE y DELETE sobre "${tabla}": su inmutabilidad depende de que la aplicación se porte bien.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['La urna y el padrón congelado son inmutables para las credenciales de la aplicación.']);
+    },
+  },
+
+  {
+    id: 'C-F5-04',
+    title: 'Fase 5: un cargo vencido pierde acceso sin que nadie intervenga',
+    phases: [5],
+    run() {
+      // El criterio del PRD §24 Fase 5. Se comprueba la cadena entera: que la
+      // designación ate el acceso al periodo, que el trabajo programado exista
+      // y que ese trabajo cierre los cargos vencidos además de los roles.
+      const nombramiento = read('src/modules/governance/application/office-terms.ts') ?? '';
+      const roles = read('src/modules/access/application/role-assignment.ts') ?? '';
+      const ruta = read('app/api/v1/cron/role-expiry/route.ts') ?? '';
+
+      const problems = [];
+      if (!/roleAssignmentId/.test(nombramiento) || !/endsAt/.test(nombramiento)) {
+        problems.push('La designación no ata el acceso al periodo del cargo.');
+      }
+      // Se busca la **llamada**, no el nombre: dejar la importación y borrar la
+      // invocación es exactamente el error que este control tiene que ver, y
+      // buscar el nombre a secas lo dejaba pasar.
+      if (!/revokeExpiredOfficeAccess\s*\(/.test(roles)) {
+        problems.push('El trabajo que revoca roles vencidos no cierra los cargos vencidos.');
+      }
+      if (!/expireDueRoleAssignments/.test(ruta)) {
+        problems.push('No hay trabajo programado que ejecute la revocación.');
+      }
+      if ((nombramiento.match(/revokePowersOfTerm\s*\(/g) ?? []).length < 2) {
+        problems.push(
+          'Un cargo que vence o que se concluye antes de tiempo no revoca los poderes que salieron de él: hacen falta las dos llamadas.',
+        );
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Nombrar concede el acceso atado al periodo, y el trabajo programado lo retira al vencer, con sus poderes.']);
+    },
+  },
+
+  {
+    id: 'C-F5-05',
+    title: 'Fase 5: ningún procedimiento de huelga puede abrirse sin acuerdo humano',
+    phases: [5],
+    run() {
+      // «Los expedientes de huelga exigen acuerdo humano y no pueden iniciarse
+      // por una automatización» (PRD §24 Fase 5). Se comprueba en los dos
+      // sitios donde tiene que estar: la base y el caso de uso.
+      const migraciones = walk().filter((file) => /^prisma\/migrations\/.*\/migration\.sql$/.test(file));
+      const sql = migraciones.map((file) => read(file) ?? '').join('\n');
+      const fuente = read('src/modules/bargaining/application/files.ts') ?? '';
+
+      const problems = [];
+      if (!/bargaining_huelga_exige_acuerdo/.test(sql)) {
+        problems.push('La base no impide un expediente de huelga sin acuerdo habilitante.');
+      }
+      // Tiene que exigirse en los **dos** caminos que llevan a un expediente de
+      // huelga: abrirlo así de origen y escalar a él desde uno ordinario. Con
+      // una sola comprobación, borrar la del alta dejaba la puerta abierta y el
+      // control seguía en verde porque el permiso aparecía en el otro sitio.
+      const usosDelPermisoDeHuelga = (fuente.match(/'bargaining\.strike\.file_open'/g) ?? []).length;
+      if (usosDelPermisoDeHuelga < 2) {
+        problems.push(
+          'Abrir un procedimiento de huelga o escalar a él no exige su permiso propio en los dos caminos.',
+        );
+      }
+      if (!/enablingResolutionId === null/.test(fuente)) {
+        problems.push('El caso de uso no comprueba el acuerdo habilitante antes de abrir.');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Un expediente de huelga exige acuerdo aprobado y permiso propio, y la base lo impone.']);
+    },
+  },
+
+  {
+    id: 'C-F5-06',
+    title: 'Fase 5: sin notificación y sin audiencia no hay resolución disciplinaria',
+    phases: [5],
+    run() {
+      const migraciones = walk().filter((file) => /^prisma\/migrations\/.*\/migration\.sql$/.test(file));
+      const sql = migraciones.map((file) => read(file) ?? '').join('\n');
+      const fuente = read('src/modules/discipline/application/decisions.ts') ?? '';
+
+      const problems = [];
+      if (!/disciplinary_resolucion_exige_debido_proceso/.test(sql)) {
+        problems.push('La base no impide resolver sin notificación ni audiencia.');
+      }
+      if (!/notifiedAt === null/.test(fuente) || !/hearingWaivedAt === null/.test(fuente)) {
+        problems.push('El caso de uso no comprueba el debido proceso antes de resolver.');
+      }
+      if (!/sinValorar/.test(fuente)) {
+        problems.push('Se puede resolver con pruebas sin valorar: negar la defensa por omisión.');
+      }
+      // Ninguna asistencia automática interviene en el régimen disciplinario.
+      for (const archivo of walk().filter((file) => file.startsWith('src/modules/discipline/'))) {
+        if (/gemini|GEMINI|generateContent|@google\/gen/i.test(read(archivo) ?? '')) {
+          problems.push(`${archivo} invoca un modelo de lenguaje: el PRD lo prohíbe en el régimen disciplinario.`);
+        }
+      }
+
+      return problems.length
+        ? fail(problems)
+        : ok(['Resolver exige notificación, audiencia o su renuncia, y pruebas valoradas. Ninguna automatización interviene.']);
+    },
+  },
+
+  {
+    id: 'C-F5-07',
+    title: 'Fase 5: el catálogo de permisos no admite códigos repetidos',
+    phases: [5],
+    run() {
+      // Un código repetido no falla en ningún sitio: la segunda definición
+      // gana o pierde según el orden de lectura, y una de las dos —con su
+      // sensibilidad y su exigencia de motivo— desaparece en silencio. Se
+      // detectó al añadir los cuarenta y siete permisos de esta fase, contando
+      // a mano: tres ya existían y nadie se habría enterado.
+      const fuente = read('src/platform/authz/permissions.ts') ?? '';
+      if (fuente === '') return fail(['No se encuentra el catálogo de permisos.']);
+
+      const vistos = new Map();
+      const repetidos = [];
+      for (const match of fuente.matchAll(/define\(\s*'([^']+)'/g)) {
+        const codigo = match[1] ?? '';
+        if (vistos.has(codigo)) repetidos.push(codigo);
+        else vistos.set(codigo, true);
+      }
+
+      return repetidos.length
+        ? fail([...new Set(repetidos)].map((codigo) => `El permiso "${codigo}" está definido más de una vez.`))
+        : ok([`${vistos.size} permisos declarados, ninguno repetido.`]);
+    },
+  },
+
+  {
+    id: 'C-F5-08',
+    title: 'Fase 5: todo acto que exige motivo recibe uno de quien lo ejecuta',
+    phases: [5],
+    run() {
+      // El motor niega un permiso con `requiresReason` cuando el actor llega
+      // sin motivo (`MOTIVO_REQUERIDO`, docs/PERMISSIONS.md §7). Si la acción
+      // de servidor no lo adjunta, el botón existe, se pulsa y **siempre**
+      // falla: nadie puede declarar quórum ni certificar un escrutinio.
+      // Pasó exactamente eso con `declareQuorum` y `certifyVoteProcess`, y no
+      // lo vio ni el compilador ni el linter, porque no es un error de tipos
+      // sino de composición entre dos capas.
+      const catalogo = read('src/platform/authz/permissions.ts') ?? '';
+      if (catalogo === '') return fail(['No se encuentra el catálogo de permisos.']);
+
+      const exigenMotivo = new Set();
+      for (const match of catalogo.matchAll(/define\(\s*'([^']+)'[^)]*?\)/gs)) {
+        if ((match[0] ?? '').includes('requiresReason: true')) exigenMotivo.add(match[1] ?? '');
+      }
+      if (exigenMotivo.size === 0) {
+        return fail(['Ningún permiso exige motivo: el catálogo no se está leyendo bien.']);
+      }
+
+      // Caso de uso que guarda uno de esos permisos → nombre exportado.
+      const guardianes = new Map();
+      for (const ruta of walk().filter((f) => /^src\/modules\/[^/]+\/application\/.+\.ts$/.test(f))) {
+        const fuente = read(ruta) ?? '';
+        let caso = null;
+        for (const linea of fuente.split('\n')) {
+          const exportado = /^export async function (\w+)/.exec(linea);
+          if (exportado) caso = exportado[1] ?? null;
+          const comprobacion = /\bcan\(\s*(\w+)\s*,\s*'([^']+)'/.exec(linea);
+          if (comprobacion && caso !== null && exigenMotivo.has(comprobacion[2] ?? '')) {
+            guardianes.set(caso, { permiso: comprobacion[2], variable: comprobacion[1], ruta });
+          }
+        }
+      }
+      if (guardianes.size === 0) {
+        return fail(['Ningún caso de uso guarda un permiso que exija motivo: la lectura falló.']);
+      }
+
+      // Quien los invoca desde la interfaz o la API debe traer el motivo.
+      const invocables = walk().filter((f) => /^app\/.+\.(ts|tsx)$/.test(f));
+      const problemas = [];
+      let comprobados = 0;
+      for (const [caso, dato] of guardianes) {
+        if (dato.variable !== 'actor') continue; // ya lo compone dentro del caso de uso
+        for (const ruta of invocables) {
+          const lineas = (read(ruta) ?? '').split('\n');
+          for (let i = 0; i < lineas.length; i += 1) {
+            if (!new RegExp(`await ${caso}\\(`).test(lineas[i] ?? '')) continue;
+            comprobados += 1;
+            const contexto = lineas.slice(Math.max(0, i - 25), i).join('\n');
+            const traeMotivo = contexto.includes('withReason(') || contexto.includes('systemContext(');
+            if (!traeMotivo) {
+              problemas.push(
+                `${ruta}:${i + 1} llama a ${caso}() —que exige «${dato.permiso}»— con un actor sin motivo: el acto siempre será negado.`,
+              );
+            }
+          }
+        }
+      }
+
+      if (comprobados === 0) {
+        return fail(['No se encontró ninguna llamada a un caso de uso que exija motivo.']);
+      }
+      return problemas.length
+        ? fail(problemas)
+        : ok([
+            `${exigenMotivo.size} permisos exigen motivo; ${guardianes.size} casos de uso los guardan y las ${comprobados} llamadas desde app/ lo adjuntan.`,
+          ]);
+    },
+  },
+
+  {
+    id: 'C-F5-09',
+    title: 'Fase 5: ninguna prueba limpia la base con TRUNCATE en cascada',
+    phases: [5],
+    run() {
+      // `TRUNCATE t CASCADE` no borra t: borra t y toda tabla que apunte a t,
+      // en cadena. Mientras el grafo de claves ajenas estuvo abierto, la orden
+      // parecía acotada; en cuanto el territorio pasó a nacer de una resolución
+      // de asamblea el grafo se cerró en ciclo y la misma línea empezó a vaciar
+      // la base entera —semilla incluida— sin error ni aviso. Los casos
+      // siguientes fallaron por falta de permisos: el síntoma señalaba al motor
+      // de autorización, que no tenía nada que ver.
+      const culpables = [];
+      for (const ruta of walk().filter((f) => f.startsWith('tests/') && /\.tsx?$/.test(f))) {
+        const lineas = (read(ruta) ?? '').split('\n');
+        for (let i = 0; i < lineas.length; i += 1) {
+          const linea = lineas[i] ?? '';
+          // Solo la orden ejecutada: ni un comentario que la nombre ni la
+          // palabra citada al comprobar privilegios son una orden.
+          if (/^\s*(\/\/|\*|\/\*)/.test(linea)) continue;
+          if (/\bTRUNCATE\b[^;]*\bCASCADE\b/i.test(linea)) {
+            culpables.push(`${ruta}:${i + 1} vacía en cascada: borra mucho más de lo que nombra.`);
+          }
+        }
+      }
+      return culpables.length
+        ? fail(culpables)
+        : ok(['Ninguna prueba usa TRUNCATE en cascada para limpiar entre casos.']);
+    },
+  },
 ];
 
 

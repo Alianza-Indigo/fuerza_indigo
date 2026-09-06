@@ -23,6 +23,7 @@ import {
   type IssuedVoteCredential,
 } from '@/modules/voting';
 import { currentActor } from '@/platform/http/request-context';
+import { withReason } from '@/platform/kernel/actor-context';
 import { textField } from '@/platform/http/form-fields';
 import type { AppError } from '@/platform/errors/app-error';
 
@@ -348,7 +349,7 @@ export async function certifyElectionVoteAction(
   _previous: ElectionFormState,
   formData: FormData,
 ): Promise<ElectionFormState> {
-  const actor = await currentActor();
+  const actor = withReason(await currentActor(), 'certificación del escrutinio y destrucción de la clave del proceso');
   const resultado = await certifyVoteProcess(actor, {
     voteProcessId: textField(formData, 'voteProcessId'),
     templateCode: textField(formData, 'templateCode'),

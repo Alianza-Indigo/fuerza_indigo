@@ -58,7 +58,14 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await base.sql.query('TRUNCATE TABLE "catalog_price", "catalog_product" CASCADE');
+  // Se borran las filas del catálogo y nada más. Vaciar la tabla en cascada
+  // parecía equivalente y no lo es: arrastra toda tabla que apunte a ella, y en
+  // cuanto el territorio pasó a nacer de una resolución de asamblea (Fase 5) el
+  // grafo de claves ajenas se cerró en ciclo y la orden vaciaba la base entera
+  // —semilla incluida— sin decir nada. Los casos siguientes fallaban entonces
+  // por falta de permisos, que era el síntoma, no la causa.
+  await base.sql.query('DELETE FROM "catalog_price"');
+  await base.sql.query('DELETE FROM "catalog_product"');
 });
 
 async function actorFinanzas() {

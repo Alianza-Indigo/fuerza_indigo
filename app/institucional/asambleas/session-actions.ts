@@ -20,6 +20,7 @@ import {
   type IssuedVoteCredential,
 } from '@/modules/voting';
 import { currentActor } from '@/platform/http/request-context';
+import { withReason } from '@/platform/kernel/actor-context';
 import { textField } from '@/platform/http/form-fields';
 import { uploadFile } from '@/platform/files';
 import type { AppError } from '@/platform/errors/app-error';
@@ -86,10 +87,17 @@ export async function declareQuorumAction(
   _previous: SessionFormState,
   formData: FormData,
 ): Promise<SessionFormState> {
-  const actor = await currentActor();
+  const ordinal = textField(formData, 'ordinal') as 'FIRST' | 'SECOND';
+  // Declarar quórum es un acto crítico y el motor exige motivo: el motivo de
+  // este acto es la convocatoria con la que se instala la sesión, y así queda
+  // asentado en la bitácora.
+  const actor = withReason(
+    await currentActor(),
+    `instalación de la sesión con la ${ordinal === 'FIRST' ? 'primera' : 'segunda'} convocatoria`,
+  );
   const resultado = await declareQuorum(actor, {
     assemblyId: textField(formData, 'assemblyId'),
-    ordinal: textField(formData, 'ordinal') as 'FIRST' | 'SECOND',
+    ordinal,
   });
   if (!resultado.ok) return fallo(resultado);
 
@@ -172,7 +180,7 @@ export async function tallyVoteAction(_previous: SessionFormState, formData: For
 }
 
 export async function certifyVoteAction(_previous: SessionFormState, formData: FormData): Promise<SessionFormState> {
-  const actor = await currentActor();
+  const actor = withReason(await currentActor(), 'certificación del escrutinio y destrucción de la clave del proceso');
   const resultado = await certifyVoteProcess(actor, {
     voteProcessId: textField(formData, 'voteProcessId'),
     templateCode: textField(formData, 'templateCode'),

@@ -19,5 +19,9 @@ export const SECCIONES = [
   { href: '/institucional/asambleas', label: 'Asambleas', permiso: 'assembly.assembly.read' },
   { href: '/institucional/acuerdos', label: 'Seguimiento de acuerdos', permiso: 'assembly.assembly.read' },
   { href: '/institucional/elecciones', label: 'Elecciones', permiso: 'voting.process.read' },
+  { href: '/institucional/negociacion', label: 'Negociación colectiva', permiso: 'bargaining.file.read' },
+  { href: '/institucional/disciplina', label: 'Procedimientos disciplinarios', permiso: 'discipline.case.read' },
+  { href: '/institucional/cumplimiento', label: 'Obligaciones ante la autoridad', permiso: 'compliance.obligation.read' },
+  { href: '/institucional/archivo', label: 'Archivo histórico', permiso: 'compliance.archive.read' },
   { href: '/institucional/documentos', label: 'Plantillas de documento', permiso: 'documents.template.manage' },
 ] as const;

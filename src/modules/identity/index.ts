@@ -53,3 +53,7 @@ export {
   type ReenableAccountInput,
   type AccountChange,
 } from './application/account-lifecycle';
+export {
+  organizationList,
+  type OrganizationRow,
+} from './application/organizations';

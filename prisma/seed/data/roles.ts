@@ -211,7 +211,21 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'cases.referral.propose',
       'cases.emergency.raise',
       'cases.indicator.read',
-      'files.file.download_own','identity.person.read', 'territory.unit.read', 'files.file.upload', 'files.file.download'],
+      'files.file.download_own',
+      'identity.person.read',
+      'territory.unit.read',
+      'files.file.upload',
+      'files.file.download',
+      // Revisa solicitudes de afiliación, y sus documentos —identificaciones,
+      // constancias laborales— se guardan como datos personales sensibles. Sin
+      // esta facultad revisaba expedientes cuyos documentos no podía abrir.
+      //
+      // Lo clínico sigue fuera: `cases.document.read_clinical` no está aquí, y
+      // es justo la autorización expresa que el PRD §10.3 exige para que un rol
+      // sindical vea un diagnóstico. Poder abrir material sensible por su
+      // función no es poder abrir el diagnóstico de nadie.
+      'files.file.download_sensitive',
+    ],
   },
   {
     code: 'EXECUTIVE_SECRETARY',

@@ -38,6 +38,14 @@ export {
   type SendMessageInput,
   type EditMessageInput,
 } from './application/messages';
+export {
+  attachDocument,
+  removeDocument,
+  attachDocumentSchema,
+  removeDocumentSchema,
+  type AttachDocumentInput,
+  type RemoveDocumentInput,
+} from './application/documents';
 export { peopleForCase, type Opcion } from './application/options';
 export {
   caseList,

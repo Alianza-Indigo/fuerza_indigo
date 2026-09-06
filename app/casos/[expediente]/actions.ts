@@ -1,20 +1,25 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import {
   addParticipant,
   advanceTask,
   assessCase,
+  attachDocument,
   assignCase,
   assignTask,
   createTask,
   editMessage,
+  removeDocument,
   removeParticipant,
   sendMessage,
   unassignCase,
 } from '@/modules/cases';
 import { currentActor } from '@/platform/http/request-context';
-import { textField } from '@/platform/http/form-fields';
+import { authorizeDownload } from '@/platform/files';
+import { withReason } from '@/platform/kernel/actor-context';
+import { checkboxField, textField } from '@/platform/http/form-fields';
 
 export interface CaseFormState {
   readonly status: 'idle' | 'error' | 'ok';
@@ -303,4 +308,98 @@ export async function editMessageAction(_previo: CaseFormState, formData: FormDa
 
   revalidatePath('/casos');
   return { status: 'ok', message: 'Corregida. Queda escrito que se corrigió.' };
+}
+
+/**
+ * Agrega un documento al expediente.
+ *
+ * El archivo se sube **desde el módulo**, como archivo de este expediente:
+ * aceptar uno ya guardado permitiría colgar del caso un archivo sin contexto,
+ * y entonces la puerta de descarga no sabría de qué expediente es.
+ */
+export async function attachDocumentAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const archivo = formData.get('file');
+
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return {
+      status: 'error',
+      message: 'Elige un archivo para agregar.',
+      fieldErrors: { file: ['Falta el archivo.'] },
+    };
+  }
+
+  const clasificacion = textField(formData, 'classification');
+
+  const resultado = await attachDocument(actor, {
+    caseId: textField(formData, 'caseId'),
+    kind: textField(formData, 'kind') as never,
+    description: textField(formData, 'description'),
+    originalFileName: archivo.name,
+    mimeType: archivo.type,
+    content: new Uint8Array(await archivo.arrayBuffer()),
+    classification: clasificacion === '' ? null : (clasificacion as never),
+    visibleToPerson: checkboxField(formData, 'visibleToPerson'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Documento agregado al expediente.' };
+}
+
+/** Retira un documento del expediente, con su motivo. El archivo no se borra. */
+export async function removeDocumentAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await removeDocument(actor, {
+    documentId: textField(formData, 'documentId'),
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Deja de figurar en el expediente. El archivo se conserva con su retención.' };
+}
+
+/**
+ * Abre un documento clínico, con la autorización expresa que el PRD §10.3 pide.
+ *
+ * Va por una acción y no por un enlace porque exige **motivo escrito**, y un
+ * motivo en la barra de direcciones acaba en el historial del navegador y en
+ * los registros de cualquier intermediario. La acción devuelve la dirección
+ * firmada y la pantalla navega a ella.
+ */
+export async function openClinicalDocumentAction(
+  _previo: CaseFormState,
+  formData: FormData,
+): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const motivo = textField(formData, 'reason');
+
+  if (motivo.trim().length < 10) {
+    return {
+      status: 'error',
+      message: 'Escribe por qué necesitas abrirlo.',
+      fieldErrors: { reason: ['Al menos diez caracteres: abrir el diagnóstico de alguien es un acto.'] },
+    };
+  }
+
+  const pase = await authorizeDownload(withReason(actor, motivo), textField(formData, 'fileObjectId'));
+  if (!pase.ok) return { status: 'error', message: pase.error.message };
+
+  redirect(pase.data.path);
 }

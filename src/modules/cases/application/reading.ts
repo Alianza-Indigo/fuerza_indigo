@@ -16,7 +16,9 @@ import type {
   CaseParticipantRole,
   CasePriority,
   CaseStatus,
+  CaseDocumentKind,
   CaseTaskStatus,
+  FileClassification,
   SupportRequestType,
 } from '@prisma-client/enums';
 import type { Prisma } from '@prisma-client/client';
@@ -85,6 +87,17 @@ export interface CaseDetail extends CaseRow {
    * ejemplo, a quien no puede volver a abrirla.
    */
   readonly lectura: ClaseDeLectura;
+  readonly documentos: readonly {
+    readonly id: string;
+    readonly archivoId: string;
+    readonly clase: CaseDocumentKind;
+    readonly descripcion: string;
+    readonly clasificacion: FileClassification;
+    readonly nombreDeArchivo: string;
+    readonly visibleParaLaPersona: boolean;
+    /** Abrirlo exige escribir por qué (PRD §10.3). */
+    readonly exigeMotivo: boolean;
+  }[];
   readonly comunicaciones: readonly {
     readonly id: string;
     readonly audiencia: CaseMessageAudience;
@@ -363,6 +376,25 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
   if (clase === null) return fail(errors.notFound('Ese expediente no existe.'));
   const parte = clase === 'PERSONA';
 
+  // Los documentos también se recortan en la consulta. A quien es parte solo se
+  // le traen los que se le enseñan: un documento de trabajo interno no está en
+  // su expediente para que lo lea, está para que el equipo trabaje.
+  const documentos = await db().caseDocument.findMany({
+    where: {
+      caseId: fila.id,
+      removedAt: null,
+      ...(parte ? { visibleToPerson: true } : {}),
+    },
+    orderBy: { addedAt: 'desc' },
+    select: {
+      id: true,
+      kind: true,
+      description: true,
+      visibleToPerson: true,
+      fileObject: { select: { id: true, classification: true, originalFileName: true } },
+    },
+  });
+
   // Las comunicaciones se piden aparte y **filtradas en la consulta**. Traerlas
   // todas para tachar después las reservadas sería traerlas igual.
   const comunicaciones = await db().caseMessage.findMany({
@@ -429,6 +461,19 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       rol: asignacion.assignmentRole,
     })),
     lectura: clase,
+    documentos: documentos.map((documento) => ({
+      id: documento.id,
+      archivoId: documento.fileObject.id,
+      clase: documento.kind,
+      descripcion: documento.description,
+      clasificacion: documento.fileObject.classification,
+      nombreDeArchivo: documento.fileObject.originalFileName,
+      visibleParaLaPersona: documento.visibleToPerson,
+      // Quien es parte abre lo suyo sin explicar por qué. La autorización
+      // expresa que el PRD §10.3 exige es la del personal que mira el
+      // diagnóstico de otra persona.
+      exigeMotivo: documento.kind === 'MEDICAL_OR_CLINICAL' && !parte,
+    })),
     comunicaciones: comunicaciones.map((mensaje) => ({
       id: mensaje.id,
       audiencia: mensaje.audience,

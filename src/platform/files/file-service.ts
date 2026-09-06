@@ -1,11 +1,12 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
-import type { FileClassification, FileContextKind } from '@prisma-client/enums';
+import type { Compartment, FileClassification, FileContextKind } from '@prisma-client/enums';
 import { env } from '@/platform/config/env';
 import { db } from '@/platform/db/client';
 import { transaction } from '@/platform/db/unit-of-work';
 import { errors } from '@/platform/errors/app-error';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { can, explain } from '@/platform/authz/policy';
+import { compartimentoDeExpediente } from '@/platform/authz/compartments';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { newPublicId, safeEquals } from '@/platform/kernel/ids';
 import { recordAudit, recordSecurity } from '@/platform/audit/audit-service';
@@ -200,6 +201,81 @@ function sign(payload: string): string {
   return createHmac('sha256', env().FILE_URL_SIGNING_SECRET).update(payload).digest('hex');
 }
 
+/** Lo que el expediente dice del archivo que cuelga de él. */
+interface ContextoDeExpediente {
+  readonly compartment: Compartment;
+  readonly territorialPath: string | null;
+  /** Si quien pide lleva el expediente: tiene una asignación viva sobre él. */
+  readonly loLleva: boolean;
+  /** Si el documento es suyo: es parte del expediente y se le enseña. */
+  readonly esSuyo: boolean;
+  /** Si el documento es un diagnóstico o un dato clínico (PRD §10.3). */
+  readonly esClinico: boolean;
+}
+
+/**
+ * Resuelve el expediente del que cuelga un archivo.
+ *
+ * Se consulta desde la plataforma y no desde el módulo de casos porque este
+ * servicio es la **única puerta de descarga** del sistema: una segunda puerta
+ * que supiera de expedientes sería una segunda puerta que olvidar de cerrar.
+ * Lo que se lee aquí son hechos del dato —de qué dominio es, dónde ocurre,
+ * quién lo lleva—, no reglas del módulo; la única regla, la traducción de
+ * dominio a compartimento, vive en un solo sitio y se importa.
+ *
+ * Un archivo marcado como de caso que no señale un expediente vivo no se abre:
+ * responder que no se sabe de quién es y dejar pasar sería lo contrario de una
+ * puerta.
+ */
+async function contextoDeExpediente(
+  actor: ActorContext,
+  fileObjectId: string,
+  contextId: string | null,
+): Promise<ContextoDeExpediente | null> {
+  if (contextId === null) return null;
+
+  const expediente = await db().case.findUnique({
+    where: { id: contextId },
+    select: { id: true, domain: true, territorialUnit: { select: { path: true } } },
+  });
+  if (expediente === null) return null;
+
+  const documento = await db().caseDocument.findFirst({
+    where: { caseId: expediente.id, fileObjectId, removedAt: null },
+    select: { kind: true, visibleToPerson: true },
+  });
+
+  const userId = actor.userId ?? null;
+  const asignada =
+    userId !== null &&
+    (await db().caseAssignment.findFirst({
+      where: { caseId: expediente.id, userId, unassignedAt: null },
+      select: { id: true },
+    })) !== null;
+
+  // Quien es parte alcanza **lo que se le enseña**, no todo lo que cuelga del
+  // expediente: un documento de trabajo interno no se abre por el hecho de
+  // figurar en el caso de alguien.
+  const personId = actor.personId ?? null;
+  const parteQueLoVe =
+    !asignada &&
+    documento !== null &&
+    documento.visibleToPerson &&
+    personId !== null &&
+    (await db().caseParticipant.findFirst({
+      where: { caseId: expediente.id, personId, removedAt: null, canViewCase: true },
+      select: { id: true },
+    })) !== null;
+
+  return {
+    compartment: compartimentoDeExpediente(expediente.domain),
+    territorialPath: expediente.territorialUnit?.path ?? null,
+    loLleva: asignada,
+    esSuyo: parteQueLoVe,
+    esClinico: documento?.kind === 'MEDICAL_OR_CLINICAL',
+  };
+}
+
 /**
  * Autoriza una descarga y emite un pase firmado de vigencia corta.
  *
@@ -235,33 +311,80 @@ export async function authorizeDownload(
   // la de quien lee expedientes ajenos. La distinción importa: darle a un rol de
   // afiliación la descarga general para que pueda abrir su documento le daría
   // también los documentos de las demás personas de su alcance.
-  const isOwner = file.ownerPersonId !== null && file.ownerPersonId === actor.personId;
+  // El archivo de un expediente se decide con lo que el expediente dice de sí
+  // mismo, no con una constante. Antes esta función fijaba `SOCIAL` para todo
+  // archivo de caso y no aportaba sonda de asignación: un documento de defensa
+  // sindical quedaba al alcance del personal de atención social y fuera del
+  // alcance de quien llevaba el expediente, que es exactamente al revés.
+  const expediente = file.contextKind === 'CASE' ? await contextoDeExpediente(actor, file.id, file.contextId) : null;
+
+  // **El documento de un expediente se alcanza por asignación o por ser su
+  // sujeto, nunca por facultad sola** (PRD §10.3). No basta con marcar el
+  // permiso de descarga como `needsAssignment`: `files.file.download` es el
+  // permiso general de archivos y no lo exige, así que quien lo tuviera abriría
+  // el expediente de cualquiera de su entidad con solo saber el identificador.
+  // Por eso la puerta lo comprueba aquí, sobre el hecho, y no a través de una
+  // bandera del catálogo que vale para todos los archivos del sistema.
+  const alcanzaElExpediente = expediente === null || expediente.loLleva || expediente.esSuyo;
+
+  // Quien es parte descarga lo suyo por la vía de su propio permiso, igual que
+  // la titular de un archivo personal: el documento que se le enseña en su
+  // expediente es suyo en el mismo sentido, y exigirle la descarga general le
+  // daría de paso los documentos de las demás.
+  const isOwner =
+    (file.ownerPersonId !== null && file.ownerPersonId === actor.personId) || (expediente?.esSuyo ?? false);
   const permissionCode = isOwner
     ? 'files.file.download_own'
     : isSensitive
       ? 'files.file.download_sensitive'
       : 'files.file.download';
 
-  const decision = can(
-    actor,
-    permissionCode,
-    {
-      kind: 'FileObject',
-      id: file.id,
-      legalEntityId: file.legalEntityId,
-      compartment: file.contextKind === 'CASE' ? 'SOCIAL' : null,
-    },
-    { hasLiveAssignment: () => isOwner },
-  );
+  const decision = !alcanzaElExpediente
+    ? { allowed: false as const, reason: 'SIN_ASIGNACION' as const }
+    : can(
+        actor,
+        permissionCode,
+        {
+          kind: 'FileObject',
+          id: file.id,
+          legalEntityId: file.legalEntityId,
+          territorialPath: expediente?.territorialPath ?? null,
+          compartment: expediente?.compartment ?? null,
+        },
+        { hasLiveAssignment: () => isOwner || (expediente?.loLleva ?? false) },
+      );
 
-  if (!decision.allowed) {
+  // Los diagnósticos y los datos clínicos se ocultan a los roles sindicales sin
+  // autorización expresa (PRD §10.3). La facultad que la concede exige motivo:
+  // abrir el diagnóstico de alguien es un acto, y quien lo hace dice por qué.
+  const clinico =
+    expediente !== null && expediente.esClinico && !isOwner
+      ? can(
+          actor,
+          'cases.document.read_clinical',
+          {
+            kind: 'FileObject',
+            id: file.id,
+            legalEntityId: file.legalEntityId,
+            territorialPath: expediente.territorialPath,
+            compartment: expediente.compartment,
+          },
+          { hasLiveAssignment: () => expediente.loLleva },
+        )
+      : { allowed: true as const, reason: undefined };
+
+  if (!decision.allowed || !clinico.allowed) {
     await transaction((tx) =>
       Promise.all([
         recordSecurity(tx, {
           kind: 'FILE_ACCESS_DENIED',
           severity: isSensitive ? 'CRITICAL' : 'WARNING',
           actorId: actor.actorId === '' ? null : actor.actorId,
-          detail: { fileObjectId: file.id, classification: file.classification, reason: decision.reason },
+          detail: {
+            fileObjectId: file.id,
+            classification: file.classification,
+            reason: decision.reason ?? clinico.reason,
+          },
           correlationId: actor.correlationId,
         }),
         recordAudit(tx, actor, {
@@ -270,11 +393,11 @@ export async function authorizeDownload(
           objectId: file.id,
           outcome: 'DENIED',
           legalEntityId: file.legalEntityId,
-          metadata: { reason: decision.reason },
+          metadata: { reason: decision.reason ?? clinico.reason, clinico: expediente?.esClinico ?? false },
         }),
       ]),
     );
-    return fail(errors.notFound(explain(decision.reason!)));
+    return fail(errors.notFound(explain((decision.reason ?? clinico.reason)!)));
   }
 
   const ttl = TICKET_TTL_SECONDS[file.classification];

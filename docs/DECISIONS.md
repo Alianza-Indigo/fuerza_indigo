@@ -1436,3 +1436,25 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Decisión.** El acuse se registra **por el hecho de leer**: cuando quien es parte abre el expediente, las comunicaciones dirigidas a ella quedan acusadas con su identificador y la fecha. Volver a leerlas no acusa otra vez —el acuse dice que se le dijo, no cuántas veces miró— y el equipo no acusa recibo de sus propias notas internas.
 
 **Y desde el acuse, el texto es un hecho.** Se admite la corrección previa al primer acuse, porque quien todavía no la ha leído no ha leído nada distinto, y queda escrito que se corrigió. Después, no: reescribir lo que alguien ya leyó cambia lo que se le dijo. Corrige además **quien la escribió**: que otra persona reescriba un texto que sigue apareciendo con el nombre de su autora es peor que no poder corregir. Lo demás —de quién es, a quién iba, cuándo se envió— no lo puede tocar la aplicación: la migración le retiró el privilegio.
+
+---
+
+## ADR-0116 · La puerta de descarga sabe de qué expediente es cada archivo
+
+**Contexto.** `authorizeDownload` es la **única puerta** por la que se abre un archivo. Para un archivo de caso fijaba el compartimento `SOCIAL` —una constante escrita en el servicio— y no aportaba sonda de asignación. El resultado era exactamente el contrario del que el PRD §10.3 pide: un documento de defensa sindical quedaba al alcance del personal de atención social, y fuera del alcance de quien llevaba el expediente.
+
+**Decisión.** El servicio resuelve el expediente del que cuelga el archivo y decide con lo que el expediente dice de sí mismo: su dominio da el compartimento, su unidad territorial da el ámbito, y su equipo da la sonda. La traducción de dominio a compartimento se mudó a `@/platform/authz/compartments` y el módulo de casos la reexporta: una regla que vivía en dos sitios ya se había contradicho en uno.
+
+**Y la asignación se comprueba sobre el hecho, no sobre una bandera.** `files.file.download` es el permiso general de archivos y no exige asignación; marcarlo así lo cambiaría para todos los archivos del sistema. Por eso la puerta comprueba aparte que quien pide **alcance el expediente** —lo lleva, o es parte y el documento se le enseña— antes de mirar ninguna facultad. Sin eso, cualquiera con la descarga general abría el expediente de cualquiera de su entidad sabiendo el identificador.
+
+**Quien es parte descarga lo suyo por su propia vía.** El documento que se le enseña en su expediente es suyo en el mismo sentido que un archivo personal; exigirle la descarga general le daría de paso los documentos de las demás.
+
+---
+
+## ADR-0117 · La clase del documento fija su reserva, y lo clínico exige autorización aparte
+
+**Contexto.** La clasificación de un archivo decide cuánto dura su pase de descarga y qué facultad hace falta para abrirlo. Dejarla al criterio de quien sube produce identificaciones marcadas como «interno», con pases largos y una auditoría que no sabe que se abrió algo delicado.
+
+**Decisión.** Cada clase de documento declara su clasificación mínima y el módulo la impone: una identificación es dato personal sensible y un escrito judicial es privilegiado, siempre. Las clases que no la determinan —una prueba puede ser un recibo o una fotografía de lesiones— piden elegirla entre las que un expediente admite; `PUBLIC` no está en esa lista, porque nada de un expediente es público y una opción en un desplegable acaba elegida.
+
+**Lo clínico es una autorización aparte, no un grado más de sensibilidad.** `cases.document.read_clinical` es la autorización expresa que el PRD §10.3 exige para que un rol sindical vea un diagnóstico, y exige motivo escrito: abrir el diagnóstico de alguien es un acto y consta con nombre. Que la regla existiera no bastaba: mientras ningún rol tuvo a la vez la descarga de material sensible y no la facultad clínica, la comprobación no la ejercía nadie y ninguna prueba la veía fallar. Se descubrió al intentar romperla. Lo que faltaba era otra cosa: la delegación territorial revisa solicitudes de afiliación cuyos documentos se guardan como datos personales sensibles, y no podía abrirlos. Con esa facultad en su sitio, lo que la detiene ante un diagnóstico ya no es la sensibilidad del archivo: es la autorización que no tiene.

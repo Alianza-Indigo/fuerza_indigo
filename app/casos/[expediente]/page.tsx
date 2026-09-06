@@ -5,6 +5,7 @@ import { assignableUsers, caseDetail, peopleForCase } from '@/modules/cases';
 import {
   NOMBRE_DE_ASIGNACION,
   NOMBRE_DE_AUDIENCIA,
+  NOMBRE_DE_DOCUMENTO,
   NOMBRE_DE_TAREA,
   TAREAS_CERRADAS,
   NOMBRE_DE_DOMINIO,
@@ -20,6 +21,7 @@ import { AddParticipantForm, RemoveParticipantForm } from './participants-forms'
 import { AssignCaseForm, UnassignCaseForm } from './assignment-forms';
 import { AdvanceTaskForm, AssignTaskForm, CreateTaskForm } from './task-forms';
 import { EditMessageForm, SendMessageForm } from './message-forms';
+import { AttachDocumentForm, OpenClinicalDocumentForm, RemoveDocumentForm } from './document-forms';
 
 /** Cómo se nombra en pantalla la calidad con la que alguien interviene. */
 const NOMBRE_DE_CALIDAD: Record<string, string> = {
@@ -180,6 +182,56 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
           <Section title="Agregar a alguien" level={2}>
             <Card>
               <AddParticipantForm caseId={datos.id} personas={personas} />
+            </Card>
+          </Section>
+        )}
+
+        <Section title="Documentos" level={2}>
+          <Card>
+            {datos.documentos.length === 0 ? (
+              <p className="text-[var(--color-ink-soft)]">Todavía no hay documentos.</p>
+            ) : (
+              <ul className="space-y-4">
+                {datos.documentos.map((documento) => (
+                  <li key={documento.id} className="border-b border-[var(--color-line)] pb-4 last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{documento.descripcion}</span>
+                      <Badge tone="neutral">{NOMBRE_DE_DOCUMENTO[documento.clase]}</Badge>
+                      {documento.visibleParaLaPersona && <Badge tone="accent">La persona lo ve</Badge>}
+                    </div>
+                    <p className="text-sm text-[var(--color-ink-soft)]">
+                      {documento.nombreDeArchivo} · reserva {documento.clasificacion}
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {documento.exigeMotivo ? (
+                        <OpenClinicalDocumentForm fileObjectId={documento.archivoId} />
+                      ) : (
+                        <a
+                          href={`/api/v1/files/${documento.archivoId}/pase`}
+                          className="text-sm underline underline-offset-4"
+                        >
+                          Abrir el documento
+                        </a>
+                      )}
+                      {puedeComunicar && (
+                        <RemoveDocumentForm documentId={documento.id} descripcion={documento.descripcion} />
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
+              Abrir un documento emite un pase de vigencia corta, y la política se vuelve a comprobar al canjearlo:
+              un pase de hace un rato no sirve si entretanto dejaste de llevar el expediente.
+            </p>
+          </Card>
+        </Section>
+
+        {puedeComunicar && (
+          <Section title="Agregar un documento" level={2}>
+            <Card>
+              <AttachDocumentForm caseId={datos.id} />
             </Card>
           </Section>
         )}

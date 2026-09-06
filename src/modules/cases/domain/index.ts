@@ -7,6 +7,7 @@
  */
 export { compartimentoDe } from './access';
 export { NOMBRE_DE_ASIGNACION, QUE_HACE_CADA_PAPEL } from './team';
+export { NOMBRE_DE_DOCUMENTO, CLASIFICACION_MINIMA, SE_ENSENAN_A_LA_PERSONA } from './documents';
 export { NOMBRE_DE_TAREA, DESTINOS_DE_TAREA, TAREAS_CERRADAS } from './tasks';
 export {
   ALCANCE_DE_LECTURA,

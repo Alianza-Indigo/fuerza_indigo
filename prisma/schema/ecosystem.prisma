@@ -1,0 +1,76 @@
+/// Catálogo de plataformas y herramientas del ecosistema (PRD §12, Fase 7).
+///
+/// CIAN, CENI, NeuroPlan, ADIA y NEXO viven **fuera de este repositorio**, con
+/// su propia autenticación, su propia operación, sus propios cobros y sus
+/// propios datos. Aquí se guarda su ficha y su dirección de acceso, y nada más.
+///
+/// Lo que esta tabla deliberadamente **no** tiene, y no va a tener: derechos de
+/// acceso, vigencias, planes, lanzamientos firmados, vínculos de identidad ni
+/// registro de quién entró. Cada una de esas columnas convertiría una ficha en
+/// una integración, y una integración obliga a este repositorio a saber algo de
+/// una plataforma que no opera. El acceso es una redirección y se acabó.
+model EcosystemLink {
+  id   String @id @default(uuid(7)) @db.Uuid
+  /// Identificador estable para citarla sin depender del nombre visible.
+  code String @unique @db.VarChar(40)
+
+  name    String @db.VarChar(80)
+  /// Descripción breve, en lenguaje claro.
+  summary String @db.VarChar(400)
+  /// A quién se dirige. Se escribe para que alguien sepa si le sirve.
+  audienceText String @db.VarChar(300)
+
+  /// Logotipo o imagen. Se administra como cualquier archivo de contenido.
+  logoFileId String? @db.Uuid
+  /// Acento de módulo del sistema de diseño. Distingue sin fragmentar.
+  accentToken EcosystemAccent?
+
+  /// Dirección de acceso. **Nula mientras nadie la haya configurado**, y
+  /// mientras es nula la ficha se muestra sin botón: un botón que no lleva a
+  /// ninguna parte enseña que los botones de este sitio a veces no funcionan.
+  externalUrl String? @db.VarChar(400)
+
+  /// Entidad responsable, cuando la plataforma es del ecosistema Alianza
+  /// Índigo. Nula en una herramienta de un tercero.
+  legalEntityId String? @db.Uuid
+
+  operationalStatus EcosystemLinkStatus @default(HIDDEN)
+  /// Orden de presentación. Menor aparece antes.
+  sortOrder   Int       @default(0)
+  publishedAt DateTime? @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  logoFile       FileObject?  @relation("EcosystemLinkLogo", fields: [logoFileId], references: [id], onDelete: Restrict)
+  legalEntity    LegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
+  createdByActor Actor        @relation("EcosystemLinkCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor        @relation("EcosystemLinkUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([operationalStatus, sortOrder])
+  @@index([legalEntityId])
+  @@index([publishedAt])
+  @@map("ecosystem_link")
+}
+
+/// Estado operativo. `HIDDEN` retira la ficha de la vista **sin borrarla**:
+/// una plataforma que se cae una semana no debería perder su ficha, su orden y
+/// su texto, que alguien escribió con cuidado.
+enum EcosystemLinkStatus {
+  ACTIVE
+  HIDDEN
+}
+
+/// Acentos de módulo disponibles para una ficha. Son los del sistema de
+/// diseño y no una lista aparte: si algún día hay un acento nuevo, se agrega
+/// donde viven los demás y aquí se refleja.
+enum EcosystemAccent {
+  SINDICATO
+  ALIANZA
+  CIAN
+  CENI
+  HERRAMIENTAS
+}

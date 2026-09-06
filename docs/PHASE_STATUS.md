@@ -5,6 +5,92 @@
 ---
 ## Situación actual
 
+- **Fase activa:** 7 — Herramientas tecnológicas y accesos externos
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 6 de septiembre de 2026, con la instrucción expresa de que **ninguna plataforma externa se toca**
+- **Fecha de inicio:** 6 de septiembre de 2026
+- **Fase anterior:** 6 — `APPROVED`, cerrada en `6f31d88`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 8 — Inteligencia artificial Gemini, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 7 contrata: catálogo único de plataformas y herramientas del ecosistema; ficha de cada una con nombre, imagen o logotipo, descripción breve, público al que se dirige y estado operativo; dirección externa configurable, administrada desde el catálogo o el CMS y **nunca escrita en un componente**; botón de acceso con indicación accesible de que se abrirá otra plataforma; página de catálogo en el sitio público y las mismas fichas en el portal personal; administración del catálogo desde el CMS, sin desplegar código para cambiar una dirección; y documentación para agregar una plataforma o una herramienta nueva sin tocar el núcleo.
+
+**Qué cierra esta fase.** La navegación pública lleva desde la Fase 2 a `/cian`, `/ceni` y `/herramientas`, y hasta hoy esas rutas dependen de que alguien publique una página en el gestor de contenidos. Aquí dejan de ser páginas sueltas y pasan a ser **fichas de un catálogo**, con el mismo patrón para todas y una dirección que se cambia sin desplegar.
+
+**La garantía que gobierna la fase.** **Ninguna plataforma externa se toca.** CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas propias, independientes y ya desarrolladas. Este repositorio guarda su ficha y su dirección, y lleva a ellas por **redirección externa y nada más**: sin inicio de sesión único, sin token de lanzamiento, sin API, sin sincronización, sin iframe y sin un solo dato personal en la dirección. Cada una conserva su autenticación, su operación, sus cobros y sus datos.
+
+---
+
+## Bloques de trabajo
+
+| Bloque | Contenido | Estado |
+|---|---|---|
+| A | Entidad `EcosystemLink`, migración, permiso `ecosystem.link.manage` y semilla del catálogo | Completo |
+| B | Catálogo público y su repetición en el portal personal, con el botón que dice que se sale | Pendiente |
+| C | Administración del catálogo en la superficie de contenidos | Pendiente |
+| D | Pruebas, controles de fase, documentación y cierre | Pendiente |
+
+---
+
+## Criterios de aceptación
+
+Los del PRD §24 Fase 7 se comprobarán ejecutando el sistema, no leyendo el código. Se registran aquí al cerrarse cada uno.
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Cada plataforma o herramienta se agrega sin cambiar el núcleo de membresías | Pendiente |
+| 2 | Ninguna ficha tiene un botón sin dirección real configurable | Pendiente |
+| 3 | CIAN y CENI aparecen exclusivamente como accesos externos: sin expediente, sin agenda, sin evaluación y sin cobro administrados aquí | Pendiente |
+| 4 | Quien pulsa un acceso externo sabe, antes de pulsarlo, que sale de Fuerza Índigo | Pendiente |
+| 5 | El acceso es únicamente redirección externa: sin inicio de sesión único, sin API, sin sincronización y sin datos personales en la dirección | Pendiente |
+| 6 | Ninguna dirección de acceso está escrita en un componente | Pendiente |
+| 7 | La falla de una plataforma externa no bloquea el portal central | Pendiente |
+| 8 | Las fichas de CIAN, CENI, NeuroPlan, ADIA y NEXO siguen el mismo patrón, sin casos especiales en código | Pendiente |
+
+---
+
+## Defectos abiertos
+
+**Ninguno.** El que apareció durante la construcción está corregido dentro de la misma fase y se registra abajo. Lo
+encontró ejecutar por primera vez la puesta en marcha **tal como el manual la describe**, que es la única forma de saber
+si un manual dice la verdad.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse aprobada.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+| `D-F7-001` | Media | `npm run db:seed` no cargaba `.env.local`: solo funcionaba si quien lo ejecutaba había exportado las variables a mano en su terminal. El README y `docs/HANDOFF.md` lo documentan como paso de la puesta en marcha, y en una instalación nueva fallaba con un mensaje que hablaba de una variable **que sí estaba escrita en el archivo**. | Corregido en el bloque A. La semilla usa `loadLocalEnv()`, el mismo cargador que ya usan las migraciones y las pruebas de integración, y el mensaje de error dice ahora dónde se busca. |
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
+| 7 | 2026-09-06 | — | `IN_PROGRESS` | — |
+| 8 a 10 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 6
+
+> Defensa, casos, protección y canalización social. Cerrada el 6 de septiembre de 2026 en `6f31d88`.
+
+---
+## Situación actual
+
 - **Fase activa:** 6 — Defensa, casos, protección y canalización social
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026, junto con la Fase 5; confirmada al aprobarse esta
@@ -203,6 +289,7 @@ Probado viéndolo fallar de cuatro maneras.
 | 7 a 10 | — | — | No iniciadas | — |
 
 ---
+
 
 # Archivo — registro completo de la Fase 5
 

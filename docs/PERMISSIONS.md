@@ -279,13 +279,14 @@ audit.audit.read          audit.security.read
 identity.person.read      identity.person.merge
 ```
 
-Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), `ai.provider.configure` y `ai.prompt.publish` (Fase 8), y `ecosystem.link.manage` (Fase 7).
+Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), y `ai.provider.configure` y `ai.prompt.publish` (Fase 8).
 
-**Dos permisos que esta lista tuvo y ya no tiene, con su motivo:**
+**Permisos que esta lista tuvo o tenía contratados y no se le conceden, con su motivo:**
 
 - **`content.page.publish`.** El PRD §16.1 dice que «el Superadmin y los roles de comunicación autorizados» gestionan los contenidos, pero el actor raíz no tiene fila en `User` y toda versión editorial exige autoría identificada. Firmar un comunicado del sindicato con un actor sin persona detrás deja sin respuesta la pregunta de quién lo publicó, que es justo la que se hace cuando un comunicado se discute. Tampoco recibe `content.page.read`: un borrador sobre un conflicto laboral es deliberación interna, y diagnosticar por qué una página no aparece necesita su **estado**, no su cuerpo (ADR-0042).
 - **`billing.catalog.manage`.** Figuraba como contratado para cuando existiera el módulo. Al construirlo en la Fase 3 se resolvió que **no** se concede: decidir cuánto cobra el sindicato por una cuota es un acto institucional, no una tarea de administración de la plataforma, y el actor raíz no tiene nombramiento que lo respalde. Lo administra `FINANCE`, con alcance de entidad jurídica. Vale además la razón de ADR-0048: el actor raíz no tiene cuenta y no alcanza el área de gestión, de modo que tampoco tendría pantalla desde la que ejercerlo (ADR-0049).
 - **`content.redirect.manage`.** Estuvo concedido con el argumento de que una redirección es encaminamiento técnico y no voz institucional. Se retiró al construir la pantalla que lo ejercería: el área de gestión exige cuenta, que el actor raíz no tiene, de modo que no había desde dónde usarlo; y sin lectura del gestor no puede saber qué páginas existen ni comprobar que un destino sea correcto. Lo tienen `COMMUNICATIONS` y `EXECUTIVE_SECRETARY`, que sí ven el gestor (ADR-0048).
+- **`ecosystem.link.manage`.** Figuraba como contratado para cuando existiera su módulo. Al construirlo en la Fase 7 se resuelve que **no** se concede, por la misma razón que los dos anteriores: el catálogo se administra desde la superficie de contenidos, que exige cuenta, y el actor raíz no la tiene. Un permiso sin pantalla desde la que ejercerse no es una facultad: es una fila en la lista de concesión que un día alguien aprovechará por otro camino. Lo tiene `COMMUNICATIONS`, que es quien mantiene el sitio público.
 
 Todo lo demás le está **denegado por no figurar en la lista**: admisiones, resoluciones, votos, sanciones, autorización de pagos, expedientes de casos, padrones y directorios.
 

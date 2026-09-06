@@ -167,6 +167,14 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   }),
   define('content.redirect.manage', 'Administrar redirecciones de direcciones antiguas'),
 
+  // ecosystem (Fase 7)
+  //
+  // Uno solo, y normal. El catálogo guarda ficha y dirección de acceso: no hay
+  // derechos que conceder, ni vigencias, ni lanzamientos que registrar
+  // (PRD §12). Un permiso sensible aquí sugeriría que administrarlo da acceso a
+  // algo de la plataforma externa, y no da nada.
+  define('ecosystem.link.manage', 'Administrar el catálogo de plataformas y herramientas del ecosistema'),
+
   // support — entrada única de ayuda y contacto (PRD §10.1, Fase 2)
   /**
    * Leer la bandeja es sensible aunque los mensajes lleguen por un formulario

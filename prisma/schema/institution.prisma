@@ -35,6 +35,10 @@ model LegalEntity {
   contentPages ContentPage[]
   supportRequests SupportRequest[]
 
+  // Catálogo del ecosistema (Fase 7). Solo ficha y dirección: la plataforma
+  // que la ficha anuncia no se opera desde aquí.
+  ecosystemLinks EcosystemLink[]
+
   // Finanzas (Fase 3). La entidad receptora está en cada movimiento.
   stripeAccountConfiguration StripeAccountConfiguration?
   catalogProducts CatalogProduct[]

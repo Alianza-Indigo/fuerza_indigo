@@ -555,6 +555,10 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'content.page.publish',
       'content.page.revert',
       'content.redirect.manage',
+      // El catálogo del ecosistema es contenido: cambiar la dirección de una
+      // plataforma es un acto editorial, y quien mantiene el sitio público es
+      // quien lo hace (Fase 7).
+      'ecosystem.link.manage',
       'files.file.download_own','files.file.upload', 'files.file.download'],
   },
   {

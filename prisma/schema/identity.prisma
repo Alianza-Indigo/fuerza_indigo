@@ -41,6 +41,10 @@ model Actor {
   createdContentRedirects ContentRedirect[] @relation("ContentRedirectCreatedBy")
   handledSupportRequests SupportRequest[]  @relation("SupportRequestHandledBy")
 
+  // Catálogo del ecosistema (Fase 7).
+  createdEcosystemLinks EcosystemLink[] @relation("EcosystemLinkCreatedBy")
+  updatedEcosystemLinks EcosystemLink[] @relation("EcosystemLinkUpdatedBy")
+
   // Finanzas (Fase 3). Un asiento puede originarlo el manejador de un webhook.
   createdCatalogProducts CatalogProduct[] @relation("CatalogProductCreatedBy")
   updatedCatalogProducts CatalogProduct[] @relation("CatalogProductUpdatedBy")

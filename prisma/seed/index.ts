@@ -4,6 +4,7 @@ import { PERMISSIONS } from '../../src/platform/authz/permissions';
 import { ROLE_SEEDS } from './data/roles';
 import { pathFor, TERRITORY_SEEDS } from './data/territory';
 import { newPublicId } from '../../src/platform/kernel/ids';
+import { loadLocalEnv } from '../../src/platform/config/local-env';
 
 /**
  * Semilla idempotente y sin datos personales reales (PRD §24 Fase 1).
@@ -14,9 +15,18 @@ import { newPublicId } from '../../src/platform/kernel/ids';
  * «dato simulado en producción» que el PRD §0.3 prohíbe.
  */
 
+// Lee `.env.local` con el mismo cargador que usa el servidor, igual que hacen
+// las migraciones y las pruebas de integración. Sin esto, `npm run db:seed`
+// solo funcionaba si quien lo ejecuta había exportado las variables a mano en
+// su terminal —cosa que el README no dice y que nadie adivina—, y fallaba con
+// un mensaje que hablaba de una variable que sí estaba escrita en el archivo.
+loadLocalEnv();
+
 const connectionString = process.env['DIRECT_URL'] ?? process.env['DATABASE_URL'];
 if (connectionString === undefined || connectionString === '') {
-  throw new Error('Falta DIRECT_URL (o DATABASE_URL) para ejecutar la semilla.');
+  throw new Error(
+    'Falta DIRECT_URL (o DATABASE_URL) para ejecutar la semilla. Se busca en el entorno y en .env.local.',
+  );
 }
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
@@ -931,6 +941,97 @@ async function seedNotificationTemplates(): Promise<void> {
   }
 }
 
+/**
+ * Catálogo de plataformas y herramientas del ecosistema (PRD §12, Fase 7).
+ *
+ * Las cinco fichas nacen **sin dirección de acceso**, y eso no es una carencia:
+ * es lo único honesto. Nadie que despliegue este repositorio conoce todavía la
+ * dirección real de cada plataforma, y escribir una inventada produciría un
+ * botón que lleva a ninguna parte —o peor, a un dominio de otro—.
+ *
+ * La ficha se ve igual: cuenta qué es la plataforma y a quién se dirige, y dice
+ * en voz alta que su acceso aún no está configurado. Quien administre el
+ * catálogo pega la dirección desde la superficie de contenidos y el botón
+ * aparece, sin desplegar código.
+ *
+ * Los textos describen lo que cada una hace **fuera de este repositorio**.
+ * Ninguna de ellas se opera desde aquí.
+ */
+async function seedEcosystemLinks(actorId: string): Promise<void> {
+  const entidades = await prisma.legalEntity.findMany({ select: { id: true, code: true } });
+  const porCodigo = new Map(entidades.map((e) => [e.code, e.id]));
+
+  const fichas = [
+    {
+      code: 'CIAN',
+      name: 'CIAN',
+      summary:
+        'Centro Integral de Atención Neurodivergente. Atención clínica y terapéutica con su propio expediente, su propia agenda y sus propios cobros, en su plataforma.',
+      audienceText: 'Personas neurodivergentes y sus familias que buscan atención integral.',
+      accentToken: 'CIAN' as const,
+      legalEntityCode: 'ALIANZA_INDIGO' as const,
+      sortOrder: 10,
+    },
+    {
+      code: 'CENI',
+      name: 'CENI',
+      summary:
+        'Certificación de Entornos Neuroinclusivos. Evalúa y certifica organizaciones, con su propio ciclo, sus evaluaciones y su verificador público, en su plataforma.',
+      audienceText: 'Empresas, escuelas, instituciones y organizaciones que quieren volverse neuroinclusivas.',
+      accentToken: 'CENI' as const,
+      legalEntityCode: 'ALIANZA_INDIGO' as const,
+      sortOrder: 20,
+    },
+    {
+      code: 'NEUROPLAN',
+      name: 'NeuroPlan',
+      summary: 'Herramienta de planeación y seguimiento de apoyos, pensada para usarse día a día.',
+      audienceText: 'Personas neurodivergentes, familias y equipos de acompañamiento.',
+      accentToken: 'HERRAMIENTAS' as const,
+      legalEntityCode: null as "ALIANZA_INDIGO" | null,
+      sortOrder: 30,
+    },
+    {
+      code: 'ADIA',
+      name: 'ADIA',
+      summary: 'Herramienta de apoyo y acompañamiento del ecosistema.',
+      audienceText: 'Personas usuarias del ecosistema Alianza Índigo.',
+      accentToken: 'HERRAMIENTAS' as const,
+      legalEntityCode: null as "ALIANZA_INDIGO" | null,
+      sortOrder: 40,
+    },
+    {
+      code: 'NEXO',
+      name: 'NEXO',
+      summary: 'Herramienta de vinculación del ecosistema.',
+      audienceText: 'Personas y organizaciones que buscan conectarse dentro del ecosistema.',
+      accentToken: 'HERRAMIENTAS' as const,
+      legalEntityCode: null as "ALIANZA_INDIGO" | null,
+      sortOrder: 50,
+    },
+  ];
+
+  for (const ficha of fichas) {
+    const { legalEntityCode, ...campos } = ficha;
+    const legalEntityId = legalEntityCode === null ? null : (porCodigo.get(legalEntityCode) ?? null);
+    await prisma.ecosystemLink.upsert({
+      where: { code: ficha.code },
+      // La semilla no pisa lo que alguien ya administró: si el catálogo tiene
+      // una dirección configurada, volver a sembrar no debe borrarla.
+      update: {},
+      create: {
+        ...campos,
+        legalEntityId,
+        externalUrl: null,
+        operationalStatus: 'ACTIVE',
+        publishedAt: new Date(),
+        createdByActorId: actorId,
+        updatedByActorId: actorId,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const actorId = await seedActors();
   await seedLegalEntities(actorId);
@@ -944,6 +1045,7 @@ async function main(): Promise<void> {
   await seedPublicIntakePrivacyNotice();
   await seedConsentTexts();
   await seedStripeAccounts();
+  await seedEcosystemLinks(actorId);
 
   const counts = {
     entidadesJuridicas: await prisma.legalEntity.count(),
@@ -958,6 +1060,7 @@ async function main(): Promise<void> {
     cuentasDeCobro: await prisma.stripeAccountConfiguration.count(),
     productosDelCatalogo: await prisma.catalogProduct.count(),
     reglasNormativas: await prisma.normativeRuleSet.count(),
+    fichasDelEcosistema: await prisma.ecosystemLink.count(),
   };
   console.log('Semilla aplicada:', JSON.stringify(counts, null, 2));
 }

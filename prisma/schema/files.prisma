@@ -75,6 +75,9 @@ model FileObject {
   credentialPhotos        MemberCredential[]       @relation("CredentialPhoto")
   renderedCredentials     MemberCredential[]       @relation("CredentialRendered")
   labourFilingEvidence LabourAuthorityFiling[] @relation("LabourFilingEvidence")
+
+  // Catálogo del ecosistema (Fase 7).
+  ecosystemLinkLogos EcosystemLink[] @relation("EcosystemLinkLogo")
 }
 
 enum FileClassification {

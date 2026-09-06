@@ -290,7 +290,7 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F7-DAT-001 | Migrar la entidad `EcosystemLink` del catálogo configurable de plataformas y herramientas | Pendiente |
+| F7-DAT-001 | Migrar la entidad `EcosystemLink` del catálogo configurable de plataformas y herramientas | Terminada |
 | F7-CAT-001 | Implementar la ficha con nombre, logotipo o imagen, descripción breve, público al que se dirige y estado operativo | Pendiente |
 | F7-CAT-002 | Implementar la dirección externa configurable desde el CMS, sin direcciones escritas en componentes | Pendiente |
 | F7-CAT-003 | Implementar el botón de acceso con indicación accesible de que se abre otra plataforma | Pendiente |

@@ -185,8 +185,18 @@ La fase que manda es la constante `ACTIVE_PHASE` de `src/platform/config/env.ts`
 | 1 | `APP_URL`, `AUTH_SECRET`, `SUPERADMIN_*`, `DATABASE_URL`, `DIRECT_URL`, `BLOB_READ_WRITE_TOKEN`, `FILE_URL_SIGNING_SECRET`, `CRON_SECRET`, `EMAIL_PROVIDER`, `EMAIL_FROM` |
 | 3 | `STRIPE_*` de ambas cuentas |
 | 4 | `QR_SIGNING_SECRET`, que en realidad se exige desde el primer arranque: un llavero de firma vacío no tiene valor por omisión razonable, así que su formato se valida siempre |
+| 5 | `VOTE_CREDENTIAL_SECRET`, secreto maestro del que se deriva la clave de firma de cada votación (ADR-0012) |
 | 10 | `GEMINI_API_KEY`, `GEMINI_DEFAULT_MODEL` |
-| 11 | `EMAIL_API_KEY` con un proveedor real |
+
+`EMAIL_API_KEY` no entra en esta tabla porque no depende de la fase sino del proveedor: con `EMAIL_PROVIDER=console` no hace falta, y con un proveedor real es obligatoria desde el primer envío.
+
+### La tabla se comprueba contra la integración continua
+
+El control `C-COH-14` coteja `REQUIRED_BY_PHASE` con las variables que declara `.github/workflows/calidad.yml`, y falla nombrando la que falte.
+
+Existe por un fallo real. `VOTE_CREDENTIAL_SECRET` se introdujo al abrir la Fase 5, quien la introdujo la escribió en su `.env.local` y siguió trabajando: en su máquina todo pasaba y la integración continua se caía en la primera prueba que arranca la aplicación, con un mensaje que aconseja copiar `.env.example` —un consejo dirigido a una persona, inútil dentro de un contenedor—. Estuvo tres commits en rojo, el cierre de la Fase 5 entre ellos.
+
+La tabla ya existía y era correcta. Lo que faltaba era algo que la cotejara con el único sitio donde tenía que reflejarse.
 
 ---
 

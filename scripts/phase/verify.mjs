@@ -2590,6 +2590,67 @@ const CHECKS = [
           ]);
     },
   },
+
+  {
+    id: 'C-COH-14',
+    title: 'La integración continua tiene toda variable que la fase activa exige',
+    phases: 'all',
+    run() {
+      // `env.ts` declara qué variable pasa a ser obligatoria en cada fase, y el
+      // arranque se niega a continuar sin ella. Pero quien introduce la
+      // variable la escribe en su `.env.local` y sigue trabajando: todo pasa en
+      // su máquina y la integración continua se cae en la primera prueba que
+      // toca el entorno, con un mensaje que habla de copiar `.env.example`
+      // —un consejo dirigido a una persona, inútil dentro de un contenedor—.
+      //
+      // Pasó con `VOTE_CREDENTIAL_SECRET` al abrir la Fase 5: tres commits en
+      // rojo, incluido el cierre de la fase, mientras aquí todo estaba verde.
+      // La tabla existía; lo que faltaba era alguien que la cotejara con el
+      // archivo de la integración continua.
+      const entorno = read('src/platform/config/env.ts') ?? '';
+      const flujo = read('.github/workflows/calidad.yml') ?? '';
+      if (entorno === '' || flujo === '') {
+        return fail(['No se encuentra src/platform/config/env.ts o .github/workflows/calidad.yml.']);
+      }
+
+      const tabla = /REQUIRED_BY_PHASE[^=]*=\s*\{([\s\S]*?)\n\};/.exec(entorno);
+      if (tabla === null) return fail(['No se puede leer REQUIRED_BY_PHASE en src/platform/config/env.ts.']);
+
+      const activa = readActivePhase().phase;
+      const exigidas = [];
+      for (const linea of (tabla[1] ?? '').split('\n')) {
+        const entrada = /^\s*(\d+)\s*:\s*\[([\s\S]*)$/.exec(linea);
+        if (entrada === null) continue;
+        if (Number(entrada[1]) > activa) continue;
+        // El arreglo puede ocupar varias líneas; se recogen todas hasta cerrarlo.
+        const desde = (tabla[1] ?? '').indexOf(linea);
+        const resto = (tabla[1] ?? '').slice(desde);
+        const cierre = resto.indexOf(']');
+        for (const nombre of resto.slice(0, cierre).matchAll(/'([A-Z0-9_]+)'/g)) {
+          exigidas.push({ variable: nombre[1], fase: Number(entrada[1]) });
+        }
+      }
+
+      if (exigidas.length === 0) {
+        return ok([`Ninguna variable es obligatoria todavía en la fase ${activa}.`]);
+      }
+
+      const faltantes = exigidas.filter(
+        ({ variable }) => !new RegExp(`^\\s{6}${variable}:`, 'm').test(flujo),
+      );
+
+      return faltantes.length
+        ? fail(
+            faltantes.map(
+              ({ variable, fase }) =>
+                `${variable} es obligatoria desde la Fase ${fase} y .github/workflows/calidad.yml no la declara: la integración continua se caerá en la primera prueba que arranque la aplicación.`,
+            ),
+          )
+        : ok([
+            `Las ${exigidas.length} variables que las fases 1 a ${activa} vuelven obligatorias están declaradas en la integración continua.`,
+          ]);
+    },
+  },
 ];
 
 

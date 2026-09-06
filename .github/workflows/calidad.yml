@@ -77,6 +77,10 @@ jobs:
       STRIPE_ALIANZA_SECRET_KEY: sk_test_ci_alianza_no_es_una_cuenta_real
       STRIPE_ALIANZA_WEBHOOK_SECRET: whsec_ci_alianza_no_es_una_cuenta_real
       NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY: pk_test_ci_alianza_no_es_una_cuenta_real
+      # Obligatoria desde la Fase 5 (ENVIRONMENT.md §11). De ella se deriva la
+      # clave con la que se firma cada credencial de voto; el valor de aquí no
+      # firma nada que exista fuera de esta ejecución.
+      VOTE_CREDENTIAL_SECRET: Y2ktc2VjcmV0by1kZS1jcmVkZW5jaWFsZXMtZGUtdm90bw
 
     steps:
       - name: Obtener el repositorio

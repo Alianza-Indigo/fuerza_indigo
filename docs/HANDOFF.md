@@ -96,6 +96,20 @@ pide Playwright, `E2E_CHROMIUM_PATH` apunta a él y evita descargar otro:
 E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test
 ```
 
+**Nunca dos recorridos de Playwright a la vez.** Comparten el puerto y la base:
+el primero, al terminar, tumba el servidor que usa el segundo, y el segundo
+falla entero por una razón que no tiene nada que ver con lo que probaba. Y
+tampoco se arranca uno con la máquina recién ocupada: los primeros inicios de
+sesión llevan un hash Argon2id y una compilación en frío, y agotan el plazo de
+navegación. Un recorrido contaminado así no cuenta **ni para bien ni para mal**;
+se descarta y se repite limpio.
+
+Antes de dar por buena una prueba en rojo, mírele la causa: un plazo agotado en
+`waitForURL` tras enviar la contraseña es arranque en frío; una violación que
+`axe` enumera es un defecto de verdad. No son lo mismo y no se tratan igual.
+Para distinguirlos, córrala sola: si pasa en cuatro segundos donde antes agotó
+treinta, era el entorno.
+
 ---
 
 ## 4. Cómo se construye

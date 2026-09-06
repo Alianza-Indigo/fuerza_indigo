@@ -69,6 +69,8 @@ export interface CaseDetail extends CaseRow {
   readonly equipo: readonly {
     /** Identificador de la asignación: es lo que releva, no la persona. */
     readonly id: string;
+    /** Quién es, para encomendarle tareas. */
+    readonly usuarioId: string;
     readonly nombre: string;
     readonly rol: CaseAssignmentRole;
   }[];
@@ -78,6 +80,19 @@ export interface CaseDetail extends CaseRow {
     readonly papel: CaseParticipantRole;
     readonly calidad: CaseMembershipQuality;
     readonly veElExpediente: boolean;
+  }[];
+  readonly tareas: readonly {
+    readonly id: string;
+    readonly titulo: string;
+    readonly descripcion: string | null;
+    readonly responsable: string | null;
+    readonly responsableId: string | null;
+    readonly plazo: Date | null;
+    readonly estado: CaseTaskStatus;
+    /** Se deriva al leer: un plazo vencido no se guarda, se compara. */
+    readonly vencida: boolean;
+    readonly motivo: string | null;
+    readonly terminadaEl: Date | null;
   }[];
 }
 
@@ -264,11 +279,42 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
           },
         },
       },
+      tasks: {
+        orderBy: [
+          { status: 'asc' },
+          { dueAt: { sort: 'asc', nulls: 'last' } },
+          { createdAt: 'asc' },
+        ],
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          dueAt: true,
+          status: true,
+          blockerNote: true,
+          completedAt: true,
+          assigneeId: true,
+          assignee: {
+            select: {
+              person: {
+                select: {
+                  givenName: true,
+                  middleName: true,
+                  familyName: true,
+                  secondFamilyName: true,
+                  preferredName: true,
+                },
+              },
+            },
+          },
+        },
+      },
       assignments: {
         where: { unassignedAt: null },
         orderBy: { assignedAt: 'asc' },
         select: {
           id: true,
+          userId: true,
           assignmentRole: true,
           user: {
             select: {
@@ -332,8 +378,28 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
     folioDeLaSolicitud: fila.supportRequest?.folio ?? null,
     equipo: fila.assignments.map((asignacion) => ({
       id: asignacion.id,
+      usuarioId: asignacion.userId,
       nombre: nombreCompleto(asignacion.user.person),
       rol: asignacion.assignmentRole,
+    })),
+    tareas: fila.tasks.map((tarea) => ({
+      id: tarea.id,
+      titulo: tarea.title,
+      descripcion: tarea.description,
+      responsable: tarea.assignee === null ? null : nombreCompleto(tarea.assignee.person),
+      responsableId: tarea.assigneeId,
+      plazo: tarea.dueAt,
+      estado: tarea.status,
+      // Vencida es una comparación, no una columna: una columna guardada
+      // envejecería mal y habría que ir a actualizarla con un trabajo nocturno,
+      // que abriría una ventana en la que la pantalla dice que hay tiempo.
+      vencida:
+        tarea.dueAt !== null &&
+        tarea.dueAt.getTime() < Date.now() &&
+        tarea.status !== 'DONE' &&
+        tarea.status !== 'CANCELLED',
+      motivo: tarea.blockerNote,
+      terminadaEl: tarea.completedAt,
     })),
     participantes: fila.participants.map((participante) => ({
       id: participante.id,

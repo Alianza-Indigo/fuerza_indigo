@@ -4,6 +4,8 @@ import { currentActor } from '@/platform/http/request-context';
 import { assignableUsers, caseDetail, peopleForCase } from '@/modules/cases';
 import {
   NOMBRE_DE_ASIGNACION,
+  NOMBRE_DE_TAREA,
+  TAREAS_CERRADAS,
   NOMBRE_DE_DOMINIO,
   NOMBRE_DE_ESTADO,
   NOMBRE_DE_PRIORIDAD,
@@ -15,6 +17,7 @@ import { REQUEST_TYPE_LABELS } from '../../(publico)/contacto/labels';
 import { AssessmentForm } from './assessment-form';
 import { AddParticipantForm, RemoveParticipantForm } from './participants-forms';
 import { AssignCaseForm, UnassignCaseForm } from './assignment-forms';
+import { AdvanceTaskForm, AssignTaskForm, CreateTaskForm } from './task-forms';
 
 /** Cómo se nombra en pantalla la calidad con la que alguien interviene. */
 const NOMBRE_DE_CALIDAD: Record<string, string> = {
@@ -62,6 +65,13 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
   // formulario que va a rechazar el envío no informa de nada.
   const candidaturas = puedeValorar ? await assignableUsers(actor, datos.id) : null;
   const puedeAsignar = candidaturas !== null && candidaturas.ok;
+
+  // El equipo del expediente es a quien se le pueden encomendar tareas. Sale de
+  // lo que ya se leyó: no hace falta otra consulta para saber quién lo lleva.
+  const equipo = datos.equipo.map((integrante) => ({
+    value: integrante.usuarioId,
+    label: `${integrante.nombre} · ${NOMBRE_DE_ASIGNACION[integrante.rol]}`,
+  }));
 
   return (
     <PageShell
@@ -163,6 +173,55 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
           <Section title="Agregar a alguien" level={2}>
             <Card>
               <AddParticipantForm caseId={datos.id} personas={personas} />
+            </Card>
+          </Section>
+        )}
+
+        <Section title="Tareas y plazos" level={2}>
+          <Card>
+            {datos.tareas.length === 0 ? (
+              <p className="text-[var(--color-ink-soft)]">Todavía no hay tareas abiertas.</p>
+            ) : (
+              <ul className="space-y-4">
+                {datos.tareas.map((tarea) => (
+                  <li key={tarea.id} className="border-b border-[var(--color-line)] pb-4 last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{tarea.titulo}</span>
+                      <Badge tone={tarea.vencida ? 'danger' : 'neutral'}>{NOMBRE_DE_TAREA[tarea.estado]}</Badge>
+                      {tarea.vencida && <Badge tone="danger">Fuera de plazo</Badge>}
+                    </div>
+                    <p className="text-sm text-[var(--color-ink-soft)]">
+                      {tarea.responsable ?? 'Sin responsable'}
+                      {tarea.plazo !== null && ` · para el ${fecha.format(tarea.plazo)}`}
+                      {tarea.terminadaEl !== null && ` · terminada el ${fecha.format(tarea.terminadaEl)}`}
+                    </p>
+                    {tarea.descripcion !== null && (
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{tarea.descripcion}</p>
+                    )}
+                    {tarea.motivo !== null && (
+                      <p className="mt-2 text-sm text-[var(--color-ink-soft)]">Motivo: {tarea.motivo}</p>
+                    )}
+                    {puedeValorar && !TAREAS_CERRADAS.includes(tarea.estado) && (
+                      <div className="mt-4 space-y-4">
+                        <AdvanceTaskForm taskId={tarea.id} titulo={tarea.titulo} />
+                        <AssignTaskForm taskId={tarea.id} equipo={equipo} actual={tarea.responsableId} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
+              Estar fuera de plazo se compara al leer, no se guarda: una marca guardada envejecería mal y diría que
+              hay tiempo cuando ya no lo hay.
+            </p>
+          </Card>
+        </Section>
+
+        {puedeValorar && (
+          <Section title="Abrir una tarea" level={2}>
+            <Card>
+              <CreateTaskForm caseId={datos.id} equipo={equipo} />
             </Card>
           </Section>
         )}

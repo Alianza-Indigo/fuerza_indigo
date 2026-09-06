@@ -1,7 +1,16 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addParticipant, assessCase, assignCase, removeParticipant, unassignCase } from '@/modules/cases';
+import {
+  addParticipant,
+  advanceTask,
+  assessCase,
+  assignCase,
+  assignTask,
+  createTask,
+  removeParticipant,
+  unassignCase,
+} from '@/modules/cases';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -158,4 +167,88 @@ export async function unassignCaseAction(_previo: CaseFormState, formData: FormD
 
   revalidatePath('/casos');
   return { status: 'ok', message: 'Deja de llevar el expediente.' };
+}
+
+/**
+ * Abre una tarea del expediente.
+ *
+ * El destinatario sale del equipo del expediente y el módulo lo comprueba:
+ * encomendársela a quien no lo lleva produciría una tarea que su responsable
+ * no puede ni abrir.
+ */
+export async function createTaskAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const responsable = textField(formData, 'assigneeId');
+  const plazo = textField(formData, 'dueAt');
+  const detalle = textField(formData, 'description');
+
+  const resultado = await createTask(actor, {
+    caseId: textField(formData, 'caseId'),
+    title: textField(formData, 'title'),
+    description: detalle === '' ? null : detalle,
+    assigneeId: responsable === '' ? null : responsable,
+    dueAt: plazo === '' ? null : plazo,
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Tarea abierta.' };
+}
+
+/** Mueve una tarea de estado, con lo que cada estado exige. */
+export async function advanceTaskAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const nota = textField(formData, 'note');
+
+  const resultado = await advanceTask(actor, {
+    taskId: textField(formData, 'taskId'),
+    status: textField(formData, 'status') as never,
+    note: nota === '' ? null : nota,
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message:
+      resultado.data.status === 'DONE'
+        ? 'Terminada. Queda constancia de cuándo y por quién.'
+        : 'Tarea actualizada.',
+  };
+}
+
+/** Pasa una tarea a otra persona del equipo. */
+export async function assignTaskAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const responsable = textField(formData, 'assigneeId');
+
+  const resultado = await assignTask(actor, {
+    taskId: textField(formData, 'taskId'),
+    assigneeId: responsable === '' ? null : responsable,
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'La tarea cambia de responsable.' };
 }

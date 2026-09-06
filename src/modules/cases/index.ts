@@ -19,6 +19,17 @@ export {
   type UnassignCaseInput,
   type Candidatura,
 } from './application/assign';
+export {
+  createTask,
+  advanceTask,
+  assignTask,
+  createTaskSchema,
+  advanceTaskSchema,
+  assignTaskSchema,
+  type CreateTaskInput,
+  type AdvanceTaskInput,
+  type AssignTaskInput,
+} from './application/tasks';
 export { peopleForCase, type Opcion } from './application/options';
 export {
   caseList,

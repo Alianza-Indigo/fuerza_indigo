@@ -1402,3 +1402,15 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Contexto.** Un expediente tiene una persona responsable, y solo una. Relevarla y nombrar a la siguiente en dos actos deja un instante —o una tarde— en el que el asunto no es de nadie. Prohibir el relevo sin nombramiento previo y a la vez el nombramiento sin relevo previo lo deja bloqueado.
 
 **Decisión.** Nombrar a quien responde **es** el relevo: una sola operación que cierra la asignación anterior con su motivo y abre la nueva. Relevar a la única persona responsable se niega, y el mensaje dice qué hacer en su lugar. La asignación anterior no desaparece: queda cerrada con fecha y motivo, porque quién llevó un expediente y hasta cuándo es parte de lo que el expediente tiene que poder contar.
+
+---
+
+## ADR-0113 · Una tarea es de alguien que pueda hacerla, y lo que no se hizo dice por qué
+
+**Contexto.** Las tareas del expediente tienen responsable y plazo. Sacar el responsable del padrón entero permitiría encomendarle una tarea a quien no lleva el expediente: una tarea que su responsable no puede ni abrir, y que nadie va a ver hasta que alguien pregunte por qué no está hecha.
+
+**Decisión.** El destinatario sale del **equipo del expediente** y el caso de uso lo comprueba. Terminar deja constancia de cuándo y por quién; bloquear y cancelar exigen motivo. Las dos restricciones viven en la base —`tarea_terminada_con_constancia` y `tarea_bloqueada_con_motivo`—, no en el código, porque el código se puede olvidar de comprobarlas y el motor no.
+
+**Cancelar no es terminar.** Se separan porque miden cosas distintas: una tarea que se hizo y una que se dejó de hacer no pueden contar igual en ningún indicador. Y una tarea cerrada ya no se mueve: reabrirla borraría cuándo se terminó y quién la terminó, que es toda la constancia que deja. Si queda algo por hacer, se abre otra, y así consta que fueron dos cosas.
+
+**Vencida se compara, no se guarda.** Una columna con el vencimiento habría que actualizarla con un trabajo nocturno, y entre pasada y pasada la pantalla diría que hay tiempo cuando ya no lo hay. El plazo, además, vence al **final** del día señalado: quien tiene hasta el viernes tiene el viernes.

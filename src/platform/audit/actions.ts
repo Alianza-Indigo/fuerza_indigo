@@ -71,6 +71,9 @@ export const AUDIT_ACTIONS = {
   CASE_CLOSED: 'cases.case.closed',
   CASE_REOPENED: 'cases.case.reopened',
   CASE_READ: 'cases.case.read',
+  CASE_TASK_CREATED: 'cases.task.created',
+  CASE_TASK_UPDATED: 'cases.task.updated',
+  CASE_TASK_COMPLETED: 'cases.task.completed',
   CASE_PARTICIPANT_ADDED: 'cases.participant.added',
   CASE_PARTICIPANT_REMOVED: 'cases.participant.removed',
 

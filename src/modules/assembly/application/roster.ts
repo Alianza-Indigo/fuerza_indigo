@@ -9,6 +9,7 @@ import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
  * Padrón congelado de una sesión (PRD §9.4; F5-ASA-003).
@@ -249,6 +250,7 @@ export async function freezeRoster(
   const congelado = await transaction(async (tx) => {
     const snapshot = await tx.assemblyRosterSnapshot.create({
       data: {
+        ownerKind: 'ASSEMBLY',
         assemblyId: asamblea.id,
         frozenAt: congeladoEl,
         frozenById: quienCongela,
@@ -322,7 +324,7 @@ export async function frozenRoster(
   const decision = can(actor, 'assembly.assembly.read', { kind: 'AssemblyRosterSnapshot' });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
-  const snapshot = await db().assemblyRosterSnapshot.findUnique({
+  return await leerPadron(db().assemblyRosterSnapshot.findUnique({
     where: { assemblyId },
     select: {
       id: true,
@@ -340,7 +342,56 @@ export async function frozenRoster(
         },
       },
     },
-  });
+  }));
+}
+
+/** Padrón congelado de una elección, con la misma comprobación de integridad. */
+export async function electionRoster(
+  actor: ActorContext,
+  electionId: string,
+): Promise<UseCaseResult<RosterView | null>> {
+  const decision = can(actor, 'voting.process.read', { kind: 'AssemblyRosterSnapshot' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  return await leerPadron(db().assemblyRosterSnapshot.findUnique({
+    where: { electionId },
+    select: {
+      id: true,
+      frozenAt: true,
+      entryCount: true,
+      hash: true,
+      criteria: true,
+      entries: {
+        select: {
+          membershipId: true,
+          memberNumber: true,
+          territorialUnitId: true,
+          hasVoice: true,
+          hasVote: true,
+        },
+      },
+    },
+  }));
+}
+
+interface PadronCrudo {
+  readonly id: string;
+  readonly frozenAt: Date;
+  readonly entryCount: number;
+  readonly hash: string;
+  readonly criteria: unknown;
+  readonly entries: readonly RosterEntryShape[];
+}
+
+/**
+ * Compone la vista de un padrón y **recalcula su huella**.
+ *
+ * Está factorizada porque la asamblea y la elección la necesitan igual, y una
+ * comprobación de integridad escrita dos veces es una que tarde o temprano se
+ * corrige solo en una de las dos copias.
+ */
+async function leerPadron(consulta: Promise<PadronCrudo | null>): Promise<UseCaseResult<RosterView | null>> {
+  const snapshot = await consulta;
   if (snapshot === null) return ok(null);
 
   const recomputedHash = huellaDePadron(snapshot.entries);
@@ -355,4 +406,245 @@ export async function frozenRoster(
     intact: recomputedHash === snapshot.hash && snapshot.entries.length === snapshot.entryCount,
     criteria: snapshot.criteria,
   });
+}
+
+export const freezeElectionRosterSchema = z.object({ electionId: z.uuid() });
+
+/**
+ * Congela el padrón electoral de un proceso (F5-ELE-002).
+ *
+ * Es el mismo acto que congelar el padrón de una asamblea y por eso comparte
+ * tabla, función y huella: lo que cambia es de qué acto es el padrón. Tenerlo
+ * separado en otra tabla habría duplicado la garantía de inmutabilidad, y una
+ * garantía duplicada es una que tarde o temprano se aplica solo en una de las
+ * dos copias.
+ */
+export async function freezeElectionRoster(
+  actor: ActorContext,
+  input: z.infer<typeof freezeElectionRosterSchema>,
+): Promise<UseCaseResult<FrozenRoster>> {
+  const parsed = freezeElectionRosterSchema.safeParse(input);
+  if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
+
+  const decision = can(actor, 'election.roster.publish', { kind: 'AssemblyRosterSnapshot' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const quienCongela = actor.userId;
+  if (quienCongela === null || quienCongela === undefined) {
+    return fail(errors.forbidden('Congelar el padrón electoral es un acto de una persona: exige una cuenta.'));
+  }
+
+  const eleccion = await db().election.findUnique({
+    where: { id: parsed.data.electionId },
+    select: {
+      id: true,
+      publicId: true,
+      status: true,
+      territorialUnitId: true,
+      territorialUnit: { select: { path: true } },
+      normativeRuleSet: { select: { version: true } },
+      rosterSnapshot: { select: { id: true } },
+    },
+  });
+  if (eleccion === null) return fail(errors.notFound('Ese proceso electoral no existe.'));
+  if (eleccion.rosterSnapshot !== null) {
+    return fail(errors.conflict('El padrón electoral de este proceso ya está congelado.'));
+  }
+  if (eleccion.status === 'PLANNED') {
+    return fail(errors.conflict('Primero se convoca. El padrón electoral se congela sobre un proceso convocado.'));
+  }
+  if (eleccion.status === 'ANNULLED' || eleccion.status === 'CLOSED') {
+    return fail(errors.conflict('Ese proceso está terminado.'));
+  }
+
+  const congeladoEl = new Date();
+  const entradas = await membresiasElegibles(db(), eleccion.territorialUnit.path, congeladoEl);
+  if (entradas.length === 0) {
+    return fail(errors.conflict('No hay ninguna membresía elegible en el alcance territorial del proceso.'));
+  }
+
+  const hash = huellaDePadron(entradas);
+  const criteria: RosterCriteria = {
+    territorialPath: eleccion.territorialUnit.path,
+    includesDescendants: true,
+    membershipStatus: ['ACTIVE'],
+    category: 'UNION_MEMBER',
+    requiresPoliticalRights: false,
+    frozenAtIso: congeladoEl.toISOString(),
+    normativeVersion: eleccion.normativeRuleSet.version,
+  };
+
+  const congelado = await transaction(async (tx) => {
+    const snapshot = await tx.assemblyRosterSnapshot.create({
+      data: {
+        ownerKind: 'ELECTION',
+        electionId: eleccion.id,
+        frozenAt: congeladoEl,
+        frozenById: quienCongela,
+        criteria: { ...criteria, membershipStatus: [...criteria.membershipStatus] },
+        entryCount: entradas.length,
+        hash,
+      },
+      select: { id: true },
+    });
+
+    await tx.assemblyRosterEntry.createMany({
+      data: entradas.map((entrada) => ({
+        rosterId: snapshot.id,
+        membershipId: entrada.membershipId,
+        memberNumber: entrada.memberNumber,
+        territorialUnitId: entrada.territorialUnitId,
+        hasVoice: entrada.hasVoice,
+        hasVote: entrada.hasVote,
+      })),
+    });
+
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.ROSTER_FROZEN,
+      objectKind: 'AssemblyRosterSnapshot',
+      objectId: snapshot.id,
+      outcome: 'SUCCESS',
+      territorialUnitId: eleccion.territorialUnitId,
+      metadata: {
+        eleccion: eleccion.publicId,
+        entradas: entradas.length,
+        conVoto: entradas.filter((entrada) => entrada.hasVote).length,
+        hash,
+      },
+    });
+
+    return snapshot;
+  });
+
+  return ok({
+    rosterId: congelado.id,
+    entryCount: entradas.length,
+    withVote: entradas.filter((entrada) => entrada.hasVote).length,
+    hash,
+  });
+}
+
+/**
+ * Congela el padrón de agremiados afectados por una consulta de contrato
+ * colectivo (F5-NEG-002).
+ *
+ * No pertenece ni a una asamblea ni a una elección: la consulta lo referencia
+ * desde su expediente. Por eso su `ownerKind` es el de consulta y las dos
+ * columnas de dueño quedan nulas, que es exactamente lo que la base comprueba.
+ */
+export async function freezeConsultationRoster(
+  actor: ActorContext,
+  territorialPath: string,
+  normativeVersion: string,
+  territorialUnitId: string,
+): Promise<UseCaseResult<FrozenRoster>> {
+  const quienCongela = actor.userId;
+  if (quienCongela === null || quienCongela === undefined) {
+    return fail(errors.forbidden('Congelar el padrón de una consulta es un acto de una persona: exige una cuenta.'));
+  }
+
+  const congeladoEl = new Date();
+  const entradas = await membresiasElegibles(db(), territorialPath, congeladoEl);
+  if (entradas.length === 0) {
+    return fail(errors.conflict('No hay agremiados afectados en el alcance de la consulta.'));
+  }
+
+  const hash = huellaDePadron(entradas);
+  const criteria: RosterCriteria = {
+    territorialPath,
+    includesDescendants: true,
+    membershipStatus: ['ACTIVE'],
+    category: 'UNION_MEMBER',
+    requiresPoliticalRights: false,
+    frozenAtIso: congeladoEl.toISOString(),
+    normativeVersion,
+  };
+
+  const congelado = await transaction(async (tx) => {
+    const snapshot = await tx.assemblyRosterSnapshot.create({
+      data: {
+        ownerKind: 'COLLECTIVE_CONSULTATION',
+        frozenAt: congeladoEl,
+        frozenById: quienCongela,
+        criteria: { ...criteria, membershipStatus: [...criteria.membershipStatus] },
+        entryCount: entradas.length,
+        hash,
+      },
+      select: { id: true },
+    });
+
+    await tx.assemblyRosterEntry.createMany({
+      data: entradas.map((entrada) => ({
+        rosterId: snapshot.id,
+        membershipId: entrada.membershipId,
+        memberNumber: entrada.memberNumber,
+        territorialUnitId: entrada.territorialUnitId,
+        hasVoice: entrada.hasVoice,
+        hasVote: entrada.hasVote,
+      })),
+    });
+
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.ROSTER_FROZEN,
+      objectKind: 'AssemblyRosterSnapshot',
+      objectId: snapshot.id,
+      outcome: 'SUCCESS',
+      territorialUnitId,
+      metadata: { consulta: true, entradas: entradas.length, hash },
+    });
+
+    return snapshot;
+  });
+
+  return ok({
+    rosterId: congelado.id,
+    entryCount: entradas.length,
+    withVote: entradas.filter((entrada) => entrada.hasVote).length,
+    hash,
+  });
+}
+
+export interface RosterEntryRow {
+  readonly memberNumber: string;
+  readonly personName: string;
+  readonly territory: string | null;
+  readonly hasVoice: boolean;
+  readonly hasVote: boolean;
+}
+
+/** Entradas nominales de un padrón congelado, para publicarlo y consultarlo. */
+export async function rosterEntries(
+  actor: ActorContext,
+  rosterId: string,
+): Promise<UseCaseResult<readonly RosterEntryRow[]>> {
+  const decision = can(actor, 'membership.roster.read', { kind: 'AssemblyRosterEntry' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const filas = await db().assemblyRosterEntry.findMany({
+    where: { rosterId },
+    orderBy: { memberNumber: 'asc' },
+    select: {
+      memberNumber: true,
+      hasVoice: true,
+      hasVote: true,
+      membership: {
+        select: {
+          territorialUnit: { select: { name: true } },
+          person: {
+            select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true, preferredName: true },
+          },
+        },
+      },
+    },
+  });
+
+  return ok(
+    filas.map((fila) => ({
+      memberNumber: fila.memberNumber,
+      personName: nombreCompleto(fila.membership.person),
+      territory: fila.membership.territorialUnit?.name ?? null,
+      hasVoice: fila.hasVoice,
+      hasVote: fila.hasVote,
+    })),
+  );
 }

@@ -234,6 +234,7 @@ model Election {
   slates            CandidateSlate[]
   incidents         ElectionIncident[]
   voteProcess       VoteProcess?               @relation("ElectionVoteProcess")
+  rosterSnapshot    AssemblyRosterSnapshot?    @relation("ElectionRoster")
   officeTerms       OfficeTerm[]
 
   @@index([territorialUnitId])

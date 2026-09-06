@@ -176,6 +176,8 @@ export const AUDIT_ACTIONS = {
 
   ELECTION_CREATED: 'election.election.created',
   ELECTION_ADVANCED: 'election.election.advanced',
+  ELECTION_COMMISSION_ASSIGNED: 'election.commission.assigned',
+  ELECTION_CALL_ISSUED: 'election.election.call_issued',
   ELECTORAL_ROSTER_PUBLISHED: 'election.roster.published',
   SLATE_REGISTERED: 'election.slate.registered',
   SLATE_VALIDATED: 'election.slate.validated',

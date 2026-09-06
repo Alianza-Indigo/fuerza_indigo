@@ -24,6 +24,10 @@ CREATE TYPE "AssemblyType" AS ENUM ('ORDINARY', 'EXTRAORDINARY', 'SECTIONAL');
 CREATE TYPE "AssemblyModality" AS ENUM ('IN_PERSON', 'REMOTE', 'HYBRID');
 
 -- CreateEnum
+-- CreateEnum
+CREATE TYPE "RosterOwner" AS ENUM ('ASSEMBLY', 'ELECTION', 'COLLECTIVE_CONSULTATION');
+
+-- CreateEnum
 CREATE TYPE "AssemblyStatus" AS ENUM ('PLANNED', 'CALLED', 'SECOND_CALL', 'IN_SESSION', 'CLOSED', 'PUBLISHED', 'CANCELLED');
 
 -- CreateEnum
@@ -235,7 +239,9 @@ CREATE TABLE "agenda_item_document" (
 -- CreateTable
 CREATE TABLE "assembly_roster_snapshot" (
     "id" UUID NOT NULL,
-    "assemblyId" UUID NOT NULL,
+    "ownerKind" "RosterOwner" NOT NULL,
+    "assemblyId" UUID,
+    "electionId" UUID,
     "frozenAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "frozenById" UUID NOT NULL,
     "criteria" JSONB NOT NULL,
@@ -860,6 +866,12 @@ CREATE INDEX "agenda_item_document_fileObjectId_idx" ON "agenda_item_document"("
 CREATE UNIQUE INDEX "assembly_roster_snapshot_assemblyId_key" ON "assembly_roster_snapshot"("assemblyId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "assembly_roster_snapshot_electionId_key" ON "assembly_roster_snapshot"("electionId");
+
+-- CreateIndex
+CREATE INDEX "assembly_roster_snapshot_ownerKind_idx" ON "assembly_roster_snapshot"("ownerKind");
+
+-- CreateIndex
 CREATE INDEX "assembly_roster_entry_membershipId_idx" ON "assembly_roster_entry"("membershipId");
 
 -- CreateIndex
@@ -1158,6 +1170,9 @@ ALTER TABLE "agenda_item_document" ADD CONSTRAINT "agenda_item_document_fileObje
 
 -- AddForeignKey
 ALTER TABLE "assembly_roster_snapshot" ADD CONSTRAINT "assembly_roster_snapshot_assemblyId_fkey" FOREIGN KEY ("assemblyId") REFERENCES "assembly"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "assembly_roster_snapshot" ADD CONSTRAINT "assembly_roster_snapshot_electionId_fkey" FOREIGN KEY ("electionId") REFERENCES "election"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "assembly_roster_snapshot" ADD CONSTRAINT "assembly_roster_snapshot_frozenById_fkey" FOREIGN KEY ("frozenById") REFERENCES "user_account"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1712,6 +1727,18 @@ ALTER TABLE "union_body"
 ALTER TABLE "candidate_slate"
   ADD CONSTRAINT "candidate_slate_rechazo_con_motivo"
   CHECK ("status" <> 'REJECTED' OR "rejectionReason" IS NOT NULL);
+
+-- 13 bis. El padrón congelado dice de qué acto es, y solo lleva la columna que
+--         le corresponde. Sin esta regla podría existir un padrón de asamblea
+--         que además apunta a una elección, y nadie sabría cuál de los dos actos
+--         congeló (`D-F5-003`).
+ALTER TABLE "assembly_roster_snapshot"
+  ADD CONSTRAINT "roster_dueno_coherente"
+  CHECK (
+    ("ownerKind" = 'ASSEMBLY' AND "assemblyId" IS NOT NULL AND "electionId" IS NULL)
+    OR ("ownerKind" = 'ELECTION' AND "electionId" IS NOT NULL AND "assemblyId" IS NULL)
+    OR ("ownerKind" = 'COLLECTIVE_CONSULTATION' AND "assemblyId" IS NULL AND "electionId" IS NULL)
+  );
 
 -- 14. Serie documental: el folio es único dentro de su entidad y su serie, y
 --     solo cuando existe.

@@ -18,5 +18,6 @@ export const SECCIONES = [
   { href: '/institucional/nombramientos', label: 'Periodos y poderes', permiso: 'governance.body.read' },
   { href: '/institucional/asambleas', label: 'Asambleas', permiso: 'assembly.assembly.read' },
   { href: '/institucional/acuerdos', label: 'Seguimiento de acuerdos', permiso: 'assembly.assembly.read' },
+  { href: '/institucional/elecciones', label: 'Elecciones', permiso: 'voting.process.read' },
   { href: '/institucional/documentos', label: 'Plantillas de documento', permiso: 'documents.template.manage' },
 ] as const;

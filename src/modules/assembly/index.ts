@@ -21,13 +21,18 @@ export {
 
 export {
   freezeRoster,
+  freezeElectionRoster,
+  freezeConsultationRoster,
+  rosterEntries,
   rosterPreview,
   frozenRoster,
+  electionRoster,
   huellaDePadron,
   freezeRosterSchema,
   type FrozenRoster,
   type RosterPreview,
   type RosterView,
+  type RosterEntryRow,
   type RosterEntryShape,
   type RosterCriteria,
 } from './application/roster';

@@ -203,15 +203,24 @@ model AgendaItemDocument {
   @@map("agenda_item_document")
 }
 
-/// Padrón congelado de la sesión. Inmutable (PRD §9.4).
+/// Padrón congelado. Inmutable (PRD §9.4).
 ///
 /// El motor retira el privilegio de actualización sobre sus columnas: un padrón
-/// que se puede recalcular después de la sesión no prueba nada. La huella
-/// permite comprobar, mucho después, que el padrón con el que se contó el
-/// quórum es el mismo que se publicó.
+/// que se puede recalcular después no prueba nada. La huella permite comprobar,
+/// mucho después, que el padrón con el que se contó el quórum es el mismo que
+/// se publicó.
+///
+/// **Sirve a los tres actos que necesitan un padrón congelado**: la asamblea, la
+/// elección y la consulta de un contrato colectivo. La primera redacción exigía
+/// `assemblyId`, de modo que una elección no podía tener padrón propio aunque
+/// `VoteProcess` apuntara aquí para el suyo (`D-F5-003`). Ahora el dueño se
+/// declara con `ownerKind`, y la base comprueba que la columna que le
+/// corresponde —y solo esa— esté puesta.
 model AssemblyRosterSnapshot {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  assemblyId String   @unique @db.Uuid
+  id         String      @id @default(uuid(7)) @db.Uuid
+  ownerKind  RosterOwner
+  assemblyId String?     @unique @db.Uuid
+  electionId String?     @unique @db.Uuid
   frozenAt   DateTime @default(now()) @db.Timestamptz(3)
   frozenById String   @db.Uuid
   /// Reglas de elegibilidad aplicadas al congelar, tal como se evaluaron.
@@ -220,14 +229,23 @@ model AssemblyRosterSnapshot {
   /// `sha256` del contenido canónico de las entradas.
   hash       String   @db.VarChar(64)
 
-  assembly Assembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
-  frozenBy User     @relation("RosterFrozenBy", fields: [frozenById], references: [id], onDelete: Restrict)
+  assembly Assembly? @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  election Election? @relation("ElectionRoster", fields: [electionId], references: [id], onDelete: Cascade)
+  frozenBy User      @relation("RosterFrozenBy", fields: [frozenById], references: [id], onDelete: Restrict)
 
   entries       AssemblyRosterEntry[]
   voteProcesses VoteProcess[]         @relation("VoteProcessRoster")
   bargainingFiles BargainingFile[]    @relation("BargainingAffectedRoster")
 
+  @@index([ownerKind])
   @@map("assembly_roster_snapshot")
+}
+
+/// Acto al que pertenece un padrón congelado.
+enum RosterOwner {
+  ASSEMBLY
+  ELECTION
+  COLLECTIVE_CONSULTATION
 }
 
 /// Entrada del padrón congelado. Una fila por membresía elegible.

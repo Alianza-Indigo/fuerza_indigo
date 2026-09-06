@@ -2652,6 +2652,42 @@ const CHECKS = [
   },
 
   {
+    id: 'C-COH-15',
+    title: 'La fase que el arranque cree activa es la que el proyecto declara',
+    phases: 'all',
+    run() {
+      // `ACTIVE_PHASE` decide **qué variables de entorno son obligatorias**. Si
+      // se queda atrás, una instalación productiva arranca sin las que la fase
+      // en curso necesita y lo descubre en el peor momento: pasó en la Fase 3
+      // con las claves de cobro (`D-F4-002`) y volvió a pasar en la Fase 6.
+      //
+      // Dos sitios declaran la fase —`docs/PHASE_STATUS.md`, que es el contrato
+      // con la persona usuaria, y `env.ts`, que es lo que el arranque cree— y
+      // el segundo depende de que alguien se acuerde de subirlo. Este control
+      // es ese acuerdo, escrito.
+      const declarada = readActivePhase();
+      if (declarada.phase === null) {
+        return fail([declarada.error ?? 'no se pudo leer la fase activa de docs/PHASE_STATUS.md.']);
+      }
+
+      const fuente = read('src/platform/config/env.ts') ?? '';
+      const match = /const ACTIVE_PHASE = (\d+);/.exec(fuente);
+      if (match === null) {
+        return fail(['src/platform/config/env.ts no declara `const ACTIVE_PHASE = N;`.']);
+      }
+
+      const enElArranque = Number(match[1]);
+      if (enElArranque !== declarada.phase) {
+        return fail([
+          `docs/PHASE_STATUS.md declara la fase ${declarada.phase} y src/platform/config/env.ts arranca como fase ${enElArranque}: las variables que la fase ${declarada.phase} vuelve obligatorias no se exigirían.`,
+        ]);
+      }
+
+      return ok([`Ambos declaran la fase ${declarada.phase}.`]);
+    },
+  },
+
+  {
     id: 'C-COH-14',
     title: 'La integración continua tiene toda variable que la fase activa exige',
     phases: 'all',

@@ -6,7 +6,7 @@
 ## Situación actual
 
 - **Fase activa:** 6 — Defensa, casos, protección y canalización social
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `IN_PROGRESS` — construcción terminada; a la espera de la autorización de la persona usuaria (PRD §23.3)
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026, junto con la Fase 5; confirmada al aprobarse esta
 - **Fecha de inicio:** 6 de septiembre de 2026
 - **Fase anterior:** 5 — `APPROVED`, cerrada en `6c5b18c`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
@@ -28,26 +28,48 @@ El PRD §24 Fase 6 contrata: solicitud guiada de apoyo; clasificación informati
 
 | Bloque | Contenido | Estado |
 |---|---|---|
-| A | Esquema de casos, participantes, tareas, comunicaciones, canalizaciones y marcas de riesgo; migración y permisos | En curso |
-| B | Solicitud guiada de apoyo, clasificación informativa y propuesta de canalización con confirmación humana | Pendiente |
-| C | Expediente de caso: apertura desde la solicitud, resumen inalterable y valoración humana | Pendiente |
-| D | Participantes, calidades y representación | Pendiente |
-| E | Asignación por territorio y competencia, y acceso por asignación | Pendiente |
-| F | Tareas, plazos y próximos pasos | Pendiente |
-| G | Comunicaciones con audiencias diferenciadas y notas reservadas | Pendiente |
-| H | Documentos con clasificación de sensibilidad y descarga autorizada | Pendiente |
-| I | Canalización entre entidades con los seis requisitos del PRD §10.4 | Pendiente |
-| J | Prioridades, alertas y protocolo visible de riesgo inmediato | Pendiente |
-| K | Cierre con resultado y motivo, y reapertura controlada | Pendiente |
-| L | Paneles: Trabajo y Conflictos, Neuroinclusión y Enlace Familiar, y panel social | Pendiente |
-| M | Indicadores anonimizados con umbral de privacidad | Pendiente |
-| N | Pruebas, controles de fase, documentación y cierre | Pendiente |
+| A | Esquema de casos, participantes, tareas, comunicaciones, canalizaciones y marcas de riesgo; migración y permisos | Completo |
+| B | Solicitud guiada de apoyo, clasificación informativa y propuesta de canalización con confirmación humana | Completo |
+| C | Expediente de caso: apertura desde la solicitud, resumen inalterable y valoración humana | Completo |
+| D | Participantes, calidades y representación | Completo |
+| E | Asignación por territorio y competencia, y acceso por asignación | Completo |
+| F | Tareas, plazos y próximos pasos | Completo |
+| G | Comunicaciones con audiencias diferenciadas y notas reservadas | Completo |
+| H | Documentos con clasificación de sensibilidad y descarga autorizada | Completo |
+| I | Canalización entre entidades con los seis requisitos del PRD §10.4 | Completo |
+| J | Prioridades, alertas y protocolo visible de riesgo inmediato | Completo |
+| K | Cierre con resultado y motivo, y reapertura controlada | Completo |
+| L | Paneles: Trabajo y Conflictos, Neuroinclusión y Enlace Familiar, y panel social | Completo |
+| M | Indicadores anonimizados con umbral de privacidad | Completo |
+| N | Pruebas, controles de fase, documentación y cierre | Completo |
+
+---
+
+## Criterios de aceptación
+
+Los seis criterios específicos del PRD §24 Fase 6, comprobados **ejecutando el sistema** y mirando después lo que quedó
+en la base con las credenciales de la aplicación, nunca leyendo el código (`tests/integration/fase6-criterios.test.ts`):
+
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | El usuario puede pedir apoyo sin saber qué área le corresponde (`F6-QA-001`) | **Cumplido** | Se envía un mensaje por la entrada pública sin decir a qué entidad va. La fila resultante lleva una propuesta de canalización **con su motivo**, y a la vez `confirmedRoutingLegalEntityId` nulo y estado `RECEIVED`: el sistema propuso y no ejecutó nada |
+| 2 | La propuesta automática no sustituye la confirmación humana (`F6-QA-002`) | **Cumplido** | Abrir expediente sobre una propuesta sin confirmar se niega y la tabla `case_file` queda vacía. Tras confirmar, la solicitud guarda **quién** confirmó y **cuándo**, y pasa a `TRIAGE` |
+| 3 | No se comparten notas entre sindicato y A.C. sin consentimiento y necesidad (`F6-QA-003`) | **Cumplido** | Una nota reservada existe en el expediente y **no se puede ni elegir** para transferir: proponerla se rechaza porque no está en la lista blanca. Una canalización legítima queda en `PROPOSED`, sin consentimiento y sin fecha de envío, hasta que la persona diga que sí sobre esa selección exacta |
+| 4 | Toda lectura sensible queda auditada (`F6-QA-004`) | **Cumplido** | Se leen las tres cosas sensibles que la fase abre —un mensaje recibido, un expediente y un documento— y las tres dejan asiento con el actor y el instante: `support.request.read`, `cases.case.read` y `files.file.download_authorized` |
+| 5 | Se prueba acceso denegado para territorios y expedientes ajenos (`F6-QA-005`) | **Cumplido** | Se fuerza en la base una asignación de una delegación de Nayarit sobre un expediente de Jalisco —lo que quedaría si el alcance del nombramiento se recortara después— y el expediente no se abre. Quien no lo lleva ni es parte tampoco |
+| 6 | Los casos urgentes muestran rutas humanas y de emergencia configuradas (`F6-QA-006`) | **Cumplido** | El protocolo sale del gestor de contenidos, con las rutas que la organización configuró, y la marca de riesgo lo devuelve y guarda **cuál** se enseñó. Marcarlo desde la entidad equivocada se niega: dos personas morales siguen siendo dos aunque el asunto sea urgente |
 
 ---
 
 ## Defectos abiertos
 
-**Ninguno todavía.** La fase acaba de abrirse.
+**Ninguno.** Los cinco que aparecieron durante la construcción se corrigieron dentro de la misma fase y se registran
+abajo. Cuatro los encontró el propio verificador o el intento de romper una regla; ninguno llegó al cierre.
+
+Los dos primeros son de la misma familia y merecen leerse juntos: una regla escrita en un sitio y comprobada en otro.
+La puerta de descarga tenía su propia idea de qué compartimento era un archivo de caso, distinta de la del módulo; y
+`ACTIVE_PHASE` decía una fase distinta de la que el proyecto declara. En los dos casos lo que falló no fue el juicio de
+nadie, fue que existían dos fuentes para el mismo hecho.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -55,6 +77,44 @@ El PRD §24 Fase 6 contrata: solicitud guiada de apoyo; clasificación informati
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
+| `D-F6-001` | Alta | La puerta de descarga fijaba el compartimento `SOCIAL` para **todo** archivo de caso y no aportaba sonda de asignación. Un documento de defensa sindical quedaba al alcance del personal de atención social y fuera del alcance de quien llevaba el expediente. | Corregido en el bloque H. El servicio resuelve el expediente del archivo y decide con su dominio, su territorio y su equipo; la traducción de dominio a compartimento se mudó a `@/platform/authz/compartments` y el módulo la reexporta, para que exista **una** fuente. Probado viéndolo fallar. |
+| `D-F6-002` | Alta | `files.file.download` es el permiso general de archivos y no exige asignación: quien lo tuviera abría el documento de cualquier expediente de su entidad sabiendo el identificador. | Corregido en el bloque H. La puerta comprueba **sobre el hecho** que quien pide alcance el expediente —lo lleva, o es parte y el documento se le enseña— antes de mirar ninguna facultad. Marcar el permiso como `needsAssignment` habría cambiado la regla para todos los archivos del sistema. |
+| `D-F6-003` | Media | La regla que oculta los datos clínicos existía y **no la ejercía nadie**: ningún rol tenía a la vez la descarga de material sensible y no la facultad clínica, así que ninguna prueba la veía fallar. | Corregido en el bloque H. Se descubrió al intentar romperla. Lo que faltaba era otra cosa: la delegación territorial revisa solicitudes de afiliación cuyos documentos son datos personales sensibles y no podía abrirlos. Con esa facultad en su sitio, lo que la detiene ante un diagnóstico es la autorización clínica que no tiene. |
+| `D-F6-004` | Media | Cinco decisiones sobre expedientes —dos de canalización, tres de riesgo— armaban el recurso a mano y sin territorio. Un recurso sin territorio **no se niega: se permite**. | Corregido en los bloques I y J. Lo encontró el control `C-F6-01`, escrito en el bloque E precisamente para esto, en la misma sesión en que se introdujeron. |
+| `D-F6-005` | Media | `ACTIVE_PHASE` seguía en `5` mientras se construía la Fase 6: las variables que la fase en curso vuelve obligatorias no se exigían al arrancar. Es la reaparición de `D-F4-002`. | Corregido en el bloque N. Además se escribió el control `C-COH-15`, que compara lo que declara `docs/PHASE_STATUS.md` con lo que el arranque cree: la corrección de la Fase 4 dependía de que alguien se acordara, y esta no. |
+
+---
+
+## Evidencias
+
+| Qué se afirma | Cómo se comprobó |
+|---|---|
+| Cada regla de la fase se probó **viéndola fallar** | Cincuenta y cuatro reglas, una por una: se rompió el código que la sostiene, se comprobó que la prueba se pone en rojo, y se restauró. Una prueba que nunca se ha visto fallar solo demuestra que no rompe nada. El método encontró `D-F6-003`, que ninguna otra puerta veía |
+| Las migraciones funcionan desde cero | Cada archivo de pruebas de integración crea una base efímera y aplica las **veintiuna** migraciones en orden sobre un esquema vacío. No es una comprobación aparte: es la única forma en que corren las 1 167 pruebas |
+| Las migraciones funcionan desde la fase anterior | La base de desarrollo viene de la Fase 5 y recibió las dos migraciones nuevas con `migrate deploy`, sin reconstruirse. `npm run db:check` compara la base configurada contra lo que **producen las migraciones**, no contra el esquema, y no encuentra diferencia |
+| Los permisos se prueban en positivo y en negativo | Las seis suites nuevas incluyen su denegación: quien no lleva el expediente no lo abre, quien no reparte no abre el panel, quien no tiene la facultad clínica no ve el diagnóstico, quien envía no acepta su propia canalización, quien mide un territorio no cuenta los de otro |
+| El territorio se comprueba en toda decisión de expediente | El control `C-F6-01` recorre el módulo y exige que el recurso se arme con `recursoDelExpediente` o declare su ruta. Encontró cinco decisiones sin territorio (`D-F6-004`) en la misma sesión en que se escribieron |
+| La interfaz se revisó en móvil y en escritorio | Las 284 pruebas de extremo a extremo corren en los dos perfiles de `playwright.config.ts` —Pixel 7 y escritorio de 1280 px— |
+| La accesibilidad se validó, no se declaró | `tests/a11y` recorre las rutas públicas y las pantallas con sesión, en tema claro y oscuro, con umbral de **cero violaciones críticas o serias** |
+| Los estados vacíos y de error están terminados | Cada pantalla nueva declara su estado vacío con texto propio y su denegación: «no coordinas ninguna área», «no hay expedientes abiertos en esta área», «este expediente no se ha canalizado a ningún sitio» |
+| La auditoría está conectada | El criterio `F6-QA-004` lee las tres cosas sensibles que la fase abre y comprueba los tres asientos, con actor e instante |
+| No hay secretos ni datos reales en el repositorio | `C-REPO-04` y `C-ENV-02` |
+| La prohibición del proveedor vetado se sostiene | `C-REPO-03`, sobre código, dependencias y documentación |
+
+---
+
+## Pruebas y resultados
+
+| Comprobación | Resultado |
+|---|---|
+| `npm run typecheck` | Sin errores |
+| `npm run lint` | Sin errores ni avisos |
+| `npm run phase:verify` | **66 aprobados, 0 fallidos**, 1 no aplicable |
+| `npx vitest run` | **1 167 pruebas en 74 archivos**, todas en verde |
+| `npm run build` | Compila; ninguna ruta de casos es estática |
+| `npx playwright test` | **284 pruebas**, 8 omitidas por diseño |
+| `npm run db:check` | La base configurada coincide con las migraciones del repositorio |
+| Integración continua | Verde en cada bloque, comprobado en GitHub Actions antes de dar por cerrado ninguno |
 
 ---
 

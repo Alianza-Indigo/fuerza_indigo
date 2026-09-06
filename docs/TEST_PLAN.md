@@ -53,7 +53,9 @@ Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y
 **Fase 4.** Recorre `F-03` desde un origen no propio (familiar autorizado). **Asertos:** no se crea membresía ni cobro; la persona recibe atención; el registro nace con privacidad reforzada cuando es menor de edad; no aparece en el padrón remitido a autoridades.
 
 ### E2E-04 · Consentimiento y canalización de Fuerza Índigo a Alianza Índigo
-**Fase 6.** Recorre `F-10`. **Asertos:** sin consentimiento la canalización no avanza de `AWAITING_CONSENT`; solo viajan los campos y documentos seleccionados; el área receptora acepta y el seguimiento no expone notas reservadas; todo queda auditado.
+**Fase 6 — cubierto.** Recorre `F-10`. **Asertos:** sin consentimiento la canalización no avanza de `AWAITING_CONSENT`; solo viajan los campos y documentos seleccionados; el área receptora acepta y el seguimiento no expone notas reservadas; todo queda auditado.
+
+Se cubre desde la integración y no desde el navegador, y la razón es de fondo: lo que hay que demostrar no es que los formularios se envían, sino **qué queda escrito en la base** cuando falta el consentimiento, cuando cubre de menos o cuando cubre de más. Eso se mira con las credenciales de la aplicación, no con un `screenshot`. Vive en `tests/integration/case-referrals.test.ts` —diecinueve casos, los seis requisitos del PRD §10.4— y en `tests/integration/fase6-criterios.test.ts`, que recorre el criterio completo de punta a punta.
 
 ### E2E-05 · Pago fallido, reintento, conciliación y activación correcta
 **Fase 3.** Recorre `F-06`. **Asertos:** el fallo no activa derechos; el periodo de gracia no corta el acceso de inmediato; el reintento exitoso activa una sola vez; repetir el webhook no duplica movimientos; la conciliación cuadra por entidad jurídica.

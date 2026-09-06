@@ -402,20 +402,21 @@ erDiagram
 **`SupportRequest`** — Entrada única de ayuda y contacto (PRD §10.1). **Implementada desde la Fase 2.**
 `id` PK · `folio` U · `legalEntityId` FK IX — a quién se dirige · `personId` NULL FK→`Person` — puede iniciarse sin cuenta · `submittedByPersonId` NULL FK · `contactName` · `contactEmail` NULL · `contactPhone` NULL · `preferredChannel` *enum* (`EMAIL`, `PHONE`) · `requestType` *enum* (`GENERAL_CONTACT`, `INDIVIDUAL_LABOR_DISPUTE`, `COLLECTIVE_DISPUTE`, `DISCRIMINATION_OR_ADJUSTMENTS`, `EDUCATION_ACCESS`, `HEALTH_ACCESS`, `ACCESSIBILITY`, `FAMILY_GUIDANCE`, `PSYCHOSOCIAL_RISK`, `VIOLENCE_OR_URGENCY`, `TRAINING_OR_INSTITUTIONAL_SUPPORT`, `OTHER`) IX · `subject` · `narrative` *text* — preguntas de información, no jurídicas; **inmutable** · `territoryHint` NULL — texto libre hasta la Fase 5 · `territorialUnitId` NULL FK IX · `suggestedRouting` *json* NULL — propuesta del sistema, nunca ejecutada sin confirmación humana · `suggestedByAiGenerationId` NULL FK→`AiGeneration` · `confirmedRoutingLegalEntityId` NULL FK · `confirmedById` NULL FK→`User` · `status` *enum* (`RECEIVED`, `TRIAGE`, `CONVERTED_TO_CASE`, `REFERRED_EXTERNALLY`, `HANDLED`, `CLOSED_NO_ACTION`, `DUPLICATE`) IX · `urgency` *enum* (`ROUTINE`, `PRIORITY`, `URGENT`) · `handledByActorId` NULL FK→`Actor` · `handledAt` NULL · `handlingNote` NULL — nota interna, nunca visible para quien escribió · `consentId` NULL FK→`Consent` · `privacyNoticeVersionId` FK→`ConsentVersion` · `acceptedAt` · `originFingerprint` — huella con clave del origen, nunca la dirección · `receivedAt` IX.
 
-Lo que la Fase 2 implementa y lo que queda para la Fase 6:
+Lo que la Fase 2 implementó y lo que la Fase 6 **ya escribe**:
 
 | Columna | Fase 2 | Fase 6 |
 |---|---|---|
 | `folio`, `contactName`, `contactEmail`, `contactPhone`, `preferredChannel`, `requestType`, `subject`, `narrative`, `territoryHint`, `privacyNoticeVersionId`, `acceptedAt`, `originFingerprint`, `receivedAt` | Se escriben desde el formulario público | — |
 | `status` | `RECEIVED` → `HANDLED` o `CLOSED_NO_ACTION`, con nota obligatoria | `TRIAGE`, `CONVERTED_TO_CASE`, `REFERRED_EXTERNALLY`, `DUPLICATE` |
 | `urgency` | No se toca: queda en `ROUTINE`. Lo que la persona declaró vive en `requestType` y no se confunde con una valoración de la organización | La fija la valoración humana |
-| `personId`, `consentId`, `territorialUnitId`, `suggestedRouting`, `suggestedByAiGenerationId`, `confirmedRouting*`, `submittedByPersonId` | No se escriben | Sí |
+| `personId`, `consentId`, `suggestedByAiGenerationId` | No se escriben | Siguen sin escribirse: la entrada pública es anónima y la propuesta no la genera una inteligencia artificial. La persona se identifica después, como participante del expediente |
+| `territorialUnitId`, `suggestedRouting`, `confirmedRouting*`, `submittedByPersonId` | No se escriben | Sí. El territorio se resuelve **al confirmar la canalización**, que es donde se tiene delante lo que la persona escribió en `territoryHint`; el expediente lo hereda (ADR-0110) |
 
 Tres decisiones y sus motivos:
 
 1. **`consentId` es nulo, no obligatorio.** El documento lo contrataba obligatorio, pero `Consent` cuelga de `Person` y esta misma entrada declara que puede iniciarse sin cuenta: exigirlo obligaría a crear una persona del padrón por cada mensaje recibido, y llenaría el padrón de registros que nadie pidió y nadie puede corregir. Lo que sí consta desde el primer envío es `privacyNoticeVersionId`: qué versión exacta del aviso se aceptó y cuándo. El consentimiento granular lo exige la Fase 6 antes de canalizar.
 2. **`GENERAL_CONTACT` se añade al catálogo del PRD §10.1.** El formulario de contacto y el de solicitud de apoyo son el mismo acto —alguien escribe desde fuera— y separarlos en dos tablas haría que una de las dos se quedara atrás. Lo que cambia es qué tipos ofrece cada pantalla.
-3. **`HANDLED` se añade a la máquina de estados.** Cubre lo que la Fase 2 puede hacer de verdad: alguien lo leyó, contestó y lo dejó anotado. Los tres estados de la Fase 6 existen en el enumerado porque la máquina está contratada, y ninguna ruta de esta fase los escribe.
+3. **`HANDLED` se añade a la máquina de estados.** Cubre lo que la Fase 2 podía hacer de verdad: alguien lo leyó, contestó y lo dejó anotado. Los tres estados que entonces no escribía nadie —`TRIAGE`, `CONVERTED_TO_CASE`, `REFERRED_EXTERNALLY`— los escribe ya la Fase 6: el primero al confirmar la canalización, el segundo al abrir el expediente.
 
 El motor impone la inmutabilidad del relato: la migración retira `UPDATE` sobre toda la tabla al rol de la aplicación y lo devuelve solo sobre las columnas de proceso. Cambiar `narrative` falla con «permiso denegado» aunque un descuido futuro lo intente. `DELETE` se conserva para que las políticas de retención puedan purgar.
 

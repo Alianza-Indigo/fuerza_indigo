@@ -15,9 +15,11 @@ import { z } from 'zod';
  * Fase 3 y el efecto fue que las claves de Stripe nunca llegaron a ser
  * obligatorias: una instalación productiva arrancaba con las claves vacías y
  * descubría el problema en el primer cobro, que es el peor momento posible
- * (defecto `D-F4-002`).
+ * (defecto `D-F4-002`). Volvió a quedarse atrás durante la Fase 6 y se corrigió
+ * al cerrarla: el control `C-COH-15` lo comprueba ahora contra
+ * `docs/PHASE_STATUS.md`, para que no dependa de que alguien se acuerde.
  */
-const ACTIVE_PHASE = 5;
+const ACTIVE_PHASE = 6;
 
 /** 32 bytes en base64url producen 43 caracteres. Se exige ese mínimo. */
 const secret = (purpose: string) =>

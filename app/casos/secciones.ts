@@ -16,4 +16,10 @@ export const SECCIONES = [
    * se le ofrece una puerta que no puede abrir.
    */
   { href: '/casos/paneles', label: 'Paneles de coordinación', permiso: 'cases.case.assign' },
+  /**
+   * Los indicadores los abre una facultad más ancha que la de coordinar: son
+   * cifras agregadas y con umbral, no expedientes. Quien mide no tiene por qué
+   * poder abrir ninguno.
+   */
+  { href: '/casos/indicadores', label: 'Indicadores', permiso: 'cases.indicator.read' },
 ] as const;

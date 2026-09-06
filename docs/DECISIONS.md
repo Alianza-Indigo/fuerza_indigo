@@ -1526,3 +1526,19 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Lo abre quien reparte, no quien atiende.** «Mis expedientes» solo trae los asignados; el panel trae los del área, incluidos los que **no lleva nadie**, que son justamente los que no aparecen en ninguna otra pantalla. Por eso lo gobierna `cases.case.assign`, la única facultad de caso que no exige asignación: quien reparte necesita ver lo que hay que repartir, y quien no reparte no tiene por qué ver el área entera.
 
 **Y coordinar no es una llave maestra.** El panel sigue acotado por entidad, compartimento y territorio: una delegación de Jalisco coordina Jalisco.
+
+---
+
+## ADR-0123 · Agregado no es anónimo: la celda por debajo del umbral se suprime entera
+
+**Contexto.** El PRD pide indicadores anonimizados de casos. Agrupar por materia, territorio y resultado parece bastar, y no basta: una celda con una fila detrás dice qué le pasó a esa persona, dónde y cómo acabó, y quien conoce el barrio no necesita más. Un conteo de uno identifica con más precisión que un nombre.
+
+**Decisión.** Por debajo de cinco expedientes, la cifra no se publica y la celda se suprime **entera**. Cinco y no tres porque con tres, dos celdas contiguas permiten deducir a una persona restando totales; y suprimir en vez de redondear porque una cifra redondeada sigue diciendo que hubo algo.
+
+**Cero sí se publica.** «Ninguno» no identifica a nadie, y ocultarlo haría indistinguible «no hubo» de «hubo pocos», que es justo la ambigüedad que un indicador debe evitar.
+
+**La mediana también pasa por el umbral.** Con dos expedientes detrás, la mediana **es** uno de los dos: publicarla es publicar ese caso con otro nombre.
+
+**Y se dice cuántas celdas se suprimieron.** Un indicador con huecos y sin explicación parece un error de cálculo, y quien lo lee acaba pidiendo «los datos completos», que es exactamente lo que el umbral existe para no dar.
+
+**Los indicadores no son el sistema visto desde arriba.** Alcanzan el compartimento y el territorio de quien pregunta, como todo lo demás. Un panel de cifras es un sitio cómodo para saltarse una frontera sin que se note.

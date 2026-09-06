@@ -5,6 +5,7 @@ import type { SupportRequestStatus } from '@prisma-client/enums';
 import { requestDetail } from '@/modules/support';
 import { REQUEST_TYPE_LABELS } from '../../../(publico)/contacto/labels';
 import { ResolveForm } from './resolve-form';
+import { RoutingForm } from './routing-form';
 
 export const metadata = { title: 'Mensaje recibido', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -131,6 +132,36 @@ export default async function MensajePage({ params }: { params: Promise<{ id: st
               recuérdale el 911 en tu respuesta.
             </p>
           </Notice>
+        )}
+
+        {datos.status === 'RECEIVED' && (
+          <Section title="Canalización" level={2}>
+            <Card>
+              <RoutingForm
+                requestId={datos.id}
+                propuesta={
+                  datos.propuesta === null
+                    ? null
+                    : {
+                        entidad: datos.propuesta.entidad,
+                        urgencia: datos.propuesta.urgencia,
+                        motivo: datos.propuesta.motivo,
+                        alternativa: datos.propuesta.alternativa,
+                      }
+                }
+              />
+            </Card>
+          </Section>
+        )}
+
+        {datos.confirmadaPor !== null && datos.confirmadaEl !== null && (
+          <Section title="Canalización confirmada" level={2}>
+            <Card>
+              <p>
+                La confirmó {datos.confirmadaPor} el {formatter.format(datos.confirmadaEl)}.
+              </p>
+            </Card>
+          </Section>
         )}
 
         <Section title={datos.status === 'RECEIVED' ? 'Hazte cargo' : 'Qué se hizo'} level={2}>

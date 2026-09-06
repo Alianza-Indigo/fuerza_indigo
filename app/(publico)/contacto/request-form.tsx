@@ -115,18 +115,32 @@ export function RequestForm({ modo }: { modo: 'contacto' | 'apoyo' }) {
         </div>
       )}
 
-      <Select
-        name="legalEntity"
-        label="¿A quién le escribes?"
-        hint="Fuerza Índigo es el sindicato. Alianza Índigo es la asociación civil. Si no sabes cuál, elige la que más se acerque: nosotras lo canalizamos."
-        required
-        defaultValue={modo === 'apoyo' ? 'ALIANZA_INDIGO' : 'FUERZA_INDIGO'}
-        options={[
-          { value: 'FUERZA_INDIGO', label: 'Fuerza Índigo — sindicato' },
-          { value: 'ALIANZA_INDIGO', label: 'Alianza Índigo — asociación civil' },
-        ]}
-        {...(errores['legalEntity'] === undefined ? {} : { errors: errores['legalEntity'] })}
-      />
+      {/*
+        En «solicitar apoyo» no se pregunta a quién le escribe.
+        El criterio del PRD §24 Fase 6 es que la persona pueda pedir apoyo sin
+        saber qué área le corresponde, y preguntarlo —aunque fuera con un «si no
+        sabes cuál, elige la que más se acerque»— es pedirle que acierte en una
+        decisión institucional para poder contar lo que le pasa. El sistema
+        propone a partir de lo que sí sabe, que es lo que está viviendo, y una
+        persona lo confirma antes de canalizar nada.
+
+        En «contacto» sí se ofrece, porque ahí quien escribe suele saber con
+        quién quiere hablar, y si lo sabe no hay por qué llevarle la contraria.
+      */}
+      {modo === 'contacto' && (
+        <Select
+          name="legalEntity"
+          label="¿A quién le escribes?"
+          hint="Fuerza Índigo es el sindicato. Alianza Índigo es la asociación civil. Si te da igual, déjalo sin elegir y lo encaminamos nosotras."
+          defaultValue=""
+          placeholder="No lo sé o me da igual"
+          options={[
+            { value: 'FUERZA_INDIGO', label: 'Fuerza Índigo — sindicato' },
+            { value: 'ALIANZA_INDIGO', label: 'Alianza Índigo — asociación civil' },
+          ]}
+          {...(errores['legalEntity'] === undefined ? {} : { errors: errores['legalEntity'] })}
+        />
+      )}
 
       <Field
         name="contactName"

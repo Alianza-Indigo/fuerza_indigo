@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  confirmRouting,
   INTAKE_RATE_LIMIT,
   PUBLIC_INTAKE_NOTICE_CODE,
   requestDetail,
@@ -334,5 +335,206 @@ describe('bandeja', () => {
     });
     expect(resultado.ok).toBe(false);
     if (!resultado.ok) expect(resultado.error.code).toBe('FORBIDDEN');
+  });
+});
+
+/**
+ * Clasificación informativa, propuesta y confirmación humana (Fase 6).
+ *
+ * El criterio del PRD §24 es doble: que la persona pueda pedir apoyo **sin
+ * saber qué área le corresponde**, y que la propuesta automática **no sustituya
+ * la confirmación humana**. Las dos cosas se comprueban ejecutando, y la
+ * segunda mirando lo que quedó en la base: mientras nadie confirma, no hay
+ * confirmación escrita en ningún sitio.
+ */
+describe('la persona pide apoyo sin saber a qué área le toca', () => {
+  beforeEach(async () => {
+    await publicarAviso(fuerzaId);
+    await publicarAviso(alianzaId);
+  });
+
+  it('sin decir a quién le escribe, el mensaje llega igual y con propuesta', async () => {
+    const { legalEntity: _sinDecirlo, ...sinEntidad } = envio({
+      requestType: 'EDUCATION_ACCESS',
+      subject: 'A mi hija le niegan el apoyo en la escuela',
+      narrative:
+        'A mi hija le niegan los apoyos que necesita en la escuela y no sé a quién acudir. Llevamos dos meses así.',
+    });
+
+    const enviado = await submitRequest(sinEntidad, CONTEXTO);
+    expect(enviado.ok, enviado.ok ? '' : enviado.error.message).toBe(true);
+    if (!enviado.ok) return;
+
+    const fila = await base.prisma.supportRequest.findFirstOrThrow({
+      where: { folio: enviado.data.folio },
+      select: {
+        legalEntityId: true,
+        suggestedRouting: true,
+        confirmedRoutingLegalEntityId: true,
+        confirmedById: true,
+        confirmedAt: true,
+        status: true,
+        urgency: true,
+      },
+    });
+
+    // Entró a la bandeja de la asociación civil, que es de quien es la materia.
+    expect(fila.legalEntityId).toBe(alianzaId);
+
+    // Se lee la fila en crudo a propósito: lo que importa es qué quedó
+    // guardado, no cómo lo presenta después un caso de uso.
+    const propuesta = fila.suggestedRouting as Record<string, unknown>;
+    expect(propuesta['entidad']).toBe('ALIANZA_INDIGO');
+    expect(String(propuesta['motivo']).length).toBeGreaterThan(40);
+
+    // Y la propuesta **no decidió nada más**: ni confirmó, ni valoró la
+    // prioridad, ni movió el estado.
+    expect(fila.confirmedRoutingLegalEntityId).toBeNull();
+    expect(fila.confirmedById).toBeNull();
+    expect(fila.confirmedAt).toBeNull();
+    expect(fila.status).toBe('RECEIVED');
+    expect(fila.urgency).toBe('ROUTINE');
+  });
+
+  it('si sí lo dice, ahí queda, aunque la materia fuera de la otra', async () => {
+    const enviado = await submitRequest(
+      envio({ requestType: 'EDUCATION_ACCESS', legalEntity: 'FUERZA_INDIGO' }),
+      CONTEXTO,
+    );
+    expect(enviado.ok, enviado.ok ? '' : enviado.error.message).toBe(true);
+    if (!enviado.ok) return;
+
+    const fila = await base.prisma.supportRequest.findFirstOrThrow({
+      where: { folio: enviado.data.folio },
+      select: { legalEntityId: true, suggestedRouting: true },
+    });
+    expect(fila.legalEntityId).toBe(fuerzaId);
+    // La alternativa deja dicho que por materia habría ido a la otra.
+    const propuesta = fila.suggestedRouting as Record<string, unknown>;
+    expect(propuesta['alternativa']).toBe('ALIANZA_INDIGO');
+  });
+});
+
+describe('la propuesta no sustituye la confirmación humana', () => {
+  beforeEach(async () => {
+    await publicarAviso(fuerzaId);
+    await publicarAviso(alianzaId);
+  });
+
+  async function recibirSolicitud(): Promise<string> {
+    const enviado = await submitRequest(envio(), CONTEXTO);
+    if (!enviado.ok) throw new Error(enviado.error.message);
+    const fila = await base.prisma.supportRequest.findFirstOrThrow({
+      where: { folio: enviado.data.folio },
+      select: { id: true },
+    });
+    return fila.id;
+  }
+
+  it('quien no tiene facultades no confirma nada', async () => {
+    const requestId = await recibirSolicitud();
+    const resultado = await confirmRouting(await contextoDe(base.prisma, sinFacultades), {
+      requestId,
+      legalEntity: 'FUERZA_INDIGO',
+      urgency: 'PRIORITY',
+      note: 'Intento de confirmar sin facultades para comprobar que no se admite.',
+    });
+    expect(resultado.ok).toBe(false);
+
+    const fila = await base.prisma.supportRequest.findUniqueOrThrow({
+      where: { id: requestId },
+      select: { confirmedById: true, status: true },
+    });
+    expect(fila.confirmedById).toBeNull();
+    expect(fila.status).toBe('RECEIVED');
+  });
+
+  it('confirmar deja quién, cuándo y con qué prioridad, y un asiento en la bitácora', async () => {
+    const requestId = await recibirSolicitud();
+    const resultado = await confirmRouting(await contextoDe(base.prisma, atiende), {
+      requestId,
+      legalEntity: 'FUERZA_INDIGO',
+      urgency: 'PRIORITY',
+      note: 'Es un despido con plazo para impugnar: lo lleva la asesoría laboral de la sección.',
+    });
+    expect(resultado.ok, resultado.ok ? '' : resultado.error.message).toBe(true);
+    if (!resultado.ok) return;
+    expect(resultado.data.coincideConLaPropuesta).toBe(true);
+
+    const fila = await base.prisma.supportRequest.findUniqueOrThrow({
+      where: { id: requestId },
+      select: {
+        status: true,
+        urgency: true,
+        confirmedRoutingLegalEntityId: true,
+        confirmedById: true,
+        confirmedAt: true,
+      },
+    });
+    expect(fila.status).toBe('TRIAGE');
+    expect(fila.urgency).toBe('PRIORITY');
+    expect(fila.confirmedRoutingLegalEntityId).toBe(fuerzaId);
+    expect(fila.confirmedById).toBe(atiende.userId);
+    expect(fila.confirmedAt).not.toBeNull();
+
+    const asiento = await base.prisma.auditEvent.findFirst({
+      where: { objectKind: 'SupportRequest', objectId: requestId, action: 'support.routing.confirmed' },
+      select: { metadata: true },
+    });
+    expect(asiento).not.toBeNull();
+  });
+
+  it('quien confirma puede apartarse de la propuesta, y queda escrito que lo hizo', async () => {
+    // Confirmar no es decir que sí: si solo se pudiera aceptar, no sería una
+    // confirmación sino un trámite.
+    const requestId = await recibirSolicitud();
+    const resultado = await confirmRouting(await contextoDe(base.prisma, atiende), {
+      requestId,
+      legalEntity: 'ALIANZA_INDIGO',
+      urgency: 'ROUTINE',
+      note: 'Al leerlo, lo que pide es acompañamiento social y no defensa laboral. Va a la asociación civil.',
+    });
+    expect(resultado.ok, resultado.ok ? '' : resultado.error.message).toBe(true);
+    if (!resultado.ok) return;
+    expect(resultado.data.coincideConLaPropuesta).toBe(false);
+
+    const asiento = await base.prisma.auditEvent.findFirstOrThrow({
+      where: { objectKind: 'SupportRequest', objectId: requestId, action: 'support.routing.confirmed' },
+      select: { metadata: true },
+    });
+    const metadatos = asiento.metadata as Record<string, unknown>;
+    // Si esto ocurre a menudo, la tabla de clasificación está mal y hay que
+    // corregirla. Un asiento que solo dijera «confirmado» no lo diría.
+    expect(metadatos['seApartoDeLaPropuesta']).toBe(true);
+  });
+
+  it('no se confirma dos veces', async () => {
+    const requestId = await recibirSolicitud();
+    const primera = await confirmRouting(await contextoDe(base.prisma, atiende), {
+      requestId,
+      legalEntity: 'FUERZA_INDIGO',
+      urgency: 'PRIORITY',
+      note: 'Primera confirmación, la que vale.',
+    });
+    expect(primera.ok, primera.ok ? '' : primera.error.message).toBe(true);
+
+    const segunda = await confirmRouting(await contextoDe(base.prisma, ajenaAlaEntidad), {
+      requestId,
+      legalEntity: 'ALIANZA_INDIGO',
+      urgency: 'ROUTINE',
+      note: 'Segunda confirmación, que no debe admitirse.',
+    });
+    expect(segunda.ok).toBe(false);
+  });
+
+  it('sin motivo escrito no se confirma', async () => {
+    const requestId = await recibirSolicitud();
+    const resultado = await confirmRouting(await contextoDe(base.prisma, atiende), {
+      requestId,
+      legalEntity: 'FUERZA_INDIGO',
+      urgency: 'PRIORITY',
+      note: 'ok',
+    });
+    expect(resultado.ok).toBe(false);
   });
 });

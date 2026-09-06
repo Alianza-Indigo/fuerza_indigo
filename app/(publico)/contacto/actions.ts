@@ -25,7 +25,11 @@ export async function submitRequestAction(_previo: RequestState, formData: FormD
   const resultado = await submitRequest(
     {
       requestType: textField(formData, 'requestType') as never,
-      legalEntity: textField(formData, 'legalEntity') as never,
+      // Un campo que la pantalla no ofrece llega como cadena vacía, y la
+      // cadena vacía significa «no lo dije», no «elijo el vacío».
+      ...(textField(formData, 'legalEntity') === ''
+        ? {}
+        : { legalEntity: textField(formData, 'legalEntity') as never }),
       contactName: textField(formData, 'contactName'),
       contactEmail: textField(formData, 'contactEmail'),
       contactPhone: textField(formData, 'contactPhone'),

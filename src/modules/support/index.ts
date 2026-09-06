@@ -9,6 +9,11 @@ export {
   type IntakeContext,
 } from './application/intake';
 export {
+  confirmRouting,
+  confirmRoutingSchema,
+  type ConfirmRoutingInput,
+} from './application/routing';
+export {
   requestList,
   requestDetail,
   resolveRequest,

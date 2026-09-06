@@ -9,6 +9,9 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { SupportRequestStatus, SupportRequestType } from '@prisma-client/enums';
+import { nombreCompleto } from '@/platform/i18n/person-name';
+import type { PropuestaDeCanalizacion } from '../domain/routing';
+import { leerPropuesta } from './routing';
 
 /**
  * Bandeja de la entrada única de ayuda.
@@ -36,6 +39,15 @@ export interface RequestRow {
 }
 
 export interface RequestDetail extends RequestRow {
+  /**
+   * La canalización que el sistema propuso al recibir el mensaje, con su motivo.
+   * **No es una decisión**: se enseña para que quien confirma pueda estar en
+   * desacuerdo con ella (PRD §10.1).
+   */
+  readonly propuesta: PropuestaDeCanalizacion | null;
+  /** Quién confirmó la canalización y cuándo, si ya se confirmó. */
+  readonly confirmadaPor: string | null;
+  readonly confirmadaEl: Date | null;
   readonly contactEmail: string | null;
   readonly contactPhone: string | null;
   readonly preferredChannel: 'EMAIL' | 'PHONE';
@@ -167,6 +179,21 @@ export async function requestDetail(
       legalEntity: { select: { shortName: true } },
       handledByActor: { select: { label: true } },
       privacyNoticeVersion: { select: { version: true } },
+      suggestedRouting: true,
+      confirmedAt: true,
+      confirmedBy: {
+        select: {
+          person: {
+            select: {
+              givenName: true,
+              middleName: true,
+              familyName: true,
+              secondFamilyName: true,
+              preferredName: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -204,6 +231,10 @@ export async function requestDetail(
     handlingNote: fila.handlingNote,
     privacyNoticeVersion: fila.privacyNoticeVersion.version,
     acceptedAt: fila.acceptedAt,
+    propuesta: leerPropuesta(fila.suggestedRouting),
+    confirmadaPor:
+      fila.confirmedBy === null ? null : nombreCompleto(fila.confirmedBy.person),
+    confirmadaEl: fila.confirmedAt,
   });
 }
 

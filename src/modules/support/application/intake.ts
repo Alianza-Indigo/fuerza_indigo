@@ -10,6 +10,7 @@ import { env } from '@/platform/config/env';
 import { enqueue } from '@/platform/jobs/queue';
 import { logger } from '@/platform/observability/logger';
 import type { LegalEntityCode, SupportRequestType } from '@prisma-client/enums';
+import { proponerCanalizacion } from '../domain/routing';
 
 /**
  * Entrada pública: contacto y solicitud inicial (PRD §10.1, Fase 2).
@@ -80,7 +81,19 @@ export const submitRequestSchema = z
     requestType: z.enum(REQUEST_TYPES, {
       error: () => 'Elige de qué se trata tu mensaje.',
     }),
-    legalEntity: z.enum(['FUERZA_INDIGO', 'ALIANZA_INDIGO'] as const satisfies readonly LegalEntityCode[]),
+    /**
+     * A quién le escribe, **si lo sabe**.
+     *
+     * Dejó de ser obligatoria en la Fase 6. El criterio del PRD §24 es que la
+     * persona pueda pedir apoyo sin saber qué área le corresponde, y el
+     * formulario lo incumplía con educación: preguntaba «¿a quién le escribes?»
+     * y añadía «si no sabes cuál, elige la que más se acerque». Eso es pedirle
+     * que acierte en una decisión institucional para poder contar lo que le
+     * pasa. Cuando no la elige, el sistema propone —y una persona confirma—.
+     */
+    legalEntity: z
+      .enum(['FUERZA_INDIGO', 'ALIANZA_INDIGO'] as const satisfies readonly LegalEntityCode[])
+      .optional(),
     contactName: z
       .string()
       .trim()
@@ -180,8 +193,18 @@ export async function submitRequest(
     return fail(errors.rateLimited(Math.ceil(INTAKE_RATE_LIMIT.windowMs / 1000)));
   }
 
+  // La propuesta se calcula aquí, con una tabla explícita y sin ninguna
+  // intervención automática que decida por nadie (`domain/routing.ts`). Decide
+  // a qué bandeja entra el mensaje —tiene que entrar a alguna— y **no** decide
+  // nada más: la canalización queda como propuesta hasta que alguien la
+  // confirme.
+  const propuesta = proponerCanalizacion({
+    requestType: data.requestType,
+    entidadElegida: data.legalEntity,
+  });
+
   const entidad = await db().legalEntity.findUnique({
-    where: { code: data.legalEntity },
+    where: { code: propuesta.entidad },
     select: { id: true, shortName: true, contactEmail: true, documentSeriesPrefix: true },
   });
   if (entidad === null) return fail(errors.notFound('entidad jurídica inexistente'));
@@ -195,7 +218,7 @@ export async function submitRequest(
     return fail(
       errors.ruleViolation(
         'Ahora mismo no podemos recibir tu mensaje por este formulario. Escríbenos directamente y te atendemos igual.',
-        `no hay aviso de privacidad publicado (${PUBLIC_INTAKE_NOTICE_CODE}) para ${data.legalEntity}: recabar datos personales sin él incumpliría la ley`,
+        `no hay aviso de privacidad publicado (${PUBLIC_INTAKE_NOTICE_CODE}) para ${propuesta.entidad}: recabar datos personales sin él incumpliría la ley`,
       ),
     );
   }
@@ -222,6 +245,19 @@ export async function submitRequest(
             subject: data.subject,
             narrative: data.narrative,
             territoryHint: data.territoryHint ?? null,
+            // La urgencia que propone la tabla **no** se escribe en `urgency`:
+            // esa columna es la valoración de la organización y se llena cuando
+            // una persona valora. Guardarla aquí haría pasar por valoración lo
+            // que solo es una sugerencia.
+            suggestedRouting: {
+              entidad: propuesta.entidad,
+              dominio: propuesta.dominio,
+              urgencia: propuesta.urgencia,
+              motivo: propuesta.motivo,
+              alternativa: propuesta.alternativa,
+              requiereProtocoloDeRiesgo: propuesta.requiereProtocoloDeRiesgo,
+              elegidaPorLaPersona: data.legalEntity ?? null,
+            },
             privacyNoticeVersionId: aviso.id,
             originFingerprint,
           },

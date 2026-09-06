@@ -57,6 +57,8 @@ export const AUDIT_ACTIONS = {
   SUPPORT_REQUEST_READ: 'support.request.read',
   SUPPORT_REQUEST_HANDLED: 'support.request.handled',
   SUPPORT_REQUEST_DISCARDED: 'support.request.discarded',
+  /** Confirmación humana de la canalización propuesta (PRD §10.1, Fase 6). */
+  SUPPORT_ROUTING_CONFIRMED: 'support.routing.confirmed',
 
   // Finanzas — Fase 3. Todo lo que mueve dinero o el libro deja rastro.
   CATALOG_PRODUCT_CREATED: 'billing.catalog.product_created',

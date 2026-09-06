@@ -10,7 +10,7 @@
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026, junto con la Fase 5; confirmada al aprobarse esta
 - **Fecha de inicio:** 6 de septiembre de 2026
 - **Fecha de cierre:** 6 de septiembre de 2026 (cerrada en `a7e8031`, **reabierta** el mismo día por `D-F6-006` y cerrada de nuevo)
-- **SHA del punto de control:** pendiente de asignar al confirmar el cierre
+- **SHA del punto de control:** `6f31d88`
 - **Fase anterior:** 5 — `APPROVED`, cerrada en `6c5b18c`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 7 — Herramientas tecnológicas y accesos externos, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -199,7 +199,7 @@ Probado viéndolo fallar de cuatro maneras.
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
 | 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
-| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | pendiente de asignar al confirmar el cierre (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
 | 7 a 10 | — | — | No iniciadas | — |
 
 ---

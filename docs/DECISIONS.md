@@ -1500,3 +1500,15 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **El orden lo decide el daño.** Primero el riesgo inmediato que nadie ha recogido, después lo vencido, después lo crítico sin primera respuesta, después las tareas. Y una sola alerta de tareas por expediente: una por tarea llenaría la bandeja con el mismo folio diez veces y enterraría lo demás.
 
 **Y nada cruza la frontera.** Las alertas salen del mismo alcance —compartimento, entidad, territorio, asignación— que la lista y el detalle. Una bandeja de urgencias es exactamente el sitio donde una frontera olvidada haría más daño.
+
+---
+
+## ADR-0121 · Un cierre no puede contradecir lo que el expediente dice de sí mismo
+
+**Contexto.** Cerrar un expediente exige resultado y motivo, y la base ya lo impone. Pero un cierre puede ser formalmente válido y aun así falso: cerrar con tareas abiertas, con una marca de riesgo que nadie recogió, o «por canalización» cuando ninguna área receptora la aceptó.
+
+**Decisión.** El cierre comprueba lo que consta en el propio expediente. Con trabajo pendiente no se cierra —y el mensaje dice cuántas tareas quedan, porque terminarlas o cancelarlas con su motivo son las dos salidas—; con un riesgo vivo tampoco; y cerrar como canalizado exige una canalización **aceptada**, porque si nadie la aceptó el asunto se queda sin atender en los dos lados a la vez y el expediente diría lo contrario.
+
+**Reabrir cuenta las veces.** No devuelve el expediente a su estado anterior: lo reabre incrementando `reopenCount` y dejando en la bitácora con qué resultado se había cerrado. Reabrir el mismo asunto muchas veces suele querer decir que no se resolvió, no que vuelva a pasar, y la cuenta a la vista es lo que permite verlo.
+
+**Y no todo cierre admite reapertura.** Lo que se cerró porque el asunto no era competencia de la organización no se reabre: reabrirlo no la vuelve competente. Lo que procede es abrirlo donde corresponda o canalizarlo, y las dos cosas se pueden hacer.

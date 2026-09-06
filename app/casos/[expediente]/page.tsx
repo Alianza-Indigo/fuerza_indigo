@@ -26,6 +26,7 @@ import { AdvanceTaskForm, AssignTaskForm, CreateTaskForm } from './task-forms';
 import { EditMessageForm, SendMessageForm } from './message-forms';
 import { AttachDocumentForm, OpenClinicalDocumentForm, RemoveDocumentForm } from './document-forms';
 import { AcknowledgeEmergencyForm, CloseEmergencyForm, RaiseEmergencyForm } from './emergency-forms';
+import { CloseCaseForm, ReopenCaseForm } from './closure-forms';
 import {
   AcceptReferralForm,
   CloseReferralForm,
@@ -491,6 +492,16 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
             </Card>
           </Section>
         )}
+
+        <Section title={datos.status === 'CLOSED' ? 'Reabrir el expediente' : 'Cerrar el expediente'} level={2}>
+          <Card>
+            {datos.status === 'CLOSED' ? (
+              <ReopenCaseForm caseId={datos.id} veces={datos.reopenCount} />
+            ) : (
+              <CloseCaseForm caseId={datos.id} />
+            )}
+          </Card>
+        </Section>
 
         <Section title="Valoración" level={2}>
           {puedeValorar ? (

@@ -74,6 +74,14 @@ export {
   type AcknowledgeEmergencyInput,
   type CloseEmergencyInput,
 } from './application/emergencies';
+export {
+  closeCase,
+  reopenCase,
+  closeCaseSchema,
+  reopenCaseSchema,
+  type CloseCaseInput,
+  type ReopenCaseInput,
+} from './application/closure';
 export { caseAlerts, type Alerta, type ClaseDeAlerta } from './application/alerts';
 export { peopleForCase, entitiesForReferral, type Opcion } from './application/options';
 export {

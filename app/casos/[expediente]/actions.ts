@@ -11,6 +11,7 @@ import {
   attachDocument,
   assignCase,
   assignTask,
+  closeCase,
   closeEmergency,
   closeReferral,
   createTask,
@@ -19,6 +20,7 @@ import {
   raiseEmergency,
   removeDocument,
   removeParticipant,
+  reopenCase,
   requestReferralConsent,
   returnReferral,
   sendMessage,
@@ -613,4 +615,56 @@ export async function closeEmergencyAction(_previo: CaseFormState, formData: For
 
   revalidatePath('/casos');
   return { status: 'ok', message: 'Marca cerrada, con lo que se hizo escrito.' };
+}
+
+/**
+ * Cierra el expediente diciendo cómo acabó.
+ *
+ * El módulo se niega si el propio expediente dice lo contrario: tareas sin
+ * terminar, una marca de riesgo sin cerrar, o un cierre por canalización que
+ * nadie aceptó.
+ */
+export async function closeCaseAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await closeCase(actor, {
+    caseId: textField(formData, 'caseId'),
+    outcome: textField(formData, 'outcome') as never,
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: `Expediente ${resultado.data.folio} cerrado, con el resultado escrito.` };
+}
+
+/** Reabre un expediente cerrado, y la cuenta de reaperturas sube. */
+export async function reopenCaseAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await reopenCase(actor, {
+    caseId: textField(formData, 'caseId'),
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message: `Reabierto. Es la ${resultado.data.veces}.ª vez, y consta con qué resultado se había cerrado.`,
+  };
 }

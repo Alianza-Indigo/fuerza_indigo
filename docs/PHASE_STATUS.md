@@ -10,6 +10,7 @@
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026
 - **Fecha de inicio:** 5 de septiembre de 2026
 - **Fecha de cierre:** 6 de septiembre de 2026
+- **SHA del punto de control:** `123cd0c`
 - **Fase anterior:** 4 — `APPROVED`, cerrada en `cadebbd`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 6 — Defensa, casos, protección y canalización social, **autorizada por la persona usuaria** junto con esta, y que **no se inicia hasta que la Fase 5 esté aprobada** (PRD §23.3)
 
@@ -105,7 +106,7 @@ Criterios específicos del PRD §24 Fase 5, comprobados **ejecutando el sistema*
 | 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
-| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | pendiente de asignar al confirmar el cierre |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `123cd0c` |
 | 6 a 10 | — | — | No iniciadas | — |
 
 ---

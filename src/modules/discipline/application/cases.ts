@@ -35,7 +35,7 @@ import { bodiesWithLiveOffice, instruyeEn } from './assignment';
  *
  * **Ninguna inteligencia artificial impone sanciones ni recomienda
  * culpabilidad.** No hay aquí ninguna llamada a un modelo, y no la habrá: la
- * Fase 10 añade asistencia de redacción a otros módulos, no a este.
+ * Fase 8 añade asistencia de redacción a otros módulos, no a este.
  */
 
 function detalles(error: z.ZodError): Record<string, string[]> {

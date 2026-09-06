@@ -1542,3 +1542,19 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Y se dice cuántas celdas se suprimieron.** Un indicador con huecos y sin explicación parece un error de cálculo, y quien lo lee acaba pidiendo «los datos completos», que es exactamente lo que el umbral existe para no dar.
 
 **Los indicadores no son el sistema visto desde arriba.** Alcanzan el compartimento y el territorio de quien pregunta, como todo lo demás. Un panel de cifras es un sitio cómodo para saltarse una frontera sin que se note.
+
+---
+
+## ADR-0124 · El contrato de fases tiene una sola fuente, y son los encabezados del PRD
+
+**Contexto.** La corrección de alcance del 5 de septiembre retiró CIAN y CENI como fases y dejó el proyecto en once, 0 a 10. Se reescribió el PRD, se renumeró el backlog y se ajustó `scripts/phase/prd-contract.json`. El `README.md` no: siguió anunciando trece fases, con CIAN en la 8 y CENI en la 9, durante la Fase 5 y la Fase 6 completas. Lo encontró la persona usuaria después de que la Fase 6 se declarara cerrada.
+
+**El daño no es cosmético.** El README es la puerta de entrada del repositorio y el PRD §23 obliga a construir *la fase activa declarada*. Quien llega —persona o agente— lee esa lista primero. Creerla habría llevado a construir CIAN como Fase 8: exactamente lo que la corrección ordenó no hacer.
+
+**Decisión.** El contrato de fases se declara en **un solo sitio**: los encabezados `## FASE n — nombre` del PRD §24. `prd-contract.json`, la lista del README y los títulos del backlog no son declaraciones independientes, son copias, y el control `C-COH-16` las compara contra la fuente en número, orden y nombre.
+
+**Y nadie cita una fase que no existe.** El mismo control recorre el repositorio y rechaza cualquier mención a una fase posterior a la última contratada. Las citas viven sobre todo en comentarios —«esto llega en una fase posterior», con su número— y sobreviven a una renumeración sin que nada se rompa: el código compila igual y la promesa apunta a un sitio que ya no existe. Había cuatro.
+
+**El archivo histórico queda fuera a propósito.** `docs/PHASE_STATUS.md` conserva el registro de lo que se dijo y se firmó cuando el contrato era otro. Reescribirlo para que cuadre convertiría un historial en una versión conveniente del pasado; el control lo excluye y el documento lo dice.
+
+**Por qué un control y no un recordatorio.** Es el tercer defecto de esta fase de la misma familia: una regla escrita en un sitio y comprobada en otro. La corrección de `D-F4-002` dependía de que alguien se acordara y reapareció como `D-F6-005`. Un contrato que se sostiene en la memoria de quien edita no es un contrato.

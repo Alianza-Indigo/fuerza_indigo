@@ -198,8 +198,8 @@ La distinción entre **vacío genuino** y **sin resultados por filtros** es obli
 | `npm run typecheck` | TypeScript en modo estricto, sin errores ni supresiones sin justificación | 1 |
 | `npm run test` | Unitarias y de componentes | 1 |
 | `npm run test:integration` | Integración y contractuales contra base efímera | 1 |
-| `npm run test:e2e` | Playwright, móvil y escritorio | 2 |
-| `npm run test:a11y` | Accesibilidad automatizada sobre rutas representativas | 2 |
+| `npm run test:e2e` | Playwright, móvil y escritorio. Ejecuta también `tests/a11y`, porque `playwright.config.ts` declara las dos suites juntas | 2 |
+| `npm run test:a11y` | Solo la accesibilidad automatizada, para trabajar sobre una pantalla sin esperar el recorrido completo | 2 |
 | `npm run build` | Construcción de producción | 1 |
 | `npm run db:migrate` | Migraciones desde el repositorio | 1 |
 | `npm run db:seed` | Semilla idempotente y no sensible | 1 |
@@ -244,7 +244,7 @@ Siete controles más, nacidos igualmente de defectos reales de esa fase:
 
 ### 11.1 Integración continua
 
-La CI ejecuta, en este orden y deteniéndose al primer fallo: `phase:verify` → `lint` → `typecheck` → `test` → `test:integration` → `build` → `test:e2e` → `test:a11y`. El despliegue a producción ejecuta además `prisma migrate deploy` y se detiene si la migración falla.
+La CI ejecuta, en este orden y deteniéndose al primer fallo: `phase:verify` → `lint` → `typecheck` → `test` → `test:integration` → `build` → `test:e2e`. El último paso cubre extremo a extremo y accesibilidad en una sola ejecución: `playwright.config.ts` declara ambas suites, y correrlas por separado repetiría el arranque del servidor y el recorrido del navegador sin comprobar nada nuevo. El despliegue a producción ejecuta además `prisma migrate deploy` y se detiene si la migración falla.
 
 ---
 

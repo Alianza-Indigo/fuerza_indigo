@@ -2014,7 +2014,7 @@ Demostrar que el sistema completo puede operar en producción sin pendientes fun
 
 ### Alcance
 
-- prueba integral de los 15 flujos E2E globales;
+- prueba integral de los 13 flujos E2E globales del §22.2;
 - revisión de seguridad;
 - revisión de permisos;
 - revisión visual completa;

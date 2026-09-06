@@ -11,14 +11,13 @@
 ---
 
 ## Fase 0 — Arquitectura integral y preparación del repositorio
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F0-ARQ-001 | Inspeccionar el repositorio y levantar el inventario de código reutilizable y de deuda | Terminada |
 | F0-ARQ-002 | Definir capas, dirección de dependencias y contratos de los servicios de aplicación | Terminada |
 | F0-ARQ-003 | Trazar el mapa de módulos con sus dependencias permitidas | Terminada |
 | F0-ARQ-004 | Diseñar la arquitectura de rutas de las siete superficies y las familias de API | Terminada |
-| F0-DAT-001 | Modelar las 130 entidades del PRD §18.1 a §18.10 con campos, relaciones e índices | Terminada |
+| F0-DAT-001 | Modelar las entidades del PRD §18.1 a §18.10 con campos, relaciones e índices —130 cuando se contrató, **103** desde la corrección de alcance del 5 de septiembre— | Terminada |
 | F0-DAT-005 | Modelar las entidades de apoyo y las tablas de relación que el articulado del PRD exige | Terminada |
 | F0-DAT-002 | Definir enumeraciones, máquinas de estado y transiciones con motivo y actor | Terminada |
 | F0-DAT-003 | Justificar consolidaciones y ampliaciones del modelo | Terminada |
@@ -60,7 +59,6 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 ---
 
 ## Fase 1 — Infraestructura, datos, autenticación, permisos y Superadmin
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F1-ARQ-001 | Inicializar Next.js con App Router y TypeScript en modo estricto | Terminada |
@@ -129,7 +127,6 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 ---
 
 ## Fase 2 — Sistema de diseño, PWA, CMS y sitio público
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F2-UI-001 | Definir los tokens de color, tipografía, espaciado, radio, sombra y movimiento | Hecho |
@@ -163,7 +160,6 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 ---
 
 ## Fase 3 — Catálogo financiero, Stripe y libro auxiliar
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F3-DAT-001 | Migrar las entidades de finanzas con la entidad receptora presente en cada movimiento | Hecho |
@@ -192,7 +188,6 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 ---
 
 ## Fase 4 — Afiliación, padrones, directorios y credenciales
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F4-DAT-001 | Migrar las entidades de membresías, padrones, relaciones y credenciales | Hecho |
@@ -225,7 +220,6 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 ---
 
 ## Fase 5 — Estructura territorial, gobierno, asambleas y elecciones
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F5-DAT-001 | Migrar las entidades de gobierno, territorio, votación, negociación y disciplina | Terminada |
@@ -263,7 +257,6 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 ---
 
 ## Fase 6 — Defensa, casos, protección y canalización social
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F6-DAT-001 | Migrar las entidades de solicitudes, casos, derivaciones y marcas de emergencia | Pendiente |
@@ -292,8 +285,7 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 ---
 
-## Fase 7 — Plataformas y herramientas del ecosistema
-
+## Fase 7 — Herramientas tecnológicas y accesos externos
 CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación propia, fuera de este repositorio. Esta fase las **presenta y lleva a ellas**; no las construye, no las duplica y no administra su operación (PRD §12, §13 y §14).
 
 | Id | Tarea | Estado |
@@ -313,7 +305,6 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 ---
 
 ## Fase 8 — Inteligencia artificial Gemini
-
 | Id | Tarea | Estado |
 |---|---|---|
 | F8-DAT-001 | Migrar las entidades de configuración, prompts, conversaciones, generaciones y revisiones | Pendiente |
@@ -337,8 +328,7 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 
 ---
 
-## Fase 9 — Comunicaciones, eventos, capacitación e indicadores
-
+## Fase 9 — Eventos, formación e indicadores
 | Id | Tarea | Estado |
 |---|---|---|
 | F9-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Pendiente |
@@ -362,8 +352,7 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 
 ---
 
-## Fase 10 — Endurecimiento, migración final y liberación productiva
-
+## Fase 10 — Integración, endurecimiento y producción
 | Id | Tarea | Estado |
 |---|---|---|
 | F10-QA-001 | Ejecutar íntegros los trece flujos E2E globales | Pendiente |

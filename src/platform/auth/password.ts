@@ -79,9 +79,9 @@ export const MIN_PASSWORD_LENGTH = 12;
  * Contraseñas notoriamente comprometidas o triviales en español y en inglés.
  *
  * No sustituye a una verificación contra un servicio de filtraciones, que se
- * incorpora en la Fase 12; corta desde ahora los casos más frecuentes sin
- * imponer reglas de composición, que empeoran la usabilidad sin mejorar la
- * seguridad.
+ * incorpora en la Fase 10 con la revisión de seguridad; corta desde ahora los
+ * casos más frecuentes sin imponer reglas de composición, que empeoran la
+ * usabilidad sin mejorar la seguridad.
  */
 const COMMON_PASSWORDS = new Set([
   'contrasena123',

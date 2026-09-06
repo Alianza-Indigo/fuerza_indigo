@@ -504,7 +504,8 @@ enum OrganizationStatus {
 }
 
 /// Persona autorizada a actuar por una organización.
-/// Una organización nunca alcanza a otra (PRD §24 Fase 9).
+/// Una organización nunca alcanza a otra: el aislamiento por organización es
+/// regla del módulo de identidad (PRD §18.1), no de una fase posterior.
 model OrganizationUser {
   id             String               @id @default(uuid(7)) @db.Uuid
   organizationId String               @db.Uuid

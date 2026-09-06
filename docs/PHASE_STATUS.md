@@ -9,8 +9,8 @@
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026, junto con la Fase 5; confirmada al aprobarse esta
 - **Fecha de inicio:** 6 de septiembre de 2026
-- **Fecha de cierre:** 6 de septiembre de 2026
-- **SHA del punto de control:** `a7e8031`
+- **Fecha de cierre:** 6 de septiembre de 2026 (cerrada en `a7e8031`, **reabierta** el mismo día por `D-F6-006` y cerrada de nuevo)
+- **SHA del punto de control:** pendiente de asignar al confirmar el cierre
 - **Fase anterior:** 5 — `APPROVED`, cerrada en `6c5b18c`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 7 — Herramientas tecnológicas y accesos externos, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -44,6 +44,7 @@ El PRD §24 Fase 6 contrata: solicitud guiada de apoyo; clasificación informati
 | L | Paneles: Trabajo y Conflictos, Neuroinclusión y Enlace Familiar, y panel social | Completo |
 | M | Indicadores anonimizados con umbral de privacidad | Completo |
 | N | Pruebas, controles de fase, documentación y cierre | Completo |
+| O | Corrección `D-F6-006`: el contrato de fases vuelve a tener una sola fuente | Completo |
 
 ---
 
@@ -65,13 +66,15 @@ en la base con las credenciales de la aplicación, nunca leyendo el código (`te
 
 ## Defectos abiertos
 
-**Ninguno.** Los cinco que aparecieron durante la construcción se corrigieron dentro de la misma fase y se registran
-abajo. Cuatro los encontró el propio verificador o el intento de romper una regla; ninguno llegó al cierre.
+**Ninguno.** Los seis que aparecieron se corrigieron dentro de la misma fase y se registran abajo. Cuatro los encontró
+el propio verificador o el intento de romper una regla. **Uno llegó al cierre y lo encontró la persona usuaria**: está
+contado como tal, no disimulado, y por él la fase volvió a abrirse.
 
-Los dos primeros son de la misma familia y merecen leerse juntos: una regla escrita en un sitio y comprobada en otro.
-La puerta de descarga tenía su propia idea de qué compartimento era un archivo de caso, distinta de la del módulo; y
-`ACTIVE_PHASE` decía una fase distinta de la que el proyecto declara. En los dos casos lo que falló no fue el juicio de
-nadie, fue que existían dos fuentes para el mismo hecho.
+Tres son de la misma familia y merecen leerse juntos: una regla escrita en un sitio y comprobada en otro. La puerta de
+descarga tenía su propia idea de qué compartimento era un archivo de caso, distinta de la del módulo; `ACTIVE_PHASE`
+decía una fase distinta de la que el proyecto declara; y el README anunciaba un contrato de fases distinto del que el
+PRD contrata. En los tres casos lo que falló no fue el juicio de nadie, fue que existían dos fuentes para el mismo
+hecho.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -84,6 +87,48 @@ nadie, fue que existían dos fuentes para el mismo hecho.
 | `D-F6-003` | Media | La regla que oculta los datos clínicos existía y **no la ejercía nadie**: ningún rol tenía a la vez la descarga de material sensible y no la facultad clínica, así que ninguna prueba la veía fallar. | Corregido en el bloque H. Se descubrió al intentar romperla. Lo que faltaba era otra cosa: la delegación territorial revisa solicitudes de afiliación cuyos documentos son datos personales sensibles y no podía abrirlos. Con esa facultad en su sitio, lo que la detiene ante un diagnóstico es la autorización clínica que no tiene. |
 | `D-F6-004` | Media | Cinco decisiones sobre expedientes —dos de canalización, tres de riesgo— armaban el recurso a mano y sin territorio. Un recurso sin territorio **no se niega: se permite**. | Corregido en los bloques I y J. Lo encontró el control `C-F6-01`, escrito en el bloque E precisamente para esto, en la misma sesión en que se introdujeron. |
 | `D-F6-005` | Media | `ACTIVE_PHASE` seguía en `5` mientras se construía la Fase 6: las variables que la fase en curso vuelve obligatorias no se exigían al arrancar. Es la reaparición de `D-F4-002`. | Corregido en el bloque N. Además se escribió el control `C-COH-15`, que compara lo que declara `docs/PHASE_STATUS.md` con lo que el arranque cree: la corrección de la Fase 4 dependía de que alguien se acordara, y esta no. |
+| `D-F6-006` | Alta | El `README.md` seguía anunciando el contrato **anterior** a la corrección de alcance: trece fases, con **CIAN en la 8 y CENI en la 9**. Dos fases enteras después de que CIAN y CENI dejaran de ser fases. Es la puerta de entrada del repositorio y lo primero que lee quien llega, incluida una máquina: quien lo creyera construiría CIAN como Fase 8. Con él, otras cinco discrepancias de la misma renumeración. | Corregido en el bloque O, **lo encontró la persona usuaria**. El contrato de fases pasa a tener una sola fuente —los encabezados `## FASE n` del PRD §24— y el control `C-COH-16` compara contra ella el README y `prd-contract.json`, y rechaza que cualquier archivo del repositorio cite una fase que no existe. Probado viéndolo fallar de cuatro maneras. |
+
+---
+
+## Reapertura del 6 de septiembre · `D-F6-006`
+
+La fase se había cerrado en `a7e8031` y se había emitido su informe. La persona usuaria revisó entonces el repositorio y
+encontró lo que la puerta de salida no vio: **el `README.md` seguía presentando CIAN y CENI como fases del proyecto**,
+con el contrato de trece fases anterior a la corrección de alcance del 5 de septiembre.
+
+No es un descuido de redacción. El README es lo primero que lee quien llega —una persona nueva o un agente— y el PRD §23
+obliga a construir *la fase activa declarada*. Un agente que hubiera creído esa lista habría construido CIAN como Fase 8:
+exactamente lo que la corrección de alcance ordenó no hacer.
+
+**Por qué la puerta de salida no lo vio.** Porque no lo miraba. `C-PHASE-01` comprueba que el backlog cubra las fases del
+contrato, y `C-COH-15` que el arranque crea la misma fase que el proyecto declara; ninguno comparaba el contrato con lo
+que el repositorio **anuncia**. La lista de fases del README no la leía nadie desde que se escribió en la Fase 0.
+
+**Qué se corrigió.**
+
+| Dónde | Qué decía | Qué dice |
+|---|---|---|
+| `README.md` §4 | Trece fases, 0 a 12, con CIAN en la 8 y CENI en la 9 | Las once fases, 0 a 10, con el nombre exacto de los encabezados del PRD §24 |
+| `README.md` §1 | «atención social (CIAN), inclusión institucional (CENI)» entre lo que este sistema hace | CIAN y CENI son plataformas propias e independientes que este repositorio presenta y a las que lleva; no las construye ni administra su operación |
+| `README.md` §3 | «130 entidades más 7 de apoyo y 26 tablas de relación»; «15 flujos E2E globales» | 103 entidades, 7 de apoyo y 17 de relación —127 tablas— y 13 flujos E2E, que es lo que el modelo y el plan de pruebas dicen desde la corrección |
+| `README.md` §5 | Una puesta en marcha detenida en la Fase 0: «la aplicación y los comandos se incorporan en la Fase 1» | Los pasos reales, que hoy levantan la aplicación desde las migraciones del repositorio |
+| `docs/PRD.md` §24 Fase 10 | «prueba integral de los 15 flujos E2E globales», contra los 13 que enumera su propio §22.2 | Los 13 del §22.2 |
+| `scripts/phase/prd-contract.json` y `docs/BACKLOG.md` | Las fases 7, 9 y 10 con un nombre distinto del encabezado del PRD | El nombre del PRD, verbatim |
+| Cuatro comentarios en el código y en el esquema | Promesas para las fases 9 y 12, que ya no existen | La fase que hoy contrata cada cosa: la 8 para la asistencia con IA y la búsqueda semántica, la 10 para la revisión de seguridad, y el módulo de identidad para el aislamiento entre organizaciones |
+| `package.json` y `docs/TEST_PLAN.md` | `test:a11y` contratado por el PRD §22.3, documentado, y **no declarado**: un comando que el plan prometía y no existía | El comando existe y ejecuta las 184 pruebas de accesibilidad; el plan dice además la verdad sobre la integración continua, que las corre dentro de `test:e2e` porque `playwright.config.ts` declara las dos suites juntas |
+
+**El control que impide la repetición.** `C-COH-16` toma como única fuente los encabezados `## FASE n — nombre` del PRD
+§24 y compara contra ellos el contrato del verificador y la lista del README —número, orden y nombre—, comprueba que el
+README declare cuántas fases son, y recorre todo el repositorio rechazando cualquier cita a una fase posterior a la
+última contratada. Se probó viéndolo fallar de cuatro maneras: devolviendo CIAN a la Fase 8 del README, desalineando un
+nombre en `prd-contract.json`, devolviendo «trece fases» a la frase de conteo, y devolviendo a un comentario del código
+la promesa de una fase que el contrato ya no tiene.
+
+**Qué no se tocó.** Los repositorios y el funcionamiento de CIAN y CENI. Las páginas `/cian` y `/ceni` siguen siendo
+contenido del gestor de contenidos y sus direcciones externas siguen sin estar escritas en ningún componente. El archivo
+histórico de este documento queda como estaba: es el registro de lo que se dijo cuando el contrato era otro, y el control
+lo excluye a propósito.
 
 ---
 
@@ -111,7 +156,7 @@ nadie, fue que existían dos fuentes para el mismo hecho.
 |---|---|
 | `npm run typecheck` | Sin errores |
 | `npm run lint` | Sin errores ni avisos |
-| `npm run phase:verify` | **66 aprobados, 0 fallidos**, 1 no aplicable |
+| `npm run phase:verify` | **67 aprobados, 0 fallidos**, 1 no aplicable |
 | `npx vitest run` | **1 167 pruebas en 74 archivos**, todas en verde |
 | `npm run build` | Compila; ninguna ruta de casos es estática |
 | `npx playwright test` | **284 pruebas**, 8 omitidas por diseño |
@@ -130,7 +175,7 @@ nadie, fue que existían dos fuentes para el mismo hecho.
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
 | 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
-| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `a7e8031` |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | pendiente de asignar al confirmar el cierre (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
 | 7 a 10 | — | — | No iniciadas | — |
 
 ---

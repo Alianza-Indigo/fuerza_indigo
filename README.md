@@ -1,6 +1,8 @@
 # Plataforma Integral Fuerza Índigo
 
-Sistema operativo digital del **Sindicato Unión de Inclusión y Derechos Neurodivergentes "Fuerza Índigo"** y del ecosistema **Alianza Índigo**: afiliación, padrones, vida democrática, defensa y protección, atención social (CIAN), inclusión institucional (CENI), herramientas tecnológicas (ADIA, NEXO, NeuroPlan), pagos e inteligencia artificial gobernada.
+Sistema operativo digital del **Sindicato Unión de Inclusión y Derechos Neurodivergentes "Fuerza Índigo"** y de la asociación civil **Alianza Índigo**: afiliación, padrones, vida democrática, defensa y protección, atención social, pagos e inteligencia artificial gobernada.
+
+> **CIAN y CENI no se construyen aquí.** Son plataformas propias e independientes, ya desarrolladas, con su propia autenticación, su propia operación, sus propios pagos y sus propios datos. Este repositorio las **presenta y lleva a ellas** —ficha y dirección externa configurable desde el CMS—, igual que a las herramientas NeuroPlan, ADIA y NEXO. No las duplica y no administra su operación (PRD §13 y §14).
 
 - **Dominio principal previsto:** `fuerzaindigo.lat`
 - **Especificación maestra:** [`docs/PRD.md`](docs/PRD.md) — PRD IA MAESTRO v1.0
@@ -43,12 +45,12 @@ Las versiones exactas se fijan y documentan al iniciar la Fase 1 (PRD §17.1). L
 |---|---|
 | [`docs/PRD.md`](docs/PRD.md) | Especificación maestra íntegra. Fuente de verdad del alcance. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Capas, módulos, rutas, archivos, auditoría, trabajos asíncronos, migraciones. |
-| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Las 130 entidades del PRD §18 más 7 de apoyo y 26 tablas de relación, con enumeraciones, máquinas de estado y diagramas. |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Las 103 entidades del PRD §18 más 7 de apoyo y 17 tablas de relación —127 en total—, con enumeraciones, máquinas de estado y diagramas. |
 | [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md) | Roles, atributos, matriz de permisos, alcances y mapa de consentimientos. |
 | [`docs/FLOWS.md`](docs/FLOWS.md) | Flujos funcionales completos con estados alternos y de error. |
 | [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Contratos de Stripe, Gemini, correo, Blob, herramientas, cron y webhooks. |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Autenticación, autorización, datos sensibles, auditoría y amenazas probadas. |
-| [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) | Pirámide de pruebas, 15 flujos E2E globales y umbrales de calidad. |
+| [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) | Pirámide de pruebas, 13 flujos E2E globales y umbrales de calidad. |
 | [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Catálogo de variables de entorno por ambiente. |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Registro de decisiones de arquitectura (ADR). |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | Backlog completo asignado a fases, sin tareas huérfanas. |
@@ -58,7 +60,7 @@ Las versiones exactas se fijan y documentan al iniciar la Fase 1 (PRD §17.1). L
 
 ## 4. Protocolo de construcción por fases
 
-El producto se construye en 13 fases (0 a 12). **Solo se construye la fase activa**, se termina al 100 % y se cierra con un informe antes de solicitar autorización para continuar (PRD §23).
+El producto se construye en 11 fases (0 a 10). **Solo se construye la fase activa**, se termina al 100 % y se cierra con un informe antes de solicitar autorización para continuar (PRD §23).
 
 ```
 Fase 0  Arquitectura integral y preparación del repositorio
@@ -68,13 +70,13 @@ Fase 3  Catálogo financiero, Stripe y libro auxiliar
 Fase 4  Afiliación, padrones, directorios y credenciales
 Fase 5  Estructura territorial, gobierno, asambleas y elecciones
 Fase 6  Defensa, casos, protección y canalización social
-Fase 7  Herramientas tecnológicas
-Fase 8  CIAN
-Fase 9  CENI
-Fase 10 Inteligencia artificial Gemini
-Fase 11 Comunicaciones, eventos, capacitación e indicadores
-Fase 12 Endurecimiento, migración final y liberación productiva
+Fase 7  Herramientas tecnológicas y accesos externos
+Fase 8  Inteligencia artificial Gemini
+Fase 9  Eventos, formación e indicadores
+Fase 10 Integración, endurecimiento y producción
 ```
+
+Esta lista no se escribe a mano: el control `C-COH-16` la compara con los encabezados de `## FASE n` del PRD §24 y con `scripts/phase/prd-contract.json`, y falla si los tres no dicen lo mismo.
 
 Una fase solo puede cerrarse si supera íntegramente la **puerta universal de salida** del PRD §23.2.
 
@@ -91,17 +93,21 @@ npm run phase:verify   # Ejecuta los controles de la fase activa
 
 ## 5. Puesta en marcha local
 
-> La aplicación Next.js, la base de datos y los comandos de calidad se incorporan en la **Fase 1**. Durante la Fase 0 el repositorio contiene arquitectura, documentación y utilidades de verificación.
-
 ```bash
 git clone https://github.com/Alianza-Indigo/fuerza_indigo.git
 cd fuerza_indigo
 node --version        # 22 o superior (ver .nvmrc)
-cp .env.example .env.local
-npm run phase:verify
+npm install
+cp .env.example .env.local   # las variables obligatorias están en docs/ENVIRONMENT.md
+npm run db:generate
+npm run db:migrate           # levanta el esquema desde las migraciones del repositorio
+npm run db:seed              # semilla idempotente, sin un solo dato real
+npm run dev
 ```
 
-Los comandos de calidad contratados por el PRD §22.3 (`lint`, `typecheck`, `test`, `test:integration`, `test:e2e`, `test:a11y`, `build`, `db:migrate`, `db:seed`) se habilitan en las fases que los introducen, según el calendario de [`docs/BACKLOG.md`](docs/BACKLOG.md). Este repositorio no declara comandos que no funcionen.
+`npm run db:check` compara la base configurada contra lo que producen las migraciones y dice qué sobra o falta; `npm run db:sync --apply` la pone al día.
+
+Los comandos de calidad contratados por el PRD §22.3 están todos declarados y todos funcionan: `lint`, `typecheck`, `test`, `test:integration`, `test:e2e`, `test:a11y`, `build`, `db:migrate`, `db:seed` y `phase:verify`. Este repositorio no declara comandos que no funcionen. `test:e2e` ejecuta también la suite de accesibilidad, porque `playwright.config.ts` declara las dos juntas; `test:a11y` sirve para correr solo la accesibilidad mientras se trabaja en una pantalla.
 
 ---
 

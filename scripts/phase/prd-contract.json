@@ -223,7 +223,7 @@
     },
     {
       "id": 7,
-      "name": "Plataformas y herramientas del ecosistema"
+      "name": "Herramientas tecnológicas y accesos externos"
     },
     {
       "id": 8,
@@ -231,11 +231,11 @@
     },
     {
       "id": 9,
-      "name": "Comunicaciones, eventos, capacitación e indicadores"
+      "name": "Eventos, formación e indicadores"
     },
     {
       "id": 10,
-      "name": "Endurecimiento, migración final y liberación productiva"
+      "name": "Integración, endurecimiento y producción"
     }
   ],
   "entityMigrationPhase": {

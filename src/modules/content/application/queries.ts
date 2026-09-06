@@ -260,8 +260,9 @@ export interface SearchHit {
  * en resultados revela tanto como una página abierta.
  *
  * Es búsqueda léxica sobre título, resumen y cuerpo, con `ILIKE`. La búsqueda
- * semántica con vectores es alcance de la Fase 10, donde vive el índice; traerla
- * aquí obligaría a mantener dos índices y a decidir sin datos cuál gana.
+ * semántica con vectores es alcance de la Fase 8, donde vive la base documental
+ * por permisos y con ella el índice; traerla aquí obligaría a mantener dos
+ * índices y a decidir sin datos cuál gana.
  */
 export async function searchPublished(query: string, limit = 30): Promise<SearchHit[]> {
   const termino = query.trim();

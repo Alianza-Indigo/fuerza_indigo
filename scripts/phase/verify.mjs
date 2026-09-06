@@ -650,7 +650,7 @@ const CHECKS = [
   },
   {
     id: 'C-TEST-01',
-    title: 'Los 15 flujos E2E globales del PRD §22.2 están planificados',
+    title: `Los ${CONTRACT.globalE2eFlows.length} flujos E2E globales del PRD §22.2 están planificados`,
     phases: 'all',
     run() {
       const plan = read('docs/TEST_PLAN.md');
@@ -658,12 +658,12 @@ const CHECKS = [
       const missing = CONTRACT.globalE2eFlows.filter((flow) => !plan.includes(flow));
       return missing.length
         ? fail(missing.map((flow) => `El flujo ${flow} no aparece en docs/TEST_PLAN.md.`))
-        : ok(['15 flujos E2E globales planificados.']);
+        : ok([`${CONTRACT.globalE2eFlows.length} flujos E2E globales planificados.`]);
     },
   },
   {
     id: 'C-PHASE-01',
-    title: 'El backlog cubre las 11 fases sin tareas huérfanas',
+    title: `El backlog cubre las ${CONTRACT.phases.length} fases sin tareas huérfanas`,
     phases: 'all',
     run() {
       const backlog = read('docs/BACKLOG.md');
@@ -686,7 +686,9 @@ const CHECKS = [
       }
       const orphanSection = /##\s+Tareas sin fase/i.test(backlog);
       if (orphanSection) problems.push('El backlog declara una sección de tareas sin fase; el PRD §24 Fase 0 lo prohíbe.');
-      return problems.length ? fail(problems) : ok(['11 fases con backlog asignado y sin tareas huérfanas.']);
+      return problems.length
+        ? fail(problems)
+        : ok([`${CONTRACT.phases.length} fases con backlog asignado y sin tareas huérfanas.`]);
     },
   },
   {
@@ -2745,6 +2747,105 @@ const CHECKS = [
         : ok([
             `Las ${exigidas.length} variables que las fases 1 a ${activa} vuelven obligatorias están declaradas en la integración continua.`,
           ]);
+    },
+  },
+
+  {
+    id: 'C-COH-16',
+    title: 'El contrato de fases es uno solo y nadie nombra una fase que no existe',
+    phases: 'all',
+    run() {
+      // La corrección de alcance del 5 de septiembre retiró CIAN y CENI como
+      // fases y dejó el proyecto en once, 0 a 10. El PRD se reescribió, el
+      // backlog se renumeró y el contrato del verificador también. El README
+      // no: siguió anunciando trece fases, con CIAN en la 8 y CENI en la 9,
+      // durante dos fases enteras. Es la puerta de entrada del repositorio y
+      // la primera cosa que lee quien llega, incluida una máquina.
+      //
+      // El daño de una lista de fases equivocada no es que esté fea: es que
+      // alguien construya la fase que dice. Por eso el contrato tiene una
+      // sola fuente —los encabezados `## FASE n — nombre` del PRD §24— y todo
+      // lo demás se compara contra ella.
+      const prd = read('docs/PRD.md');
+      if (prd === null) return fail('No existe docs/PRD.md.');
+
+      const enElPrd = [...prd.matchAll(/^## FASE (\d+) — (.+?)\s*$/gm)].map((m) => ({
+        id: Number(m[1]),
+        name: m[2],
+      }));
+      if (enElPrd.length === 0) return fail('docs/PRD.md §24 no declara encabezados "## FASE n — nombre".');
+
+      const problems = [];
+
+      const esperado = enElPrd.map((f) => `${f.id}:${f.name}`).join(' | ');
+      const enElContrato = CONTRACT.phases.map((f) => `${f.id}:${f.name}`).join(' | ');
+      if (enElContrato !== esperado) {
+        problems.push(
+          `scripts/phase/prd-contract.json no coincide con los encabezados del PRD §24.\n      PRD:      ${esperado}\n      contrato: ${enElContrato}`,
+        );
+      }
+
+      const readme = read('README.md');
+      if (readme === null) {
+        problems.push('No existe README.md.');
+      } else {
+        const lista = [...readme.matchAll(/^Fase (\d+)\s+(.+?)\s*$/gm)].map((m) => ({
+          id: Number(m[1]),
+          name: m[2],
+        }));
+        if (lista.length === 0) {
+          problems.push('README.md no publica la lista de fases del PRD §24.');
+        } else {
+          const enElReadme = lista.map((f) => `${f.id}:${f.name}`).join(' | ');
+          if (enElReadme !== esperado) {
+            problems.push(
+              `README.md anuncia un contrato de fases distinto del PRD §24.\n      PRD:    ${esperado}\n      README: ${enElReadme}`,
+            );
+          }
+        }
+        const cuenta = new RegExp(`se construye en ${enElPrd.length} fases \\(0 a ${enElPrd.length - 1}\\)`);
+        if (!cuenta.test(readme)) {
+          problems.push(
+            `README.md no dice que el producto se construye en ${enElPrd.length} fases (0 a ${enElPrd.length - 1}).`,
+          );
+        }
+      }
+
+      // Nadie cita una fase fuera del contrato. Las citas viven sobre todo en
+      // comentarios —«esto llega en la Fase 12»— y sobreviven a una
+      // renumeración sin que nada se rompa: el código compila igual y la
+      // promesa apunta a una fase que ya no existe.
+      //
+      // De `docs/PHASE_STATUS.md` se mira la parte viva y se deja fuera el
+      // archivo, que empieza en su primer encabezado `# Archivo`. Es el
+      // registro de lo que se dijo y se firmó cuando el contrato era otro, y
+      // reescribirlo convertiría un historial en una versión conveniente del
+      // pasado. Excluir el documento entero, en cambio, dejaría sin vigilar
+      // justo la parte que se edita cada fase.
+      const ultima = Math.max(...enElPrd.map((f) => f.id));
+      const rastro = [];
+      for (const ruta of tracked()) {
+        if (!isTextFile(ruta)) continue;
+        if (ruta === 'docs/PRD.md') continue;
+        if (ruta === 'scripts/phase/verify.mjs') continue;
+        let contenido = read(ruta);
+        if (contenido === null) continue;
+        if (ruta === 'docs/PHASE_STATUS.md') {
+          const archivo = contenido.search(/^# Archivo\b/m);
+          if (archivo !== -1) contenido = contenido.slice(0, archivo);
+        }
+        for (const [i, linea] of contenido.split('\n').entries()) {
+          for (const m of linea.matchAll(/\bFases? (\d+)\b/g)) {
+            const n = Number(m[1]);
+            if (n > ultima) rastro.push(`${ruta}:${i + 1} nombra la Fase ${n}; el contrato termina en la ${ultima}.`);
+          }
+        }
+      }
+      problems.push(...rastro);
+
+      return problems.length
+        ? fail(problems)
+        : ok([`Las ${enElPrd.length} fases coinciden en el PRD, el contrato y el README, y nadie cita una fase posterior a la ${ultima}.`]);
     },
   },
 ];

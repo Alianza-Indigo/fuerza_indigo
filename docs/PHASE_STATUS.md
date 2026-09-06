@@ -6,9 +6,11 @@
 ## Situación actual
 
 - **Fase activa:** 7 — Herramientas tecnológicas y accesos externos
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 6 de septiembre de 2026, con la instrucción expresa de que **ninguna plataforma externa se toca**
 - **Fecha de inicio:** 6 de septiembre de 2026
+- **Fecha de cierre:** 6 de septiembre de 2026
+- **SHA del punto de control:** `0101a2a`
 - **Fase anterior:** 6 — `APPROVED`, cerrada en `6f31d88`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 8 — Inteligencia artificial Gemini, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -126,7 +128,7 @@ abajo. Cada uno lo encontró una cosa distinta, y ninguna fue una revisión de c
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
 | 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
 | 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
-| 7 | 2026-09-06 | — | `IN_PROGRESS` | — |
+| 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
 | 8 a 10 | — | — | No iniciadas | — |
 
 ---

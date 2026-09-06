@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { Badge, Card, ErrorNotice, Notice, PageShell, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { assignableUsers, caseDetail, peopleForCase } from '@/modules/cases';
+import { assignableUsers, caseDetail, entitiesForReferral, peopleForCase } from '@/modules/cases';
 import {
   NOMBRE_DE_ASIGNACION,
+  CANALIZACIONES_CERRADAS,
   NOMBRE_DE_AUDIENCIA,
+  NOMBRE_DE_CANALIZACION,
   NOMBRE_DE_DOCUMENTO,
   NOMBRE_DE_TAREA,
   TAREAS_CERRADAS,
@@ -22,6 +24,14 @@ import { AssignCaseForm, UnassignCaseForm } from './assignment-forms';
 import { AdvanceTaskForm, AssignTaskForm, CreateTaskForm } from './task-forms';
 import { EditMessageForm, SendMessageForm } from './message-forms';
 import { AttachDocumentForm, OpenClinicalDocumentForm, RemoveDocumentForm } from './document-forms';
+import {
+  AcceptReferralForm,
+  CloseReferralForm,
+  ProposeReferralForm,
+  RequestConsentForm,
+  ReturnReferralForm,
+  SendReferralForm,
+} from './referral-forms';
 
 /** Cómo se nombra en pantalla la calidad con la que alguien interviene. */
 const NOMBRE_DE_CALIDAD: Record<string, string> = {
@@ -76,6 +86,14 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
   // es otra pantalla. Y la nota reservada solo se ofrece a quien puede leerla.
   const puedeComunicar = datos.lectura !== 'PERSONA' && datos.status !== 'CLOSED';
   const puedeReservar = datos.lectura === 'SUPERVISION';
+
+  // Las entidades que pueden recibir una canalización y los documentos que
+  // pueden viajar con ella. Se piden solo cuando hay a quién ofrecérselos.
+  const entidades = puedeComunicar ? await entitiesForReferral(actor, datos.id) : null;
+  const documentosCanalizables = datos.documentos.map((documento) => ({
+    value: documento.archivoId,
+    label: documento.descripcion,
+  }));
 
   const equipo = datos.equipo.map((integrante) => ({
     value: integrante.usuarioId,
@@ -182,6 +200,84 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
           <Section title="Agregar a alguien" level={2}>
             <Card>
               <AddParticipantForm caseId={datos.id} personas={personas} />
+            </Card>
+          </Section>
+        )}
+
+        <Section title="Canalizaciones" level={2}>
+          <Card>
+            {datos.canalizaciones.length === 0 ? (
+              <p className="text-[var(--color-ink-soft)]">Este expediente no se ha canalizado a ningún sitio.</p>
+            ) : (
+              <ul className="space-y-4">
+                {datos.canalizaciones.map((canalizacion) => (
+                  <li
+                    key={canalizacion.id}
+                    className="border-b border-[var(--color-line)] pb-4 last:border-0 last:pb-0"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">
+                        {canalizacion.destinatarioExterno ?? canalizacion.haciaEntidad}
+                      </span>
+                      <Badge tone={canalizacion.estado === 'ACCEPTED' ? 'success' : 'neutral'}>
+                        {NOMBRE_DE_CANALIZACION[canalizacion.estado]}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm">{canalizacion.motivo}</p>
+                    <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                      Se transfieren: {canalizacion.camposCompartidos.join(', ')}
+                      {canalizacion.archivosCompartidos > 0 &&
+                        ` · ${canalizacion.archivosCompartidos} documento(s)`}
+                    </p>
+                    {canalizacion.motivoDeDevolucion !== null && (
+                      <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                        Motivo de la devolución: {canalizacion.motivoDeDevolucion}
+                      </p>
+                    )}
+                    {puedeComunicar && !CANALIZACIONES_CERRADAS.includes(canalizacion.estado) && (
+                      <div className="mt-4 space-y-4">
+                        {canalizacion.estado === 'PROPOSED' && (
+                          <RequestConsentForm
+                            referralId={canalizacion.id}
+                            explicacion={canalizacion.explicacion}
+                          />
+                        )}
+                        {canalizacion.estado === 'AWAITING_CONSENT' && (
+                          <SendReferralForm referralId={canalizacion.id} />
+                        )}
+                        {canalizacion.estado === 'SENT' && (
+                          <>
+                            <AcceptReferralForm referralId={canalizacion.id} />
+                            <ReturnReferralForm referralId={canalizacion.id} />
+                          </>
+                        )}
+                        {canalizacion.estado === 'ACCEPTED' && (
+                          <>
+                            <CloseReferralForm referralId={canalizacion.id} />
+                            <ReturnReferralForm referralId={canalizacion.id} />
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
+              Aquí se ve en qué estado va cada canalización, no lo que se dice dentro de ella. Las notas reservadas
+              no están entre lo que se puede transferir, así que no viajan ni por descuido.
+            </p>
+          </Card>
+        </Section>
+
+        {puedeComunicar && entidades !== null && entidades.ok && (
+          <Section title="Canalizar el expediente" level={2}>
+            <Card>
+              <ProposeReferralForm
+                caseId={datos.id}
+                entidades={entidades.data}
+                documentos={documentosCanalizables}
+              />
             </Card>
           </Section>
         )}

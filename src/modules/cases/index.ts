@@ -46,7 +46,23 @@ export {
   type AttachDocumentInput,
   type RemoveDocumentInput,
 } from './application/documents';
-export { peopleForCase, type Opcion } from './application/options';
+export {
+  proposeReferral,
+  requestReferralConsent,
+  sendReferral,
+  acceptReferral,
+  returnReferral,
+  closeReferral,
+  proposeReferralSchema,
+  sendReferralSchema,
+  acceptReferralSchema,
+  returnReferralSchema,
+  type ProposeReferralInput,
+  type SendReferralInput,
+  type AcceptReferralInput,
+  type ReturnReferralInput,
+} from './application/referrals';
+export { peopleForCase, entitiesForReferral, type Opcion } from './application/options';
 export {
   caseList,
   caseDetail,

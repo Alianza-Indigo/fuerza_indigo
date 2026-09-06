@@ -1458,3 +1458,21 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Decisión.** Cada clase de documento declara su clasificación mínima y el módulo la impone: una identificación es dato personal sensible y un escrito judicial es privilegiado, siempre. Las clases que no la determinan —una prueba puede ser un recibo o una fotografía de lesiones— piden elegirla entre las que un expediente admite; `PUBLIC` no está en esa lista, porque nada de un expediente es público y una opción en un desplegable acaba elegida.
 
 **Lo clínico es una autorización aparte, no un grado más de sensibilidad.** `cases.document.read_clinical` es la autorización expresa que el PRD §10.3 exige para que un rol sindical vea un diagnóstico, y exige motivo escrito: abrir el diagnóstico de alguien es un acto y consta con nombre. Que la regla existiera no bastaba: mientras ningún rol tuvo a la vez la descarga de material sensible y no la facultad clínica, la comprobación no la ejercía nadie y ninguna prueba la veía fallar. Se descubrió al intentar romperla. Lo que faltaba era otra cosa: la delegación territorial revisa solicitudes de afiliación cuyos documentos se guardan como datos personales sensibles, y no podía abrirlos. Con esa facultad en su sitio, lo que la detiene ante un diagnóstico ya no es la sensibilidad del archivo: es la autorización que no tiene.
+
+---
+
+## ADR-0118 · Los seis requisitos de la canalización son estados, no una guía de uso
+
+**Contexto.** El PRD §10.4 enumera seis condiciones para canalizar entre entidades. Escritas como recomendación, se cumplen el primer mes y se olvidan el tercero: nada las comprueba.
+
+**Decisión.** Cada requisito es una condición que un paso comprueba y que la base sostiene donde puede.
+
+**La explicación va antes del sí, y por eso son dos actos.** Proponer guarda lo que se le va a explicar a la persona; pedir el consentimiento deja constancia de que se le enseñó. Registrarlos juntos haría indistinguible un consentimiento informado de uno recogido mientras se redactaba lo que se le iba a contar.
+
+**«Específico» significa que nombra esta canalización y cubre exactamente lo listado.** Uno que la nombrara pero cubriera de más serviría para transferencias que la persona no ha visto; uno que cubriera de menos transferiría lo que no autorizó. Los dos se rechazan. Cada archivo que viaja lleva su propio consentimiento, que es la razón de que `ReferralSharedFile` sea una tabla y no un arreglo de identificadores.
+
+**Lo que puede viajar es una lista blanca.** Las notas reservadas y las comunicaciones internas no están en ella: el requisito 5 no se cumple escondiéndolas al enviar, se cumple porque no se pueden elegir. Y solo viajan archivos de **este** expediente: aceptar un identificador suelto permitiría adjuntar el documento de otro caso.
+
+**La acepta quien recibe, en su entidad, su compartimento y el territorio del asunto.** Que la aceptara quien envía sería mandarse un expediente por correo. El territorio importa aunque la entidad receptora sea la propia: el asunto sigue ocurriendo donde ocurría, y un nombramiento que no lo alcanza no puede hacerse cargo de él.
+
+**Nada se descarta en silencio.** Rechazar —antes de aceptar— y devolver —después— exigen motivo, y la base lo impone: una devolución sin motivo no se puede escribir. Se distinguen en el estado porque para quien envió no significan lo mismo.

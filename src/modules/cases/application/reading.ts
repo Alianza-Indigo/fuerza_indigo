@@ -19,6 +19,7 @@ import type {
   CaseDocumentKind,
   CaseTaskStatus,
   FileClassification,
+  ReferralStatus,
   SupportRequestType,
 } from '@prisma-client/enums';
 import type { Prisma } from '@prisma-client/client';
@@ -87,6 +88,26 @@ export interface CaseDetail extends CaseRow {
    * ejemplo, a quien no puede volver a abrirla.
    */
   readonly lectura: ClaseDeLectura;
+  /**
+   * Seguimiento de las canalizaciones (PRD §10.4, requisito 5).
+   *
+   * Se ve **el estado**, no lo que se dijo dentro: quien envió sabe si la
+   * aceptaron, la devolvieron o sigue esperando, y eso no le da acceso a nada
+   * que no viajara.
+   */
+  readonly canalizaciones: readonly {
+    readonly id: string;
+    readonly estado: ReferralStatus;
+    readonly haciaEntidad: string;
+    readonly destinatarioExterno: string | null;
+    readonly motivo: string;
+    readonly explicacion: string;
+    readonly camposCompartidos: readonly string[];
+    readonly archivosCompartidos: number;
+    readonly enviadaEl: Date | null;
+    readonly aceptadaEl: Date | null;
+    readonly motivoDeDevolucion: string | null;
+  }[];
   readonly documentos: readonly {
     readonly id: string;
     readonly archivoId: string;
@@ -376,6 +397,29 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
   if (clase === null) return fail(errors.notFound('Ese expediente no existe.'));
   const parte = clase === 'PERSONA';
 
+  // Las canalizaciones solo se le enseñan a quien lleva el expediente: para la
+  // persona, el estado de un trámite entre áreas es ruido, y lo que necesita
+  // saber se le comunica.
+  const canalizaciones = parte
+    ? []
+    : await db().referral.findMany({
+        where: { caseId: fila.id },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          externalRecipient: true,
+          reason: true,
+          explanationShownToPerson: true,
+          sharedFields: true,
+          sentAt: true,
+          acceptedAt: true,
+          returnReason: true,
+          toLegalEntity: { select: { shortName: true } },
+          _count: { select: { sharedFiles: true } },
+        },
+      });
+
   // Los documentos también se recortan en la consulta. A quien es parte solo se
   // le traen los que se le enseñan: un documento de trabajo interno no está en
   // su expediente para que lo lea, está para que el equipo trabaje.
@@ -461,6 +505,19 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       rol: asignacion.assignmentRole,
     })),
     lectura: clase,
+    canalizaciones: canalizaciones.map((canalizacion) => ({
+      id: canalizacion.id,
+      estado: canalizacion.status,
+      haciaEntidad: canalizacion.toLegalEntity.shortName,
+      destinatarioExterno: canalizacion.externalRecipient,
+      motivo: canalizacion.reason,
+      explicacion: canalizacion.explanationShownToPerson,
+      camposCompartidos: canalizacion.sharedFields,
+      archivosCompartidos: canalizacion._count.sharedFiles,
+      enviadaEl: canalizacion.sentAt,
+      aceptadaEl: canalizacion.acceptedAt,
+      motivoDeDevolucion: canalizacion.returnReason,
+    })),
     documentos: documentos.map((documento) => ({
       id: documento.id,
       archivoId: documento.fileObject.id,

@@ -497,6 +497,7 @@ export function Checkbox({
   id,
   label,
   help,
+  value,
   defaultChecked = false,
   required = false,
   errors,
@@ -506,6 +507,15 @@ export function Checkbox({
   id?: string | undefined;
   label: ReactNode;
   help?: string | undefined;
+  /**
+   * Qué envía esta casilla cuando está marcada.
+   *
+   * Sin ella, el navegador manda `on`, que basta para una casilla sola —«sí» o
+   * ausencia— y no para varias que comparten nombre. Ahí el valor es lo único
+   * que distingue una opción de otra, y sin él un grupo de siete casillas
+   * llegaría al servidor como siete veces «on», sin decir cuáles.
+   */
+  value?: string | undefined;
   defaultChecked?: boolean | undefined;
   required?: boolean | undefined;
   errors?: readonly string[] | undefined;
@@ -522,6 +532,7 @@ export function Checkbox({
           id={idCampo}
           name={name}
           type="checkbox"
+          {...(value === undefined ? {} : { value })}
           defaultChecked={defaultChecked}
           required={required}
           aria-describedby={describedBy}

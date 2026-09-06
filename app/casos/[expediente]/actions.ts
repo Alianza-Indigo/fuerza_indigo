@@ -3,17 +3,23 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
+  acceptReferral,
   addParticipant,
   advanceTask,
   assessCase,
   attachDocument,
   assignCase,
   assignTask,
+  closeReferral,
   createTask,
   editMessage,
+  proposeReferral,
   removeDocument,
   removeParticipant,
+  requestReferralConsent,
+  returnReferral,
   sendMessage,
+  sendReferral,
   unassignCase,
 } from '@/modules/cases';
 import { currentActor } from '@/platform/http/request-context';
@@ -402,4 +408,129 @@ export async function openClinicalDocumentAction(
   if (!pase.ok) return { status: 'error', message: pase.error.message };
 
   redirect(pase.data.path);
+}
+
+/** Propone canalizar el expediente, con la explicación y la selección. */
+export async function proposeReferralAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const externo = textField(formData, 'externalRecipient');
+
+  const resultado = await proposeReferral(actor, {
+    caseId: textField(formData, 'caseId'),
+    toModule: textField(formData, 'toModule') as never,
+    toLegalEntityId: textField(formData, 'toLegalEntityId'),
+    externalRecipient: externo === '' ? null : externo,
+    reason: textField(formData, 'reason'),
+    explanationShownToPerson: textField(formData, 'explanationShownToPerson'),
+    sharedFields: formData.getAll('sharedFields').filter((valor): valor is string => typeof valor === 'string') as never,
+    sharedFileIds: formData
+      .getAll('sharedFileIds')
+      .filter((valor): valor is string => typeof valor === 'string'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message: 'Propuesta registrada. El siguiente paso es explicárselo a la persona y pedirle el consentimiento.',
+  };
+}
+
+/** Deja constancia de que se le explicó a la persona y se le pidió el sí. */
+export async function requestReferralConsentAction(
+  _previo: CaseFormState,
+  formData: FormData,
+): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await requestReferralConsent(actor, { referralId: textField(formData, 'referralId') });
+  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message: 'Queda constancia de que se le explicó. Sin su consentimiento sobre esta selección, no se envía.',
+  };
+}
+
+/** Envía la canalización, con el consentimiento que la ampara. */
+export async function sendReferralAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await sendReferral(actor, {
+    referralId: textField(formData, 'referralId'),
+    consentId: textField(formData, 'consentId'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Enviada al área receptora, con el consentimiento que la ampara.' };
+}
+
+/** El área receptora acepta la canalización. */
+export async function acceptReferralAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+  const destino = textField(formData, 'targetCaseId');
+
+  const resultado = await acceptReferral(actor, {
+    referralId: textField(formData, 'referralId'),
+    note: textField(formData, 'note'),
+    targetCaseId: destino === '' ? null : destino,
+  });
+  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Aceptada. Consta quién la aceptó y cuándo.' };
+}
+
+/** El área receptora la devuelve o la rechaza, siempre con motivo. */
+export async function returnReferralAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await returnReferral(actor, {
+    referralId: textField(formData, 'referralId'),
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return {
+    status: 'ok',
+    message:
+      resultado.data.status === 'REJECTED'
+        ? 'No admitida, con el motivo escrito.'
+        : 'Devuelta al expediente de origen, con el motivo escrito.',
+  };
+}
+
+/** Cierra una canalización que el área receptora aceptó y terminó. */
+export async function closeReferralAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await closeReferral(actor, { referralId: textField(formData, 'referralId') });
+  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Canalización cerrada.' };
 }

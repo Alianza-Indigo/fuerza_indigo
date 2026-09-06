@@ -71,6 +71,11 @@ model Consent {
 
   careRelationships CareRelationship[] @relation("CareRelationshipConsent")
 
+  // Defensa, casos y atención social (Fase 6).
+  caseParticipations  CaseParticipant[]    @relation("CaseParticipantConsent")
+  referrals           Referral[]           @relation("ReferralConsent")
+  referralSharedFiles ReferralSharedFile[] @relation("ReferralSharedFileConsent")
+
   @@index([personId])
   @@index([representationRef])
   @@index([consentVersionId])

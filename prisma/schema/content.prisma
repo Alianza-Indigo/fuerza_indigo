@@ -34,6 +34,9 @@ model ContentPage {
   versions  ContentVersion[]  @relation("PageVersions")
   redirects ContentRedirect[]
 
+  // Protocolos de riesgo inmediato que esta página sostiene (Fase 6).
+  emergencyFlags EmergencyFlag[] @relation("EmergencyProtocolPage")
+
   @@index([kind, status, publishedAt])
   @@index([status, scheduledFor])
   @@index([legalEntityId])

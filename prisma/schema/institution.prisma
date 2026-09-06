@@ -59,6 +59,12 @@ model LegalEntity {
   documentTemplates     DocumentTemplate[]     @relation("TemplateLegalEntity")
   generatedDocuments    GeneratedDocument[]    @relation("DocumentLegalEntity")
 
+  // Defensa, casos y atención social (Fase 6).
+  cases                     Case[]           @relation("CaseLegalEntity")
+  referralsFrom             Referral[]       @relation("ReferralFrom")
+  referralsTo               Referral[]       @relation("ReferralTo")
+  confirmedSupportRoutings  SupportRequest[] @relation("SupportRequestConfirmedRouting")
+
   @@map("legal_entity")
   labourFilings LabourAuthorityFiling[]
 }
@@ -122,6 +128,10 @@ model TerritorialUnit {
   officeTerms     OfficeTerm[]    @relation("OfficeTermTerritory")
   elections       Election[]      @relation("ElectionTerritory")
   bargainingFiles BargainingFile[] @relation("BargainingTerritory")
+
+  // Defensa, casos y atención social (Fase 6).
+  cases                 Case[]           @relation("CaseTerritory")
+  supportRequestsRouted SupportRequest[] @relation("SupportRequestTerritory")
   /// Acuerdo habilitante de la unidad (PRD §9.1).
   enablingResolutionId String?    @db.Uuid
   enablingResolution   Resolution? @relation("TerritorialEnabling", fields: [enablingResolutionId], references: [id], onDelete: Restrict)

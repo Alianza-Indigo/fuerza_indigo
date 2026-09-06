@@ -5,6 +5,80 @@
 ---
 ## Situación actual
 
+- **Fase activa:** 6 — Defensa, casos, protección y canalización social
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 5 de septiembre de 2026, junto con la Fase 5; confirmada al aprobarse esta
+- **Fecha de inicio:** 6 de septiembre de 2026
+- **Fase anterior:** 5 — `APPROVED`, cerrada en `6c5b18c`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 7 — Herramientas tecnológicas y accesos externos, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 6 contrata: solicitud guiada de apoyo; clasificación informativa; prioridades y alertas; expediente de caso; participantes y representación; asignación por territorio y competencia; tareas y plazos; comunicaciones; documentos; derivaciones; consentimiento entre entidades; panel de Trabajo y Conflictos; panel de Neuroinclusión y Enlace Familiar; panel social de Alianza Índigo; cierre y reapertura; e indicadores anonimizados.
+
+**Qué cierra esta fase.** La Fase 2 abrió la puerta —`SupportRequest`, con su relato inmutable y su aviso de privacidad aceptado— y la dejó terminando en «leído y contestado». Aquí esa puerta lleva a algún sitio: la solicitud se valora, se convierte en expediente y el expediente se trabaja. La Fase 4 dejó al beneficiario protegido dado de alta con su origen, su necesidad inicial y su urgencia, y dijo que la atención empezaba aquí.
+
+**La garantía que gobierna la fase.** El expediente sindical y el expediente social **no se comparten**. El acceso se concede por asignación y necesidad legítima, nunca por pertenecer al área, y nada cruza de una entidad a la otra sin consentimiento específico de la persona sobre los campos y los archivos exactos que se transfieren, ni sin que un área humana lo acepte del otro lado. La propuesta automática de canalización es una propuesta: no ejecuta nada.
+
+---
+
+## Bloques de trabajo
+
+| Bloque | Contenido | Estado |
+|---|---|---|
+| A | Esquema de casos, participantes, tareas, comunicaciones, canalizaciones y marcas de riesgo; migración y permisos | En curso |
+| B | Solicitud guiada de apoyo, clasificación informativa y propuesta de canalización con confirmación humana | Pendiente |
+| C | Expediente de caso: apertura desde la solicitud, resumen inalterable y valoración humana | Pendiente |
+| D | Participantes, calidades y representación | Pendiente |
+| E | Asignación por territorio y competencia, y acceso por asignación | Pendiente |
+| F | Tareas, plazos y próximos pasos | Pendiente |
+| G | Comunicaciones con audiencias diferenciadas y notas reservadas | Pendiente |
+| H | Documentos con clasificación de sensibilidad y descarga autorizada | Pendiente |
+| I | Canalización entre entidades con los seis requisitos del PRD §10.4 | Pendiente |
+| J | Prioridades, alertas y protocolo visible de riesgo inmediato | Pendiente |
+| K | Cierre con resultado y motivo, y reapertura controlada | Pendiente |
+| L | Paneles: Trabajo y Conflictos, Neuroinclusión y Enlace Familiar, y panel social | Pendiente |
+| M | Indicadores anonimizados con umbral de privacidad | Pendiente |
+| N | Pruebas, controles de fase, documentación y cierre | Pendiente |
+
+---
+
+## Defectos abiertos
+
+**Ninguno todavía.** La fase acaba de abrirse.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse `APPROVED`.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
+| 6 | 2026-09-06 | — | `IN_PROGRESS` | — |
+| 7 a 10 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 5
+
+> Estructura territorial, gobierno, asambleas y elecciones. Cerrada el 6 de septiembre de 2026 en `6c5b18c`.
+
+## Situación actual
+
 - **Fase activa:** 5 — Estructura territorial, gobierno, asambleas y elecciones
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026
@@ -94,20 +168,6 @@ Criterios específicos del PRD §24 Fase 5, comprobados **ejecutando el sistema*
 - **J.** Régimen disciplinario con debido proceso comprobable: sin notificación y sin audiencia —o su renuncia expresa— no hay resolución, y ninguna automatización interviene.
 - **K.** Archivo histórico y obligaciones ante autoridad competente.
 - **L.** Treinta y nueve pruebas unitarias de las piezas puras, dos suites de integración nuevas —criterios de fase y debido proceso disciplinario—, veintiséis comprobaciones de accesibilidad sobre las pantallas institucionales, y diez controles de fase, cada uno probado rompiendo lo que vigila.
-
----
-
-## Historial de fases
-
-| Fase | Inicio | Cierre | Estado | SHA del punto de control |
-|---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
-| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
-| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
-| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `123cd0c` |
-| 6 a 10 | — | — | No iniciadas | — |
 
 ---
 

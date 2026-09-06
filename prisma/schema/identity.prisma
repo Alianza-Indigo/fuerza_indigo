@@ -121,6 +121,25 @@ model Actor {
   @@map("actor")
   labourFilingsCreated LabourAuthorityFiling[] @relation("LabourFilingCreatedBy")
   labourFilingsUpdated LabourAuthorityFiling[] @relation("LabourFilingUpdatedBy")
+
+  // Defensa, casos y atención social (Fase 6).
+  createdCases            Case[]            @relation("CaseCreatedBy")
+  updatedCases            Case[]            @relation("CaseUpdatedBy")
+  createdCaseParticipants CaseParticipant[] @relation("CaseParticipantCreatedBy")
+  updatedCaseParticipants CaseParticipant[] @relation("CaseParticipantUpdatedBy")
+  createdCaseAssignments  CaseAssignment[]  @relation("CaseAssignmentCreatedBy")
+  updatedCaseAssignments  CaseAssignment[]  @relation("CaseAssignmentUpdatedBy")
+  caseEvents              CaseEvent[]       @relation("CaseEventActor")
+  createdCaseTasks        CaseTask[]        @relation("CaseTaskCreatedBy")
+  updatedCaseTasks        CaseTask[]        @relation("CaseTaskUpdatedBy")
+  createdCaseMessages     CaseMessage[]     @relation("CaseMessageCreatedBy")
+  updatedCaseMessages     CaseMessage[]     @relation("CaseMessageUpdatedBy")
+  createdCaseDocuments    CaseDocument[]    @relation("CaseDocumentCreatedBy")
+  updatedCaseDocuments    CaseDocument[]    @relation("CaseDocumentUpdatedBy")
+  createdReferrals        Referral[]        @relation("ReferralCreatedBy")
+  updatedReferrals        Referral[]        @relation("ReferralUpdatedBy")
+  createdEmergencyFlags   EmergencyFlag[]   @relation("EmergencyFlagCreatedBy")
+  updatedEmergencyFlags   EmergencyFlag[]   @relation("EmergencyFlagUpdatedBy")
 }
 
 enum ActorKind {
@@ -208,6 +227,11 @@ model Person {
   directoryPreferences   DirectoryPreference[]
   directoryPublications  DirectoryPublication[]
   credentials            MemberCredential[]
+
+  // Defensa, casos y atención social (Fase 6).
+  submittedSupportRequests SupportRequest[]  @relation("SupportRequestSubmittedBy")
+  caseParticipations       CaseParticipant[] @relation("CaseParticipantPerson")
+  emergencyFlags           EmergencyFlag[]   @relation("EmergencyFlagPerson")
 
   @@index([familyName, givenName])
   @@index([matchKey])
@@ -309,6 +333,16 @@ model User {
   filedAppeals             Appeal[]                 @relation("AppealFiledBy")
   publishedTemplates       DocumentTemplate[]       @relation("TemplatePublishedBy")
   issuedDocuments          GeneratedDocument[]      @relation("DocumentIssuedBy")
+
+  // Defensa, casos y atención social (Fase 6).
+  confirmedSupportRoutings SupportRequest[] @relation("SupportRequestConfirmedBy")
+  caseAssignments          CaseAssignment[] @relation("CaseAssignee")
+  caseAssignmentsMade      CaseAssignment[] @relation("CaseAssignedBy")
+  caseTasksAssigned        CaseTask[]       @relation("CaseTaskAssignee")
+  caseTasksCompleted       CaseTask[]       @relation("CaseTaskCompletedBy")
+  caseMessages             CaseMessage[]    @relation("CaseMessageAuthor")
+  acceptedReferrals        Referral[]       @relation("ReferralAcceptedBy")
+  acknowledgedEmergencies  EmergencyFlag[]  @relation("EmergencyAcknowledgedBy")
 
   @@map("user_account")
 }

@@ -1,0 +1,597 @@
+/// Expedientes de defensa y atención social (PRD §10, docs/DATA_MODEL.md §7).
+///
+/// La Fase 2 construyó la puerta de la calle —`SupportRequest`, con su relato
+/// inmutable y el aviso de privacidad que se aceptó al enviarlo— y la dejó
+/// terminando en «alguien lo leyó y contestó». Aquí esa puerta lleva a algún
+/// sitio: la solicitud se valora, se convierte en expediente y el expediente se
+/// trabaja.
+///
+/// **Dos expedientes, no uno con etiquetas.** El expediente sindical y el
+/// social viven en la misma tabla pero en compartimentos distintos: `domain`
+/// decide cuál, y el motor de permisos exige el compartimento correspondiente
+/// (PRD §10.3). Separarlos en dos tablas habría duplicado toda la maquinaria
+/// —participantes, tareas, comunicaciones— y con ella la posibilidad de que una
+/// de las dos copias se quedara atrás.
+///
+/// **El acceso es por asignación, nunca por área.** Pertenecer al equipo de
+/// Trabajo y Conflictos no abre ningún expediente: lo abre estar asignada a él.
+/// Es lo que el catálogo expresa marcando los permisos de caso con
+/// `needsAssignment`, y lo que los casos de uso comprueban aportando su sonda.
+
+/// Expediente de caso (PRD §10.2).
+model Case {
+  id       String @id @default(uuid(7)) @db.Uuid
+  /// Folio legible, serie por entidad y año.
+  folio    String @unique @db.VarChar(24)
+  /// Identificador para direcciones. Nunca el `id`.
+  publicId String @unique @db.VarChar(22)
+
+  /// Solicitud que lo originó, cuando viene de la puerta pública. Un caso puede
+  /// abrirse sin solicitud: alguien llega al local y lo cuenta en persona.
+  supportRequestId String? @unique @db.Uuid
+
+  /// Entidad jurídica responsable. Determina quién responde por el expediente,
+  /// y ninguna canalización cruza de una a otra sin consentimiento (PRD §10.4).
+  legalEntityId String @db.Uuid
+
+  /// Sindical o social. Determina el compartimento de acceso: no es una
+  /// etiqueta de clasificación, es la frontera que el PRD §10.3 exige.
+  domain CaseDomain
+
+  caseType SupportRequestType
+  priority CasePriority @default(NORMAL)
+
+  territorialUnitId String? @db.Uuid
+
+  /// Lo que se contó al abrir, tal cual. **Inalterable**: la migración retira
+  /// el privilegio de actualización sobre esta columna. Una valoración
+  /// posterior no reescribe lo que la persona dijo; se escribe al lado.
+  originalSummary String @db.Text
+  /// Valoración de quien atiende. Es lo que puede cambiar, y por eso está
+  /// separada del relato.
+  humanAssessment String? @db.Text
+
+  status CaseStatus @default(OPEN)
+
+  openedAt        DateTime  @default(now()) @db.Timestamptz(3)
+  /// Insumo del indicador de primera respuesta. Se escribe una sola vez.
+  firstResponseAt DateTime? @db.Timestamptz(3)
+  dueAt           DateTime? @db.Timestamptz(3)
+
+  closedAt     DateTime?     @db.Timestamptz(3)
+  closeOutcome CaseOutcome?
+  closeReason  String?       @db.Text
+
+  /// Caso del que nace este, cuando un asunto cerrado da lugar a otro distinto.
+  /// Reabrir el mismo asunto no crea una fila nueva: incrementa `reopenCount`.
+  reopenedFromCaseId String? @db.Uuid
+  reopenCount        Int     @default(0)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  supportRequest   SupportRequest?  @relation("CaseFromRequest", fields: [supportRequestId], references: [id], onDelete: Restrict)
+  legalEntity      LegalEntity      @relation("CaseLegalEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  territorialUnit  TerritorialUnit? @relation("CaseTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  reopenedFromCase Case?            @relation("CaseReopenChain", fields: [reopenedFromCaseId], references: [id], onDelete: Restrict)
+  reopenedInto     Case[]           @relation("CaseReopenChain")
+  createdByActor   Actor            @relation("CaseCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor   Actor            @relation("CaseUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  participants   CaseParticipant[]
+  assignments    CaseAssignment[]
+  events         CaseEvent[]
+  tasks          CaseTask[]
+  messages       CaseMessage[]
+  documents      CaseDocument[]
+  referralsOut   Referral[]        @relation("ReferralSourceCase")
+  referralsIn    Referral[]        @relation("ReferralTargetCase")
+  emergencyFlags EmergencyFlag[]
+
+  @@index([legalEntityId, status])
+  @@index([domain, status])
+  @@index([priority, status])
+  @@index([territorialUnitId])
+  @@index([caseType])
+  @@index([openedAt])
+  @@map("case_file")
+}
+
+/// Sindical o social. La frontera del PRD §10.3, en el dato.
+enum CaseDomain {
+  UNION_DEFENSE
+  SOCIAL_ATTENTION
+}
+
+enum CasePriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+/// Estados del expediente.
+///
+/// `WAITING_ON_PERSON` y `WAITING_ON_THIRD_PARTY` existen separados a propósito:
+/// un expediente detenido porque la persona no ha contestado y otro detenido
+/// porque la contraparte no ha respondido exigen actos distintos de quien
+/// atiende, y contarlos juntos ocultaría cuál de los dos se está dejando pasar.
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_PERSON
+  WAITING_ON_THIRD_PARTY
+  REFERRED
+  CLOSED
+}
+
+enum CaseOutcome {
+  RESOLVED
+  PARTIALLY_RESOLVED
+  REFERRED
+  WITHDRAWN_BY_PERSON
+  NOT_COMPETENT
+  NO_CONTACT
+}
+
+/// Persona relacionada y su calidad en el caso (PRD §10.2).
+model CaseParticipant {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+
+  /// Persona del padrón, cuando la hay. Una contraparte o una institución
+  /// externa no tiene registro y se nombra en texto.
+  personId     String? @db.Uuid
+  externalName String? @db.VarChar(160)
+
+  role CaseParticipantRole
+  /// Calidad con la que participa. Se copia al agregarla y no se recalcula: si
+  /// después pierde la membresía, el expediente debe seguir diciendo con qué
+  /// calidad intervino.
+  membershipQuality CaseMembershipQuality @default(NONE)
+
+  /// Si esta persona puede ver el expediente desde su portal.
+  canViewCase Boolean @default(false)
+  /// Consentimiento que ampara su participación, cuando hace falta.
+  consentId   String? @db.Uuid
+
+  addedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  removedAt DateTime? @db.Timestamptz(3)
+  /// Por qué dejó de figurar. Quitar a alguien de un expediente es un acto.
+  removeReason String? @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           Case    @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  person         Person? @relation("CaseParticipantPerson", fields: [personId], references: [id], onDelete: Restrict)
+  consent        Consent? @relation("CaseParticipantConsent", fields: [consentId], references: [id], onDelete: Restrict)
+  createdByActor Actor   @relation("CaseParticipantCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor   @relation("CaseParticipantUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, removedAt])
+  @@index([personId])
+  @@map("case_participant")
+}
+
+enum CaseParticipantRole {
+  APPLICANT
+  AFFECTED_PERSON
+  REPRESENTATIVE
+  FAMILY_OR_CAREGIVER
+  WITNESS
+  COUNTERPART
+  EXTERNAL_INSTITUTION
+}
+
+enum CaseMembershipQuality {
+  UNION_MEMBER
+  HONORARY_AFFILIATE
+  PROTECTED_BENEFICIARY
+  NONE
+}
+
+/// Responsable y equipo. **El acceso al expediente se concede aquí** y no por
+/// pertenecer a un área (PRD §10.3).
+model CaseAssignment {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+  userId String @db.Uuid
+
+  assignmentRole CaseAssignmentRole
+
+  assignedById   String    @db.Uuid
+  assignedAt     DateTime  @default(now()) @db.Timestamptz(3)
+  unassignedAt   DateTime? @db.Timestamptz(3)
+  unassignReason String?   @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           Case  @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  user           User  @relation("CaseAssignee", fields: [userId], references: [id], onDelete: Restrict)
+  assignedBy     User  @relation("CaseAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  createdByActor Actor @relation("CaseAssignmentCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("CaseAssignmentUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, unassignedAt])
+  @@index([userId, unassignedAt])
+  @@map("case_assignment")
+}
+
+enum CaseAssignmentRole {
+  OWNER
+  SUPPORT
+  SUPERVISOR
+  OBSERVER
+}
+
+/// Bitácora del expediente. **Inmutable**: la migración retira `UPDATE` y
+/// `DELETE` al rol de la aplicación.
+///
+/// No sustituye a la bitácora de auditoría, la acompaña: `auditEventId` enlaza
+/// el asiento técnico con el relato que se le enseña a quien lleva el caso.
+model CaseEvent {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+
+  kind    CaseEventKind
+  actorId String? @db.Uuid
+  summary String  @db.VarChar(400)
+  /// Datos mínimos del hecho. Nunca el contenido sensible: el evento dice que
+  /// se leyó un documento reservado, no qué decía.
+  payload Json
+
+  occurredAt   DateTime @default(now()) @db.Timestamptz(3)
+  auditEventId String?  @db.Uuid
+
+  case       Case        @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  actor      Actor?      @relation("CaseEventActor", fields: [actorId], references: [id], onDelete: Restrict)
+  auditEvent AuditEvent? @relation("CaseEventAudit", fields: [auditEventId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, occurredAt])
+  @@index([kind])
+  @@map("case_event")
+}
+
+enum CaseEventKind {
+  CREATED
+  ASSIGNED
+  UNASSIGNED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  PARTICIPANT_ADDED
+  PARTICIPANT_REMOVED
+  DOCUMENT_ADDED
+  MESSAGE_SENT
+  REFERRAL_CREATED
+  REFERRAL_ACCEPTED
+  REFERRAL_RETURNED
+  TASK_CREATED
+  TASK_COMPLETED
+  VIEWED_SENSITIVE
+  EXPORTED
+  EMERGENCY_RAISED
+  CLOSED
+  REOPENED
+}
+
+/// Tarea con plazo y próximo paso (PRD §10.2).
+model CaseTask {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+
+  title       String  @db.VarChar(200)
+  description String? @db.Text
+
+  assigneeId String?   @db.Uuid
+  dueAt      DateTime? @db.Timestamptz(3)
+
+  status        CaseTaskStatus @default(PENDING)
+  completedAt   DateTime?      @db.Timestamptz(3)
+  completedById String?        @db.Uuid
+  /// Por qué está detenida. Una tarea bloqueada sin motivo escrito es una
+  /// tarea olvidada con mejor nombre.
+  blockerNote   String?        @db.VarChar(600)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           Case  @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  assignee       User? @relation("CaseTaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  completedBy    User? @relation("CaseTaskCompletedBy", fields: [completedById], references: [id], onDelete: Restrict)
+  createdByActor Actor @relation("CaseTaskCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("CaseTaskUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, status])
+  @@index([assigneeId, status])
+  @@index([dueAt])
+  @@map("case_task")
+}
+
+enum CaseTaskStatus {
+  PENDING
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+/// Comunicación trazable dentro del caso (PRD §10.2).
+///
+/// `audience` no es una preferencia de visualización: una nota reservada **no
+/// se muestra** a la persona ni viaja en una canalización, y eso lo impone el
+/// caso de uso al leer, no la pantalla al pintar.
+model CaseMessage {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+
+  authorId String? @db.Uuid
+  audience CaseMessageAudience
+  body     String  @db.Text
+
+  sentAt DateTime @default(now()) @db.Timestamptz(3)
+  /// Acuses de lectura, por identificador de persona y momento.
+  readReceipts Json @default("[]")
+  /// Solo correcciones antes del primer acuse, y queda escrito que se corrigió.
+  editedAt DateTime? @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           Case  @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  author         User? @relation("CaseMessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  createdByActor Actor @relation("CaseMessageCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("CaseMessageUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  attachments CaseMessageAttachment[]
+
+  @@index([caseId, sentAt])
+  @@index([audience])
+  @@map("case_message")
+}
+
+enum CaseMessageAudience {
+  PERSON_AND_TEAM
+  TEAM_ONLY
+  SUPERVISION_ONLY
+}
+
+/// Archivo adjunto a una comunicación. Tabla de relación, no arreglo: cada
+/// adjunto necesita saber de qué mensaje cuelga y a qué archivo apunta.
+model CaseMessageAttachment {
+  messageId    String @db.Uuid
+  fileObjectId String @db.Uuid
+
+  attachedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  message    CaseMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileObject FileObject  @relation("CaseMessageAttachmentFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+
+  @@id([messageId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("case_message_attachment")
+}
+
+/// Documento del expediente (PRD §10.2, §10.3).
+///
+/// El archivo y su clasificación de sensibilidad viven en `FileObject`; aquí se
+/// dice qué papel juega dentro del caso y si la persona puede verlo desde su
+/// portal. La descarga sigue pasando por el pase firmado de vigencia corta, que
+/// vuelve a evaluar la política al canjearse.
+model CaseDocument {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+
+  fileObjectId String @db.Uuid
+  kind         CaseDocumentKind
+  description  String           @db.VarChar(400)
+  /// Si quien es parte del caso puede verlo. Por omisión no: un documento de
+  /// trabajo interno no se enseña por el hecho de estar en el expediente.
+  visibleToPerson Boolean @default(false)
+
+  addedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  removedAt DateTime? @db.Timestamptz(3)
+  removeReason String? @db.VarChar(400)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           Case       @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  fileObject     FileObject @relation("CaseDocumentFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  createdByActor Actor      @relation("CaseDocumentCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor      @relation("CaseDocumentUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, fileObjectId])
+  @@index([caseId, removedAt])
+  @@map("case_document")
+}
+
+enum CaseDocumentKind {
+  EVIDENCE
+  IDENTIFICATION
+  LEGAL_FILING
+  MEDICAL_OR_CLINICAL
+  CORRESPONDENCE
+  INTERNAL_WORKING
+  OTHER
+}
+
+/// Canalización entre entidades o áreas (PRD §10.4).
+///
+/// Los seis requisitos del PRD están en columnas, no en una guía de uso:
+/// explicación previa, consentimiento específico, selección explícita de lo que
+/// se transfiere, aceptación del área receptora, seguimiento sin exponer notas
+/// reservadas, y cierre o devolución con motivo.
+///
+/// Invariante: sin consentimiento vigente que cubra exactamente los campos y
+/// archivos listados, la canalización no pasa de `AWAITING_CONSENT`.
+model Referral {
+  id     String @id @default(uuid(7)) @db.Uuid
+  caseId String @db.Uuid
+
+  fromLegalEntityId String       @db.Uuid
+  toLegalEntityId   String       @db.Uuid
+  toModule          ReferralTarget
+  /// Destinatario externo, cuando no es ninguna de las dos entidades.
+  externalRecipient String?      @db.VarChar(200)
+
+  reason String @db.Text
+  /// Lo que se le explicó a la persona **antes** de pedirle el consentimiento.
+  /// Sin esto, el consentimiento no es informado; es una casilla.
+  explanationShownToPerson String @db.Text
+
+  consentId String? @db.Uuid
+  /// Lista blanca de campos que se transfieren. Es un arreglo de valores
+  /// escalares a propósito: no apunta a filas de otra tabla.
+  sharedFields String[]
+
+  status ReferralStatus @default(PROPOSED)
+
+  sentAt       DateTime? @db.Timestamptz(3)
+  acceptedById String?   @db.Uuid
+  acceptedAt   DateTime? @db.Timestamptz(3)
+  /// Por qué se devuelve o se rechaza. Nunca se descarta en silencio.
+  returnReason String?   @db.Text
+  closedAt     DateTime? @db.Timestamptz(3)
+
+  /// Expediente que abrió el área receptora al aceptar.
+  targetCaseId String? @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case            Case        @relation("ReferralSourceCase", fields: [caseId], references: [id], onDelete: Restrict)
+  fromLegalEntity LegalEntity @relation("ReferralFrom", fields: [fromLegalEntityId], references: [id], onDelete: Restrict)
+  toLegalEntity   LegalEntity @relation("ReferralTo", fields: [toLegalEntityId], references: [id], onDelete: Restrict)
+  consent         Consent?    @relation("ReferralConsent", fields: [consentId], references: [id], onDelete: Restrict)
+  acceptedBy      User?       @relation("ReferralAcceptedBy", fields: [acceptedById], references: [id], onDelete: Restrict)
+  targetCase      Case?       @relation("ReferralTargetCase", fields: [targetCaseId], references: [id], onDelete: Restrict)
+  createdByActor  Actor       @relation("ReferralCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor       @relation("ReferralUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  sharedFiles ReferralSharedFile[]
+
+  @@index([caseId])
+  @@index([toLegalEntityId, status])
+  @@index([status])
+  @@map("referral")
+}
+
+enum ReferralTarget {
+  UNION_DEFENSE
+  SOCIAL_ATTENTION
+  EXTERNAL
+}
+
+enum ReferralStatus {
+  PROPOSED
+  AWAITING_CONSENT
+  SENT
+  ACCEPTED
+  REJECTED
+  RETURNED
+  CLOSED
+}
+
+/// Archivo que viaja en una canalización, con el consentimiento que lo ampara.
+///
+/// Es el ejemplo de por qué una tabla vale más que un arreglo: la canalización
+/// exige consentimiento **por archivo transferido**, y ese dato no cabe en una
+/// lista de identificadores (docs/DATA_MODEL.md §11).
+model ReferralSharedFile {
+  referralId   String @db.Uuid
+  fileObjectId String @db.Uuid
+  consentId    String @db.Uuid
+
+  sharedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  referral   Referral   @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  fileObject FileObject @relation("ReferralSharedFileObject", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  consent    Consent    @relation("ReferralSharedFileConsent", fields: [consentId], references: [id], onDelete: Restrict)
+
+  @@id([referralId, fileObjectId])
+  @@index([fileObjectId])
+  @@map("referral_shared_file")
+}
+
+/// Marca de riesgo inmediato (PRD §10.3).
+///
+/// La plataforma **no es un servicio de emergencia** y no se presenta como tal.
+/// Lo que hace es enseñar el protocolo humano que la organización publicó, con
+/// sus rutas de contacto reales, y dejar constancia de que se enseñó.
+model EmergencyFlag {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  caseId           String? @db.Uuid
+  supportRequestId String? @db.Uuid
+  personId         String? @db.Uuid
+
+  raisedBy CaseEmergencySource
+  raisedAt DateTime @default(now()) @db.Timestamptz(3)
+  riskKind CaseRiskKind
+
+  /// Página del CMS con el protocolo que se mostró. Se guarda cuál, porque el
+  /// protocolo se edita y hay que poder saber qué vio esa persona ese día.
+  protocolShownId String @db.Uuid
+
+  acknowledgedById String?   @db.Uuid
+  acknowledgedAt   DateTime? @db.Timestamptz(3)
+  resolution       String?   @db.Text
+  closedAt         DateTime? @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  case           Case?           @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  supportRequest SupportRequest? @relation("EmergencyFlagRequest", fields: [supportRequestId], references: [id], onDelete: Restrict)
+  person         Person?         @relation("EmergencyFlagPerson", fields: [personId], references: [id], onDelete: Restrict)
+  protocolShown  ContentPage     @relation("EmergencyProtocolPage", fields: [protocolShownId], references: [id], onDelete: Restrict)
+  acknowledgedBy User?           @relation("EmergencyAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: Restrict)
+  createdByActor Actor           @relation("EmergencyFlagCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor           @relation("EmergencyFlagUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId])
+  @@index([supportRequestId])
+  @@index([acknowledgedAt])
+  @@index([raisedAt])
+  @@map("emergency_flag")
+}
+
+enum CaseEmergencySource {
+  PERSON
+  STAFF
+  AUTOMATED_KEYWORD
+}
+
+enum CaseRiskKind {
+  VIOLENCE
+  SELF_HARM
+  CHILD_PROTECTION
+  HEALTH_EMERGENCY
+  OTHER
+}

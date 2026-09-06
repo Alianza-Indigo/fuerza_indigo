@@ -571,6 +571,113 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     compartment: 'DISCIPLINARY',
   }),
 
+  // cases — defensa, casos, protección y canalización social (PRD §10, Fase 6)
+  /**
+   * El compartimento **no** se declara aquí, y es deliberado.
+   *
+   * Un expediente es sindical o social según su `domain`, y esa frontera es lo
+   * que el PRD §10.3 exige respetar. Fijar el compartimento en el catálogo
+   * obligaría a duplicar cada permiso —uno para cada lado— y a que el día que
+   * apareciera un tercer dominio hubiera que duplicarlo otra vez. El
+   * compartimento lo aporta el **recurso**: el caso de uso lee el expediente y
+   * dice de qué compartimento es, y el motor lo antepone al del catálogo.
+   *
+   * Casi todos exigen además **asignación**: pertenecer al equipo de Trabajo y
+   * Conflictos no abre ningún expediente; lo abre estar asignada a él. La sonda
+   * la aporta el caso de uso y el control `C-F5-10` lo exige.
+   */
+  define('cases.case.open', 'Abrir un expediente de caso', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('cases.case.read', 'Consultar un expediente asignado', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+  }),
+  define('cases.case.read_own', 'Consultar el expediente propio', {
+    sensitivity: 'SENSITIVE',
+    needsAssignment: true,
+  }),
+  define('cases.case.update', 'Valorar y actualizar un expediente asignado', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+  }),
+  define('cases.case.assign', 'Asignar y relevar a quien lleva un expediente', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('cases.case.close', 'Cerrar un expediente con resultado y motivo', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    needsAssignment: true,
+  }),
+  define('cases.case.reopen', 'Reabrir un expediente cerrado', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('cases.participant.manage', 'Agregar y retirar participantes de un expediente', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+  }),
+  define('cases.task.manage', 'Administrar tareas y plazos de un expediente', {
+    sensitivity: 'SENSITIVE',
+    needsAssignment: true,
+  }),
+  define('cases.message.send', 'Comunicar dentro de un expediente', {
+    sensitivity: 'SENSITIVE',
+    needsAssignment: true,
+  }),
+  /**
+   * Leer lo reservado es una facultad aparte de leer el expediente.
+   *
+   * Una nota de supervisión existe para poder decir algo que no se le enseña ni
+   * a la persona ni al resto del equipo. Si la abriera cualquiera que tiene el
+   * expediente, dejaría de poder escribirse, y lo que hoy se escribe pasaría a
+   * no escribirse en ningún sitio.
+   */
+  define('cases.message.read_reserved', 'Leer las notas reservadas de un expediente', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+  }),
+  define('cases.document.manage', 'Agregar y retirar documentos de un expediente', {
+    sensitivity: 'CRITICAL',
+    needsAssignment: true,
+  }),
+  /**
+   * Los diagnósticos y los datos clínicos se ocultan a los roles sindicales sin
+   * autorización expresa (PRD §10.3). Esta es esa autorización, y no viene con
+   * el expediente: viene aparte y con nombre.
+   */
+  define('cases.document.read_clinical', 'Abrir documentos clínicos de un expediente', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    needsAssignment: true,
+  }),
+  define('cases.referral.propose', 'Proponer una canalización y pedir el consentimiento', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+    needsAssignment: true,
+  }),
+  define('cases.referral.accept', 'Aceptar, rechazar o devolver una canalización recibida', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('cases.emergency.raise', 'Levantar una marca de riesgo inmediato', {
+    sensitivity: 'CRITICAL',
+  }),
+  define('cases.emergency.acknowledge', 'Hacerse cargo de una marca de riesgo inmediato', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  /**
+   * Los indicadores salen agregados y con umbral de privacidad: por debajo de
+   * un mínimo de expedientes no se publica la cifra, porque un conteo de uno
+   * identifica a esa persona con más precisión que su nombre.
+   */
+  define('cases.indicator.read', 'Consultar indicadores anonimizados de casos', {
+    sensitivity: 'NORMAL',
+  }),
+
   // compliance — obligaciones ante autoridad y archivo histórico (PRD §9.7)
   define('compliance.obligation.manage', 'Administrar obligaciones ante la autoridad laboral', {
     sensitivity: 'SENSITIVE',

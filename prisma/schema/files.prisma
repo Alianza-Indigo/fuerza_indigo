@@ -56,6 +56,11 @@ model FileObject {
 
   // Finanzas (Fase 3). Evidencias, acuerdos y comprobantes.
   paymentManualEvidence  Payment[]              @relation("PaymentManualEvidence")
+
+  // Defensa, casos y atención social (Fase 6).
+  caseMessageAttachments CaseMessageAttachment[] @relation("CaseMessageAttachmentFile")
+  caseDocuments          CaseDocument[]          @relation("CaseDocumentFile")
+  referralSharedFiles    ReferralSharedFile[]    @relation("ReferralSharedFileObject")
   invoiceReferences      InvoiceReference[]     @relation("InvoiceReferenceFile")
   discountAgreements     DiscountGrant[]        @relation("DiscountGrantAgreement")
   scholarshipEvidence    ScholarshipEvidence[]  @relation("ScholarshipEvidenceFile")

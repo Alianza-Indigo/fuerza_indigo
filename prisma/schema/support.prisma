@@ -62,6 +62,22 @@ model SupportRequest {
   /// Nota interna de quien atendió. No se le muestra a quien escribió.
   handlingNote     String?   @db.VarChar(1000)
 
+  /// Quien la envió en nombre de otra persona, cuando alguien acompaña.
+  submittedByPersonId String? @db.Uuid
+
+  /// Unidad territorial ya resuelta. `territoryHint` es lo que la persona
+  /// escribió; esto es lo que la valoración humana determinó que era.
+  territorialUnitId String? @db.Uuid
+
+  /// Propuesta de canalización del sistema. Es una **propuesta**: nada la
+  /// ejecuta. La confirma una persona, y hasta entonces las dos columnas de
+  /// abajo están vacías (PRD §10.1).
+  suggestedRouting Json?
+
+  confirmedRoutingLegalEntityId String? @db.Uuid
+  confirmedById                 String? @db.Uuid
+  confirmedAt                   DateTime? @db.Timestamptz(3)
+
   /// Consentimiento granular, cuando hay persona a la que atarlo. Nulo en la
   /// entrada pública anónima; lo exige la Fase 6 antes de canalizar.
   consentId String? @db.Uuid
@@ -80,6 +96,10 @@ model SupportRequest {
 
   legalEntity          LegalEntity    @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
   person               Person?        @relation("SupportRequestPerson", fields: [personId], references: [id], onDelete: Restrict)
+  submittedByPerson    Person?        @relation("SupportRequestSubmittedBy", fields: [submittedByPersonId], references: [id], onDelete: Restrict)
+  territorialUnit      TerritorialUnit? @relation("SupportRequestTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  confirmedRoutingLegalEntity LegalEntity? @relation("SupportRequestConfirmedRouting", fields: [confirmedRoutingLegalEntityId], references: [id], onDelete: Restrict)
+  confirmedBy          User?          @relation("SupportRequestConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
   handledByActor       Actor?         @relation("SupportRequestHandledBy", fields: [handledByActorId], references: [id], onDelete: Restrict)
   consent              Consent?       @relation(fields: [consentId], references: [id], onDelete: Restrict)
   privacyNoticeVersion ConsentVersion @relation(fields: [privacyNoticeVersionId], references: [id], onDelete: Restrict)
@@ -89,6 +109,11 @@ model SupportRequest {
   @@index([requestType, status])
   @@index([originFingerprint, receivedAt])
   @@index([personId])
+  @@index([territorialUnitId])
+
+  case           Case?           @relation("CaseFromRequest")
+  emergencyFlags EmergencyFlag[] @relation("EmergencyFlagRequest")
+
   @@map("support_request")
 }
 

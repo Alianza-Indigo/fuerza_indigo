@@ -87,6 +87,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // significa. Conserva la lectura de sus pagos por si alguna vez pagó
       // algo con otro rol.
       'billing.payment.read_own',
+      // Su propio expediente, y solo el suyo (Fase 6). Quien pide ayuda tiene
+      // derecho a ver en qué va lo suyo; lo reservado del equipo nunca se le
+      // muestra, y eso lo decide el caso de uso al leer, no la pantalla al
+      // pintar.
+      'cases.case.read_own',
       'files.file.download_own','files.file.upload', 'consent.read_own',
       'consent.grant_own', 'consent.revoke_own'],
   },
@@ -108,6 +113,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'directory.publication.manage_own',
       'billing.payment.read_own',
       'billing.checkout.start',
+      // Su propio expediente, y solo el suyo (Fase 6). Quien pide ayuda tiene
+      // derecho a ver en qué va lo suyo; lo reservado del equipo nunca se le
+      // muestra, y eso lo decide el caso de uso al leer, no la pantalla al
+      // pintar.
+      'cases.case.read_own',
       'files.file.download_own','files.file.upload', 'consent.read_own',
       'consent.grant_own', 'consent.revoke_own'],
   },
@@ -139,6 +149,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'voting.process.read',
       'governance.body.read',
       'discipline.case.read_own',
+      // Su propio expediente de defensa, y solo el suyo (Fase 6).
+      'cases.case.read_own',
       'files.file.download_own','files.file.upload', 'consent.read_own', 'territory.unit.read',
       'consent.grant_own', 'consent.revoke_own'],
   },
@@ -184,6 +196,21 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'compliance.obligation.read',
       'documents.document.read',
       'discipline.case.read_own',
+      // Defensa en su territorio (Fase 6). Abre y lleva expedientes asignados;
+      // no supervisa —no lee lo reservado— ni acepta canalizaciones de la otra
+      // entidad, que es un acto de quien responde por el área receptora.
+      'cases.case.open',
+      'cases.case.read',
+      'cases.case.read_own',
+      'cases.case.update',
+      'cases.case.close',
+      'cases.participant.manage',
+      'cases.task.manage',
+      'cases.message.send',
+      'cases.document.manage',
+      'cases.referral.propose',
+      'cases.emergency.raise',
+      'cases.indicator.read',
       'files.file.download_own','identity.person.read', 'territory.unit.read', 'files.file.upload', 'files.file.download'],
   },
   {
@@ -254,6 +281,30 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'bargaining.file.read',
       'bargaining.consultation.open',
       'bargaining.strike.file_open',
+      // Defensa, casos y canalización (Fase 6). Responde por el expediente
+      // sindical: lo abre, lo asigna, lo reabre y **acepta o devuelve** lo que
+      // llega canalizado desde la otra entidad. Leer lo reservado y abrir un
+      // documento clínico son facultades aparte, y las tiene porque es quien
+      // supervisa; ninguna de las dos se ejerce sin motivo escrito ni sin estar
+      // asignada al expediente.
+      'cases.case.open',
+      'cases.case.read',
+      'cases.case.read_own',
+      'cases.case.update',
+      'cases.case.assign',
+      'cases.case.close',
+      'cases.case.reopen',
+      'cases.participant.manage',
+      'cases.task.manage',
+      'cases.message.send',
+      'cases.message.read_reserved',
+      'cases.document.manage',
+      'cases.document.read_clinical',
+      'cases.referral.propose',
+      'cases.referral.accept',
+      'cases.emergency.raise',
+      'cases.emergency.acknowledge',
+      'cases.indicator.read',
       'discipline.case.open',
       'discipline.case.read',
       'discipline.case.read_own',
@@ -429,6 +480,23 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.relationship.manage',
       'support.request.read',
       'support.request.triage',
+      // Atención social (Fase 6). Lleva expedientes sociales **asignados**: el
+      // compartimento lo pone el expediente y la asignación la comprueba el
+      // caso de uso. No acepta canalizaciones por sí sola —eso lo hace quien
+      // responde por el área— ni abre documentos clínicos sin autorización
+      // expresa, que es un permiso aparte y con nombre (PRD §10.3).
+      'cases.case.open',
+      'cases.case.read',
+      'cases.case.update',
+      'cases.case.close',
+      'cases.participant.manage',
+      'cases.task.manage',
+      'cases.message.send',
+      'cases.document.manage',
+      'cases.referral.propose',
+      'cases.emergency.raise',
+      'cases.emergency.acknowledge',
+      'cases.indicator.read',
       'files.file.download_own','identity.person.read', 'consent.grant', 'consent.revoke', 'consent.read', 'files.file.upload', 'files.file.download'],
   },
   {

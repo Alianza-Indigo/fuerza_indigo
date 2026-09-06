@@ -46,6 +46,9 @@ model AuditEvent {
   @@index([correlationId])
   @@index([legalEntityId])
   @@unique([chainKey, chainSequence])
+  // Asientos de expediente que enlazan con este asiento técnico (Fase 6).
+  caseEvents CaseEvent[] @relation("CaseEventAudit")
+
   @@map("audit_event")
 }
 

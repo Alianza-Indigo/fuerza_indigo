@@ -5,6 +5,92 @@
 ---
 ## Situación actual
 
+- **Fase activa:** 8 — Inteligencia artificial Gemini
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 6 de septiembre de 2026
+- **Fecha de inicio:** 6 de septiembre de 2026
+- **Fase anterior:** 7 — `APPROVED`, cerrada en `0101a2a`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 9 — Eventos, formación e indicadores, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servidor; prompts administrables con versiones, estados y reversión; laboratorio de pruebas con publicación revisada; base documental con separación de fuentes por permisos; orientación, clasificación sugerida, resúmenes y documentos asistidos; costos, límites y auditoría; revisión humana; degradación cuando el proveedor no responda; y defensas ante inyección de prompt y exfiltración.
+
+**Qué cierra esta fase.** El modelo de datos contrata desde la Fase 0 ocho entidades de IA que nunca se construyeron, y dos columnas las esperan: `SupportRequest.suggestedByAiGenerationId` —la propuesta de canalización que hoy no genera ninguna inteligencia artificial— y la búsqueda del gestor de contenidos, que es léxica porque la semántica vive aquí.
+
+**La garantía que gobierna la fase.** **La IA no decide nada.** El PRD §15.4 enumera diez cosas que no puede decidir —admisiones, sanciones, elegibilidad, validez de un voto, conflictos, representación, diagnósticos, pagos, accesos y publicación de datos personales— y esa lista no es una recomendación para quien escriba los prompts: es una comprobación del servicio, que rechaza la ejecución antes de llamar al modelo. Y nada sale hacia el proveedor sin minimizar: lo que se envía se reduce, se redacta o se seudonimiza, y queda registrado qué se envió, con qué prompt, qué costó y quién revisó el resultado.
+
+---
+
+## Bloques de trabajo
+
+| Bloque | Contenido | Estado |
+|---|---|---|
+| A | Esquema de IA y base documental, migración con `pgvector`, permisos y semilla | Pendiente |
+| B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | Pendiente |
+| C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | Pendiente |
+| D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | Pendiente |
+| E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | Pendiente |
+| F | Casos de uso asistidos y revisión humana de cada salida | Pendiente |
+| G | Pantallas de gobernanza, laboratorio y consulta de costos | Pendiente |
+| H | Pruebas, controles de fase, documentación y cierre | Pendiente |
+
+---
+
+## Criterios de aceptación
+
+Los seis del PRD §24 Fase 8 se comprobarán ejecutando el sistema, no leyendo el código. Se registran aquí al cerrarse cada uno.
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Ningún prompt crítico vive solamente en código | Pendiente |
+| 2 | Fuentes y fragmentos respetan permisos del usuario | Pendiente |
+| 3 | La salida identifica que fue generada con IA y permite corregirla | Pendiente |
+| 4 | Las acciones sensibles requieren confirmación humana | Pendiente |
+| 5 | La aplicación continúa operando si Gemini está caído | Pendiente |
+| 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | Pendiente |
+
+---
+
+## Defectos abiertos
+
+Ninguno registrado todavía.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse aprobada.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
+| 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
+| 8 | 2026-09-06 | — | `IN_PROGRESS` | — |
+| 9 y 10 | — | — | No iniciadas | — |
+
+---
+
+# Archivo — registro completo de la Fase 7
+
+> Herramientas tecnológicas y accesos externos. Cerrada el 6 de septiembre de 2026 en `0101a2a`.
+
+---
+## Situación actual
+
 - **Fase activa:** 7 — Herramientas tecnológicas y accesos externos
 - **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 6 de septiembre de 2026, con la instrucción expresa de que **ninguna plataforma externa se toca**
@@ -132,6 +218,7 @@ abajo. Cada uno lo encontró una cosa distinta, y ninguna fue una revisión de c
 | 8 a 10 | — | — | No iniciadas | — |
 
 ---
+
 
 # Archivo — registro completo de la Fase 6
 

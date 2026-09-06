@@ -32,7 +32,11 @@ jobs:
     # bitácoras— sin comprobar ninguna.
     services:
       postgres:
-        image: postgres:17-alpine
+        # `pgvector` y no `postgres` a secas: la base documental de la Fase 8
+        # guarda vectores de 768 dimensiones con índice HNSW, y la imagen
+        # oficial no trae la extensión. Es la misma versión del motor con la
+        # extensión disponible; la migración la habilita.
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: fuerza
           POSTGRES_PASSWORD: fuerza_de_integracion
@@ -64,6 +68,14 @@ jobs:
       SUPERADMIN_SESSION_VERSION: '1'
       BLOB_READ_WRITE_TOKEN: vercel_blob_rw_ciplaceholder_ciplaceholder
       FILE_URL_SIGNING_SECRET: Y2ktZmlybWEtZGUtYXJjaGl2b3MtZGUtcHJ1ZWJhLXNvbG8
+      # Claves del proveedor de IA. No son reales y lo dicen en voz alta: la
+      # integración continua no llama a ningún modelo —el puerto tiene su
+      # adaptador de pruebas— pero el arranque exige que la variable exista
+      # desde la Fase 8, y sin ella la primera prueba que levante la aplicación
+      # se caería con un mensaje sobre copiar .env.example, que dentro de un
+      # contenedor no le sirve a nadie.
+      GEMINI_API_KEY: ci-no-es-una-clave-real-de-gemini
+      GEMINI_DEFAULT_MODEL: gemini-2.5-flash
       EMAIL_PROVIDER: console
       EMAIL_FROM: 'Fuerza Indigo <no-responder@ejemplo.invalid>'
       CRON_SECRET: Y2ktc2VjcmV0by1kZS10YXJlYXMtcHJvZ3JhbWFkYXMtcHJ1ZWJh

@@ -19,7 +19,7 @@ import { z } from 'zod';
  * al cerrarla: el control `C-COH-15` lo comprueba ahora contra
  * `docs/PHASE_STATUS.md`, para que no dependa de que alguien se acuerde.
  */
-const ACTIVE_PHASE = 7;
+const ACTIVE_PHASE = 8;
 
 /** 32 bytes en base64url producen 43 caracteres. Se exige ese mínimo. */
 const secret = (purpose: string) =>
@@ -136,7 +136,13 @@ const REQUIRED_BY_PHASE: Record<number, (keyof Env)[]> = {
     'NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY',
   ],
   5: ['VOTE_CREDENTIAL_SECRET'],
-  10: ['GEMINI_API_KEY', 'GEMINI_DEFAULT_MODEL'],
+  // La IA es la Fase 8 desde la corrección de alcance del 5 de septiembre, que
+  // retiró CIAN y CENI como fases y renumeró las siguientes. Aquí quedó el 10,
+  // que era su número anterior: las claves del proveedor no se habrían exigido
+  // hasta dos fases después de construirlo. Es el mismo defecto que `D-F4-002`
+  // y `D-F6-005`, por tercera vez y por la misma causa —un número de fase
+  // escrito a mano que sobrevive a una renumeración sin que nada se rompa—.
+  8: ['GEMINI_API_KEY', 'GEMINI_DEFAULT_MODEL'],
 };
 
 export class EnvironmentError extends Error {

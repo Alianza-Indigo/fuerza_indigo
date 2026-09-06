@@ -6,6 +6,7 @@
  * los casos de uso (ARCHITECTURE §4.2).
  */
 export { compartimentoDe } from './access';
+export { EXIGEN_REPRESENTACION, NOMBRE_DE_PAPEL, VEN_EL_EXPEDIENTE } from './participation';
 export {
   NOMBRE_DE_DOMINIO,
   NOMBRE_DE_ESTADO,

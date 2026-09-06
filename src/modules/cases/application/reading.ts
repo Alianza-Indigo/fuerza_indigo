@@ -9,7 +9,9 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import type {
   CaseDomain,
+  CaseMembershipQuality,
   CaseOutcome,
+  CaseParticipantRole,
   CasePriority,
   CaseStatus,
   CaseTaskStatus,
@@ -59,6 +61,13 @@ export interface CaseDetail extends CaseRow {
   readonly territorio: string | null;
   readonly folioDeLaSolicitud: string | null;
   readonly equipo: readonly { readonly nombre: string; readonly rol: string }[];
+  readonly participantes: readonly {
+    readonly id: string;
+    readonly nombre: string;
+    readonly papel: CaseParticipantRole;
+    readonly calidad: CaseMembershipQuality;
+    readonly veElExpediente: boolean;
+  }[];
 }
 
 const CAMPOS_DE_FILA = {
@@ -75,6 +84,7 @@ const CAMPOS_DE_FILA = {
   participants: {
     where: { role: 'APPLICANT' as const, removedAt: null },
     select: {
+      role: true,
       externalName: true,
       person: {
         select: {
@@ -106,6 +116,7 @@ type FilaCruda = {
   dueAt: Date | null;
   legalEntity: { shortName: string };
   participants: {
+    role: CaseParticipantRole;
     externalName: string | null;
     person: {
       givenName: string;
@@ -119,7 +130,11 @@ type FilaCruda = {
 };
 
 function aFila(fila: FilaCruda): CaseRow {
-  const solicitante = fila.participants[0];
+  // Se busca por papel y no por posición. En la lista la consulta ya filtra a
+  // quien pidió la ayuda, pero el detalle trae a **todos** los participantes,
+  // y ahí el primero de la lista es el primero que se agregó, que no tiene por
+  // qué ser el solicitante.
+  const solicitante = fila.participants.find((participante) => participante.role === 'APPLICANT');
   return {
     id: fila.id,
     publicId: fila.publicId,
@@ -211,6 +226,26 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       reopenCount: true,
       territorialUnit: { select: { name: true } },
       supportRequest: { select: { folio: true } },
+      participants: {
+        where: { removedAt: null },
+        orderBy: { addedAt: 'asc' },
+        select: {
+          id: true,
+          role: true,
+          membershipQuality: true,
+          externalName: true,
+          canViewCase: true,
+          person: {
+            select: {
+              givenName: true,
+              middleName: true,
+              familyName: true,
+              secondFamilyName: true,
+              preferredName: true,
+            },
+          },
+        },
+      },
       assignments: {
         where: { unassignedAt: null },
         select: {
@@ -288,6 +323,16 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
     equipo: fila.assignments.map((asignacion) => ({
       nombre: nombreCompleto(asignacion.user.person),
       rol: asignacion.assignmentRole,
+    })),
+    participantes: fila.participants.map((participante) => ({
+      id: participante.id,
+      nombre:
+        participante.person !== null
+          ? nombreCompleto(participante.person)
+          : (participante.externalName ?? 'Sin nombre'),
+      papel: participante.role,
+      calidad: participante.membershipQuality,
+      veElExpediente: participante.canViewCase,
     })),
   });
 }

@@ -2,13 +2,21 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import {
   contextoDe,
+  crearMembresia,
   crearPersonaConCuenta,
   entidadPrincipal,
   nombrar,
   type PersonaDePrueba,
 } from './helpers/fixtures';
 import { confirmRouting, PUBLIC_INTAKE_NOTICE_CODE, submitRequest } from '@/modules/support';
-import { assessCase, caseDetail, caseList, openCase } from '@/modules/cases';
+import {
+  addParticipant,
+  assessCase,
+  caseDetail,
+  caseList,
+  openCase,
+  removeParticipant,
+} from '@/modules/cases';
 
 /**
  * Expediente de caso: apertura, relato inalterable y valoración humana
@@ -325,6 +333,217 @@ describe('el acceso es por asignación, no por área', () => {
     });
 
     const intento = await caseDetail(await contextoDe(base.prisma, social), publicId);
+    expect(intento.ok).toBe(false);
+  });
+});
+
+/**
+ * Participantes, calidades y representación (PRD §10.2; F6-CAS-006).
+ *
+ * Tres promesas que se comprueban ejecutando:
+ *
+ *  · La calidad **se deriva del padrón**, no se teclea, y se conserva aunque la
+ *    persona deje de tenerla después.
+ *  · Quien representa tiene que **poder acreditarlo**: sin relación de cuidado
+ *    viva no se agrega como representante.
+ *  · **Ver el expediente no viene con figurar en él**: una contraparte figura y
+ *    no mira.
+ */
+describe('participantes, calidades y representación', () => {
+  /** Registra a alguien en el padrón con la calidad que se le indique. */
+  async function personaConCalidad(
+    nombre: string,
+    calidad: 'AGREMIADO' | 'AFILIADO_HONORARIO' | null,
+  ): Promise<PersonaDePrueba> {
+    const persona = await crearPersonaConCuenta(base.prisma, { givenName: nombre, familyName: 'De Prueba' });
+    if (calidad !== null) {
+      await crearMembresia(base.prisma, {
+        personId: persona.personId,
+        legalEntityId: fuerzaId,
+        typeCode: calidad,
+      });
+    }
+    return persona;
+  }
+
+  it('la calidad se lee del padrón y no de quien agrega', async () => {
+    const { caseId } = await abrir();
+    const agremiada = await personaConCalidad('Agremiada', 'AGREMIADO');
+    const sinCalidad = await personaConCalidad('SinCalidad', null);
+
+    const conCalidad = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: agremiada.personId,
+      role: 'AFFECTED_PERSON',
+      reason: 'Es a quien le está pasando lo que se cuenta en el expediente.',
+    });
+    expect(conCalidad.ok, conCalidad.ok ? '' : conCalidad.error.message).toBe(true);
+    if (conCalidad.ok) expect(conCalidad.data.calidad).toBe('UNION_MEMBER');
+
+    const otra = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: sinCalidad.personId,
+      role: 'WITNESS',
+      reason: 'Presenció los hechos y declara sobre ellos.',
+    });
+    expect(otra.ok, otra.ok ? '' : otra.error.message).toBe(true);
+    if (otra.ok) expect(otra.data.calidad).toBe('NONE');
+  });
+
+  it('la calidad se conserva aunque después se pierda la membresía', async () => {
+    // El expediente tiene que seguir diciendo con qué calidad intervino, no
+    // recalcularla al leerla: si no, un expediente de hace tres años se leería
+    // con la situación de hoy.
+    const { caseId } = await abrir();
+    const agremiada = await personaConCalidad('Agremiada2', 'AGREMIADO');
+
+    const agregada = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: agremiada.personId,
+      role: 'AFFECTED_PERSON',
+      reason: 'Es la persona afectada por los hechos del expediente.',
+    });
+    expect(agregada.ok, agregada.ok ? '' : agregada.error.message).toBe(true);
+
+    // Se le acaba la vigencia y nadie la renueva: la baja se asienta con fecha y
+    // motivo, como exige el modelo, para que la prueba refleje una pérdida real
+    // de la membresía y no una fila inconsistente.
+    await base.sql.query(
+      `UPDATE membership
+          SET status = 'EXPIRED', "endedAt" = now(), "endReason" = 'EXPIRY'
+        WHERE "personId" = $1`,
+      [agremiada.personId],
+    );
+
+    const guardada = await base.prisma.caseParticipant.findFirstOrThrow({
+      where: { caseId, personId: agremiada.personId },
+      select: { membershipQuality: true },
+    });
+    expect(guardada.membershipQuality).toBe('UNION_MEMBER');
+  });
+
+  it('sin representación acreditada no se agrega a quien dice representar', async () => {
+    const { caseId } = await abrir();
+    const afectada = await personaConCalidad('Afectada', 'AGREMIADO');
+    const quienDiceRepresentar = await personaConCalidad('QuienDice', null);
+
+    const primera = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: afectada.personId,
+      role: 'AFFECTED_PERSON',
+      reason: 'Es la persona afectada por los hechos que se cuentan.',
+    });
+    expect(primera.ok, primera.ok ? '' : primera.error.message).toBe(true);
+
+    const sinAcreditar = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: quienDiceRepresentar.personId,
+      role: 'REPRESENTATIVE',
+      reason: 'Dice representar a la persona afectada, sin relación registrada.',
+    });
+    expect(sinAcreditar.ok).toBe(false);
+    if (!sinAcreditar.ok) expect(sinAcreditar.error.message).toContain('relación');
+
+    // Con la relación de cuidado viva, sí.
+    await base.prisma.careRelationship.create({
+      data: {
+        fromPersonId: quienDiceRepresentar.personId,
+        toPersonId: afectada.personId,
+        kind: 'AUTHORIZED_REPRESENTATIVE',
+        createdByActorId: atiende.actorId,
+        updatedByActorId: atiende.actorId,
+      },
+    });
+
+    const acreditada = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: quienDiceRepresentar.personId,
+      role: 'REPRESENTATIVE',
+      reason: 'Representa a la persona afectada con relación acreditada.',
+    });
+    expect(acreditada.ok, acreditada.ok ? '' : acreditada.error.message).toBe(true);
+    if (acreditada.ok) expect(acreditada.data.veElExpediente).toBe(true);
+  });
+
+  it('una contraparte figura en el expediente y no lo ve', async () => {
+    const { caseId } = await abrir();
+
+    const contraparte = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      externalName: 'Empresa demandada, S.A. de C.V.',
+      role: 'COUNTERPART',
+      reason: 'Es la empresa que despidió a la persona que pidió ayuda.',
+    });
+    expect(contraparte.ok, contraparte.ok ? '' : contraparte.error.message).toBe(true);
+    if (contraparte.ok) {
+      expect(contraparte.data.veElExpediente).toBe(false);
+      expect(contraparte.data.calidad).toBe('NONE');
+    }
+  });
+
+  it('quien pidió la ayuda no se retira del expediente', async () => {
+    // La entrada pública es anónima: la solicitud no trae persona del padrón y
+    // el expediente nace sin solicitante identificado. Se le identifica después,
+    // que es como ocurre, y desde entonces ya no se le puede sacar.
+    const { caseId } = await abrir();
+    const quienPidio = await personaConCalidad('QuienPidio', 'AGREMIADO');
+
+    const solicitante = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: quienPidio.personId,
+      role: 'APPLICANT',
+      reason: 'Es quien escribió pidiendo ayuda, ya identificada en el padrón.',
+    });
+    expect(solicitante.ok, solicitante.ok ? '' : solicitante.error.message).toBe(true);
+    if (!solicitante.ok) return;
+
+    const intento = await removeParticipant(await contextoDe(base.prisma, atiende), {
+      participantId: solicitante.data.participantId,
+      reason: 'Intento de retirar a quien pidió la ayuda, que no debe admitirse.',
+    });
+    expect(intento.ok).toBe(false);
+    if (!intento.ok) expect(intento.error.message).toContain('no se retira');
+  });
+
+  it('retirar a alguien le quita también el acceso', async () => {
+    const { caseId } = await abrir();
+    const afectada = await personaConCalidad('Afectada2', 'AGREMIADO');
+
+    const agregada = await addParticipant(await contextoDe(base.prisma, atiende), {
+      caseId,
+      personId: afectada.personId,
+      role: 'AFFECTED_PERSON',
+      reason: 'Es la persona afectada por los hechos del expediente.',
+    });
+    expect(agregada.ok, agregada.ok ? '' : agregada.error.message).toBe(true);
+    if (!agregada.ok) return;
+
+    const retirada = await removeParticipant(await contextoDe(base.prisma, atiende), {
+      participantId: agregada.data.participantId,
+      reason: 'Se confundió con otra persona al registrarla en el expediente.',
+    });
+    expect(retirada.ok, retirada.ok ? '' : retirada.error.message).toBe(true);
+
+    const fila = await base.prisma.caseParticipant.findUniqueOrThrow({
+      where: { id: agregada.data.participantId },
+      select: { removedAt: true, canViewCase: true, removeReason: true },
+    });
+    expect(fila.removedAt).not.toBeNull();
+    // Si conservara el acceso, retirar a alguien sería un cambio de etiqueta.
+    expect(fila.canViewCase).toBe(false);
+    expect(fila.removeReason).not.toBeNull();
+  });
+
+  it('quien no lleva el expediente no agrega a nadie', async () => {
+    const { caseId } = await abrir();
+    const persona = await personaConCalidad('Cualquiera', null);
+
+    const intento = await addParticipant(await contextoDe(base.prisma, otraDelArea), {
+      caseId,
+      personId: persona.personId,
+      role: 'WITNESS',
+      reason: 'Intento de agregar a alguien a un expediente que no se lleva.',
+    });
     expect(intento.ok).toBe(false);
   });
 });

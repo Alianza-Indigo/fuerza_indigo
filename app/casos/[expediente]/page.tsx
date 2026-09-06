@@ -1,16 +1,26 @@
 import Link from 'next/link';
 import { Badge, Card, ErrorNotice, Notice, PageShell, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { caseDetail } from '@/modules/cases';
+import { caseDetail, peopleForCase } from '@/modules/cases';
 import {
   NOMBRE_DE_DOMINIO,
   NOMBRE_DE_ESTADO,
   NOMBRE_DE_PRIORIDAD,
+  NOMBRE_DE_PAPEL,
   NOMBRE_DE_RESULTADO,
   TONO_DE_PRIORIDAD,
 } from '@/modules/cases/domain';
 import { REQUEST_TYPE_LABELS } from '../../(publico)/contacto/labels';
 import { AssessmentForm } from './assessment-form';
+import { AddParticipantForm, RemoveParticipantForm } from './participants-forms';
+
+/** Cómo se nombra en pantalla la calidad con la que alguien interviene. */
+const NOMBRE_DE_CALIDAD: Record<string, string> = {
+  UNION_MEMBER: 'agremiada',
+  HONORARY_AFFILIATE: 'afiliación honoraria',
+  PROTECTED_BENEFICIARY: 'persona beneficiaria',
+  NONE: 'sin calidad en la organización',
+};
 
 export const metadata = { title: 'Expediente', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -50,6 +60,8 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
   const datos = consulta.data;
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'full', timeZone: actor.timeZone });
   const puedeValorar = datos.status !== 'CLOSED';
+  const opciones = puedeValorar ? await peopleForCase(actor, datos.id) : null;
+  const personas = opciones !== null && opciones.ok ? opciones.data : [];
 
   return (
     <PageShell
@@ -102,6 +114,43 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
               <p className="mt-2">Se ha reabierto {datos.reopenCount} vez/veces.</p>
             )}
           </Notice>
+        )}
+
+        <Section title="Quién figura en el expediente" level={2}>
+          <Card>
+            {datos.participantes.length === 0 ? (
+              <p className="text-[var(--color-ink-soft)]">Todavía no figura nadie.</p>
+            ) : (
+              <ul className="space-y-3">
+                {datos.participantes.map((participante) => (
+                  <li key={participante.id} className="border-b border-[var(--color-line)] pb-3 last:border-0 last:pb-0">
+                    <span className="font-medium">{participante.nombre}</span>
+                    <span className="block text-sm text-[var(--color-ink-soft)]">
+                      {NOMBRE_DE_PAPEL[participante.papel]} · {NOMBRE_DE_CALIDAD[participante.calidad]} ·{' '}
+                      {participante.veElExpediente ? 've el expediente' : 'no lo ve'}
+                    </span>
+                    {puedeValorar && participante.papel !== 'APPLICANT' && (
+                      <div className="mt-3">
+                        <RemoveParticipantForm participantId={participante.id} nombre={participante.nombre} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
+              La calidad se lee del padrón al agregar a cada persona y se conserva: si después pierde la membresía,
+              el expediente sigue diciendo con qué calidad intervino.
+            </p>
+          </Card>
+        </Section>
+
+        {puedeValorar && (
+          <Section title="Agregar a alguien" level={2}>
+            <Card>
+              <AddParticipantForm caseId={datos.id} personas={personas} />
+            </Card>
+          </Section>
         )}
 
         <Section title="Valoración" level={2}>

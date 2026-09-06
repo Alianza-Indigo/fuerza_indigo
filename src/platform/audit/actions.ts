@@ -71,6 +71,8 @@ export const AUDIT_ACTIONS = {
   CASE_CLOSED: 'cases.case.closed',
   CASE_REOPENED: 'cases.case.reopened',
   CASE_READ: 'cases.case.read',
+  CASE_PARTICIPANT_ADDED: 'cases.participant.added',
+  CASE_PARTICIPANT_REMOVED: 'cases.participant.removed',
 
   // Finanzas — Fase 3. Todo lo que mueve dinero o el libro deja rastro.
   CATALOG_PRODUCT_CREATED: 'billing.catalog.product_created',

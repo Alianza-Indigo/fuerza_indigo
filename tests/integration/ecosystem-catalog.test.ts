@@ -101,11 +101,20 @@ describe('lo que el catálogo publica', () => {
       'accesoUrl',
       'audienceText',
       'code',
+      'logotipoUrl',
       'modulo',
       'name',
       'responsable',
       'summary',
     ]);
+
+    // La dirección del logotipo se compone del código de la ficha y de nada
+    // más: es la misma para todo el mundo, y no hay en ella identificador de
+    // archivo que sustituir ni dato de quien mira.
+    for (const ficha of fichas) {
+      if (ficha.logotipoUrl === null) continue;
+      expect(ficha.logotipoUrl).toBe(`/herramientas/logotipo/${ficha.code}`);
+    }
   });
 });
 

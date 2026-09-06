@@ -10,7 +10,12 @@ import {
   TextArea,
   type Option,
 } from '@/design-system/primitives';
-import { cambiarVisibilidadAction, editarFichaAction, type CatalogoState } from './actions';
+import {
+  adjuntarLogotipoAction,
+  cambiarVisibilidadAction,
+  editarFichaAction,
+  type CatalogoState,
+} from './actions';
 
 const INICIAL: CatalogoState = { status: 'idle' };
 
@@ -33,6 +38,7 @@ export interface FichaEditable {
   readonly sortOrder: number;
   readonly direccionConfigurada: string | null;
   readonly publicada: boolean;
+  readonly tieneLogotipo: boolean;
 }
 
 /**
@@ -118,6 +124,52 @@ export function EditarFichaForm({ ficha }: { ficha: FichaEditable }) {
       />
 
       <SubmitButton>Guardar ficha</SubmitButton>
+    </form>
+  );
+}
+
+/**
+ * Carga del logotipo de la ficha (PRD §12.2).
+ *
+ * Va en su propio formulario porque es un envío distinto —lleva un archivo— y
+ * mezclarlo con el de los textos obligaría a volver a subir la imagen cada vez
+ * que se corrige una coma.
+ *
+ * Solo tres formatos de imagen, y ninguno es SVG: un SVG es un documento que
+ * puede llevar guiones dentro, y esta imagen se sirve desde el propio dominio a
+ * cualquiera que abra el catálogo.
+ */
+export function LogotipoForm({ ficha }: { ficha: FichaEditable }) {
+  const [estado, accion] = useActionState(adjuntarLogotipoAction, INICIAL);
+
+  return (
+    <form action={accion} className="space-y-3">
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo guardar'} />}
+      {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Logotipo guardado'} />}
+
+      <input type="hidden" name="linkId" value={ficha.id} />
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium" htmlFor={`logotipo-${ficha.id}`}>
+          Logotipo
+        </label>
+        <p className="text-sm text-[var(--color-ink-soft)]" id={`logotipo-ayuda-${ficha.id}`}>
+          {ficha.tieneLogotipo
+            ? 'Ya hay uno cargado. Si eliges otro, lo sustituye.'
+            : 'Todavía no hay ninguno. La ficha se ve igual sin él.'}{' '}
+          Imagen PNG, JPEG o WebP.
+        </p>
+        <input
+          id={`logotipo-${ficha.id}`}
+          name="logotipo"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          aria-describedby={`logotipo-ayuda-${ficha.id}`}
+          className="block w-full text-sm"
+        />
+      </div>
+
+      <SubmitButton>Guardar logotipo</SubmitButton>
     </form>
   );
 }

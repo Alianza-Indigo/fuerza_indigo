@@ -217,3 +217,74 @@ test.describe('administrar el catálogo', () => {
     await expect(page.getByText(/no tienes autorización|no encontrada/i).first()).toBeVisible();
   });
 });
+
+test.describe('el logotipo de una ficha', () => {
+  // Un PNG mínimo de verdad. La carga comprueba que el contenido corresponda
+  // con el tipo declarado, así que un archivo inventado no pasaría.
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+
+  test.afterAll(async () => {
+    await conLaBase((cliente) =>
+      cliente.query('UPDATE ecosystem_link SET "logoFileId" = NULL WHERE code = $1', ['NEUROPLAN']),
+    );
+  });
+
+  test('se carga desde el gestor y se ve en el catálogo público, con su texto alternativo', async ({
+    page,
+  }) => {
+    const correo = process.env['E2E_EMAIL_COMUNICACION'];
+    const clave = process.env['E2E_PASSWORD'];
+    test.skip(correo === undefined || clave === undefined, 'Faltan las credenciales de prueba.');
+
+    await page.goto('/acceso');
+    await page.fill('#email', correo!);
+    await page.fill('#password', clave!);
+    await page.click('button[type=submit]');
+    await page.waitForURL((url) => !url.pathname.startsWith('/acceso'), { timeout: 30_000 });
+
+    // Antes: la ficha existe y no tiene imagen. Sin esta comprobación, lo de
+    // abajo podría estar mirando una imagen que ya estaba.
+    await page.goto('/herramientas');
+    await expect(page.getByRole('img', { name: /logotipo de neuroplan/i })).toHaveCount(0);
+
+    await page.goto('/gestion/contenidos/ecosistema');
+    const tarjeta = page.locator('li', {
+      has: page.getByRole('heading', { name: 'NeuroPlan', exact: true }),
+    });
+    await tarjeta
+      .getByLabel(/^logotipo$/i)
+      .setInputFiles({ name: 'neuroplan.png', mimeType: 'image/png', buffer: PNG });
+    await tarjeta.getByRole('button', { name: /guardar logotipo/i }).click();
+    await expect(page.getByText(/logotipo guardado/i).first()).toBeVisible();
+
+    // Y ahora sí: la imagen sale en el catálogo público, sin sesión de por
+    // medio, y con un texto alternativo que dice de quién es —«logotipo» a
+    // secas no le sirve a quien no ve la imagen—.
+    await page.context().clearCookies();
+    await page.goto('/herramientas');
+    const logotipo = page.getByRole('img', { name: /logotipo de neuroplan/i });
+    await expect(logotipo).toBeVisible();
+
+    // La ruta que sirve la imagen responde, y responde una imagen. Se comprueba
+    // aparte del elemento porque son dos fallos distintos y conviene saber cuál
+    // es: la tarjeta puede pintar el hueco perfectamente mientras la ruta
+    // devuelve 404.
+    const respuesta = await page.request.get('/herramientas/logotipo/NEUROPLAN');
+    expect(respuesta.status(), await respuesta.text()).toBe(200);
+    expect(respuesta.headers()['content-type']).toContain('image/');
+    expect((await respuesta.body()).byteLength).toBeGreaterThan(0);
+
+    // Y que **cargue de verdad**. Comprobar solo que el elemento está no dice
+    // nada: una imagen rota sigue siendo un elemento visible, con su texto
+    // alternativo y su hueco. Se pide el ancho natural, que solo tiene una
+    // imagen que el navegador consiguió decodificar.
+    await expect
+      .poll(async () => logotipo.evaluate((el) => (el as HTMLImageElement).naturalWidth), {
+        timeout: 10_000,
+      })
+      .toBeGreaterThan(0);
+  });
+});

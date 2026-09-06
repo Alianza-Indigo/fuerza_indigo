@@ -564,9 +564,13 @@ Mientras exista un bloqueo activo, ningún trabajo de retención elimina, anonim
 
 CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación propia, fuera de este repositorio. El modelo de datos guarda **su ficha y su dirección de acceso**, nada más: no hay derechos de acceso, ni lanzamientos firmados, ni vínculo de identidad, ni sincronización (PRD §12, §13 y §14).
 
-**`EcosystemLink`** — Ficha de una plataforma o herramienta del ecosistema.
+**`EcosystemLink`** — Ficha de una plataforma o herramienta del ecosistema. **Construida en la Fase 7.**
 `id` PK · `code` U · `name` · `summary` — descripción breve · `audienceText` — público al que se dirige, en lenguaje claro · `logoFileId` NULL FK→`FileObject` · `accentToken` NULL — acento de módulo del sistema de diseño · `externalUrl` NULL — dirección de acceso, configurable; mientras es nula la ficha se muestra **sin botón** · `legalEntityId` NULL FK IX — entidad responsable, cuando es del ecosistema · `operationalStatus` *enum* (`ACTIVE`, `HIDDEN`) IX · `sortOrder` *int* · `publishedAt` NULL IX.
 La dirección nunca se escribe en un componente: se administra desde la superficie de contenidos. El acceso es siempre una redirección externa, sin datos personales en la dirección y sin intercambio de identidad.
+
+**Lo que la base impone, y no el código** (Fase 7): la dirección, si existe, es absoluta y por HTTPS —una relativa convertiría el «acceso externo» en una ruta de este mismo sitio sin que se notara, y `http://` mandaría a alguien a escribir su contraseña por un canal sin cifrar—; la cadena vacía no vale, porque pasaría el «tiene dirección» de cualquier comprobación descuidada; y una ficha `ACTIVE` exige `publishedAt`, para que «publicada» sea un hecho con su instante y no un adjetivo de la interfaz. `code` no se puede reescribir: la lista blanca de columnas actualizables lo deja fuera.
+
+La columna `logoFileId` apunta a un archivo clasificado como **público**, y se sirve por una ruta abierta —`/herramientas/logotipo/<código>`— que recibe el **código de la ficha, nunca un identificador de archivo**: no hay nada que adivinar ni sustituir, y por eso no puede convertirse en un lector de archivos cualquiera. Solo responde por fichas publicadas y comprueba la clasificación al servir. El resto de los archivos siguen pasando por la puerta de descarga de siempre, con su permiso y su auditoría.
 
 **`IntegrationCredentialReference`** — Referencia a credenciales de integración. **Nunca contiene el secreto**.
 `id` PK · `provider` U? · `environment` *enum* (`DEVELOPMENT`, `PREVIEW`, `PRODUCTION`) · `envVarName` — nombre de la variable que guarda el secreto · `keyFingerprint` NULL — huella para detectar rotación · `rotatedAt` NULL · `expiresAt` NULL · `owner` · `notes` NULL.

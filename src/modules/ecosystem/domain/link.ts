@@ -22,6 +22,7 @@ export interface FichaDelEcosistema {
   readonly audienceText: string;
   readonly modulo: ModuloDeFicha;
   readonly accesoUrl: string | null;
+  readonly logotipoUrl: string | null;
   readonly responsable: string | null;
 }
 
@@ -52,6 +53,13 @@ export function moduloDeLaFicha(accento: EcosystemAccent | null): ModuloDeFicha 
  * importa. La base ya lo impide, pero esta función es lo que decide si hay
  * botón, y no debe depender de que la base lo siga impidiendo mañana.
  */
+export function logotipoDeLaFicha(code: string, logoFileId: string | null): string | null {
+  // La dirección se compone del código y no del identificador del archivo: la
+  // ruta que lo sirve no acepta identificadores, y así no hay dos maneras de
+  // pedir la misma imagen.
+  return logoFileId === null ? null : `/herramientas/logotipo/${encodeURIComponent(code)}`;
+}
+
 export function accesoDeLaFicha(externalUrl: string | null): string | null {
   if (externalUrl === null) return null;
   return externalUrl.startsWith('https://') ? externalUrl : null;

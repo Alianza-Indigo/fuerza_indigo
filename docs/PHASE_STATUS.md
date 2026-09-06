@@ -31,33 +31,41 @@ El PRD §24 Fase 7 contrata: catálogo único de plataformas y herramientas del 
 | A | Entidad `EcosystemLink`, migración, permiso `ecosystem.link.manage` y semilla del catálogo | Completo |
 | B | Catálogo público y su repetición en el portal personal, con el botón que dice que se sale | Completo |
 | C | Administración del catálogo en la superficie de contenidos | Completo |
-| D | Pruebas, controles de fase, documentación y cierre | Pendiente |
+| D | Pruebas, controles de fase, documentación y cierre | Completo |
 
 ---
 
 ## Criterios de aceptación
 
-Los del PRD §24 Fase 7 se comprobarán ejecutando el sistema, no leyendo el código. Se registran aquí al cerrarse cada uno.
+Los ocho criterios del PRD §24 Fase 7, comprobados **ejecutando el sistema** y mirando después lo que quedó en la base
+con las credenciales de la aplicación, nunca leyendo el código (`tests/integration/fase7-criterios.test.ts`).
 
-| # | Criterio | Estado |
-|---|---|---|
-| 1 | Cada plataforma o herramienta se agrega sin cambiar el núcleo de membresías | Pendiente |
-| 2 | Ninguna ficha tiene un botón sin dirección real configurable | Pendiente |
-| 3 | CIAN y CENI aparecen exclusivamente como accesos externos: sin expediente, sin agenda, sin evaluación y sin cobro administrados aquí | Pendiente |
-| 4 | Quien pulsa un acceso externo sabe, antes de pulsarlo, que sale de Fuerza Índigo | Pendiente |
-| 5 | El acceso es únicamente redirección externa: sin inicio de sesión único, sin API, sin sincronización y sin datos personales en la dirección | Pendiente |
-| 6 | Ninguna dirección de acceso está escrita en un componente | Pendiente |
-| 7 | La falla de una plataforma externa no bloquea el portal central | Pendiente |
-| 8 | Las fichas de CIAN, CENI, NeuroPlan, ADIA y NEXO siguen el mismo patrón, sin casos especiales en código | Pendiente |
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | Cada plataforma se agrega sin cambiar el núcleo de membresías (`F7-QA-001`) | **Cumplido** | Se crea una ficha nueva y se cuentan antes y después las membresías, solicitudes, calidades, productos y pagos: ninguna cambia |
+| 2 | Ninguna ficha tiene un botón sin dirección real configurable (`F7-QA-002`) | **Cumplido** | Sin dirección, la ficha llega con acceso nulo y la pantalla no pinta botón —ni uno deshabilitado, que se lee como algo roto—. Con dirección llega la que se configuró, y cambiarla se ve enseguida |
+| 3 | CIAN y CENI aparecen exclusivamente como accesos externos (`F7-QA-003`) | **Cumplido** | Sobre la base en crudo: no existe ninguna tabla de expediente, agenda, evaluación, derecho o lanzamiento de esas plataformas; la ficha no tiene columna de derecho ni de identificador ajeno; y ningún enumerado del sistema vuelve a nombrar una operación suya |
+| 4 | Quien pulsa sabe, antes de pulsarlo, que sale de Fuerza Índigo (`F7-QA-004`) | **Cumplido** | El aviso va en el **texto del enlace** y no en un icono, y se comprueba en el navegador. Aquí se comprueba lo que ese aviso necesita: que la ficha llegue con nombre propio y no con un identificador |
+| 5 | El acceso es únicamente redirección externa (`F7-QA-005`) | **Cumplido** | Ninguna dirección lleva parámetro, fragmento ni credencial; el catálogo serializado no contiene el identificador de la persona ni del actor; y la consulta pública **no recibe actor**, de modo que no hay forma de que devuelva otra cosa según quién pregunte |
+| 6 | Ninguna dirección de acceso está escrita en un componente (`F7-QA-006`) | **Cumplido** | Se cambia la dirección en la base y cambia lo que sale al público, sin tocar código. Y el control `C-F7-02` recorre el repositorio rechazando cualquier dirección absoluta escrita en un enlace |
+| 7 | La falla de una plataforma externa no bloquea el portal central (`F7-QA-007`) | **Cumplido** | No se simula una caída: medir un tiempo de espera no probaría nada, porque un dominio inexistente falla al instante. Se comprueba algo más fuerte —**que servir el catálogo no hace ninguna llamada de red**— contándolas. Sin llamada no hay caída ajena que pueda bloquear nada |
+| 8 | Todas las fichas siguen el mismo patrón, sin casos especiales (`F7-QA-008`) | **Cumplido** | Las cinco se editan, se ocultan y se publican con el mismo caso de uso, y todas llegan con **la misma forma**: si alguna necesitara un campo propio, faltaría o sobraría una clave |
 
 ---
 
 ## Defectos abiertos
 
-**Ninguno.** Los que han aparecido durante la construcción están corregidos dentro de la misma fase y se registran
-abajo. Al primero lo encontró ejecutar por primera vez la puesta en marcha **tal como el manual la describe**, que es la
-única forma de saber si un manual dice la verdad. Al segundo lo destapó servir una dirección que hasta entonces era del
-gestor de contenidos.
+**Ninguno.** Los cinco que aparecieron durante la construcción están corregidos dentro de la misma fase y se registran
+abajo. Cada uno lo encontró una cosa distinta, y ninguna fue una revisión de código:
+
+- Al primero, **ejecutar la puesta en marcha tal como el manual la describe** —la única forma de saber si un manual dice
+  la verdad—.
+- Al segundo, **servir una dirección que hasta entonces era del gestor de contenidos**.
+- Al tercero, **intentar romperlo**: quitar la revalidación no ponía en rojo ninguna prueba, porque no hacía nada.
+- Al cuarto, **leer el alcance contratado contra lo construido** antes de dar la fase por cerrada.
+- Al quinto, **no conformarse con que una prueba pasara**: la del logotipo estaba en verde mientras la imagen no
+  cargaba, porque comprobaba que el elemento existiera y no que trajera píxeles. Al exigir que cargara de verdad,
+  apareció un defecto del almacén de archivos que alcanza a toda la plataforma y no solo a esta fase.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -68,6 +76,42 @@ gestor de contenidos.
 | `D-F7-001` | Media | `npm run db:seed` no cargaba `.env.local`: solo funcionaba si quien lo ejecutaba había exportado las variables a mano en su terminal. El README y `docs/HANDOFF.md` lo documentan como paso de la puesta en marcha, y en una instalación nueva fallaba con un mensaje que hablaba de una variable **que sí estaba escrita en el archivo**. | Corregido en el bloque A. La semilla usa `loadLocalEnv()`, el mismo cargador que ya usan las migraciones y las pruebas de integración, y el mensaje de error dice ahora dónde se busca. |
 | `D-F7-002` | Alta | Nada impedía publicar en el gestor de contenidos una dirección que ya sirve una pantalla del código. La página se guardaba, el gestor la daba por publicada y quien abría la dirección veía otra cosa: una página fantasma que solo se descubre cuando alguien pregunta por qué la suya no aparece. Era un riesgo latente desde la Fase 2 y dejó de serlo al servir el catálogo desde `/herramientas`. | Corregido en el bloque B. Crear una página o una redirección en una dirección del código se rechaza con su motivo. El control `C-F7-01` obliga a que **toda** ruta pública esté clasificada: o sirve contenido propio, y entonces el gestor no publica ahí, o es una forma de publicar lo del gestor —como `legales/:param`— y entonces sí. Una pantalla nueva obliga a decidir en vez de heredar un comportamiento que nadie eligió. |
 | `D-F7-003` | Baja | Las acciones del catálogo llamaban a `revalidatePath` sobre las tres rutas donde vive, con un comentario que explicaba por qué hacía falta. Las tres pantallas son dinámicas y se construyen en cada petición: no había ninguna página guardada que invalidar. Código que no hacía nada, y una explicación que afirmaba lo contrario. | Corregido en el bloque C. Se retiraron las tres llamadas y el comentario dice ahora por qué **no** se revalida, y qué habría que hacer si alguna de esas rutas dejara de ser dinámica. Apareció al intentar romperlo: quitar la revalidación no ponía en rojo ninguna prueba. |
+| `D-F7-004` | Alta | La ficha se construyó sin **imagen ni logotipo**, que el PRD §12.2 y el alcance de la fase contratan. La columna `logoFileId` existía en el esquema y no la escribía ni la leía nadie: un modelo huérfano y una partida del alcance sin construir. | Corregido en el bloque D. Se construyó la carga desde la administración, con tres formatos de imagen y ninguno SVG, y una ruta abierta que sirve **el logotipo de una ficha publicada** indexado por el código de la ficha y nunca por un identificador de archivo. Apareció al revisar el alcance contratado contra lo construido, antes de dar la fase por cerrada. |
+| `D-F7-005` | Alta | El almacén local de archivos guardaba el contenido **en la memoria del proceso**, y un servidor de producción atiende con varios procesos de trabajo: lo que guardaba una petición no lo encontraba la siguiente. No es lo que se anunciaba —«se pierden al reiniciar»— sino algo peor: un archivo recién subido daba 404 al pedirlo, unas veces sí y otras no. Alcanzaba a **todo** archivo de todo despliegue sin token de almacén, no solo al logotipo: credenciales, documentos de expediente, evidencias de solicitud. | Corregido en el bloque D. El adaptador local guarda en un directorio, de modo que lo que escribe un proceso lo lee cualquiera. Sigue anunciándose como local y la comprobación de salud lo sigue marcando como degradado: un directorio de contenedor desaparece con él. Lo destapó la ruta del logotipo, que fue lo primero en subir un archivo y leerlo en otra petición. |
+
+---
+
+## Evidencias
+
+| Qué se afirma | Cómo se comprobó |
+|---|---|
+| Cada regla de la fase se probó **viéndola fallar** | Treinta y dos reglas, una por una: se rompió el código que la sostiene, se comprobó que la prueba se pone en rojo, y se restauró. **Cinco de esos intentos no fallaron**, y cada uno destapó algo: dos pruebas que pasaban por la razón equivocada —tapadas por la puerta de archivos, no por la regla que decían comprobar—, una comprobación dentro de un `if` que a veces no se cumplía, una medición de tiempo que no medía nada, y un defecto real (`D-F7-003`) |
+| Las migraciones funcionan desde cero | Cada archivo de pruebas de integración crea una base efímera y aplica las **veintidós** migraciones en orden sobre un esquema vacío. No es una comprobación aparte: es la única forma en que corren las pruebas |
+| Las migraciones funcionan desde la fase anterior | La base de desarrollo viene de la Fase 6 y recibió la migración nueva con `migrate deploy`, sin reconstruirse. `npm run db:check` compara la base configurada contra lo que **producen las migraciones** y no encuentra diferencia |
+| El acceso es redirección y nada más | El control `C-F7-02` recorre el repositorio y rechaza una dirección escrita en un enlace, un `iframe`, una llamada de red desde el módulo del catálogo y el vocabulario del intercambio de identidad. Probado rompiéndolo de las cuatro maneras |
+| Ninguna ruta del código le roba una dirección al gestor | El control `C-F7-01` exige que **toda** ruta pública esté clasificada: o sirve contenido propio, o es una forma de publicar lo del gestor. Probado rompiéndolo de tres maneras |
+| Los permisos se prueban en positivo y en negativo | Quien lleva las finanzas no edita la ficha ni ve el catálogo completo; quien preside —que **sí** sabe subir archivos— no carga el logotipo; quien no administra no llega a la pantalla |
+| La interfaz se revisó en móvil y en escritorio | Las pruebas de extremo a extremo corren en los dos perfiles de `playwright.config.ts` —Pixel 7 y escritorio de 1280 px— |
+| La accesibilidad se validó, no se declaró | La pantalla de administración entró en el barrido con axe, con la cuenta del rol que de verdad la abre. Repite el mismo formulario una vez por ficha, que es donde aparecieron los identificadores duplicados de `D-F5-010` |
+| Los estados vacíos y de error están terminados | «Todavía no hay ninguna plataforma publicada», «el acceso a X todavía no está configurado», «el catálogo está vacío» |
+| La auditoría está conectada | Editar la ficha deja asiento; **cambiar la dirección deja otro**, con el valor anterior y el nuevo |
+| No hay secretos ni datos reales en el repositorio | `C-REPO-04` y `C-ENV-02`. Las cinco fichas nacen sin dirección: la semilla no inventa direcciones |
+| La prohibición del proveedor vetado se sostiene | `C-REPO-03`, sobre código, dependencias y documentación |
+
+---
+
+## Pruebas y resultados
+
+| Comprobación | Resultado |
+|---|---|
+| `npm run typecheck` | Sin errores |
+| `npm run lint` | Sin errores ni avisos |
+| `npm run phase:verify` | **70 aprobados, 0 fallidos**, 1 no aplicable |
+| `npx vitest run` | **1 225 pruebas**, todas en verde |
+| `npm run build` | Compila; ninguna ruta del catálogo es estática |
+| `npx playwright test` | **308 pruebas**, 8 omitidas por diseño, en móvil y escritorio |
+| `npm run db:check` | La base configurada coincide con las migraciones del repositorio |
+| Integración continua | Verde en cada bloque, comprobado en GitHub Actions antes de dar por cerrado ninguno |
 
 ---
 

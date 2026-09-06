@@ -297,10 +297,10 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 | F7-CAT-004 | Cargar las fichas de CIAN, CENI, NeuroPlan, ADIA y NEXO con el mismo patrón, sin casos especiales en código | Terminada |
 | F7-UI-001 | Construir la página pública del catálogo y su repetición en el portal personal, adaptable y neuroinclusiva | Terminada |
 | F7-UI-002 | Construir la administración del catálogo dentro de la superficie de contenidos existente | Terminada |
-| F7-DOC-001 | Documentar cómo agregar una plataforma o herramienta nueva sin tocar el núcleo | Pendiente |
-| F7-QA-001 | Probar que una ficha sin dirección real configurada no muestra botón de acceso | Pendiente |
-| F7-QA-002 | Probar que el acceso es únicamente redirección externa, sin datos personales en la dirección y con `rel="noopener noreferrer"` | Pendiente |
-| F7-QA-003 | Probar que la caída de una plataforma externa no bloquea el portal central | Pendiente |
+| F7-DOC-001 | Documentar cómo agregar una plataforma o herramienta nueva sin tocar el núcleo | Terminada |
+| F7-QA-001 | Probar que una ficha sin dirección real configurada no muestra botón de acceso | Terminada |
+| F7-QA-002 | Probar que el acceso es únicamente redirección externa, sin datos personales en la dirección y con `rel="noopener noreferrer"` | Terminada |
+| F7-QA-003 | Probar que la caída de una plataforma externa no bloquea el portal central | Terminada |
 
 ---
 

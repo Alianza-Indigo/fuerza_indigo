@@ -7,7 +7,15 @@ import {
   nombrar,
   type PersonaDePrueba,
 } from './helpers/fixtures';
-import { cambiarVisibilidad, catalogoCompleto, catalogoPublicado, editarFicha } from '@/modules/ecosystem';
+import { uploadFile } from '@/platform/files/file-service';
+import {
+  adjuntarLogotipo,
+  cambiarVisibilidad,
+  catalogoCompleto,
+  catalogoPublicado,
+  editarFicha,
+  logotipoPublicado,
+} from '@/modules/ecosystem';
 
 /**
  * Administrar el catálogo (PRD §12.1; F7-UI-002).
@@ -23,6 +31,7 @@ import { cambiarVisibilidad, catalogoCompleto, catalogoPublicado, editarFicha } 
 let base: TestDatabase;
 let comunicacion: PersonaDePrueba;
 let finanzas: PersonaDePrueba;
+let secretaria: PersonaDePrueba;
 let fichaId: string;
 
 beforeAll(async () => {
@@ -43,6 +52,17 @@ beforeAll(async () => {
   await nombrar(base.prisma, {
     userId: finanzas.userId,
     roleCode: 'FINANCE',
+    grantedById: quienNombra.userId,
+    legalEntityId: entidadId,
+  });
+
+  // Sabe subir archivos y **no** administra el catálogo. Sin ella, la
+  // comprobación de facultad de la carga del logotipo pasaría por lo que hace
+  // la puerta de archivos y no por lo que hace este módulo.
+  secretaria = await crearPersonaConCuenta(base.prisma, { givenName: 'Quien', familyName: 'Preside' });
+  await nombrar(base.prisma, {
+    userId: secretaria.userId,
+    roleCode: 'EXECUTIVE_SECRETARY',
     grantedById: quienNombra.userId,
     legalEntityId: entidadId,
   });
@@ -240,5 +260,144 @@ describe('retirar de la vista', () => {
     const cian = publico.find((f) => f.code === 'CIAN');
     expect(cian).toBeDefined();
     expect(cian?.accesoUrl).toBeNull();
+  });
+});
+
+describe('el logotipo de la ficha', () => {
+  // Un PNG mínimo válido: cabecera, un píxel y su final. Sirve porque la carga
+  // comprueba que el contenido corresponda con el tipo declarado, y una cadena
+  // cualquiera con nombre .png no pasaría.
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+
+  it('quien administra puede cargarlo, y sale por la ruta pública', async () => {
+    const actor = await contextoDe(base.prisma, comunicacion);
+
+    const resultado = await adjuntarLogotipo(actor, {
+      linkId: fichaId,
+      originalFileName: 'cian.png',
+      mimeType: 'image/png',
+      content: new Uint8Array(PNG),
+    });
+    expect(resultado.ok).toBe(true);
+
+    const servido = await logotipoPublicado('CIAN');
+    expect(servido).not.toBeNull();
+    expect(servido?.mimeType).toBe('image/png');
+    expect(Buffer.from(servido!.content)).toEqual(PNG);
+  });
+
+  it('quien sabe subir archivos pero no administra el catálogo tampoco puede cargarlo', async () => {
+    // La secretaría **sí** tiene `files.file.upload`. Si esta prueba usara a
+    // quien no puede subir nada, la puerta de archivos la detendría antes y
+    // esta comprobación pasaría sin ejercitar la facultad del catálogo.
+    const actor = await contextoDe(base.prisma, secretaria);
+
+    const resultado = await adjuntarLogotipo(actor, {
+      linkId: fichaId,
+      originalFileName: 'otro.png',
+      mimeType: 'image/png',
+      content: new Uint8Array(PNG),
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (!resultado.ok) expect(resultado.error.code).toBe('FORBIDDEN');
+
+    const ficha = await base.prisma.ecosystemLink.findUniqueOrThrow({
+      where: { id: fichaId },
+      select: { logoFileId: true },
+    });
+    expect(ficha.logoFileId).not.toBeNull();
+  });
+
+  it('rechaza un SVG, que es un documento que puede llevar guiones dentro', async () => {
+    const actor = await contextoDe(base.prisma, comunicacion);
+
+    const resultado = await adjuntarLogotipo(actor, {
+      linkId: fichaId,
+      originalFileName: 'logo.svg',
+      mimeType: 'image/svg+xml',
+      content: new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (!resultado.ok) expect(resultado.error.code).toBe('VALIDATION');
+  });
+
+  it('un logotipo es una imagen, y solo una imagen', async () => {
+    // Un PDF de verdad, con su cabecera: la puerta de archivos lo admitiría sin
+    // problema, porque para ella es un formato válido. Lo que lo detiene es la
+    // lista de formatos de este módulo, y sin esta prueba esa lista no la
+    // ejercería nadie.
+    const actor = await contextoDe(base.prisma, comunicacion);
+
+    const resultado = await adjuntarLogotipo(actor, {
+      linkId: fichaId,
+      originalFileName: 'folleto.pdf',
+      mimeType: 'application/pdf',
+      content: new TextEncoder().encode('%PDF-1.7\n%%EOF\n'),
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (!resultado.ok) expect(resultado.error.details?.['logotipo']).toBeDefined();
+  });
+
+  it('una ficha retirada de la vista se lleva su logotipo con ella', async () => {
+    const actor = await contextoDe(base.prisma, comunicacion);
+
+    await adjuntarLogotipo(actor, {
+      linkId: fichaId,
+      originalFileName: 'cian.png',
+      mimeType: 'image/png',
+      content: new Uint8Array(PNG),
+    });
+    expect(await logotipoPublicado('CIAN')).not.toBeNull();
+
+    await cambiarVisibilidad(actor, { linkId: fichaId, publicar: false });
+    expect(await logotipoPublicado('CIAN')).toBeNull();
+
+    await cambiarVisibilidad(actor, { linkId: fichaId, publicar: true });
+    expect(await logotipoPublicado('CIAN')).not.toBeNull();
+  });
+
+  it('la ruta no entrega un archivo que no sea el logotipo de una ficha', async () => {
+    // No hay forma de pedir «el archivo tal»: la función recibe el código de la
+    // ficha. Un código que no existe no entrega nada, y tampoco dice por qué.
+    expect(await logotipoPublicado('NO_EXISTE')).toBeNull();
+    expect(await logotipoPublicado('')).toBeNull();
+
+    // Y si alguien apuntara la columna a un archivo que no es público, se
+    // detiene igual: la clasificación se comprueba **al servir**.
+    //
+    // El archivo se crea aquí en vez de buscar uno que quizá exista: una
+    // comprobación dentro de un `if` que a veces no se cumple es una prueba que
+    // a veces no prueba nada, y no se nota.
+    const actor = await contextoDe(base.prisma, comunicacion);
+    const interno = await uploadFile(actor, {
+      legalEntityId: actor.legalEntityScope[0]!,
+      classification: 'INTERNAL',
+      contextKind: 'CONTENT',
+      originalFileName: 'interno.png',
+      mimeType: 'image/png',
+      content: new Uint8Array(PNG),
+    });
+    expect(interno.ok).toBe(true);
+    if (!interno.ok) return;
+
+    const original = await base.prisma.ecosystemLink.findUniqueOrThrow({
+      where: { code: 'CIAN' },
+      select: { logoFileId: true },
+    });
+
+    await base.prisma.$executeRawUnsafe(
+      `UPDATE "ecosystem_link" SET "logoFileId" = '${interno.data.fileObjectId}' WHERE code = 'CIAN'`,
+    );
+    expect(await logotipoPublicado('CIAN')).toBeNull();
+
+    await base.prisma.$executeRawUnsafe(
+      `UPDATE "ecosystem_link" SET "logoFileId" = '${original.logoFileId}' WHERE code = 'CIAN'`,
+    );
   });
 });

@@ -1,3 +1,7 @@
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve, sep } from 'node:path';
+
 import { del, get, put } from '@vercel/blob';
 
 import { env } from '@/platform/config/env';
@@ -61,37 +65,71 @@ const vercelBlobAdapter: BlobStorePort = {
 };
 
 /**
- * Desarrollo y pruebas: el contenido vive en el proceso y se pierde al
- * reiniciarlo.
+ * Desarrollo y pruebas: el contenido vive en un directorio local.
  *
- * Se declara `IN_MEMORY` y el panel de salud lo dice con esas palabras. Un
- * almacén que pierde lo guardado al reiniciar no es un fallo mientras se
- * anuncie; lo que sería un fallo es que pareciera persistente.
+ * **Vivía en la memoria del proceso, y eso estaba mal.** Un servidor de
+ * producción atiende con varios procesos de trabajo: lo que guardaba una
+ * petición no lo encontraba la siguiente, porque caía en otro. El resultado no
+ * era «los archivos se pierden al reiniciar», que es lo que se anunciaba, sino
+ * algo peor y más difícil de creer: un archivo recién subido daba 404 al
+ * pedirlo, unas veces sí y otras no. Lo destapó la ruta del logotipo del
+ * catálogo en la Fase 7 (`D-F7-005`).
+ *
+ * Con el directorio, lo que guarda un proceso lo lee cualquiera. Sigue **sin
+ * ser** el almacén productivo y se sigue anunciando como local: el directorio
+ * de un contenedor desaparece con él, y quien despliegue sin token debe saber
+ * que sus archivos duran lo que dure la máquina.
+ *
+ * La ruta lógica del objeto viene del servicio de archivos y es opaca —no
+ * deriva del nombre original—, pero aquí se compone un camino de disco con
+ * ella: se comprueba que no salga del directorio, porque una ruta con `..`
+ * escribiría donde no debe y esta clase de defensa no cuesta nada.
  */
-function createMemoryAdapter(): BlobStorePort {
-  const objetos = new Map<string, { content: Uint8Array; contentType: string }>();
+function createLocalDiskAdapter(): BlobStorePort {
+  // Un directorio fijo, sin variable que lo configure: no es una decisión de
+  // despliegue —quien despliegue de verdad pone el token del almacén— y una
+  // variable más sería una que documentar, validar y explicar para nada.
+  const raiz = join(tmpdir(), 'fuerza-indigo-archivos');
+
+  const rutaDe = (pathname: string): string | null => {
+    const completa = resolve(raiz, pathname);
+    const dentro = resolve(raiz);
+    return completa === dentro || completa.startsWith(`${dentro}${sep}`) ? completa : null;
+  };
+
   return {
     name: 'memoria',
     capability: 'IN_MEMORY',
-    capabilityDetail:
-      'sin token de almacén: los archivos viven en la memoria del proceso y se pierden al reiniciar',
-    put: (pathname, content, contentType) => {
-      objetos.set(pathname, { content, contentType });
-      logger.info('Archivo guardado en el almacén de memoria', {
+    capabilityDetail: `sin token de almacén: los archivos viven en ${raiz}, que dura lo que dure esta máquina`,
+    put: async (pathname, content, contentType) => {
+      const destino = rutaDe(pathname);
+      if (destino === null) throw new Error(`Ruta de objeto fuera del almacén local: ${pathname}`);
+      await mkdir(dirname(destino), { recursive: true });
+      await writeFile(destino, content);
+      logger.info('Archivo guardado en el almacén local', {
         module: 'files',
-        context: { pathname, bytes: content.byteLength },
+        context: { pathname, bytes: content.byteLength, contentType },
       });
-      return Promise.resolve({ pathname, url: `memoria://${pathname}` });
+      return { pathname, url: `archivo://${pathname}` };
     },
-    get: (pathname) => Promise.resolve(objetos.get(pathname)?.content ?? null),
-    delete: (pathname) => {
-      objetos.delete(pathname);
-      return Promise.resolve();
+    get: async (pathname) => {
+      const origen = rutaDe(pathname);
+      if (origen === null) return null;
+      try {
+        return new Uint8Array(await readFile(origen));
+      } catch {
+        return null;
+      }
+    },
+    delete: async (pathname) => {
+      const destino = rutaDe(pathname);
+      if (destino === null) return;
+      await rm(destino, { force: true });
     },
   };
 }
 
-const memoryAdapter = createMemoryAdapter();
+const localAdapter = createLocalDiskAdapter();
 
 /**
  * Un token de relleno no es un token.
@@ -110,7 +148,7 @@ let override: BlobStorePort | null = null;
 
 export function blobStore(): BlobStorePort {
   if (override !== null) return override;
-  return esTokenReal(env().BLOB_READ_WRITE_TOKEN) ? vercelBlobAdapter : memoryAdapter;
+  return esTokenReal(env().BLOB_READ_WRITE_TOKEN) ? vercelBlobAdapter : localAdapter;
 }
 
 /** Lo que el adaptador vigente puede hacer. Lo consulta la verificación de salud. */

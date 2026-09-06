@@ -1,6 +1,6 @@
 'use server';
 
-import { cambiarVisibilidad, editarFicha } from '@/modules/ecosystem';
+import { adjuntarLogotipo, cambiarVisibilidad, editarFicha } from '@/modules/ecosystem';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -59,6 +59,28 @@ export async function editarFichaAction(_previo: CatalogoState, formData: FormDa
       ? 'Ficha guardada. La dirección de acceso cambió y quedó registrado quién la cambió.'
       : 'Ficha guardada.',
   };
+}
+
+export async function adjuntarLogotipoAction(
+  _previo: CatalogoState,
+  formData: FormData,
+): Promise<CatalogoState> {
+  const actor = await currentActor();
+  const archivo = formData.get('logotipo');
+
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return { status: 'error', message: 'Elige una imagen antes de guardar.' };
+  }
+
+  const resultado = await adjuntarLogotipo(actor, {
+    linkId: textField(formData, 'linkId'),
+    originalFileName: archivo.name,
+    mimeType: archivo.type,
+    content: new Uint8Array(await archivo.arrayBuffer()),
+  });
+
+  if (!resultado.ok) return fallo(resultado.error);
+  return { status: 'ok', message: 'Logotipo guardado. Ya se ve en el catálogo.' };
 }
 
 export async function cambiarVisibilidadAction(

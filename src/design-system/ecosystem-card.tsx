@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Card, ModuleBadge, type Module } from './primitives';
 
 /**
@@ -17,6 +18,7 @@ export interface FichaVisible {
   readonly audienceText: string;
   readonly modulo: Module;
   readonly accesoUrl: string | null;
+  readonly logotipoUrl: string | null;
   readonly responsable: string | null;
 }
 
@@ -41,7 +43,26 @@ export function EcosystemCard({ ficha, etiqueta }: { ficha: FichaVisible; etique
   return (
     <Card as="article">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {ficha.logotipoUrl === null ? null : (
+            // El texto alternativo dice de quién es el logotipo y no «logotipo»
+            // a secas: quien usa lector de pantalla necesita el nombre, que es
+            // lo que la imagen aporta. El tamaño va en el atributo además de en
+            // el estilo para que la tarjeta no dé un salto al cargar.
+            <Image
+              src={ficha.logotipoUrl}
+              alt={`Logotipo de ${ficha.name}`}
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-md object-contain"
+              // Sin optimizador. La imagen la sirve una ruta propia de este
+              // mismo sitio y ya es pequeña; el optimizador añadiría una
+              // segunda petición interna a esa ruta para no ganar nada, y esa
+              // petición se rompe cuando el almacén de archivos vive en la
+              // memoria del proceso, que es como corre en desarrollo.
+              unoptimized
+            />
+          )}
           <h3 className="text-lg font-semibold">{ficha.name}</h3>
           <ModuleBadge module={ficha.modulo}>{etiqueta}</ModuleBadge>
         </div>

@@ -1612,3 +1612,47 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Decisión.** Una cuenta de prueba más, con el rol que de verdad administra el catálogo. La suite de accesibilidad la usa para esa pantalla y las de extremo a extremo para la de administración; la denegación se comprueba con la cuenta de una persona agremiada, que es quien no debe llegar.
 
 **Efecto secundario que vale la pena.** La revisión de accesibilidad cubre ahora una pantalla que repite el mismo formulario una vez por ficha —cinco campos «Dirección de acceso» en la misma página—, que es exactamente la forma en que aparecieron los identificadores duplicados de `D-F5-010`.
+
+---
+
+## ADR-0129 · El logotipo se sirve por el código de la ficha, nunca por un identificador de archivo
+
+**Contexto.** El PRD §12.2 contrata una imagen o logotipo en cada ficha, y el catálogo es público: esa imagen tiene que verse sin sesión. Todos los demás archivos de este sistema se entregan por la puerta de descarga, con permiso, pase firmado y auditoría. Un logotipo no puede pasar por ahí —lo mira cualquiera— así que necesita una ruta abierta, y una ruta abierta que entrega el contenido de un archivo es lo más peligroso que se puede escribir en este repositorio.
+
+**Decisión.** La ruta recibe el **código de la ficha**, no un identificador de archivo. No hay nada que adivinar ni sustituir: no se puede pedir «el archivo 3f2a…» y ver qué sale. Y solo responde por fichas publicadas, con un archivo clasificado como público y de un formato de imagen admitido; cualquier otra cosa es un 404 sin explicación, porque que exista o no un logotipo tampoco hay que regalarlo.
+
+**Tres formatos, y ninguno es SVG.** Un SVG es un documento que puede llevar guiones dentro, y este archivo se sirve desde el propio dominio a quien abra el catálogo: sería ejecutar en la sesión de quien mira algo que subió otra persona. PNG, JPEG y WebP son imágenes y nada más.
+
+**La clasificación se comprueba al servir, no solo al guardar.** Aunque solo la carga del logotipo escribe esa columna, la ruta rechaza cualquier archivo que no sea público. Es cinturón y tirantes: el día que alguien apunte la columna a otro archivo —por un guion, por una migración de datos, por una equivocación— la ruta se detiene igual.
+
+**Y el archivo pertenece a la entidad de quien lo sube, no a la de la plataforma que anuncia.** El logotipo de CIAN es material del sitio de Fuerza Índigo, no un archivo de Alianza Índigo. Guardarlo a nombre de Alianza dejaba a quien mantiene el sitio sin poder subirlo —su alcance es el suyo— y ponía un archivo del sitio en el inventario de otra persona moral. El catálogo es uno solo y su facultad no distingue entidad; el archivo tampoco debe hacerlo.
+
+---
+
+## ADR-0130 · Que una plataforma externa se caiga no se prueba simulando la caída
+
+**Contexto.** El PRD §24 Fase 7 exige comprobar que «la falla de una plataforma externa no bloquea el portal central». La forma obvia es apuntar una ficha a un dominio que no existe y medir que el catálogo responda rápido.
+
+**Por qué esa forma no prueba nada.** Un dominio inexistente falla al instante: la prueba pasa igual esté o no llamando el catálogo. Se comprobó rompiéndola —se añadió una llamada de red al servir el catálogo— y la prueba siguió en verde.
+
+**Decisión.** Se comprueba algo más fuerte y que sí puede fallar: **que servir el catálogo no hace ninguna llamada de red**, contándolas. Sin llamada no hay caída ajena capaz de bloquear nada, y la garantía deja de depender de cuánto tarde en fallar un dominio concreto. El control `C-F7-02` lo sostiene además desde el código, rechazando cualquier llamada de red desde el módulo del catálogo.
+
+**La lección general.** Una prueba que mide un tiempo suele estar midiendo el entorno. Cuando se puede afirmar la ausencia de algo —una llamada, un asiento, una columna— es preferible: la ausencia se cuenta, y contar no depende de qué máquina lo ejecute.
+
+---
+
+## ADR-0131 · El almacén local guarda en disco, porque «en memoria» era una promesa que no se cumplía
+
+**Contexto.** Sin token de Vercel Blob, el almacén de archivos usaba un adaptador que guardaba el contenido en un mapa dentro del proceso. Se anunciaba con esas palabras y la comprobación de salud lo marcaba como degradado, así que parecía honesto: «los archivos se pierden al reiniciar».
+
+**No era eso lo que pasaba.** Un servidor de producción atiende con varios procesos de trabajo. Lo que guardaba una petición caía en el mapa de **un** proceso, y la siguiente petición —que podía atender otro— no lo encontraba. El comportamiento real no era «se pierden al reiniciar» sino «un archivo recién subido da 404 al pedirlo, unas veces sí y otras no», que es mucho más difícil de creer y de diagnosticar. Alcanzaba a todo archivo de todo despliegue sin token: credenciales, documentos de expediente, evidencias de solicitud.
+
+**Cómo apareció.** La ruta del logotipo del catálogo fue lo primero que subió un archivo y lo leyó **en otra petición**. La prueba de navegador estaba en verde mientras la imagen no cargaba, porque comprobaba que el elemento existiera. Al exigir que la imagen trajera píxeles —su ancho natural— la prueba se puso en rojo y el defecto quedó a la vista.
+
+**Decisión.** El adaptador local escribe en un directorio bajo el temporal del sistema. Lo que guarda un proceso lo lee cualquiera, que es lo mínimo que se le pide a algo llamado «almacén».
+
+**Sigue anunciándose como local, y la salud sigue marcándolo degradado.** Un directorio de contenedor desaparece con el contenedor: quien despliegue sin token debe seguir sabiendo que sus archivos duran lo que dure la máquina. Lo que cambia no es la promesa, es que ahora se cumple.
+
+**Sin variable de entorno que lo configure.** No es una decisión de despliegue —quien despliegue de verdad pone el token— y una variable más sería una que documentar, validar y explicar para nada.
+
+**La lección, que es la de siempre en este proyecto.** Una prueba que comprueba que un elemento está en la pantalla no comprueba que funcione. Cuando se puede preguntar por el efecto —los píxeles de una imagen, el conteo de llamadas, la fila en la base— hay que preguntar por el efecto.

@@ -3000,6 +3000,87 @@ const CHECKS = [
           ]);
     },
   },
+
+  {
+    id: 'C-F7-02',
+    title: 'Fase 7: el acceso a una plataforma externa es una redirección y nada más',
+    phases: [7],
+    run() {
+      // El PRD §12.3 admite **una sola** modalidad de acceso: redirección
+      // externa. Sin inicio de sesión único, sin token de lanzamiento, sin API,
+      // sin sincronización y sin iframe. Cada plataforma conserva su
+      // autenticación, su operación, sus cobros y sus datos.
+      //
+      // Es una de esas garantías que nadie rompe de golpe. Se rompe un martes,
+      // porque «solo hace falta pasarle el correo para que no lo teclee otra
+      // vez», y para cuando alguien se da cuenta este repositorio ya sabe algo
+      // de una plataforma que no opera y tiene que mantenerlo sincronizado con
+      // ella para siempre.
+      //
+      // Las cuatro comprobaciones de abajo son las cuatro formas en que eso
+      // empieza.
+      const problems = [];
+      const fuentes = tracked().filter(
+        (ruta) =>
+          (ruta.startsWith('app/') || ruta.startsWith('src/')) &&
+          (ruta.endsWith('.tsx') || ruta.endsWith('.ts')) &&
+          !ruta.startsWith('src/generated/'),
+      );
+
+      for (const ruta of fuentes) {
+        const contenido = read(ruta);
+        if (contenido === null) continue;
+        const lineas = contenido.split('\n');
+
+        for (const [i, linea] of lineas.entries()) {
+          // 1. Ninguna dirección de acceso escrita en un componente. La
+          //    dirección vive en el catálogo y se administra sin desplegar; una
+          //    escrita aquí obliga a un despliegue para corregirla y, mientras,
+          //    manda gente a donde ya no debe.
+          if (/href\s*=\s*["'{`]\s*https?:\/\//.test(linea)) {
+            problems.push(
+              `${ruta}:${i + 1} escribe una dirección absoluta en un enlace. Las direcciones de acceso se administran desde el catálogo (PRD §12.2).`,
+            );
+          }
+
+          // 2. Sin iframe. Meter una plataforma ajena dentro de esta página
+          //    mezcla las dos sesiones ante quien mira, y convierte cualquier
+          //    fallo suyo en un fallo aparente de Fuerza Índigo.
+          if (/<iframe/i.test(linea)) {
+            problems.push(`${ruta}:${i + 1} inserta un iframe. El PRD §12.3 admite solo redirección externa.`);
+          }
+        }
+
+        // 3. El módulo del catálogo no llama a nadie. Es lo que garantiza, por
+        //    construcción y no por una prueba de simulacro, que la caída de una
+        //    plataforma externa no bloquee el portal central: no hay ninguna
+        //    llamada que pueda quedarse esperando.
+        if (ruta.startsWith('src/modules/ecosystem/')) {
+          if (/\bfetch\s*\(/.test(contenido) || /from ['"]node:https?['"]/.test(contenido)) {
+            problems.push(
+              `${ruta} hace una llamada de red. El catálogo guarda ficha y dirección: no habla con las plataformas que anuncia (PRD §12.3).`,
+            );
+          }
+
+          // 4. Y no aparece el vocabulario del intercambio de identidad, que es
+          //    como esto empieza a dejar de ser una redirección.
+          for (const marca of ['launchToken', 'ssoToken', 'singleSignOn', 'externalIdentity', 'impersonat']) {
+            if (contenido.includes(marca)) {
+              problems.push(
+                `${ruta} menciona "${marca}": el acceso es redirección, sin inicio de sesión único ni intercambio de identidad (PRD §12.3).`,
+              );
+            }
+          }
+        }
+      }
+
+      return problems.length
+        ? fail([...new Set(problems)])
+        : ok([
+            `Ninguna dirección escrita en un componente, ningún iframe, y el módulo del catálogo no llama a ninguna plataforma externa.`,
+          ]);
+    },
+  },
 ];
 
 

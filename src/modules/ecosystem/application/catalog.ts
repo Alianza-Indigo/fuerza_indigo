@@ -1,5 +1,10 @@
 import { db } from '@/platform/db/client';
-import { accesoDeLaFicha, moduloDeLaFicha, type FichaDelEcosistema } from '../domain/link';
+import {
+  accesoDeLaFicha,
+  logotipoDeLaFicha,
+  moduloDeLaFicha,
+  type FichaDelEcosistema,
+} from '../domain/link';
 
 /**
  * Lectura del catálogo del ecosistema (PRD §12.4).
@@ -27,6 +32,7 @@ export async function catalogoPublicado(): Promise<readonly FichaDelEcosistema[]
       audienceText: true,
       accentToken: true,
       externalUrl: true,
+      logoFileId: true,
       legalEntity: { select: { shortName: true } },
     },
   });
@@ -38,6 +44,7 @@ export async function catalogoPublicado(): Promise<readonly FichaDelEcosistema[]
     audienceText: ficha.audienceText,
     modulo: moduloDeLaFicha(ficha.accentToken),
     accesoUrl: accesoDeLaFicha(ficha.externalUrl),
+    logotipoUrl: logotipoDeLaFicha(ficha.code, ficha.logoFileId),
     responsable: ficha.legalEntity?.shortName ?? null,
   }));
 }

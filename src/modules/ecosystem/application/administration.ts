@@ -8,7 +8,14 @@ import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
-import { accesoDeLaFicha, moduloDeLaFicha, type FichaDelEcosistema } from '../domain/link';
+import { uploadFile } from '@/platform/files/file-service';
+import { blobStore } from '@/platform/files/blob-store';
+import {
+  accesoDeLaFicha,
+  logotipoDeLaFicha,
+  moduloDeLaFicha,
+  type FichaDelEcosistema,
+} from '../domain/link';
 
 /**
  * Administración del catálogo del ecosistema (PRD §12; F7-CAT-002, F7-UI-002).
@@ -178,6 +185,7 @@ export interface FichaAdministrable extends FichaDelEcosistema {
   readonly accentToken: string | null;
   readonly sortOrder: number;
   readonly direccionConfigurada: string | null;
+  readonly tieneLogotipo: boolean;
 }
 
 /**
@@ -206,6 +214,7 @@ export async function catalogoCompleto(
       externalUrl: true,
       operationalStatus: true,
       sortOrder: true,
+      logoFileId: true,
       legalEntity: { select: { shortName: true } },
     },
   });
@@ -219,13 +228,145 @@ export async function catalogoCompleto(
       audienceText: ficha.audienceText,
       modulo: moduloDeLaFicha(ficha.accentToken),
       accesoUrl: accesoDeLaFicha(ficha.externalUrl),
+      logotipoUrl: logotipoDeLaFicha(ficha.code, ficha.logoFileId),
       responsable: ficha.legalEntity?.shortName ?? null,
       publicada: ficha.operationalStatus === 'ACTIVE',
       accentToken: ficha.accentToken,
       sortOrder: ficha.sortOrder,
       direccionConfigurada: ficha.externalUrl,
+      tieneLogotipo: ficha.logoFileId !== null,
     })),
   );
+}
+
+/**
+ * Formatos de imagen que se admiten como logotipo.
+ *
+ * Tres, y ninguno es SVG. Un SVG es un documento que puede llevar guiones
+ * dentro, y este archivo se sirve desde el propio dominio a cualquiera que abra
+ * el catálogo: sería ejecutar en la sesión de quien mira algo que subió otra
+ * persona. PNG, JPEG y WebP son imágenes y nada más.
+ */
+const FORMATOS_DE_LOGOTIPO = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
+export interface AdjuntarLogotipoInput {
+  readonly linkId: string;
+  readonly originalFileName: string;
+  readonly mimeType: string;
+  readonly content: Uint8Array;
+}
+
+/**
+ * Cargar el logotipo de una ficha (PRD §12.2).
+ *
+ * El archivo se guarda con clasificación pública **a propósito**: se va a servir
+ * a cualquiera que abra el catálogo, y decir en la base que es privado cuando
+ * una ruta abierta lo entrega sería una etiqueta que miente. Lo que protege a
+ * las demás cosas no es esa etiqueta sino la puerta de descarga, y esta imagen
+ * no pasa por ella: tiene su propia ruta, que sirve el logotipo de una ficha
+ * publicada y nada más.
+ */
+export async function adjuntarLogotipo(
+  actor: ActorContext,
+  input: AdjuntarLogotipoInput,
+): Promise<UseCaseResult<{ linkId: string }>> {
+  const decision = can(actor, 'ecosystem.link.manage', { kind: 'EcosystemLink', legalEntityId: null });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  if (!FORMATOS_DE_LOGOTIPO.has(input.mimeType)) {
+    return fail(
+      errors.validation({
+        logotipo: ['El logotipo tiene que ser una imagen PNG, JPEG o WebP.'],
+      }),
+    );
+  }
+
+  const ficha = await db().ecosystemLink.findUnique({
+    where: { id: input.linkId },
+    select: { id: true, code: true, legalEntityId: true },
+  });
+  if (ficha === null) return fail(errors.notFound('Esa ficha no existe.', 'ficha inexistente'));
+
+  // El archivo se guarda a nombre de la entidad de quien lo sube, **no** de la
+  // entidad responsable de la plataforma que anuncia la ficha.
+  //
+  // Es lo correcto y costó verlo: el logotipo de CIAN es un material del sitio
+  // de Fuerza Índigo, no un archivo de Alianza Índigo. Guardarlo a nombre de
+  // Alianza dejaba a quien mantiene el sitio sin poder subirlo —su alcance es
+  // el suyo— y ponía un archivo del sitio en el inventario de otra persona
+  // moral. El catálogo es uno solo y `ecosystem.link.manage` no distingue
+  // entidad; el archivo tampoco debe hacerlo.
+  const entidad = actor.legalEntityScope[0];
+  if (entidad === undefined) {
+    return fail(
+      errors.forbidden('Tu nombramiento no alcanza ninguna entidad, así que no puedes cargar archivos.'),
+    );
+  }
+
+  const subido = await uploadFile(actor, {
+    legalEntityId: entidad,
+    classification: 'PUBLIC',
+    contextKind: 'CONTENT',
+    contextId: ficha.id,
+    originalFileName: input.originalFileName,
+    mimeType: input.mimeType,
+    content: input.content,
+  });
+  if (!subido.ok) return fail(subido.error);
+
+  await transaction(async (tx) => {
+    await tx.ecosystemLink.update({
+      where: { id: ficha.id },
+      data: { logoFileId: subido.data.fileObjectId, updatedByActorId: actor.actorId },
+    });
+
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.ECOSYSTEM_LINK_UPDATED,
+      objectKind: 'EcosystemLink',
+      objectId: ficha.id,
+      outcome: 'SUCCESS',
+      legalEntityId: null,
+      metadata: { code: ficha.code, logotipo: subido.data.publicId },
+    });
+  });
+
+  return ok({ linkId: ficha.id });
+}
+
+/**
+ * El logotipo de una ficha **publicada**, para servirlo en el catálogo.
+ *
+ * Recibe el código de la ficha y no un identificador de archivo, y esa
+ * diferencia es la que impide que esta ruta se convierta en un lector de
+ * archivos cualquiera: no hay identificador que adivinar ni sustituir. Y solo
+ * responde por fichas visibles: una ficha retirada de la vista se lleva su
+ * imagen con ella.
+ */
+export async function logotipoPublicado(
+  code: string,
+): Promise<{ content: Uint8Array; mimeType: string } | null> {
+  const ficha = await db().ecosystemLink.findFirst({
+    where: { code, operationalStatus: 'ACTIVE', publishedAt: { not: null } },
+    select: {
+      logoFile: {
+        select: { mimeType: true, classification: true, currentVersion: { select: { blobPathname: true } } },
+      },
+    },
+  });
+
+  const archivo = ficha?.logoFile;
+  if (archivo === undefined || archivo === null || archivo.currentVersion === null) return null;
+
+  // Cinturón y tirantes: aunque solo esta función escribe `logoFileId`, la
+  // ruta no entrega nada que no esté clasificado como público. Si un día
+  // alguien apuntara esa columna a otro archivo, aquí se detiene.
+  if (archivo.classification !== 'PUBLIC') return null;
+  if (!FORMATOS_DE_LOGOTIPO.has(archivo.mimeType)) return null;
+
+  const contenido = await blobStore().get(archivo.currentVersion.blobPathname);
+  if (contenido === null) return null;
+
+  return { content: contenido, mimeType: archivo.mimeType };
 }
 
 function detalles(error: z.ZodError): Record<string, string[]> {

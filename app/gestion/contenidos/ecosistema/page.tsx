@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Badge, Card, EmptyState, ErrorNotice, PageShell, Prose, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { catalogoCompleto } from '@/modules/ecosystem';
-import { EditarFichaForm, VisibilidadForm } from './catalog-forms';
+import { EditarFichaForm, LogotipoForm, VisibilidadForm } from './catalog-forms';
 
 export const metadata = { title: 'Catálogo del ecosistema', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -89,6 +89,7 @@ export default async function CatalogoDelEcosistemaPage() {
                       </div>
 
                       <EditarFichaForm ficha={ficha} />
+                      <LogotipoForm ficha={ficha} />
                       <VisibilidadForm ficha={ficha} />
                     </div>
                   </Card>

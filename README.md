@@ -53,6 +53,7 @@ Las versiones exactas se fijan y documentan al iniciar la Fase 1 (PRD §17.1). L
 | [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md) | Pirámide de pruebas, 13 flujos E2E globales y umbrales de calidad. |
 | [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Catálogo de variables de entorno por ambiente. |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Registro de decisiones de arquitectura (ADR). |
+| [`docs/ECOSYSTEM_CATALOG.md`](docs/ECOSYSTEM_CATALOG.md) | Cómo agregar una plataforma o herramienta del ecosistema sin tocar el núcleo, y qué no hace este catálogo. |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | Backlog completo asignado a fases, sin tareas huérfanas. |
 | [`docs/PHASE_STATUS.md`](docs/PHASE_STATUS.md) | Fase activa, criterios, evidencias, defectos y estado. **Es el único documento que dice dónde estamos.** |
 | [`docs/HANDOFF.md`](docs/HANDOFF.md) | Cómo se continúa: puesta en marcha, cómo se corre cada suite, cómo se construye un bloque y cómo se cierra una fase. |

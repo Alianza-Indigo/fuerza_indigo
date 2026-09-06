@@ -1558,3 +1558,17 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **El archivo histórico queda fuera a propósito.** `docs/PHASE_STATUS.md` conserva el registro de lo que se dijo y se firmó cuando el contrato era otro. Reescribirlo para que cuadre convertiría un historial en una versión conveniente del pasado; el control lo excluye y el documento lo dice.
 
 **Por qué un control y no un recordatorio.** Es el tercer defecto de esta fase de la misma familia: una regla escrita en un sitio y comprobada en otro. La corrección de `D-F4-002` dependía de que alguien se acordara y reapareció como `D-F6-005`. Un contrato que se sostiene en la memoria de quien edita no es un contrato.
+
+---
+
+## ADR-0125 · El relevo se escribe en el repositorio, no en la memoria de la sesión
+
+**Contexto.** El proyecto se construye por fases a lo largo de muchas sesiones, y no siempre la misma: otra ventana, otra cuenta, otra persona, otro agente. Lo que no esté en el repositorio no llega al que sigue. Y `AGENTS.md` —el archivo que un agente carga automáticamente al abrir el repositorio— no decía nada de este proyecto: traía solo el aviso que escribe la herramienta de Next.js.
+
+**Qué se estaba perdiendo.** El protocolo de fases y la obligación de parar al cerrar; la prohibición del producto mínimo viable; que las decisiones técnicas las toma quien construye y se registran aquí; que CIAN y CENI no se construyen en este repositorio; que no se ejecuta `prisma format` ni se reescribe una migración aplicada. Y todo lo operativo: cómo levantar un PostgreSQL local, qué necesita cada suite, que las pruebas de integración corren contra una base real y por eso cada ejecución demuestra además una instalación desde cero, y que un navegador ya instalado se aprovecha con `E2E_CHROMIUM_PATH`.
+
+**Decisión.** Dos documentos con papeles distintos. `AGENTS.md` es corto, se carga solo, y dice qué leer y qué no se negocia. `docs/HANDOFF.md` es el manual de operación: puesta en marcha, suites, cómo se construye un bloque, las reglas de esquema y de permisos que más caro cuestan, el método de probar rompiendo, y cómo se cierra una fase.
+
+**Y ninguno de los dos dice en qué fase estamos.** El estado del proyecto lo declara `docs/PHASE_STATUS.md` y ningún otro documento. Un manual que además lo declarara se quedaría atrás en el primer cierre y le contaría una versión distinta de la verdad justo a quien más depende de él —alguien que llega sin contexto y no tiene con qué contrastarla—. Es la misma lección de `D-F6-006`, aplicada antes de cometerla: `C-COH-17` exige que los dos documentos existan y remitan a lo que rige, y rechaza que cualquiera de ellos declare una fase activa, un estado o una fase concreta.
+
+**Por qué un manual y no más comentarios en el código.** Los comentarios explican una decisión donde vive. No explican cómo arrancar, en qué orden se construye ni qué significa «terminado» aquí, que es justamente lo que alguien necesita en los primeros diez minutos y lo que ningún archivo suelto contesta.

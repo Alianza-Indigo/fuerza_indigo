@@ -2848,6 +2848,70 @@ const CHECKS = [
         : ok([`Las ${enElPrd.length} fases coinciden en el PRD, el contrato y el README, y nadie cita una fase posterior a la ${ultima}.`]);
     },
   },
+
+  {
+    id: 'C-COH-17',
+    title: 'El relevo existe, y no declara el estado del proyecto por su cuenta',
+    phases: 'all',
+    run() {
+      // `AGENTS.md` es lo que un agente carga solo al abrir el repositorio, y
+      // `docs/HANDOFF.md` es el manual de operación para quien llega sin haber
+      // visto nada: otra ventana, otra cuenta, otra persona. Si faltan, quien
+      // continúe tiene que reconstruir por lectura lo que aquí está escrito, y
+      // lo reconstruirá distinto.
+      //
+      // Y ninguno de los dos dice en qué fase estamos. Eso lo dice
+      // `docs/PHASE_STATUS.md` y solo él. Un manual que además declarara la
+      // fase se quedaría atrás en el primer cierre y contaría una versión
+      // distinta de la verdad a quien más depende de él: exactamente lo que
+      // pasó con el README (`D-F6-006`).
+      const problems = [];
+
+      const agentes = read('AGENTS.md');
+      if (agentes === null) {
+        problems.push('No existe AGENTS.md: quien abra el repositorio no encontrará las reglas de trabajo.');
+      }
+
+      const relevo = read('docs/HANDOFF.md');
+      if (relevo === null) {
+        problems.push('No existe docs/HANDOFF.md: no hay manual para quien continúe el proyecto.');
+      }
+
+      if (agentes !== null && relevo !== null) {
+        for (const documento of ['docs/PRD.md', 'docs/PHASE_STATUS.md', 'docs/HANDOFF.md', 'docs/BACKLOG.md']) {
+          if (!agentes.includes(documento)) {
+            problems.push(`AGENTS.md no remite a ${documento}, que es de los primeros que hay que leer.`);
+          }
+        }
+
+        // Nada de declarar la fase activa ni su estado fuera de PHASE_STATUS.
+        const declaraciones = [
+          { patron: /\*\*Fase activa:\*\*/, queja: 'declara una fase activa' },
+          { patron: /\bFase activa\b\s*[:=]/, queja: 'declara una fase activa' },
+          { patron: /\b(IN_PROGRESS|APPROVED|BLOCKED)\b/, queja: 'declara un estado de fase' },
+          { patron: /\bFases? \d+\b/, queja: 'nombra una fase concreta' },
+        ];
+        for (const [ruta, contenido] of [
+          ['AGENTS.md', agentes],
+          ['docs/HANDOFF.md', relevo],
+        ]) {
+          for (const { patron, queja } of declaraciones) {
+            const linea = contenido.split('\n').findIndex((l) => patron.test(l));
+            if (linea !== -1) {
+              problems.push(
+                `${ruta}:${linea + 1} ${queja}; el estado del proyecto lo declara docs/PHASE_STATUS.md y ningún otro documento.`,
+              );
+            }
+          }
+        }
+      }
+
+      const unicos = [...new Set(problems)];
+      return unicos.length
+        ? fail(unicos)
+        : ok(['AGENTS.md y docs/HANDOFF.md existen, remiten a los documentos que rigen y no declaran el estado del proyecto.']);
+    },
+  },
 ];
 
 

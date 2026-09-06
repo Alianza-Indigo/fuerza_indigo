@@ -44,7 +44,7 @@ El PRD §24 Fase 6 contrata: solicitud guiada de apoyo; clasificación informati
 | L | Paneles: Trabajo y Conflictos, Neuroinclusión y Enlace Familiar, y panel social | Completo |
 | M | Indicadores anonimizados con umbral de privacidad | Completo |
 | N | Pruebas, controles de fase, documentación y cierre | Completo |
-| O | Corrección `D-F6-006`: el contrato de fases vuelve a tener una sola fuente | Completo |
+| O | Corrección `D-F6-006`: el contrato de fases vuelve a tener una sola fuente, y el relevo queda escrito | Completo |
 
 ---
 
@@ -130,6 +130,30 @@ contenido del gestor de contenidos y sus direcciones externas siguen sin estar e
 histórico de este documento queda como estaba: es el registro de lo que se dijo cuando el contrato era otro, y el control
 lo excluye a propósito.
 
+### Y el relevo, escrito
+
+El propósito de todo esto es que el proyecto **se pueda continuar sin esta conversación**: en otra ventana, en otra
+cuenta, con otra persona o con otro agente. Y ahí faltaba lo más elemental: `AGENTS.md` —el archivo que un agente carga
+solo al abrir el repositorio— **no decía nada de este proyecto**. Traía únicamente el aviso que escribe la herramienta de
+Next.js. Quien llegara tenía que deducir por lectura el protocolo de fases, la prohibición del producto mínimo viable,
+que CIAN y CENI no se construyen aquí y que no se ejecuta `prisma format`. Lo deduciría distinto.
+
+Tampoco estaba escrito cómo se opera: levantar un PostgreSQL local, qué necesita cada suite, que las pruebas de
+integración corren contra una base de verdad y por eso cada ejecución demuestra además una instalación desde cero, o que
+un navegador ya instalado se aprovecha con `E2E_CHROMIUM_PATH`. Eso vivía solo en la memoria de la sesión, que es el
+sitio donde no sobrevive a un cambio de ventana.
+
+| Documento | Qué resuelve |
+|---|---|
+| `AGENTS.md` | Se carga solo. Los cuatro documentos que rigen y en qué orden leerlos, las reglas que no se negocian, el método y la puerta de salida |
+| `docs/HANDOFF.md` | El manual de operación: puesta en marcha, cómo se corre cada suite, cómo se construye un bloque, las reglas de esquema y de permisos que más caro cuestan, el método de probar rompiendo, y cómo se cierra una fase |
+
+**Ninguno de los dos dice en qué fase estamos**, y el control `C-COH-17` lo impide: exige que existan, que `AGENTS.md`
+remita al PRD, al seguimiento, al manual y al backlog, y rechaza que cualquiera de los dos declare una fase activa, un
+estado de fase o una fase concreta. Un manual que además declarara el estado se quedaría atrás en el primer cierre y
+contaría una versión distinta de la verdad a quien más depende de él: exactamente lo que acababa de pasar con el README.
+Probado viéndolo fallar de cuatro maneras.
+
 ---
 
 ## Evidencias
@@ -156,7 +180,7 @@ lo excluye a propósito.
 |---|---|
 | `npm run typecheck` | Sin errores |
 | `npm run lint` | Sin errores ni avisos |
-| `npm run phase:verify` | **67 aprobados, 0 fallidos**, 1 no aplicable |
+| `npm run phase:verify` | **68 aprobados, 0 fallidos**, 1 no aplicable |
 | `npx vitest run` | **1 167 pruebas en 74 archivos**, todas en verde |
 | `npm run build` | Compila; ninguna ruta de casos es estática |
 | `npx playwright test` | **284 pruebas**, 8 omitidas por diseño |

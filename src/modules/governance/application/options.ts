@@ -145,3 +145,33 @@ export async function followUpOwners(actor: ActorContext): Promise<UseCaseResult
 
   return ok(salida);
 }
+
+/**
+ * Cargos vigentes **de quien mira**.
+ *
+ * Firmar desde un cargo exige ocuparlo. Ofrecer la lista completa de cargos
+ * vivos, como si cualquiera pudiera elegir el suyo, produce un desplegable
+ * lleno de opciones que el caso de uso va a rechazar por una razón incómoda de
+ * leer: «ese cargo no es tuyo».
+ */
+export async function myLiveOfficeTerms(actor: ActorContext): Promise<UseCaseResult<readonly Opcion[]>> {
+  const cuenta = actor.userId;
+  if (cuenta === null || cuenta === undefined) return ok([]);
+
+  const persona = await db().user.findUnique({ where: { id: cuenta }, select: { personId: true } });
+  if (persona === null) return ok([]);
+
+  const ahora = new Date();
+  const filas = await db().officeTerm.findMany({
+    where: { personId: persona.personId, endedEarlyOn: null, endsOn: { gte: ahora }, startsOn: { lte: ahora } },
+    orderBy: { endsOn: 'asc' },
+    select: { id: true, officeDefinition: { select: { name: true, unionBody: { select: { name: true } } } } },
+  });
+
+  return ok(
+    filas.map((fila) => ({
+      value: fila.id,
+      label: `${fila.officeDefinition.name} · ${fila.officeDefinition.unionBody.name}`,
+    })),
+  );
+}

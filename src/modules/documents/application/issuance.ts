@@ -12,7 +12,12 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { newPublicId } from '@/platform/kernel/ids';
 import { uploadFile } from '@/platform/files/file-service';
 import type { DocumentSubject } from '@prisma-client/enums';
-import { MARCA_DE_VARIABLE, variablesDeclaradas, variablesUsadas } from './templates';
+import {
+  componerDocumento,
+  renderizarCuerpo,
+  variablesDeclaradas,
+  variablesUsadas,
+} from '../domain/templates';
 
 /**
  * Emisión de documentos institucionales (PRD §16.2; F5-DOC).
@@ -33,80 +38,6 @@ function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
   for (const issue of error.issues) (salida[issue.path.join('.') || 'form'] ??= []).push(issue.message);
   return salida;
-}
-
-/** Escapa el texto que entra al documento. Un valor no puede traer marcado. */
-export function escaparHtml(valor: string): string {
-  return valor
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/**
- * Sustituye las variables del cuerpo por sus valores.
- *
- * Es una función pura y determinista: los mismos valores producen exactamente
- * el mismo texto, que es lo que permite comprobar años después que el archivo
- * guardado corresponde con la plantilla y con la instantánea de variables.
- */
-export function renderizarCuerpo(bodyTemplate: string, valores: Readonly<Record<string, string>>): string {
-  return bodyTemplate.replace(MARCA_DE_VARIABLE, (_coincidencia, nombre: string) =>
-    escaparHtml(valores[nombre] ?? ''),
-  );
-}
-
-/** Documento completo, listo para guardarse y para imprimirse. */
-export function componerDocumento(input: {
-  readonly titulo: string;
-  readonly entidad: string;
-  readonly serie: string;
-  readonly folio: string;
-  readonly emitidoEl: Date;
-  readonly cuerpo: string;
-}): string {
-  const fecha = new Intl.DateTimeFormat('es-MX', {
-    dateStyle: 'long',
-    timeZone: 'America/Mexico_City',
-  }).format(input.emitidoEl);
-
-  return `<!DOCTYPE html>
-<html lang="es-MX">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escaparHtml(input.titulo)} · ${escaparHtml(input.folio)}</title>
-<style>
-:root { color-scheme: light; }
-body { margin: 0; padding: 2.5rem 2rem; font-family: Georgia, "Times New Roman", serif; font-size: 12pt; line-height: 1.6; color: #111; background: #fff; }
-main { max-width: 44rem; margin: 0 auto; }
-header { border-bottom: 2px solid #111; padding-bottom: 1rem; margin-bottom: 2rem; }
-h1 { font-size: 16pt; margin: 0 0 .25rem; }
-.meta { font-size: 10pt; color: #444; }
-.cuerpo p { margin: 0 0 1rem; }
-footer { margin-top: 3rem; border-top: 1px solid #999; padding-top: .75rem; font-size: 9pt; color: #444; }
-@media print { body { padding: 0; } }
-</style>
-</head>
-<body>
-<main>
-<header>
-<h1>${escaparHtml(input.titulo)}</h1>
-<p class="meta">${escaparHtml(input.entidad)}</p>
-<p class="meta">Serie ${escaparHtml(input.serie)} · Folio ${escaparHtml(input.folio)} · Emitido el ${escaparHtml(fecha)}</p>
-</header>
-<div class="cuerpo">
-${input.cuerpo}
-</div>
-<footer>
-<p>Documento emitido por la plataforma institucional. Folio ${escaparHtml(input.folio)}.</p>
-</footer>
-</main>
-</body>
-</html>
-`;
 }
 
 /**

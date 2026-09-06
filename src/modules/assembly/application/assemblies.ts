@@ -9,8 +9,9 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { newPublicId } from '@/platform/kernel/ids';
-import { leerReglas } from '@/modules/governance';
+import { leerReglas } from '@/modules/governance/domain';
 import { issueDocument } from '@/modules/documents';
+import { uploadFile } from '@/platform/files';
 import type {
   AgendaItemKind,
   AgendaItemStatus,
@@ -457,15 +458,29 @@ export async function addAgendaItem(
   return ok({ agendaItemId: creado.id, position: creado.position, requiredMajority });
 }
 
-export const attachAgendaDocumentSchema = z.object({
-  agendaItemId: z.uuid(),
-  fileObjectId: z.uuid(),
-});
+export const attachAgendaDocumentSchema = z.object({ agendaItemId: z.uuid() });
 
-/** Adjunta un documento previo a un punto del orden del día (PRD §9.4). */
+export interface AgendaDocumentFile {
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly content: Uint8Array;
+}
+
+export interface AttachAgendaDocumentInput extends z.infer<typeof attachAgendaDocumentSchema> {
+  readonly file: AgendaDocumentFile;
+}
+
+/**
+ * Adjunta un documento previo a un punto del orden del día (PRD §9.4).
+ *
+ * El documento **se sube aquí**, en el mismo acto. Los documentos previos son
+ * lo que permite llegar a la asamblea sabiendo qué se va a discutir, y hacerlos
+ * pasar antes por otra pantalla convertía la preparación de una sesión en dos
+ * trámites cuando es uno.
+ */
 export async function attachAgendaDocument(
   actor: ActorContext,
-  input: z.infer<typeof attachAgendaDocumentSchema>,
+  input: AttachAgendaDocumentInput,
 ): Promise<UseCaseResult<{ attached: true }>> {
   const parsed = attachAgendaDocumentSchema.safeParse(input);
   if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
@@ -475,33 +490,39 @@ export async function attachAgendaDocument(
 
   const punto = await db().agendaItem.findUnique({
     where: { id: parsed.data.agendaItemId },
-    select: { id: true, assemblyId: true, status: true },
+    select: {
+      id: true,
+      assemblyId: true,
+      status: true,
+      assembly: { select: { unionBody: { select: { legalEntityId: true } } } },
+    },
   });
   if (punto === null) return fail(errors.notFound('Ese punto del orden del día no existe.'));
   if (punto.status === 'VOTED' || punto.status === 'WITHDRAWN') {
     return fail(errors.conflict('Ese punto ya se resolvió. Los documentos previos se adjuntan antes de la sesión.'));
   }
 
-  const archivo = await db().fileObject.findUnique({
-    where: { id: parsed.data.fileObjectId },
-    select: { id: true, deletedAt: true },
+  const guardado = await uploadFile(actor, {
+    legalEntityId: punto.assembly.unionBody.legalEntityId,
+    classification: 'INTERNAL',
+    contextKind: 'GOVERNANCE',
+    contextId: punto.assemblyId,
+    originalFileName: input.file.fileName,
+    mimeType: input.file.mimeType,
+    content: input.file.content,
   });
-  if (archivo === null || archivo.deletedAt !== null) return fail(errors.notFound('Ese archivo no existe.'));
-
-  const yaEsta = await db().agendaItemDocument.findUnique({
-    where: { agendaItemId_fileObjectId: { agendaItemId: punto.id, fileObjectId: archivo.id } },
-    select: { agendaItemId: true },
-  });
-  if (yaEsta !== null) return fail(errors.conflict('Ese documento ya está adjunto al punto.'));
+  if (!guardado.ok) return fail(guardado.error);
 
   await transaction(async (tx) => {
-    await tx.agendaItemDocument.create({ data: { agendaItemId: punto.id, fileObjectId: archivo.id } });
+    await tx.agendaItemDocument.create({
+      data: { agendaItemId: punto.id, fileObjectId: guardado.data.fileObjectId },
+    });
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.AGENDA_ITEM_UPDATED,
       objectKind: 'AgendaItem',
       objectId: punto.id,
       outcome: 'SUCCESS',
-      metadata: { asamblea: punto.assemblyId, documentoAdjunto: archivo.id },
+      metadata: { asamblea: punto.assemblyId, documentoAdjunto: guardado.data.fileObjectId },
     });
   });
 
@@ -625,6 +646,7 @@ export async function agendaItems(
 }
 
 export interface AssemblyDetail extends AssemblyRow {
+  readonly legalEntityId: string;
   readonly minutesDocumentId: string | null;
   readonly publicationLevel: string;
   readonly closedAt: Date | null;
@@ -663,7 +685,7 @@ export async function assemblyDetail(
       minutesDocumentId: true,
       publicationLevel: true,
       closedAt: true,
-      unionBody: { select: { name: true } },
+      unionBody: { select: { name: true, legalEntityId: true } },
       territorialUnit: { select: { name: true } },
       normativeRuleSet: { select: { version: true } },
       convenedByOfficeTerm: { select: { officeDefinition: { select: { name: true } } } },
@@ -705,6 +727,7 @@ export async function assemblyDetail(
     })),
     rosterFrozen: fila.rosterSnapshot !== null,
     quorumDeclaredAt: fila.quorumDeclaredAt,
+    legalEntityId: fila.unionBody.legalEntityId,
     minutesDocumentId: fila.minutesDocumentId,
     publicationLevel: fila.publicationLevel,
     closedAt: fila.closedAt,

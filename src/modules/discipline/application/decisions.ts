@@ -9,7 +9,7 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
-import { leerReglas } from '@/modules/governance';
+import { leerReglas } from '@/modules/governance/domain';
 import { issueDocument } from '@/modules/documents';
 import type { AppealStatus, DisciplinaryOutcome, DisciplinaryStatus } from '@prisma-client/enums';
 

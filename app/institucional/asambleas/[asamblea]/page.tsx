@@ -25,10 +25,11 @@ import {
   rosterPreview,
 } from '@/modules/assembly';
 import { voteProcessList } from '@/modules/voting';
-import { followUpOwners } from '@/modules/governance';
-import { publishedTemplateOptions } from '@/modules/documents';
+import { followUpOwners, myLiveOfficeTerms } from '@/modules/governance';
+import { documentSignatures, documentsForSubject, publishedTemplateOptions } from '@/modules/documents';
 import { AgendaItemForm, IssueCallForm } from '../assembly-forms';
 import {
+  AgendaDocumentForm,
   AttendanceForm,
   DeclareQuorumForm,
   FreezeRosterForm,
@@ -36,6 +37,7 @@ import {
   PublishMinutesForm,
   RecordResolutionForm,
   ScheduleVoteForm,
+  SignDocumentForm,
   TallyForms,
 } from '../session-forms';
 
@@ -106,7 +108,9 @@ export default async function SesionPage({ params }: { params: Promise<{ asamble
     pendientes,
     votaciones,
     resoluciones,
+    documentos,
     responsables,
+    misCargosVivos,
     plantillasConvocatoria,
     plantillasActa,
     plantillasResultado,
@@ -119,7 +123,9 @@ export default async function SesionPage({ params }: { params: Promise<{ asamble
     pendingAttendees(actor, asamblea.id),
     voteProcessList(actor, { assemblyId: asamblea.id }),
     resolutionList(actor, { assemblyId: asamblea.id }),
+    documentsForSubject(actor, 'ASSEMBLY', asamblea.id),
     followUpOwners(actor),
+    myLiveOfficeTerms(actor),
     publishedTemplateOptions(actor, 'CALL_NOTICE'),
     publishedTemplateOptions(actor, 'ASSEMBLY_MINUTES'),
     publishedTemplateOptions(actor, 'ELECTION_RESULT'),
@@ -157,6 +163,10 @@ export default async function SesionPage({ params }: { params: Promise<{ asamble
         value: persona.membershipId,
         label: `${persona.personName} · ${persona.memberNumber}${persona.hasVote ? '' : ' · sin voto'}`,
       }))
+    : [];
+
+  const misCargos: readonly Option[] = misCargosVivos.ok
+    ? misCargosVivos.data.map((cargo) => ({ value: cargo.value, label: cargo.label }))
     : [];
 
   const opcionesResponsable: readonly Option[] = responsables.ok
@@ -241,6 +251,13 @@ export default async function SesionPage({ params }: { params: Promise<{ asamble
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                       {punto.documentCount} documento(s) previo(s)
                     </p>
+                  )}
+                  {puedeOrdenDelDia && punto.status !== 'VOTED' && punto.status !== 'WITHDRAWN' && (
+                    <div className="mt-3">
+                      <Disclosure summary="Adjuntar un documento previo">
+                        <AgendaDocumentForm agendaItemId={punto.id} />
+                      </Disclosure>
+                    </div>
                   )}
                 </Card>
               ))}
@@ -610,6 +627,72 @@ export default async function SesionPage({ params }: { params: Promise<{ asamble
             )}
           </section>
         )}
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Documentos y firmas</h2>
+          {!documentos.ok ? (
+            <ErrorNotice title={documentos.error.message} />
+          ) : documentos.data.length === 0 ? (
+            <EmptyState
+              title="Sin documentos emitidos"
+              description="La convocatoria y el acta se emiten desde esta misma pantalla, y aparecen aquí con su folio."
+            />
+          ) : (
+            <div className="space-y-3">
+              {await Promise.all(
+                documentos.data.map(async (documento) => {
+                  const firmas = await documentSignatures(actor, documento.id);
+                  return (
+                    <Card key={documento.id}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-base font-semibold">{documento.templateName}</h3>
+                        <Badge tone={documento.status === 'ISSUED' ? 'success' : 'neutral'}>{documento.status}</Badge>
+                        <span className="font-mono text-xs text-[var(--color-ink-soft)]">
+                          {documento.folio ?? documento.publicId}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                        {documento.templateCode} v{documento.templateVersion} · emitido el{' '}
+                        {fechaHora.format(documento.issuedAt)} · {documento.signatures} firma(s)
+                      </p>
+
+                      {firmas.ok && firmas.data.length > 0 && (
+                        <ul className="mt-3 space-y-1 text-sm">
+                          {firmas.data.map((firma) => (
+                            <li key={firma.id} className="flex flex-wrap items-center gap-2">
+                              <span>{firma.signerName}</span>
+                              {firma.officeName !== null && (
+                                <span className="text-xs text-[var(--color-ink-soft)]">{firma.officeName}</span>
+                              )}
+                              <span className="text-xs tabular-nums">{fechaHora.format(firma.signedAt)}</span>
+                              {firma.stillMatches ? (
+                                <Badge tone="success">La firma corresponde con el archivo actual</Badge>
+                              ) : (
+                                <Badge tone="danger">El archivo cambió desde que se firmó</Badge>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {documento.status === 'ISSUED' && (
+                        <div className="mt-3">
+                          <Disclosure summary="Firmar">
+                            <SignDocumentForm
+                              documentId={documento.id}
+                              legalEntityId={asamblea.legalEntityId}
+                              cargos={misCargos}
+                            />
+                          </Disclosure>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                }),
+              )}
+            </div>
+          )}
+        </section>
 
         {puedeActa && asamblea.status === 'IN_SESSION' && (
           <section>

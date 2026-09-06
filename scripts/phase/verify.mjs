@@ -786,7 +786,7 @@ const CHECKS = [
   },
   {
     id: 'C-F1-02',
-    title: 'Fase 1: todo caso de uso exportado se invoca desde alguna pantalla o ruta',
+    title: 'Fase 1: todo caso de uso exportado se invoca desde alguna superficie o módulo vecino',
     phases: [1],
     run() {
       // El defecto que este control impide: `assignRole` y `revokeRole` existían
@@ -808,6 +808,22 @@ const CHECKS = [
       );
       const invocado = superficies.map((file) => read(file) ?? '').join('\n');
 
+      // Un caso de uso que **otro módulo** invoca también está entregado. La
+      // Fase 5 lo hizo evidente: `membershipByCredential` existe porque el
+      // registro de asistencia lee una credencial, y `revokeExpiredOfficeAccess`
+      // porque el trabajo que revoca roles cierra además los cargos vencidos.
+      // Ninguna pantalla los nombra, y exigir que lo hicieran habría llevado a
+      // inventar una pantalla o —peor— a duplicar la consulta dentro del módulo
+      // que la necesita, saltándose la frontera que el linter protege.
+      //
+      // El control conserva su filo: la superficie que invoca al módulo vecino
+      // sigue teniendo que existir, porque los casos de uso de ese vecino se
+      // comprueban con esta misma regla. Lo que deja de exigirse es que la
+      // superficie sea *directa*.
+      const codigoDeModulos = walk().filter(
+        (file) => file.startsWith('src/modules/') && /\.tsx?$/.test(file),
+      );
+
       const problems = [];
       for (const file of walk()) {
         if (!/^src\/modules\/[^/]+\/index\.ts$/.test(file)) continue;
@@ -820,6 +836,14 @@ const CHECKS = [
         // `export { a, b } from '...'` en una sola línea pasaba sin revisar: el
         // control daba verde por no haber mirado, que es peor que fallar
         // (`D-F3-011`).
+        // Lo que otro módulo puede invocar: todo el código de módulos menos el
+        // del módulo que declara la exportación.
+        const modulo = file.slice(0, file.indexOf('/', 'src/modules/'.length) + 1);
+        const invocadoPorVecinos = codigoDeModulos
+          .filter((otro) => !otro.startsWith(modulo))
+          .map((otro) => read(otro) ?? '')
+          .join('\n');
+
         for (const bloque of content.matchAll(/export\s*\{([^}]*)\}\s*from/g)) {
           const lista = bloque[1] ?? '';
           for (const bruto of lista.split(',')) {
@@ -831,15 +855,18 @@ const CHECKS = [
             // una pantalla. Lo que este control persigue son funciones de
             // negocio que quedaron sin superficie.
             if (nombre.endsWith('Schema')) continue;
-            if (!new RegExp(`\\b${nombre}\\b`).test(invocado)) {
-              problems.push(`${file} exporta "${nombre}" y ninguna pantalla, ruta o guion lo invoca.`);
+            const patron = new RegExp(`\\b${nombre}\\b`);
+            if (!patron.test(invocado) && !patron.test(invocadoPorVecinos)) {
+              problems.push(
+                `${file} exporta "${nombre}" y no lo invoca ninguna pantalla, ruta, guion ni otro módulo.`,
+              );
             }
           }
         }
       }
       return problems.length
         ? fail(problems)
-        : ok(['Todo caso de uso exportado tiene al menos una superficie que lo invoca.']);
+        : ok(['Todo caso de uso exportado lo invoca una superficie o un módulo vecino.']);
     },
   },
   {

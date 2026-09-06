@@ -10,7 +10,7 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import { uploadFile } from '@/platform/files';
-import { leerReglas } from '@/modules/governance';
+import { leerReglas } from '@/modules/governance/domain';
 import type { DisciplinaryStatus, EvidenceKind, EvidenceOfferedBy } from '@prisma-client/enums';
 
 /**

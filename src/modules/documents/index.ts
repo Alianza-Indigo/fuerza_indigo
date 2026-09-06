@@ -5,8 +5,6 @@ export {
   retireTemplate,
   templateList,
   publishedTemplateOptions,
-  variablesUsadas,
-  variablesDeclaradas,
   draftTemplateSchema,
   retireTemplateSchema,
   type DraftTemplateInput,
@@ -17,9 +15,6 @@ export {
 export {
   issueDocument,
   documentsForSubject,
-  renderizarCuerpo,
-  componerDocumento,
-  escaparHtml,
   issueDocumentSchema,
   type IssueDocumentInput,
   type IssuedDocument,

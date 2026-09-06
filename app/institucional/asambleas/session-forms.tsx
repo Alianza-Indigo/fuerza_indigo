@@ -13,6 +13,7 @@ import {
   type Option,
 } from '@/design-system/primitives';
 import {
+  attachAgendaDocumentAction,
   certifyVoteAction,
   closeVoteAction,
   declareQuorumAction,
@@ -22,6 +23,7 @@ import {
   recordResolutionAction,
   registerAttendanceAction,
   scheduleVoteAction,
+  signDocumentAction,
   tallyVoteAction,
   updateFollowUpAction,
   type SessionFormState,
@@ -507,6 +509,100 @@ export function FollowUpForm({ resolutionId }: { resolutionId: string }) {
       <TextArea name="note" label="Nota" required rows={2} errors={estado.fieldErrors?.['note']} />
 
       <SubmitButton variant="secondary">{pendiente ? 'Guardando…' : 'Actualizar el seguimiento'}</SubmitButton>
+    </form>
+  );
+}
+
+/** Documento previo de un punto del orden del día. */
+export function AgendaDocumentForm({ agendaItemId }: { agendaItemId: string }) {
+  const [estado, accion, pendiente] = useActionState(attachAgendaDocumentAction, INICIAL);
+
+  return (
+    <form action={accion} className="space-y-3">
+      <input type="hidden" name="agendaItemId" value={agendaItemId} />
+      <Aviso estado={estado} />
+
+      <div className="space-y-1.5">
+        <label htmlFor={`previo-${agendaItemId}`} className="block text-sm font-medium">
+          Documento previo
+        </label>
+        <p id={`previo-ayuda-${agendaItemId}`} className="text-sm text-[var(--color-ink-soft)]">
+          Lo que hay que leer antes de la sesión para poder discutir el punto con conocimiento.
+        </p>
+        <input
+          id={`previo-${agendaItemId}`}
+          type="file"
+          name="file"
+          required
+          aria-describedby={`previo-ayuda-${agendaItemId}`}
+          className="block w-full text-sm"
+        />
+      </div>
+
+      <SubmitButton variant="secondary">{pendiente ? 'Adjuntando…' : 'Adjuntar'}</SubmitButton>
+    </form>
+  );
+}
+
+/**
+ * Firma de un documento institucional.
+ *
+ * La firma guarda la huella del archivo tal como estaba al firmarse. Si alguien
+ * lo sustituyera después, la firma quedaría visiblemente huérfana, y la lista
+ * de firmas lo enseña.
+ */
+export function SignDocumentForm({
+  documentId,
+  legalEntityId,
+  cargos,
+}: {
+  documentId: string;
+  legalEntityId: string;
+  cargos: readonly Option[];
+}) {
+  const [estado, accion, pendiente] = useActionState(signDocumentAction, INICIAL);
+
+  return (
+    <form action={accion} className="space-y-3">
+      <input type="hidden" name="documentId" value={documentId} />
+      <input type="hidden" name="legalEntityId" value={legalEntityId} />
+      <Aviso estado={estado} />
+
+      <Select
+        name="signatureKind"
+        label="Modalidad"
+        required
+        options={[
+          { value: 'ELECTRONIC_SIMPLE', label: 'Electrónica simple' },
+          { value: 'HANDWRITTEN_SCANNED', label: 'Autógrafa escaneada — exige el archivo' },
+          { value: 'CERTIFIED_COPY', label: 'Copia certificada' },
+        ]}
+        errors={estado.fieldErrors?.['signatureKind']}
+      />
+      <Select
+        name="signerOfficeTermId"
+        label="Firmo desde el cargo"
+        options={cargos}
+        placeholder="Sin cargo"
+        hint="Solo tus cargos vigentes: nadie firma desde el cargo de otra persona ni desde uno vencido."
+        errors={estado.fieldErrors?.['signerOfficeTermId']}
+      />
+
+      <div className="space-y-1.5">
+        <label htmlFor={`firma-${documentId}`} className="block text-sm font-medium">
+          Firma escaneada
+        </label>
+        <input id={`firma-${documentId}`} type="file" name="signatureFile" className="block w-full text-sm" />
+        {estado.fieldErrors?.['fileObjectId'] !== undefined && (
+          <ul className="space-y-1 text-sm text-[var(--color-danger)]">
+            {estado.fieldErrors['fileObjectId'].map((mensaje) => (
+              <li key={mensaje}>{mensaje}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <SubmitButton>{pendiente ? 'Firmando…' : 'Firmar el documento'}</SubmitButton>
     </form>
   );
 }

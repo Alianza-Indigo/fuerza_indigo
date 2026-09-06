@@ -168,3 +168,30 @@ export function alcanzaMayoria(
 export const MAYORIAS = MAYORIA;
 export const QUORUMS = QUORUM;
 
+
+/**
+ * Reglas de una versión concreta, ya validadas.
+ *
+ * Devuelve `null` cuando la versión existe pero sus reglas están incompletas,
+ * que solo puede pasar en un borrador: una versión en vigor no llega a serlo
+ * sin pasar por el esquema. Quien la consulta sabe entonces que no puede
+ * decidir con ella, en vez de leer un valor ausente como cero.
+ */
+export function leerReglas(rules: unknown): NormativeRules | null {
+  const parsed = normativeRulesSchema.safeParse(rules);
+  return parsed.success ? parsed.data : null;
+}
+
+
+/** Umbrales que faltan para que una versión pueda entrar en vigor. */
+export function reglasFaltantes(rules: unknown): readonly string[] {
+  const parsed = normativeRulesSchema.safeParse(rules);
+  if (parsed.success) return [];
+  const claves = new Set<string>();
+  for (const issue of parsed.error.issues) {
+    const clave = issue.path[0];
+    if (typeof clave === 'string') claves.add(NOMBRE_DE_REGLA[clave as keyof NormativeRules] ?? clave);
+  }
+  return [...claves];
+}
+

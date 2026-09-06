@@ -18,6 +18,8 @@ export {
   QUORUMS,
   FRACCION_DE_MAYORIA,
   alcanzaMayoria,
+  leerReglas,
+  reglasFaltantes,
   type NormativeRules,
   type MajorityRule,
   type QuorumRule,

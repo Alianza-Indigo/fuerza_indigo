@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { db } from '@/platform/db/client';
@@ -9,6 +8,9 @@ import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { huellaDePadron, type RosterEntryShape } from '../domain/roster-hash';
+
+export { huellaDePadron, type RosterEntryShape } from '../domain/roster-hash';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 
 /**
@@ -43,37 +45,6 @@ function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
   for (const issue of error.issues) (salida[issue.path.join('.') || 'form'] ??= []).push(issue.message);
   return salida;
-}
-
-export interface RosterEntryShape {
-  readonly membershipId: string;
-  readonly memberNumber: string;
-  readonly territorialUnitId: string | null;
-  readonly hasVoice: boolean;
-  readonly hasVote: boolean;
-}
-
-/**
- * Huella canónica del padrón.
- *
- * Una línea por entrada, ordenadas por número de miembro, con los campos
- * separados por barra vertical. El orden es parte de la definición: sin él, dos
- * padrones idénticos producirían huellas distintas según el orden en que la
- * base devolviera las filas, y la comprobación no serviría de nada.
- *
- * Es una función pura y exportada a propósito: quien reciba el padrón la
- * ejecuta por su cuenta y compara. Una huella que solo puede calcular quien la
- * emitió no prueba nada.
- */
-export function huellaDePadron(entradas: readonly RosterEntryShape[]): string {
-  const canonico = [...entradas]
-    .sort((a, b) => a.memberNumber.localeCompare(b.memberNumber, 'en'))
-    .map(
-      (entrada) =>
-        `${entrada.memberNumber}|${entrada.membershipId}|${entrada.territorialUnitId ?? ''}|${entrada.hasVoice ? '1' : '0'}|${entrada.hasVote ? '1' : '0'}`,
-    )
-    .join('\n');
-  return createHash('sha256').update(canonico, 'utf8').digest('hex');
 }
 
 export interface RosterCriteria {

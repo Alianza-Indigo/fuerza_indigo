@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import {
+  attachAgendaDocument,
   declareQuorum,
   freezeRoster,
   publishMinutes,
@@ -9,6 +10,7 @@ import {
   registerAttendance,
   updateFollowUp,
 } from '@/modules/assembly';
+import { signDocument } from '@/modules/documents';
 import {
   certifyVoteProcess,
   closeVoteProcess,
@@ -19,6 +21,7 @@ import {
 } from '@/modules/voting';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
+import { uploadFile } from '@/platform/files';
 import type { AppError } from '@/platform/errors/app-error';
 
 /** Actos de la sesión: padrón, asistencia, quórum, votación, acuerdos y acta. */
@@ -259,4 +262,73 @@ export async function updateFollowUpAction(
 
   revalidatePath('/institucional/acuerdos');
   return { status: 'ok', message: 'Seguimiento actualizado.' };
+}
+
+export async function attachAgendaDocumentAction(
+  _previous: SessionFormState,
+  formData: FormData,
+): Promise<SessionFormState> {
+  const actor = await currentActor();
+
+  const archivo = formData.get('file');
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return { status: 'error', message: 'Elige el documento que se adjunta.' };
+  }
+
+  const resultado = await attachAgendaDocument(actor, {
+    agendaItemId: textField(formData, 'agendaItemId'),
+    file: {
+      fileName: archivo.name,
+      mimeType: archivo.type,
+      content: new Uint8Array(await archivo.arrayBuffer()),
+    },
+  });
+  if (!resultado.ok) return fallo(resultado);
+
+  revalidatePath('/institucional/asambleas');
+  return { status: 'ok', message: 'Documento previo adjunto al punto.' };
+}
+
+export async function signDocumentAction(
+  _previous: SessionFormState,
+  formData: FormData,
+): Promise<SessionFormState> {
+  const actor = await currentActor();
+
+  const archivo = formData.get('signatureFile');
+  const cargo = textField(formData, 'signerOfficeTermId');
+
+  // La firma autógrafa escaneada se sube como cualquier otro archivo del acto;
+  // la electrónica simple y la copia certificada no llevan archivo.
+  let fileObjectId: string | null = null;
+  if (archivo instanceof File && archivo.size > 0) {
+    const guardado = await uploadFile(actor, {
+      legalEntityId: textField(formData, 'legalEntityId'),
+      classification: 'INTERNAL',
+      contextKind: 'GOVERNANCE',
+      contextId: textField(formData, 'documentId'),
+      originalFileName: archivo.name,
+      mimeType: archivo.type,
+      content: new Uint8Array(await archivo.arrayBuffer()),
+    });
+    if (!guardado.ok) return fallo(guardado);
+    fileObjectId = guardado.data.fileObjectId;
+  }
+
+  const resultado = await signDocument(actor, {
+    documentId: textField(formData, 'documentId'),
+    signerOfficeTermId: cargo === '' ? null : cargo,
+    signatureKind: textField(formData, 'signatureKind') as
+      | 'HANDWRITTEN_SCANNED'
+      | 'ELECTRONIC_SIMPLE'
+      | 'CERTIFIED_COPY',
+    fileObjectId,
+  });
+  if (!resultado.ok) return fallo(resultado);
+
+  revalidatePath('/institucional/asambleas');
+  return {
+    status: 'ok',
+    message: `Documento firmado. Queda constancia de la huella firmada: ${resultado.data.documentSha256.slice(0, 16)}…`,
+  };
 }

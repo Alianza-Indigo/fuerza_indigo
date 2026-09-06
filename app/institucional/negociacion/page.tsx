@@ -10,7 +10,7 @@ import {
 } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { can } from '@/platform/authz/policy';
-import { bargainingFileList } from '@/modules/bargaining';
+import { bargainingFileList, proposalList } from '@/modules/bargaining';
 import { approvedResolutionOptions, grantablePeople, officeTermList } from '@/modules/governance';
 import { organizationList } from '@/modules/identity';
 import { territoryOptions } from '@/modules/access';
@@ -113,9 +113,11 @@ export default async function NegociacionPage() {
             />
           ) : (
             <div className="space-y-4">
-              {expedientes.data.map((expediente) => {
-                const estado = ESTADO[expediente.status] ?? { label: expediente.status, tone: 'neutral' as Tone };
-                const esHuelga = expediente.kind === 'STRIKE_PROCEDURE';
+              {await Promise.all(
+                expedientes.data.map(async (expediente) => {
+                  const estado = ESTADO[expediente.status] ?? { label: expediente.status, tone: 'neutral' as Tone };
+                  const esHuelga = expediente.kind === 'STRIKE_PROCEDURE';
+                  const propuestas = await proposalList(actor, expediente.id);
                 return (
                   <Card key={expediente.id}>
                     <div className="flex flex-wrap items-center gap-3">
@@ -172,6 +174,25 @@ export default async function NegociacionPage() {
                       )}
                     </dl>
 
+                    {propuestas.ok && propuestas.data.length > 0 && (
+                      <div className="mt-3">
+                        <Disclosure summary={`Propuestas (${propuestas.data.length})`}>
+                          <ul className="space-y-2 text-sm">
+                            {propuestas.data.map((propuesta) => (
+                              <li key={propuesta.id} className="border-b border-[var(--color-line)] pb-2 last:border-0">
+                                <span className="font-medium">Versión {propuesta.version}</span>{' '}
+                                <span className="text-xs text-[var(--color-ink-soft)]">
+                                  {propuesta.submittedBy} · {fecha.format(propuesta.submittedAt)} · documento{' '}
+                                  {propuesta.documentFolio ?? propuesta.documentPublicId}
+                                </span>
+                                <p className="mt-1">{propuesta.summary}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </Disclosure>
+                      </div>
+                    )}
+
                     {puedeAdministrar && expediente.status !== 'ARCHIVED' && (
                       <div className="mt-4 space-y-3">
                         <Disclosure summary="Integrar la comisión negociadora">
@@ -195,8 +216,9 @@ export default async function NegociacionPage() {
                       </div>
                     )}
                   </Card>
-                );
-              })}
+                  );
+                }),
+              )}
             </div>
           )}
         </section>

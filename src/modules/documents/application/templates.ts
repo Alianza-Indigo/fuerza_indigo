@@ -9,6 +9,14 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { DocumentKind, DocumentTemplateStatus } from '@prisma-client/enums';
+import {
+  CODIGO_DE_PLANTILLA,
+  NOMBRE_DE_VARIABLE,
+  variablesDeclaradas,
+  variablesUsadas,
+} from '../domain/templates';
+
+export { variablesDeclaradas, variablesUsadas } from '../domain/templates';
 
 /**
  * Plantillas versionadas de documento institucional (PRD §16.2; F5-DOC).
@@ -24,35 +32,14 @@ import type { DocumentKind, DocumentTemplateStatus } from '@prisma-client/enums'
  * documento cuando en realidad se descarta al emitir.
  */
 
-const CODIGO = /^[A-Z][A-Z0-9_]{2,59}$/;
-const VARIABLE = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
-/** Marca de sustitución: `{{nombre}}`. */
-export const MARCA_DE_VARIABLE = /\{\{\s*([a-zA-Z][a-zA-Z0-9_]{0,39})\s*\}\}/g;
-
 function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
   for (const issue of error.issues) (salida[issue.path.join('.') || 'form'] ??= []).push(issue.message);
   return salida;
 }
 
-/** Variables que el cuerpo de una plantilla usa, sin repetir. */
-export function variablesUsadas(bodyTemplate: string): readonly string[] {
-  const encontradas = new Set<string>();
-  for (const coincidencia of bodyTemplate.matchAll(MARCA_DE_VARIABLE)) {
-    const nombre = coincidencia[1];
-    if (nombre !== undefined) encontradas.add(nombre);
-  }
-  return [...encontradas];
-}
-
-/** Variables declaradas de una plantilla, leídas de su columna `variables`. */
-export function variablesDeclaradas(variables: unknown): readonly string[] {
-  if (!Array.isArray(variables)) return [];
-  return variables.filter((valor): valor is string => typeof valor === 'string' && VARIABLE.test(valor));
-}
-
 export const draftTemplateSchema = z.object({
-  code: z.string().trim().toUpperCase().regex(CODIGO, {
+  code: z.string().trim().toUpperCase().regex(CODIGO_DE_PLANTILLA, {
     error: () => 'El código lleva mayúsculas, números y guiones bajos. Por ejemplo: ACTA_ASAMBLEA.',
   }),
   name: z.string().trim().min(3).max(160),
@@ -71,7 +58,7 @@ export const draftTemplateSchema = z.object({
   ]),
   legalEntityId: z.uuid(),
   bodyTemplate: z.string().min(20).max(200_000),
-  variables: z.array(z.string().trim().regex(VARIABLE)).max(80),
+  variables: z.array(z.string().trim().regex(NOMBRE_DE_VARIABLE)).max(80),
   numberingSeries: z.string().trim().max(40).nullable().default(null),
 });
 

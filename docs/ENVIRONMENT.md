@@ -74,6 +74,21 @@ Solicita la contraseña por entrada oculta, no la escribe en el historial del in
 
 Cada ambiente usa una base distinta. La rama de vista previa nunca apunta a la base de producción.
 
+### La base de desarrollo se levanta y se comprueba desde el repositorio
+
+| Orden | Qué hace |
+|---|---|
+| `npm run db:check` | Compara la base configurada con **lo que producen las migraciones** y, si difieren, imprime exactamente qué falta o qué sobra. |
+| `npm run db:sync` | Vacía esa base, aplica las migraciones, siembra y la deja lista para trabajar. Solo funciona contra una base local: contra cualquier otra se niega. |
+
+`npm run dev` ejecuta la comprobación antes de arrancar, así que una base desfasada se nota al arrancar y no tres pantallas después.
+
+**Por qué no basta `prisma migrate status`.** Responde «al día» comparando la *lista* de migraciones aplicadas por su nombre, no su contenido. Mientras una fase está en curso, su migración todavía no publicada se edita varias veces y la base local se queda con la primera versión mientras el registro afirma que ya la tiene. A partir de ahí todo miente en la misma dirección: el servidor de desarrollo falla con columnas que «existen», `prisma migrate diff` propone deshacer cosas que sí están en el repositorio, y las pruebas pasan —construyen su base desde cero en cada ejecución— mientras la máquina de quien programa no funciona.
+
+**Qué compara exactamente.** La base contra el resultado de `prisma/migrations`, **no** contra el esquema Prisma. La diferencia importa: el esquema no sabe expresar `text_pattern_ops`, de modo que compararlo con él propondría borrar el índice de prefijo territorial en cada ejecución (ADR-0027).
+
+**Y deja la base utilizable, no solo migrada.** La semilla deja los avisos de privacidad en borrador a propósito —publicarlos es un acto de la organización, no una consecuencia de instalar el sistema—, pero sin uno publicado el formulario público se niega a recabar datos y ni el sitio de desarrollo ni las pruebas de extremo a extremo pueden funcionar. `db:sync` lo publica en la base local, lo dice en voz alta y explica que en un despliegue real lo publica la organización desde su pantalla. Nada de esto se hace a mano.
+
 ---
 
 ## 5. Almacenamiento de archivos (PRD §17.4)

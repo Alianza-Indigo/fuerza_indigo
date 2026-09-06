@@ -49,8 +49,8 @@ export default async function globalSetup(): Promise<void> {
         'No hay ningún aviso de privacidad publicado para la entrada pública, así que el formulario\n' +
           'se negará a recabar datos y las pruebas del formulario fallarán.\n' +
           'La semilla lo deja en borrador a propósito: publicarlo es un acto de la organización.\n' +
-          "Para correr las pruebas, publíquelo:\n" +
-          "  UPDATE consent_version SET status = 'PUBLISHED' WHERE code = 'PRIVACY_NOTICE_PUBLIC_INTAKE';",
+          'Prepara la base de desarrollo desde el repositorio:\n' +
+          '  npm run db:sync',
       );
     }
 

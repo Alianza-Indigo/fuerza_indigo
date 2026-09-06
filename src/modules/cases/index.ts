@@ -30,6 +30,14 @@ export {
   type AdvanceTaskInput,
   type AssignTaskInput,
 } from './application/tasks';
+export {
+  sendMessage,
+  editMessage,
+  sendMessageSchema,
+  editMessageSchema,
+  type SendMessageInput,
+  type EditMessageInput,
+} from './application/messages';
 export { peopleForCase, type Opcion } from './application/options';
 export {
   caseList,

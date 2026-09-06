@@ -4,6 +4,7 @@ import { currentActor } from '@/platform/http/request-context';
 import { assignableUsers, caseDetail, peopleForCase } from '@/modules/cases';
 import {
   NOMBRE_DE_ASIGNACION,
+  NOMBRE_DE_AUDIENCIA,
   NOMBRE_DE_TAREA,
   TAREAS_CERRADAS,
   NOMBRE_DE_DOMINIO,
@@ -18,6 +19,7 @@ import { AssessmentForm } from './assessment-form';
 import { AddParticipantForm, RemoveParticipantForm } from './participants-forms';
 import { AssignCaseForm, UnassignCaseForm } from './assignment-forms';
 import { AdvanceTaskForm, AssignTaskForm, CreateTaskForm } from './task-forms';
+import { EditMessageForm, SendMessageForm } from './message-forms';
 
 /** Cómo se nombra en pantalla la calidad con la que alguien interviene. */
 const NOMBRE_DE_CALIDAD: Record<string, string> = {
@@ -68,6 +70,11 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
 
   // El equipo del expediente es a quien se le pueden encomendar tareas. Sale de
   // lo que ya se leyó: no hace falta otra consulta para saber quién lo lleva.
+  // Quien es parte lee su expediente y no escribe en él desde aquí: su portal
+  // es otra pantalla. Y la nota reservada solo se ofrece a quien puede leerla.
+  const puedeComunicar = datos.lectura !== 'PERSONA' && datos.status !== 'CLOSED';
+  const puedeReservar = datos.lectura === 'SUPERVISION';
+
   const equipo = datos.equipo.map((integrante) => ({
     value: integrante.usuarioId,
     label: `${integrante.nombre} · ${NOMBRE_DE_ASIGNACION[integrante.rol]}`,
@@ -173,6 +180,52 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
           <Section title="Agregar a alguien" level={2}>
             <Card>
               <AddParticipantForm caseId={datos.id} personas={personas} />
+            </Card>
+          </Section>
+        )}
+
+        <Section title="Comunicaciones" level={2}>
+          <Card>
+            {datos.comunicaciones.length === 0 ? (
+              <p className="text-[var(--color-ink-soft)]">Todavía no hay comunicaciones.</p>
+            ) : (
+              <ul className="space-y-4">
+                {datos.comunicaciones.map((mensaje) => (
+                  <li key={mensaje.id} className="border-b border-[var(--color-line)] pb-4 last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={mensaje.audiencia === 'SUPERVISION_ONLY' ? 'warning' : 'neutral'}>
+                        {NOMBRE_DE_AUDIENCIA[mensaje.audiencia]}
+                      </Badge>
+                      <span className="text-sm text-[var(--color-ink-soft)]">
+                        {mensaje.autor ?? 'Sin autor registrado'} · {fecha.format(mensaje.enviadaEl)}
+                      </span>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap">{mensaje.cuerpo}</p>
+                    <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                      {mensaje.corregidaEl !== null && 'Corregida antes de que nadie la leyera. '}
+                      {mensaje.audiencia === 'PERSON_AND_TEAM' &&
+                        (mensaje.acuses === 0 ? 'Todavía sin acuse de lectura.' : `Leída por ${mensaje.acuses}.`)}
+                    </p>
+                    {mensaje.corregible && (
+                      <div className="mt-3">
+                        <EditMessageForm messageId={mensaje.id} cuerpo={mensaje.cuerpo} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]" data-secondary>
+              Lo que ves aquí es lo que te corresponde leer: el recorte se hace en la consulta, no al pintar la
+              pantalla.
+            </p>
+          </Card>
+        </Section>
+
+        {puedeComunicar && (
+          <Section title="Comunicar algo" level={2}>
+            <Card>
+              <SendMessageForm caseId={datos.id} puedeReservar={puedeReservar} />
             </Card>
           </Section>
         )}

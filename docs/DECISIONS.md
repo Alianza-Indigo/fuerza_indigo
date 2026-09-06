@@ -1414,3 +1414,25 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Cancelar no es terminar.** Se separan porque miden cosas distintas: una tarea que se hizo y una que se dejó de hacer no pueden contar igual en ningún indicador. Y una tarea cerrada ya no se mueve: reabrirla borraría cuándo se terminó y quién la terminó, que es toda la constancia que deja. Si queda algo por hacer, se abre otra, y así consta que fueron dos cosas.
 
 **Vencida se compara, no se guarda.** Una columna con el vencimiento habría que actualizarla con un trabajo nocturno, y entre pasada y pasada la pantalla diría que hay tiempo cuando ya no lo hay. El plazo, además, vence al **final** del día señalado: quien tiene hasta el viernes tiene el viernes.
+
+---
+
+## ADR-0114 · La audiencia decide quién lee, y el recorte se hace en la consulta
+
+**Contexto.** Una comunicación del expediente va a la persona, al equipo o a la supervisión, y las tres viven en la misma tabla. La tentación es traerlas todas y que la pantalla enseñe las que tocan. Una nota reservada que la consulta trajo y la pantalla escondió **ya viajó** al navegador de quien no debía verla.
+
+**Decisión.** La clase de lectura —persona, equipo, supervisión— se resuelve una sola vez, en `claseDeLectura`, y de ahí salen a la vez el permiso de entrar al expediente y qué audiencias alcanza. La consulta de comunicaciones filtra por esa lista. Un sitio donde el permiso de entrar y el recorte de audiencias se decidieran por separado sería un sitio donde el expediente se abre y las notas no se recortan.
+
+**No se escribe en un cajón que no se puede abrir.** Escribir una nota reservada exige la misma facultad que leerla. Sin esa regla, cualquiera del equipo podría dejar una nota que después no puede consultar ni corregir: una vía para meter información en un sitio del que ya no se le puede sacar.
+
+**La bitácora dice que se comunicó, no qué se dijo.** Un evento que copiara el cuerpo pondría la nota reservada en una tabla que lee más gente que la propia nota.
+
+---
+
+## ADR-0115 · El acuse lo deja la lectura, y lo acusado ya no se reescribe
+
+**Contexto.** Cuando la organización le dice algo a la persona, hace falta poder demostrar que se le dijo. Un botón de «enterado» demuestra que alguien pulsó un botón.
+
+**Decisión.** El acuse se registra **por el hecho de leer**: cuando quien es parte abre el expediente, las comunicaciones dirigidas a ella quedan acusadas con su identificador y la fecha. Volver a leerlas no acusa otra vez —el acuse dice que se le dijo, no cuántas veces miró— y el equipo no acusa recibo de sus propias notas internas.
+
+**Y desde el acuse, el texto es un hecho.** Se admite la corrección previa al primer acuse, porque quien todavía no la ha leído no ha leído nada distinto, y queda escrito que se corrigió. Después, no: reescribir lo que alguien ya leyó cambia lo que se le dijo. Corrige además **quien la escribió**: que otra persona reescriba un texto que sigue apareciendo con el nombre de su autora es peor que no poder corregir. Lo demás —de quién es, a quién iba, cuándo se envió— no lo puede tocar la aplicación: la migración le retiró el privilegio.

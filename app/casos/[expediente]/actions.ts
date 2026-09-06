@@ -8,7 +8,9 @@ import {
   assignCase,
   assignTask,
   createTask,
+  editMessage,
   removeParticipant,
+  sendMessage,
   unassignCase,
 } from '@/modules/cases';
 import { currentActor } from '@/platform/http/request-context';
@@ -251,4 +253,54 @@ export async function assignTaskAction(_previo: CaseFormState, formData: FormDat
 
   revalidatePath('/casos');
   return { status: 'ok', message: 'La tarea cambia de responsable.' };
+}
+
+/**
+ * Comunica algo dentro del expediente.
+ *
+ * La audiencia viaja en el formulario y el módulo la comprueba: escribir una
+ * nota reservada exige la misma facultad que leerla, porque una nota que ni
+ * quien la escribió puede volver a abrir solo sirve para meter información en
+ * un sitio del que ya no se le puede sacar.
+ */
+export async function sendMessageAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await sendMessage(actor, {
+    caseId: textField(formData, 'caseId'),
+    audience: textField(formData, 'audience') as never,
+    body: textField(formData, 'body'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Comunicación enviada.' };
+}
+
+/** Corrige una comunicación propia que nadie ha leído todavía. */
+export async function editMessageAction(_previo: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  const actor = await currentActor();
+
+  const resultado = await editMessage(actor, {
+    messageId: textField(formData, 'messageId'),
+    body: textField(formData, 'body'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/casos');
+  return { status: 'ok', message: 'Corregida. Queda escrito que se corrigió.' };
 }

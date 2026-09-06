@@ -10,6 +10,7 @@ import { nombreCompleto } from '@/platform/i18n/person-name';
 import type {
   CaseAssignmentRole,
   CaseDomain,
+  CaseMessageAudience,
   CaseMembershipQuality,
   CaseOutcome,
   CaseParticipantRole,
@@ -20,12 +21,9 @@ import type {
 } from '@prisma-client/enums';
 import type { Prisma } from '@prisma-client/client';
 import { compartimentoDe } from '../domain/access';
-import {
-  esParteDelExpediente,
-  estaAsignada,
-  filtroTerritorial,
-  recursoDelExpediente,
-} from './assignment';
+import { ALCANCE_DE_LECTURA, type ClaseDeLectura } from '../domain/audience';
+import { filtroTerritorial } from './assignment';
+import { acusesDe, claseDeLectura, registrarAcuses } from './messages';
 
 /**
  * Lectura de expedientes (PRD §10.2, §10.3).
@@ -80,6 +78,24 @@ export interface CaseDetail extends CaseRow {
     readonly papel: CaseParticipantRole;
     readonly calidad: CaseMembershipQuality;
     readonly veElExpediente: boolean;
+  }[];
+  /**
+   * Con qué clase de lectura se está viendo. La pantalla la necesita para no
+   * ofrecer lo que el módulo va a rechazar: escribir una nota reservada, por
+   * ejemplo, a quien no puede volver a abrirla.
+   */
+  readonly lectura: ClaseDeLectura;
+  readonly comunicaciones: readonly {
+    readonly id: string;
+    readonly audiencia: CaseMessageAudience;
+    readonly autor: string | null;
+    readonly cuerpo: string;
+    readonly enviadaEl: Date;
+    readonly corregidaEl: Date | null;
+    /** Cuántas personas la han acusado. Cero no es lo mismo que no enviada. */
+    readonly acuses: number;
+    /** Quién la escribió puede corregirla mientras nadie la haya leído. */
+    readonly corregible: boolean;
   }[];
   readonly tareas: readonly {
     readonly id: string;
@@ -335,24 +351,54 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
   });
   if (fila === null) return fail(errors.notFound('Ese expediente no existe.'));
 
-  const asignada = await estaAsignada(actor, fila.id);
-  const parte = await esParteDelExpediente(actor, fila.id);
-
-  // Quien es parte lee lo suyo por su propia facultad. No se le pide
-  // compartimento: los compartimentos separan áreas entre sí, no a una persona
-  // de su propio expediente.
-  const decision = parte
-    ? can(
-        actor,
-        'cases.case.read_own',
-        { kind: 'Case', id: fila.id, legalEntityId: fila.legalEntityId },
-        { hasLiveAssignment: () => true },
-      )
-    : can(actor, 'cases.case.read', recursoDelExpediente(fila), { hasLiveAssignment: () => asignada });
+  // Quién es quien pregunta respecto de este expediente: lo lleva, es parte de
+  // él, o ninguna de las dos. De eso salen tanto el permiso de entrar como qué
+  // comunicaciones alcanza, y sale de un solo sitio para que no puedan
+  // discrepar: un expediente que se abre y unas notas que no se recortan sería
+  // exactamente el fallo que la separación de audiencias existe para impedir.
+  const clase = await claseDeLectura(actor, fila);
 
   // Fuera de alcance e inexistente responden igual: decir «existe pero no es
   // tuyo» confirmaría que hay un expediente sobre alguien.
-  if (!decision.allowed) return fail(errors.notFound('Ese expediente no existe.'));
+  if (clase === null) return fail(errors.notFound('Ese expediente no existe.'));
+  const parte = clase === 'PERSONA';
+
+  // Las comunicaciones se piden aparte y **filtradas en la consulta**. Traerlas
+  // todas para tachar después las reservadas sería traerlas igual.
+  const comunicaciones = await db().caseMessage.findMany({
+    where: { caseId: fila.id, audience: { in: [...ALCANCE_DE_LECTURA[clase]] } },
+    orderBy: { sentAt: 'desc' },
+    take: 200,
+    select: {
+      id: true,
+      audience: true,
+      body: true,
+      sentAt: true,
+      editedAt: true,
+      authorId: true,
+      readReceipts: true,
+      author: {
+        select: {
+          person: {
+            select: {
+              givenName: true,
+              middleName: true,
+              familyName: true,
+              secondFamilyName: true,
+              preferredName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Quien es parte deja acuse de lo que se le dirigió, por el hecho de leerlo.
+  // Un acuse que dependiera de pulsar «enterado» probaría que pulsó, no que se
+  // le dijo.
+  if (parte && actor.personId !== null && actor.personId !== undefined) {
+    await registrarAcuses(actor.personId, comunicaciones);
+  }
 
   await transaction(async (tx) => {
     await recordAudit(tx, actor, {
@@ -381,6 +427,20 @@ export async function caseDetail(actor: ActorContext, publicId: string): Promise
       usuarioId: asignacion.userId,
       nombre: nombreCompleto(asignacion.user.person),
       rol: asignacion.assignmentRole,
+    })),
+    lectura: clase,
+    comunicaciones: comunicaciones.map((mensaje) => ({
+      id: mensaje.id,
+      audiencia: mensaje.audience,
+      autor: mensaje.author === null ? null : nombreCompleto(mensaje.author.person),
+      cuerpo: mensaje.body,
+      enviadaEl: mensaje.sentAt,
+      corregidaEl: mensaje.editedAt,
+      acuses: acusesDe(mensaje.readReceipts).length,
+      corregible:
+        mensaje.authorId !== null &&
+        mensaje.authorId === (actor.userId ?? null) &&
+        acusesDe(mensaje.readReceipts).length === 0,
     })),
     tareas: fila.tasks.map((tarea) => ({
       id: tarea.id,

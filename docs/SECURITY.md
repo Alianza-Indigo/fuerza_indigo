@@ -216,6 +216,10 @@ Se enuncia explícitamente para que nadie construya sobre una expectativa falsa:
 
 `E2E-07` incluye una verificación adversaria: sobre un volcado completo de la base tras una votación con **tres** personas electoras, ninguna consulta puede asociar una fila de `Ballot` con una de `VoteEligibility`. El volumen bajo es deliberado: es el escenario donde cualquier fuga temporal residual sería más fácil de explotar.
 
+Vive en `tests/integration/fase5-criterios.test.ts` (`F5-QA-002`) y no lee el código: ejecuta la votación y después interroga la base con las credenciales de la aplicación. Comprueba, en este orden, que las columnas de `ballot` son exactamente `id`, `selection`, `verificationCode`, `voteProcessId` y el motivo de nulidad; que las de `spent_vote_credential` son exactamente `credentialHash`, `id` y `voteProcessId`; que los identificadores de boleta llevan el `4` de la versión cuatro en su posición, de modo que no codifican el instante; que el lado identificado guarda la emisión de la credencial **como fecha civil**, sin hora; que reutilizar una credencial se rechaza; y que `UPDATE` y `DELETE` sobre una boleta se rechazan por privilegios.
+
+Tres controles de fase lo sostienen desde el otro lado: `C-F5-01` comprueba que la urna no tenga tiempo ni identidad, `C-F5-02` que el depósito no reciba actor ni deje asiento en la bitácora —un asiento llevaría actor e instante en la misma transacción que la boleta—, y `C-F5-03` que la urna y el padrón congelado sean inmutables para las credenciales de la aplicación.
+
 ---
 
 ## 10. Respuesta a incidentes

@@ -356,6 +356,24 @@ Cuando el catálogo define las dos, son **dos facultades distintas** y hay que r
 
 Confundirlas tuvo consecuencias: con una sola facultad, y como la persona llega por parámetro, cualquier agremiada podía leer el historial de consentimientos de cualquier otra (`D-F4-019`). El control `C-F4-03` lo impide de forma mecánica: ninguna función que reciba un `personId` puede decidir mencionando solo la facultad institucional cuando existe su pareja.
 
+### 7.4 El cargo confiere facultades propias, además de las del rol
+
+`OfficeDefinition` declara sus facultades en `OfficeDefinitionPermission`, y esa tabla no es informativa: el resolvedor de actores **suma** esas facultades a las del rol en la concesión que nace del periodo de cargo. El rol dice qué clase de persona es alguien; el cargo dice de qué responde. Al concluir el periodo la concesión se revoca entera, y la facultad del cargo desaparece con ella (ADR-0103).
+
+Los **compartimentos**, en cambio, siguen dependiendo del rol. Un cargo puede sumar facultades; no puede abrir un compartimento de sensibilidad que su rol no tenga, porque entonces bastaría definir una cartera para fabricarse acceso a materia reservada.
+
+### 7.5 `needsAssignment` obliga al caso de uso, no al motor
+
+Un permiso marcado con `needsAssignment` exige, además de la facultad, **estar a cargo de este expediente**. El motor no puede resolverlo solo: la respuesta está en el dato. La recibe como sonda del caso de uso, y sin sonda niega.
+
+Eso hizo inalcanzable el módulo disciplinario entero: siete casos de uso y una pantalla completa que respondían siempre «no tienes autorización» (defecto `D-F5-009`). El control `C-F5-10` exige ahora la sonda en toda comprobación de un permiso así, y lo comprueba también cuando el código elige el permiso por variable.
+
+En materia disciplinaria la asignación es **tener cargo vivo en el órgano que instruye**. Y una lista no es un expediente: para quien tiene la facultad pero ningún expediente a cargo, la lista sale vacía, no prohibida (ADR-0102).
+
+### 7.6 Un permiso con `requiresReason` necesita que alguien escriba el motivo
+
+El motor niega un permiso con `requiresReason` cuando el actor llega sin motivo. Quien lo adjunta es la acción de servidor, con `withReason`, porque es la capa que sabe qué se está haciendo. Si no lo hace, el botón existe, se pulsa y **siempre** falla: pasó con declarar quórum y con certificar un escrutinio (defecto `D-F5-005`). El control `C-F5-08` recorre las llamadas desde `app/` y lo exige.
+
 ---
 
 ## 8. Superadmin (PRD §4.4)

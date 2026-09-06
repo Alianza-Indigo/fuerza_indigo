@@ -228,37 +228,37 @@ La revisión de coherencia del 3 de septiembre de 2026 reabrió `F0-DAT-001`, `F
 
 | Id | Tarea | Estado |
 |---|---|---|
-| F5-DAT-001 | Migrar las entidades de gobierno, territorio, votación, negociación y disciplina | Pendiente |
-| F5-TER-001 | Implementar las unidades territoriales con jerarquía consultable y acuerdo habilitante | Pendiente |
-| F5-TER-002 | Construir el panel territorial con padrón, solicitudes, casos, actividades e indicadores | Pendiente |
-| F5-GOB-001 | Implementar órganos, definiciones de cargo y sus conjuntos de permisos | Pendiente |
-| F5-GOB-002 | Implementar periodos, suplencias, poderes y su documentación probatoria | Pendiente |
-| F5-GOB-003 | Implementar la administración de las reglas estatutarias versionadas, cuyo modelo y semilla existen desde la Fase 1 | Pendiente |
-| F5-GOB-004 | Implementar el control de incompatibilidades entre cargos y comisiones | Pendiente |
-| F5-ASA-001 | Implementar convocatorias de primera y segunda vuelta con anticipación normativa | Pendiente |
-| F5-ASA-002 | Implementar el orden del día, los documentos previos y las reglas de elegibilidad | Pendiente |
-| F5-ASA-003 | Implementar el congelamiento del padrón con huella verificable | Pendiente |
-| F5-ASA-004 | Implementar el registro de asistencia con credencial, manual y sesión remota | Pendiente |
-| F5-ASA-005 | Implementar el cálculo de quórum y su declaración firmada por persona autorizada | Pendiente |
-| F5-ASA-006 | Implementar resoluciones, actas, anexos, firmas y niveles de publicación | Pendiente |
-| F5-ASA-007 | Implementar el seguimiento de acuerdos con responsable, plazo y estado | Pendiente |
-| F5-ELE-001 | Implementar la Comisión Electoral, su calendario y su convocatoria | Pendiente |
-| F5-ELE-002 | Implementar el padrón de electores y su publicación conforme a reglas | Pendiente |
-| F5-ELE-003 | Implementar el registro y la validación de planillas con alertas de proporcionalidad | Pendiente |
-| F5-ELE-004 | Implementar el voto secreto: credencial firmada que no se almacena al emitirse, urna sin identidad ni marca temporal y registro de credencial consumida (ADR-0012) | Pendiente |
-| F5-ELE-005 | Implementar el escrutinio verificable, el acta de resultados y las incidencias | Pendiente |
-| F5-ELE-006 | Implementar la exportación de evidencia para la autoridad competente | Pendiente |
-| F5-NEG-001 | Implementar los expedientes de contrato colectivo y revisión contractual | Pendiente |
-| F5-NEG-002 | Implementar la consulta a agremiados afectados con padrón específico congelado | Pendiente |
-| F5-NEG-003 | Implementar los expedientes de conflicto colectivo y huelga con acuerdo humano obligatorio | Pendiente |
-| F5-DIS-001 | Implementar el procedimiento disciplinario con control de conflicto de interés | Pendiente |
-| F5-DIS-002 | Implementar notificación, acceso al expediente, audiencia y valoración de pruebas | Pendiente |
-| F5-DIS-003 | Implementar resolución fundada, sanción, recurso y restitución de derechos | Pendiente |
-| F5-GOB-005 | Implementar el archivo histórico y los reportes de obligaciones ante autoridad | Pendiente |
-| F5-QA-001 | Probar que el quórum es reproducible desde el padrón congelado | Pendiente |
-| F5-QA-002 | Probar que el sentido del voto no es correlacionable desde la base | Pendiente |
-| F5-QA-003 | Probar que un cargo vencido pierde el acceso sin intervención manual | Pendiente |
-| F5-DOC-001 | Documentar la vida institucional y actualizar el estado de la fase | Pendiente |
+| F5-DAT-001 | Migrar las entidades de gobierno, territorio, votación, negociación y disciplina | Terminada |
+| F5-TER-001 | Implementar las unidades territoriales con jerarquía consultable y acuerdo habilitante | Terminada |
+| F5-TER-002 | Construir el panel territorial con padrón, solicitudes, casos, actividades e indicadores | Terminada |
+| F5-GOB-001 | Implementar órganos, definiciones de cargo y sus conjuntos de permisos | Terminada |
+| F5-GOB-002 | Implementar periodos, suplencias, poderes y su documentación probatoria | Terminada |
+| F5-GOB-003 | Implementar la administración de las reglas estatutarias versionadas, cuyo modelo y semilla existen desde la Fase 1 | Terminada |
+| F5-GOB-004 | Implementar el control de incompatibilidades entre cargos y comisiones | Terminada |
+| F5-ASA-001 | Implementar convocatorias de primera y segunda vuelta con anticipación normativa | Terminada |
+| F5-ASA-002 | Implementar el orden del día, los documentos previos y las reglas de elegibilidad | Terminada |
+| F5-ASA-003 | Implementar el congelamiento del padrón con huella verificable | Terminada |
+| F5-ASA-004 | Implementar el registro de asistencia con credencial, manual y sesión remota | Terminada |
+| F5-ASA-005 | Implementar el cálculo de quórum y su declaración firmada por persona autorizada | Terminada |
+| F5-ASA-006 | Implementar resoluciones, actas, anexos, firmas y niveles de publicación | Terminada |
+| F5-ASA-007 | Implementar el seguimiento de acuerdos con responsable, plazo y estado | Terminada |
+| F5-ELE-001 | Implementar la Comisión Electoral, su calendario y su convocatoria | Terminada |
+| F5-ELE-002 | Implementar el padrón de electores y su publicación conforme a reglas | Terminada |
+| F5-ELE-003 | Implementar el registro y la validación de planillas con alertas de proporcionalidad | Terminada |
+| F5-ELE-004 | Implementar el voto secreto: credencial firmada que no se almacena al emitirse, urna sin identidad ni marca temporal y registro de credencial consumida (ADR-0012) | Terminada |
+| F5-ELE-005 | Implementar el escrutinio verificable, el acta de resultados y las incidencias | Terminada |
+| F5-ELE-006 | Implementar la exportación de evidencia para la autoridad competente | Terminada |
+| F5-NEG-001 | Implementar los expedientes de contrato colectivo y revisión contractual | Terminada |
+| F5-NEG-002 | Implementar la consulta a agremiados afectados con padrón específico congelado | Terminada |
+| F5-NEG-003 | Implementar los expedientes de conflicto colectivo y huelga con acuerdo humano obligatorio | Terminada |
+| F5-DIS-001 | Implementar el procedimiento disciplinario con control de conflicto de interés | Terminada |
+| F5-DIS-002 | Implementar notificación, acceso al expediente, audiencia y valoración de pruebas | Terminada |
+| F5-DIS-003 | Implementar resolución fundada, sanción, recurso y restitución de derechos | Terminada |
+| F5-GOB-005 | Implementar el archivo histórico y los reportes de obligaciones ante autoridad | Terminada |
+| F5-QA-001 | Probar que el quórum es reproducible desde el padrón congelado | Terminada |
+| F5-QA-002 | Probar que el sentido del voto no es correlacionable desde la base | Terminada |
+| F5-QA-003 | Probar que un cargo vencido pierde el acceso sin intervención manual | Terminada |
+| F5-DOC-001 | Documentar la vida institucional y actualizar el estado de la fase | Terminada |
 
 ---
 

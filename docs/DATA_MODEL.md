@@ -303,8 +303,12 @@ Al llegar `endsOn` un trabajo programado revoca las `RoleAssignment` derivadas; 
 Único `(assemblyId, position)`.
 
 **`AssemblyRosterSnapshot`** — Padrón congelado de la sesión. Inmutable (PRD §9.4).
-`id` PK · `assemblyId` FK U · `frozenAt` · `frozenById` FK→`User` · `criteria` *json* — reglas de elegibilidad aplicadas · `entryCount` *int* · `hash` — huella verificable del contenido · `entries` — tabla hija `AssemblyRosterEntry(rosterId, membershipId, memberNumber, territorialUnitId, hasVoice, hasVote)`.
+`id` PK · `ownerKind` *enum* (`ASSEMBLY`, `ELECTION`, `COLLECTIVE_CONSULTATION`) — de quién es este padrón · `assemblyId` NULL FK U · `electionId` NULL FK U · `frozenAt` · `frozenById` FK→`User` · `criteria` *json* — reglas de elegibilidad aplicadas · `entryCount` *int* · `hash` — huella verificable del contenido · `entries` — tabla hija `AssemblyRosterEntry(rosterId, membershipId, memberNumber, territorialUnitId, hasVoice, hasVote)`.
 Nunca se recalcula tras concluir la asamblea.
+
+Un `CHECK` exige que la referencia presente sea la que declara `ownerKind`, y las dos son únicas. Sin eso, una asamblea y una elección podían apuntar a la misma fila por columnas distintas y el padrón quedaba con dos dueños o con ninguno (defecto `D-F5-003`, ADR-0101). El dueño es una propiedad del padrón, no una consecuencia de quién lo mire.
+
+La inmutabilidad **no** es una promesa del código: al rol de la aplicación se le retiran `UPDATE` y `DELETE` sobre la tabla y sobre sus entradas. La huella se recalcula al leer y se compara con la guardada; declarar quórum sobre un padrón cuya huella no corresponde se niega.
 
 **`Attendance`** — Registro de asistencia.
 `id` PK · `assemblyId` FK IX · `membershipId` FK IX · `personId` FK · `registeredAt` · `method` *enum* (`QR_CREDENTIAL`, `MANUAL`, `REMOTE_SESSION`) · `hasVoice` *bool* · `hasVote` *bool* · `registeredById` NULL FK · `leftAt` NULL.
@@ -314,7 +318,9 @@ Nunca se recalcula tras concluir la asamblea.
 `id` PK · `publicId` U · `assemblyId` FK IX · `agendaItemId` NULL FK · `number` U? — serie por órgano y año · `text` *text* · `outcome` *enum* (`APPROVED`, `REJECTED`, `DEFERRED`) · `voteProcessId` NULL FK→`VoteProcess` · `effectiveFrom` NULL · `followUpOwnerId` NULL FK→`User` · `followUpDueAt` NULL · `followUpStatus` *enum* (`NOT_REQUIRED`, `PENDING`, `IN_PROGRESS`, `COMPLETED`, `OVERDUE`) IX · `publicationLevel` *enum*.
 
 **`VoteProcess`** — Proceso de votación reutilizable por asambleas, elecciones y consultas contractuales.
-`id` PK · `publicId` U · `context` *enum* (`ASSEMBLY_ITEM`, `ELECTION`, `COLLECTIVE_CONSULTATION`, `DISCIPLINARY_APPEAL`) IX · `assemblyId` NULL FK · `agendaItemId` NULL FK · `electionId` NULL FK · `bargainingFileId` NULL FK→`BargainingFile` · `title` · `method` *enum* (`SECRET`, `OPEN_ROLL_CALL`) · `options` *json* — opciones inmutables al abrir · `rosterSnapshotId` FK→`AssemblyRosterSnapshot` · `opensAt` · `closesAt` IX · `status` *enum* (`SCHEDULED`, `OPEN`, `CLOSED`, `TALLIED`, `CERTIFIED`, `ANNULLED`) · `talliedAt` NULL · `results` *json* NULL — conteo por opción · `resultDocumentId` NULL FK→`GeneratedDocument` · `certifiedById` NULL FK→`User`.
+`id` PK · `publicId` U · `context` *enum* (`ASSEMBLY_ITEM`, `ELECTION`, `COLLECTIVE_CONSULTATION`, `DISCIPLINARY_APPEAL`) IX · `assemblyId` NULL FK · `agendaItemId` NULL FK · `electionId` NULL FK · `bargainingFileId` NULL FK→`BargainingFile` · `title` · `method` *enum* (`SECRET`, `OPEN_ROLL_CALL`) · `options` *json* — opciones inmutables al abrir · `rosterSnapshotId` FK→`AssemblyRosterSnapshot` · `opensAt` · `closesAt` IX · `status` *enum* (`SCHEDULED`, `OPEN`, `CLOSED`, `TALLIED`, `CERTIFIED`, `ANNULLED`) · `talliedAt` NULL · `results` *json* NULL — conteo por opción · `resultDocumentId` NULL FK→`GeneratedDocument` · `certifiedById` NULL FK→`User` · `credentialSalt` NULL *varchar(64)* — sal aleatoria del proceso.
+
+La clave con la que se firman las credenciales de este proceso se deriva del secreto `VOTE_CREDENTIAL_SECRET`, que vive en el entorno y **nunca** en la base, y de `credentialSalt`, que es lo único que la base guarda. Al certificar el escrutinio la sal se borra: la clave deja de poder derivarse y ya no pueden fabricarse credenciales para una votación cerrada. Eso es lo que significa «la clave del proceso quedó destruida».
 
 **`VoteEligibility`** — Derecho a votar de una persona en un proceso. Prueba elegibilidad y emisión de credencial, **sin** vínculo alguno con una boleta.
 `id` PK · `voteProcessId` FK IX · `membershipId` FK IX · `eligible` *bool* · `reasonIfNot` NULL *enum* (`NO_POLITICAL_RIGHTS`, `SUSPENDED`, `DUES_ARREARS`, `NOT_IN_ROSTER`, `HONORARY_AFFILIATE`, `PROTECTED_BENEFICIARY`) · `credentialIssued` *bool* — se emitió la credencial de voto · `credentialIssuedOn` NULL *date* — **solo la fecha civil**, nunca la hora.

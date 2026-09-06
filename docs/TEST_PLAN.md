@@ -84,7 +84,20 @@ Cada flujo se ejecuta en móvil (360 px) y escritorio, en tema claro y oscuro, y
 
 ---
 
-## 4.1 Dónde vive hoy cada flujo de la Fase 4
+## 4.1 Dónde vive hoy cada flujo de la Fase 5
+
+| Flujo | Qué está probado hoy | Con qué |
+|---|---|---|
+| `E2E-07` | Los cuatro asertos del flujo y el adversario: primera y segunda convocatoria se distinguen por su regla de quórum; el quórum se calcula desde el padrón congelado y lo declara una persona con su nombre; la credencial no deposita dos veces; y sobre la base en crudo, `ballot` no tiene identidad ni columna temporal, sus identificadores son UUIDv4 y `UPDATE`/`DELETE` se rechazan con las credenciales de la aplicación | `tests/integration/fase5-criterios.test.ts`, y `tests/unit/voting/credenciales-de-voto.test.ts` para la firma y el consumo de la credencial |
+| `E2E-08` | El flujo entero en el dominio: sin notificación no hay resolución, sin audiencia ni renuncia expresa tampoco, una prueba sin valorar la detiene, el expediente está reservado a quien lo instruye, la persona señalada ofrece pruebas en el suyo y no en el ajeno, y el recurso que revoca restituye los derechos en el mismo acto | `tests/integration/discipline-due-process.test.ts` |
+| `E2E-11` | El nombramiento vencido pierde el acceso por el trabajo programado, sin intervención; el historial no se toca; y la facultad que confería el cargo se va con el cargo | `fase5-criterios` (`F5-QA-003`) y el control `C-F5-04` |
+| `E2E-02` | Se completa el aserto que la Fase 4 dejó pendiente: `VoteEligibility` no llega a existir para una calidad honoraria, porque el padrón congelado no la trae | `fase5-criterios` |
+
+Las quince pantallas de la vida institucional entran en la revisión de accesibilidad con sesión —dos temas, dos perfiles de pantalla, cero violaciones críticas o serias—, que es la comprobación que encontró tres de los defectos de la fase. Convertir los flujos completos en recorridos permanentes con navegador sigue siendo trabajo de la Fase 10, que el PRD §22.2 contrata como condición de liberación.
+
+---
+
+## 4.2 Dónde vive hoy cada flujo de la Fase 4
 
 Un flujo E2E global es el recorrido completo con navegador; lo que sigue dice **qué parte de cada uno ya está probada y con qué**, para que nadie lo dé por cubierto de más ni de menos.
 

@@ -6,9 +6,10 @@
 ## Situación actual
 
 - **Fase activa:** 5 — Estructura territorial, gobierno, asambleas y elecciones
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 5 de septiembre de 2026
 - **Fecha de inicio:** 5 de septiembre de 2026
+- **Fecha de cierre:** 6 de septiembre de 2026
 - **Fase anterior:** 4 — `APPROVED`, cerrada en `cadebbd`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 6 — Defensa, casos, protección y canalización social, **autorizada por la persona usuaria** junto con esta, y que **no se inicia hasta que la Fase 5 esté aprobada** (PRD §23.3)
 
@@ -28,24 +29,36 @@ El PRD §24 Fase 5 contrata: unidades territoriales; secciones, delegaciones y r
 
 | Bloque | Contenido | Estado |
 |---|---|---|
-| A | Esquema y migración de gobierno, territorio, votación, negociación y disciplina | En curso |
-| B | Territorio: unidades, jerarquía y panel territorial | Pendiente |
-| C | Órganos, cargos, periodos, poderes e incompatibilidades | Pendiente |
-| D | Convocatorias, asambleas y padrón congelado | Pendiente |
-| E | Asistencia y quórum | Pendiente |
-| F | Resoluciones, actas y seguimiento de acuerdos | Pendiente |
-| G | Comisión Electoral, padrón electoral y planillas | Pendiente |
-| H | Voto secreto, escrutinio, acta e incidencias | Pendiente |
-| I | Negociación colectiva, consulta y huelga | Pendiente |
-| J | Régimen disciplinario | Pendiente |
-| K | Archivo histórico y reportes ante autoridad | Pendiente |
-| L | Pruebas, controles de fase, documentación y cierre | Pendiente |
+| A | Esquema y migración de gobierno, territorio, votación, negociación y disciplina | Completado |
+| B | Territorio: unidades, jerarquía y panel territorial | Completado |
+| C | Órganos, cargos, periodos, poderes e incompatibilidades | Completado |
+| D | Convocatorias, asambleas y padrón congelado | Completado |
+| E | Asistencia y quórum | Completado |
+| F | Resoluciones, actas y seguimiento de acuerdos | Completado |
+| G | Comisión Electoral, padrón electoral y planillas | Completado |
+| H | Voto secreto, escrutinio, acta e incidencias | Completado |
+| I | Negociación colectiva, consulta y huelga | Completado |
+| J | Régimen disciplinario | Completado |
+| K | Archivo histórico y reportes ante autoridad | Completado |
+| L | Pruebas, controles de fase, documentación y cierre | Completado |
+
+---
+
+## Criterios de aceptación
+
+Criterios específicos del PRD §24 Fase 5, comprobados **ejecutando el sistema** y mirando después lo que quedó en la base con las credenciales de la aplicación, nunca leyendo el código:
+
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | El quórum es reproducible desde el padrón congelado (`F5-QA-001`) | **Cumplido** | `fase5-criterios` congela un padrón de cinco, añade dos personas después y comprueba que la base del cálculo sigue siendo cinco; recalcula la huella desde las entradas y coincide con la guardada; y el `UPDATE` sobre el padrón congelado se rechaza con las credenciales de la aplicación |
+| 2 | El voto emitido no puede asociarse con su sentido desde la base operativa (`F5-QA-002`) | **Cumplido** | Tres personas depositan sentidos distintos —el volumen bajo es deliberado— y sobre la base en crudo se comprueba que `ballot` solo tiene `id`, `selection`, `verificationCode`, `voteProcessId` y el motivo de nulidad: ni identidad, ni columna temporal; que sus identificadores son UUIDv4, que no codifican el instante; que la credencial no deposita dos veces; que el escrutinio publica códigos sin sentido; y que `UPDATE` y `DELETE` sobre una boleta se rechazan |
+| 3 | Un cargo vencido pierde el acceso sin que nadie intervenga (`F5-QA-003`) | **Cumplido** | Un cargo de un mes se nombra noventa días atrás; el trabajo programado lo barre con su actor de sistema y, después, el contexto que el sistema construye para esa persona ya no lleva el permiso del cargo. También se comprueba lo contrario: mientras el periodo vive, la facultad que declara el cargo sí llega al contexto |
 
 ---
 
 ## Defectos abiertos
 
-**Ninguno todavía.** La fase acaba de abrirse.
+**Ninguno.** Los diez detectados durante la fase están corregidos y cada corrección lleva su control o su prueba.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -53,6 +66,33 @@ El PRD §24 Fase 5 contrata: unidades territoriales; secciones, delegaciones y r
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
+| D-F5-001 | Alta | Las tres entidades de documentos institucionales estaban contratadas para la Fase 4 y no se construyeron | Corregido. Se construyen al abrir la Fase 5, que es donde primero hacen falta: sin plantilla publicada no se emite una convocatoria |
+| D-F5-002 | Media | `SignatureRecord` nombraba el cargo con el que se firmaba sin apuntar a ningún periodo: quien firmó «como Secretaría General» no podía comprobarse | Corregido con la relación `signerOfficeTerm` y su clave ajena |
+| D-F5-003 | Media | Un mismo padrón congelado podía tener dos dueños porque asamblea y elección apuntaban a él por separado | Corregido: el padrón declara su dueño (`ownerKind`) con dos referencias únicas y un `CHECK` de coherencia |
+| D-F5-004 | Alta | `appointOffice` creaba el ámbito territorial del nombramiento con el nombre de relación equivocado: nombrar con territorio fallaba siempre | Corregido. Lo encontró la prueba de integración de los criterios, que es la primera que nombró de verdad |
+| D-F5-005 | Alta | Declarar quórum y certificar un escrutinio exigen motivo en el catálogo, y sus acciones de servidor no lo adjuntaban: dos botones que siempre respondían «no tienes autorización» | Corregido en las tres acciones. Control `C-F5-08`, probado rompiéndolo |
+| D-F5-006 | Alta | `TRUNCATE ... CASCADE` en la limpieza entre casos del catálogo financiero dejó de estar acotado en cuanto el territorio pasó a nacer de una resolución: el grafo de claves ajenas se cerró en ciclo y la orden vaciaba la base entera, semilla incluida | Corregido con borrados acotados. Control `C-F5-09`, probado rompiéndolo |
+| D-F5-007 | Media | El cargador de entorno marca `__NEXT_PROCESSED_ENV` y el proceso hijo la heredaba: la prueba del archivo de entorno pasaba aislada y fallaba en la ejecución completa | Corregido retirando la marca del entorno del hijo |
+| D-F5-008 | Alta | Un cargo no confería sus facultades: `OfficeDefinitionPermission` se escribía al definirlo y no la leía nadie. Un cargo con cartera que no abría ninguna puerta | Corregido en el resolvedor de actores y en la sonda de pruebas. Comprobado en `fase5-criterios`: la facultad llega con el cargo y se va con él |
+| D-F5-009 | Alta | El módulo disciplinario entero era inalcanzable: sus permisos exigen asignación y ninguno de los siete casos de uso aportaba la sonda que la comprueba | Corregido. La asignación es tener cargo vivo en el órgano instructor; la lista de quien no instruye sale vacía, no prohibida. Control `C-F5-10` y prueba `discipline-due-process` |
+| D-F5-010 | Media | Accesibilidad: la tabla que se desplaza no era alcanzable con el teclado, y dos formularios en la misma pantalla compartían los identificadores de sus campos | Corregido en las primitivas. `ScrollableTable` es región enfocable con nombre obligatorio; los campos admiten identificador propio. Lo encontró la revisión con axe de las quince pantallas institucionales, ahora en la suite |
+
+---
+
+## Tareas completadas
+
+- **A.** Esquema institucional en dieciséis archivos Prisma, migración correctiva verificada desde cero y sobre base actualizada, y cuarenta y siete permisos nuevos con su reparto por rol.
+- **B.** Unidades territoriales con ruta materializada e índice de prefijo (ADR-0027), panel territorial de agregados y disolución que se niega mientras quede vida dentro.
+- **C.** Órganos, cargos con sus facultades, periodos, suplencias, poderes que no sobreviven al cargo que los otorgó, e incompatibilidades.
+- **D.** Convocatorias con la anticipación que fija el estatuto, orden del día con la mayoría deducida del tipo de punto, y padrón congelado con su huella.
+- **E.** Asistencia que copia voz y voto del padrón congelado, cálculo de quórum y declaración que se niega sobre un padrón que no se puede comprobar.
+- **F.** Resoluciones con resultado leído del escrutinio, actas en su versión reservada y su versión publicable, y seguimiento de acuerdos con evidencia.
+- **G.** Comisión Electoral instalada antes de la convocatoria, padrón electoral propio, planillas con control de proporcionalidad de género que **alerta y no decide**.
+- **H.** Voto secreto conforme al ADR-0012, escrutinio, acta de resultados y expediente de evidencia sin una sola boleta dentro.
+- **I.** Contratos colectivos, revisión contractual, consultas con su propio padrón congelado y expedientes de huelga que exigen acuerdo humano aprobado por las dos vías.
+- **J.** Régimen disciplinario con debido proceso comprobable: sin notificación y sin audiencia —o su renuncia expresa— no hay resolución, y ninguna automatización interviene.
+- **K.** Archivo histórico y obligaciones ante autoridad competente.
+- **L.** Treinta y nueve pruebas unitarias de las piezas puras, dos suites de integración nuevas —criterios de fase y debido proceso disciplinario—, veintiséis comprobaciones de accesibilidad sobre las pantallas institucionales, y diez controles de fase, cada uno probado rompiendo lo que vigila.
 
 ---
 
@@ -65,7 +105,7 @@ El PRD §24 Fase 5 contrata: unidades territoriales; secciones, delegaciones y r
 | 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
 | 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
 | 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
-| 5 | 2026-09-05 | — | `IN_PROGRESS` | — |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | pendiente de asignar al confirmar el cierre |
 | 6 a 10 | — | — | No iniciadas | — |
 
 ---

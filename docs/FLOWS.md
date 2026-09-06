@@ -457,7 +457,10 @@ stateDiagram-v2
 |---|---|
 | Instructor con conflicto de interés | El control lo detecta y exige sustitución antes de abrir; el intento queda registrado. |
 | Falta de notificación o de audiencia | El dominio impide emitir resolución: sin `notifiedAt` y sin `hearingHeldAt` (o constancia de renuncia expresa a la audiencia) la transición a `DECIDED` no existe. |
-| Expediente consultado por alguien no asignado | Denegado y auditado; el régimen disciplinario es siempre reservado. |
+| Expediente consultado por alguien no asignado | Denegado y auditado; el régimen disciplinario es siempre reservado. «Asignado» es **tener cargo vivo en el órgano que instruye** (ADR-0102): no basta la facultad, ni el rol. Quien tiene la facultad y no instruye ningún expediente recibe la lista vacía, no una negativa. |
+| Prueba ofrecida sin haber sido valorada | La resolución no se emite: dejar una prueba fuera sin decir por qué es negar la defensa por omisión. |
+| Recurso interpuesto por otra persona | Denegado: se recurre la resolución que recayó sobre una misma, y se comprueba contra el expediente. |
+| Recurso que revoca la sanción | Restituye en el **mismo acto**: levanta la suspensión de derechos y devuelve la membresía a activa. Restituir en un trámite aparte es restituir tarde, y a veces nunca. |
 | Recurso presentado fuera de plazo | Se admite el registro con `INADMISSIBLE` y motivo; nunca se descarta sin dejar constancia. |
 | Sugerencia de IA sobre culpabilidad | Prohibida por diseño: ningún prompt del catálogo puede producir recomendaciones de sanción o culpabilidad. |
 

@@ -1282,3 +1282,57 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **La convención queda escrita donde se usa**, encima de la tabla de defectos, para que quien añada una fila sepa qué está declarando.
 
 **Es la segunda vez en esta fase.** `C-F4-03` también dio verde con el defecto delante (ADR-0096). Un control se prueba viéndolo fallar contra el código o el documento que lo provoca; si nunca se le ha visto en rojo, lo único que consta es que no rompe nada.
+
+---
+
+## ADR-0100 · Un documento institucional se guarda como HTML completo y con su huella
+
+**Contexto.** Una convocatoria, un acta y una resolución tienen que poder enseñarse años después exactamente como se emitieron. Guardar solo las variables y volver a componer al leer haría que el documento cambiara si la plantilla cambia, y una plantilla siempre acaba cambiando.
+
+**Decisión.** Al emitir se compone el documento entero y se guarda **el resultado**: un HTML autocontenido, sin hoja de estilo externa ni tipografía remota, con la huella `sha256` de lo guardado. La plantilla que lo produjo queda referida por su versión publicada, no por su código.
+
+**Consecuencia.** Republicar una plantilla no altera ni un documento ya emitido. Y como la huella se recalcula al leer, un documento modificado por fuera se nota: la firma que lo evidencia deja de corresponder.
+
+---
+
+## ADR-0101 · Un padrón congelado declara de quién es
+
+**Contexto.** Una asamblea congela su padrón; una elección congela el suyo; una consulta colectiva, el suyo. Con tres entidades apuntando a la misma tabla por columnas separadas, nada impedía que una misma fila tuviera dos dueños o ninguno (defecto `D-F5-003`).
+
+**Decisión.** El padrón declara su dueño con `ownerKind` y una referencia única por clase de dueño, y un `CHECK` en la base exige que la referencia declarada sea la única presente. El dueño es una propiedad del padrón, no una consecuencia de quién lo mire.
+
+---
+
+## ADR-0102 · La sonda de asignación la aporta quien conoce el expediente
+
+**Contexto.** El catálogo marca varios permisos con `needsAssignment`: además de la facultad hay que estar a cargo del expediente concreto. El motor no puede saberlo solo —la respuesta está en el dato, no en el rol—, así que la recibe como sonda del caso de uso. Cuando el caso de uso no la aporta, el motor niega. El módulo disciplinario entero se construyó así: siete casos de uso, una pantalla completa y ningún camino que llegara a ellos (defecto `D-F5-009`).
+
+**Decisión.** Todo `can` sobre un permiso con `needsAssignment` aporta su sonda, y el control `C-F5-10` lo exige. La asignación en materia disciplinaria es **tener cargo vivo en el órgano que instruye**: no el rol, que dice qué clase de persona es alguien, sino el cargo, que dice de qué responde.
+
+**Y una lista no es un expediente.** Para quien tiene la facultad pero ningún expediente a cargo, la lista sale **vacía**, no prohibida. Prohibir sería responder «no tienes autorización» a quien simplemente no instruye nada, y una pantalla que la navegación ofrece no debe recibir a nadie con una negativa.
+
+---
+
+## ADR-0103 · Un cargo confiere facultades propias, y se las lleva al concluir
+
+**Contexto.** `OfficeDefinitionPermission` existe para que la matriz por cartera se lea de la base y no de una lista en código. Se escribía al definir el cargo —el formulario exige al menos una facultad— y no la leía nadie: ningún contexto de actor la incluía (defecto `D-F5-008`).
+
+**Decisión.** El resolvedor de actores suma las facultades del cargo a las del rol en la concesión que nace de ese periodo. El rol dice qué clase de persona es alguien; el cargo dice de qué responde. Al concluir el periodo —por vencimiento o antes— la concesión se revoca entera y la facultad del cargo se va con ella, sin que nadie tenga que acordarse de quitarla.
+
+**Los compartimentos siguen siendo del rol.** Un cargo puede sumar facultades; no puede abrir un compartimento de sensibilidad que su rol no tenga. Ampliar el compartimento por cargo permitiría fabricar acceso a materia reservada definiendo una cartera, que es justo lo que el compartimento existe para impedir.
+
+---
+
+## ADR-0104 · Una caja que se desplaza es una región enfocable con nombre
+
+**Contexto.** Las tablas anchas se desplazan dentro de su propia caja para que el cuerpo de la página nunca se desplace en horizontal. La caja tenía `overflow-x` y nada más: el ratón alcanzaba el contenido desbordado y el teclado no (defecto `D-F5-010`).
+
+**Decisión.** La caja es enfocable (`tabIndex={0}`) y se anuncia como región con nombre. El pie de tabla pasa a ser **obligatorio**, porque es a la vez el nombre de la región y el resumen que oye quien no la ve. Una región sin nombre es tan inútil como una sin foco.
+
+---
+
+## ADR-0105 · El identificador de un campo no es su nombre
+
+**Contexto.** Las primitivas de formulario ataban la etiqueta al control usando el nombre del campo como identificador. Con dos formularios en la misma pantalla —redactar una versión de reglas y editar su borrador— los nombres tienen que repetirse, porque es lo que el caso de uso lee; el identificador se repetía con ellos y la etiqueta quedaba atada solo al primero.
+
+**Decisión.** El identificador es un dato aparte, que por omisión vale el nombre y que cada formulario puede prefijar. La comprobación que lo sostiene no es una lectura del código: es la revisión con axe de las pantallas con sesión, que es la que encontró el defecto.

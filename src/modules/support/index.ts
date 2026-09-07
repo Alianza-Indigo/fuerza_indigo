@@ -24,3 +24,13 @@ export {
   type RequestDetail,
   type ResolveRequestInput,
 } from './application/inbox';
+export {
+  assistOnRequest,
+  assistOnRequestSchema,
+  suggestClassification,
+  suggestClassificationSchema,
+  type AssistOnRequestInput,
+  type InformativeUseCaseKey,
+  type SuggestClassificationInput,
+  type ClassificationOutcome,
+} from './application/assisted';

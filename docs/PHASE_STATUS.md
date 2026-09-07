@@ -33,7 +33,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 | C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | **Hecho** |
 | D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | **Hecho** |
 | E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | **Hecho** |
-| F | Casos de uso asistidos y revisión humana de cada salida | Pendiente |
+| F | Casos de uso asistidos y revisión humana de cada salida | **Hecho** |
 | G | Pantallas de gobernanza, laboratorio y consulta de costos | Pendiente |
 | H | Pruebas, controles de fase, documentación y cierre | Pendiente |
 
@@ -47,8 +47,8 @@ Los seis del PRD §24 Fase 8 se comprobarán ejecutando el sistema, no leyendo e
 |---|---|---|
 | 1 | Ningún prompt crítico vive solamente en código | Pendiente |
 | 2 | Fuentes y fragmentos respetan permisos del usuario | Pendiente |
-| 3 | La salida identifica que fue generada con IA y permite corregirla | Pendiente |
-| 4 | Las acciones sensibles requieren confirmación humana | Pendiente |
+| 3 | La salida identifica que fue generada con IA y permite corregirla | **Cumplido** (bloque F) |
+| 4 | Las acciones sensibles requieren confirmación humana | **Cumplido** (bloque F) |
 | 5 | La aplicación continúa operando si Gemini está caído | Pendiente |
 | 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | Pendiente |
 
@@ -81,6 +81,26 @@ El servicio central de la IA, con las tres defensas que gobiernan la ejecución,
 **Cada ejecución deja huella y no texto.** La fila de `ai_generation` guarda el `sha256` de lo enviado —nunca el contenido—, el modelo, los tokens, el costo, la latencia y el estado. El costo sale de una tabla de precios en el código (un hecho del proveedor), mientras el techo de gasto vive en la fila (una política de la organización): el mismo dato no manda desde dos sitios (ADR-0138). La salida se valida contra el esquema de la versión con un validador acotado y honesto; lo que no encaja se registra como `SCHEMA_REJECTED` y no se enseña.
 
 **Diecinueve pruebas nuevas, cada garantía vista fallar.** Once de integración —los tres límites, las dos degradaciones, el éxito con su huella, el error, el tiempo agotado y las dos formas de rechazo de esquema— y ocho unitarias del validador, del resolver de la clave, del precio y del guardia de solo-servidor. Cada una se rompió a propósito y se vio ponerse en rojo antes de restaurar.
+
+---
+
+## Lo que dejó el bloque F
+
+Los casos de uso asistidos y la revisión humana de cada salida, sobre la solicitud de apoyo (criterios 3 y 4 de la fase).
+
+**La IA asiste a quien ya puede leer; no reparte el primer acceso.** La canalización automática al recibir un mensaje sigue siendo la de la tabla escrita, sin IA (Fase 6, ADR-0106): decide quién lee por primera vez un relato sensible. La clasificación asistida la pide una persona que **ya** puede leer la solicitud y produce una propuesta que no ejecuta nada (ADR-0150). Esa frontera es la que hace que la IA sugiera sin decidir.
+
+**La puerta que gobierna el bloque.** `confirmRouting` no confirma una canalización sugerida por IA —cuando se va a confirmar esa misma— sin que una persona la haya aceptado o corregido en su revisión (`AiReview`); apartarse de la sugerencia no se bloquea, porque ahí no surte efecto (ADR-0151). Probado rompiéndolo: forzada la comprobación a «aceptada» siempre, la salida asistida se confirma sin que nadie la mire, y la prueba se pone en rojo.
+
+**Un núcleo, no cinco llamadas sueltas.** `assist()` (`@/modules/ai`) resuelve la versión publicada del prompt por su código, recupera con los permisos de quien pregunta (bloque D) y ejecuta con el efecto declarado (bloque E). Sin prompt publicado degrada al camino humano, igual que la IA apagada (ADR-0148). La consulta a la base documental también se redacta antes de salir: los embeddings llegan al proveedor.
+
+**La revisión es terminal y de solo inserción.** Una salida se revisa una vez —la base lo impone con `@@unique([generationId])`, migración correctiva—, y solo se revisa lo que el modelo produjo (ADR-0149). Aceptar la deja tal cual, corregir la sustituye por el texto de la persona —el criterio 3—, rechazar la detiene y se explica.
+
+**Las pantallas están en `/gestion/mensajes/[id]`:** un asistente que resume, redacta, explica u orienta, con la salida siempre marcada como generada con IA y una revisión (aceptar, corregir, rechazar) antes de usarla; y la clasificación sugerida junto a la canalización, que no se confirma sin revisarse.
+
+**El control nuevo `C-F8-03`** comprueba estáticamente que ningún caso de uso asistido declare un efecto de los prohibidos por el §15.4: un flujo asistido no puede cablearse a una decisión que no le toca. Probado devolviéndole un efecto prohibido y viéndolo fallar.
+
+**Diez pruebas de integración nuevas**, cada garantía vista fallar: la puerta de la revisión (la del bloque), que la sugerencia no ejecuta nada, que apartarse no se bloquea, la corrección que sustituye el texto, la revisión terminal, la degradación sin prompt publicado y la minimización de lo que llega al proveedor por un flujo asistido.
 
 ---
 
@@ -134,15 +154,15 @@ Los prompts dejan de ser una promesa del modelo de datos y se administran de ver
 
 ## Cómo se retoma
 
-El bloque E está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+El bloque F está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (73 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque E**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (74 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque F**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
 
-**Bloque F — casos de uso asistidos y revisión humana.** Lo que toca: los casos de uso que el PRD §24 Fase 8 contrata —orientación, explicación de trámite, clasificación sugerida de una solicitud (la columna `SupportRequest.suggestedByAiGenerationId`, que espera desde la Fase 0 la propuesta que hoy no genera nadie), resúmenes y documentos asistidos—, cada uno armando su petición con el prompt vigente, la recuperación (`retrieveForVersion`) y el efecto que declara (para el guardián §15.4), y **la revisión humana de cada salida** (`AiReview`: aceptar, corregir o rechazar) antes de que surta efecto. La salida siempre se marca como generada con IA y se puede corregir (criterios 3 y 4 de la fase).
+**Bloque G — pantallas de gobernanza, laboratorio y consulta de costos.** Lo que toca: la consulta de consumo, costo y errores de la IA **por módulo y sin exponer contenido sensible** (criterio 6 de la fase, permiso `ai.usage.read`, que ya existe en el catálogo); y las pantallas de gobernanza que reúnan lo que hoy vive repartido —el proveedor y sus límites, el laboratorio, la trazabilidad de generaciones y revisiones—. El criterio 5 (la aplicación sigue si Gemini está caído) ya lo sostiene la degradación del bloque B y se cierra al comprobarlo por pantalla.
 
-**Lo que ya está resuelto y no hay que rehacer.** Toda la máquina de ejecución (B), la administración de prompts (C), la base documental con recuperación filtrada por permiso (D) y las defensas —redacción, inyección, efectos prohibidos— (E) no se tocan. `runGeneration` ya aplica las tres defensas; un caso de uso del bloque F le pasa `userText`, `contextText` (los fragmentos recuperados) y, cuando conecta la IA a una decisión, su `intendedEffect`. `AiReview` ya existe en el esquema con sus restricciones; el bloque F es quien la escribe.
+**Lo que ya está resuelto y no hay que rehacer.** La máquina de ejecución (B), la administración de prompts (C), la base documental (D), las defensas (E) y los casos de uso asistidos con revisión humana (F) no se tocan. El bloque G es de consulta y presentación: lee lo que las filas de `ai_generation` y `ai_review` ya guardan —costo, tokens, estado, latencia, revisión— y lo enseña por módulo, sin sacar el contenido.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La revisión humana es del tipo que hay que romper: una salida asistida que surte efecto sin que nadie la haya aceptado.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque G es que la consulta de costos por módulo **no** exponga el contenido de lo generado.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 

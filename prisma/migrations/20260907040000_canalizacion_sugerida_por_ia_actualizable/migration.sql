@@ -1,0 +1,15 @@
+-- La canalización sugerida por IA tiene que poder escribirse (PRD §15.2, bloque F).
+--
+-- El bloque A añadió `support_request.suggestedByAiGenerationId` —la columna que
+-- distingue una propuesta de canalización calculada por la regla (Fase 6) de una
+-- sugerida por un modelo (Fase 8)— pero no la añadió a la lista blanca de
+-- columnas actualizables. Es el mismo desfase silencioso que ya avisó la
+-- migración de la Fase 6: una lista blanca de columnas no crece sola. La
+-- clasificación asistida habría fallado con «permiso denegado» al intentar
+-- apuntar la solicitud a su generación, con el caso de uso bien escrito.
+--
+-- Se corrige en una migración aparte y no editando la del bloque A, que ya se
+-- aplicó. `GRANT` de columna es aditivo: no rehace la lista, solo suma esta
+-- columna a lo que la aplicación ya puede escribir. El relato, el folio, la
+-- entidad destinataria y la fecha de recepción siguen fuera, como deben.
+GRANT UPDATE ("suggestedByAiGenerationId") ON TABLE "support_request" TO fuerza_app;

@@ -317,7 +317,10 @@ model AiReview {
   reviewer       User         @relation("AiReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
   createdByActor Actor        @relation("AiReviewCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
 
-  @@index([generationId])
+  /// Una revisión por generación: la decisión humana es terminal, y la puerta
+  /// que exige una salida aceptada antes de que surta efecto necesita una sola
+  /// respuesta a «¿está aceptada?» (bloque F).
+  @@unique([generationId])
   @@map("ai_review")
 }
 

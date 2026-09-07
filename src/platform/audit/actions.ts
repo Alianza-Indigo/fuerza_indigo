@@ -267,6 +267,8 @@ export const AUDIT_ACTIONS = {
   AI_KNOWLEDGE_SOURCE_REGISTERED: 'ai.knowledge.source_registered',
   AI_KNOWLEDGE_SOURCE_INDEXED: 'ai.knowledge.source_indexed',
   AI_KNOWLEDGE_SOURCE_DISABLED: 'ai.knowledge.source_disabled',
+  AI_GENERATION_REVIEWED: 'ai.generation.reviewed',
+  AI_CLASSIFICATION_SUGGESTED: 'ai.support.classification_suggested',
 
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',

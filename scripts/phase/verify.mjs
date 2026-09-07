@@ -3256,6 +3256,44 @@ const CHECKS = [
         : ok([`Los ${viñetas.length} efectos prohibidos del §15.4 coinciden, palabra por palabra, con el registro del servicio.`]);
     },
   },
+  {
+    id: 'C-F8-03',
+    title: 'Fase 8: ningún caso de uso asistido declara un efecto que la IA no puede producir',
+    phases: [8],
+    run() {
+      // Un flujo asistido sugiere; no decide. Cada uno declara el efecto de su
+      // salida (bloque F), y ese efecto tiene que quedar **fuera** de la lista de
+      // los prohibidos del §15.4: si alguno declarara «admisión» o «diagnóstico»,
+      // estaría cableando la IA a una decisión que no le toca, y el guardián lo
+      // rechazaría en ejecución —pero es mejor que no llegue a escribirse—. Este
+      // control lo comprueba estáticamente, cotejando los efectos declarados
+      // contra el registro PROHIBITED_EFFECTS.
+      const assist = read('src/modules/ai/application/assist.ts');
+      const policy = read('src/platform/ai/policy.ts');
+      if (assist === null || policy === null) {
+        return fail(['No se encuentra src/modules/ai/application/assist.ts o src/platform/ai/policy.ts.']);
+      }
+
+      const claves = [...policy.matchAll(/^\s*([A-Z_]+):\s*'[^']+',/gm)].map((m) => m[1]);
+      const efectos = [...assist.matchAll(/intendedEffect:\s*'([^']+)'/g)].map((m) => m[1]);
+      if (efectos.length === 0) {
+        return fail(['No se encontró ningún `intendedEffect` declarado en los casos de uso asistidos.']);
+      }
+
+      const problems = [];
+      for (const efecto of efectos) {
+        if (claves.includes(efecto)) {
+          problems.push(
+            `El caso de uso asistido declara el efecto «${efecto}», que es uno de los prohibidos por el §15.4: un flujo asistido no puede decidir eso.`,
+          );
+        }
+      }
+
+      return problems.length
+        ? fail([...new Set(problems)])
+        : ok([`Los ${efectos.length} efectos declarados por los casos de uso asistidos quedan fuera de los diez prohibidos del §15.4.`]);
+    },
+  },
 ];
 
 

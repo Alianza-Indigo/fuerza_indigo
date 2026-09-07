@@ -34,3 +34,20 @@ export {
   type PromptDetail,
   type PromptVersionDetail,
 } from './application/queries';
+export {
+  assist,
+  ASSISTED_USE_CASES,
+  type AssistedUseCase,
+  type AssistedUseCaseKey,
+  type AssistInput,
+  type AssistOutcome,
+  type AssistResult,
+  type AssistDegradation,
+} from './application/assist';
+export {
+  reviewGeneration,
+  reviewGenerationSchema,
+  isGenerationAccepted,
+  type ReviewGenerationInput,
+  type GenerationReviewState,
+} from './application/review';

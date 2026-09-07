@@ -36,6 +36,8 @@ const NOMBRE: Record<LegalEntityCode, string> = {
 export function RoutingForm({
   requestId,
   propuesta,
+  origen,
+  revisionAceptada,
   territoryHint,
   territorios,
 }: {
@@ -46,6 +48,10 @@ export function RoutingForm({
     motivo: string;
     alternativa: LegalEntityCode | null;
   } | null;
+  /** De dónde salió la propuesta: la tabla de enrutamiento o una sugerencia de IA. */
+  origen: 'REGLA' | 'IA';
+  /** Si la sugerencia de IA ya fue aceptada en su revisión. Solo importa con `origen === 'IA'`. */
+  revisionAceptada: boolean;
   /** Lo que la persona escribió sobre dónde vive. Se enseña al lado del desplegable. */
   territoryHint: string | null;
   territorios: readonly OpcionDeTerritorio[];
@@ -71,6 +77,16 @@ export function RoutingForm({
           <p>
             Llegó antes de que el sistema propusiera canalización, o la propuesta no se pudo leer. Decide tú a qué
             entidad va.
+          </p>
+        </Notice>
+      ) : origen === 'IA' ? (
+        <Notice title="Lo que sugiere la IA" tone="accent" live="none">
+          <p>{propuesta.motivo}</p>
+          <p className="mt-2">
+            Es una propuesta generada con IA, no una decisión, y puedes apartarte de ella.{' '}
+            {revisionAceptada
+              ? 'Ya la revisaron y aceptaron: puedes confirmarla.'
+              : 'Para confirmar esta misma canalización, antes hay que aceptarla en la revisión de arriba; si no estás de acuerdo, canaliza a otra entidad.'}
           </p>
         </Notice>
       ) : (

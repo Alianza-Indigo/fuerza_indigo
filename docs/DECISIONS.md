@@ -1863,3 +1863,37 @@ Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el m
 **Por qué un efecto declarado y no una inferencia.** El servicio no adivina si una salida «decide» una admisión: lo declara quien conecta la IA a un flujo (bloque F). Es defensa en profundidad, no la única defensa —la otra es que **toda** salida la confirma una persona (bloque F), de modo que la IA nunca produce por sí sola un efecto vinculante—. Este guardián añade que ni siquiera se le pida al modelo producir una de las diez decisiones cuando el flujo lo declara.
 
 **El registro se coteja con el contrato.** El texto de cada efecto es, palabra por palabra, el del §15.4, y el control `C-F8-02` falla si alguna vez divergen: una entrada que se pierda aquí es una decisión que la IA podría volver a tomar sin que nadie lo note. Probado quitando una entrada y viendo el control ponerse en rojo.
+
+---
+
+## ADR-0148 · Un caso de uso asistido pasa por un núcleo, no llama al servicio a solas
+
+**Contexto.** El bloque F contrata cinco flujos asistidos —orientación, explicación de trámite, clasificación sugerida, resúmenes y documentos asistidos— y cada uno tiene que armar su petición con el prompt vigente, la recuperación con permisos (bloque D) y el efecto que declara (bloque E). Repetir esos tres pasos en cada caso de uso los dejaría separarse con el tiempo.
+
+**Decisión.** Los casos de uso asistidos pasan por `assist()` (`@/modules/ai`), un núcleo que resuelve la versión **publicada** del prompt por su *código* —un identificador, no el texto—, recupera el contexto con `retrieveForVersion` y llama a `runGeneration` con el propósito y el efecto declarado. Sin versión publicada, el núcleo degrada al camino humano, igual que con la IA apagada: un flujo asistido sin prompt publicado no es un error del programa, es un estado de operación. El prompt no vive en el código: el código solo nombra qué prompt gobierna cada flujo, como las plantillas de notificación se nombran por su clave.
+
+**La consulta a la base documental también se redacta.** La búsqueda semántica llega al proveedor por los embeddings, así que `assist` redacta el texto de la consulta antes de recuperar, por la misma razón que el servicio redacta lo que genera (ADR-0145): la minimización del §15.5 alcanza a todo lo que sale del servidor, no solo a la generación.
+
+## ADR-0149 · La revisión humana de una salida es una decisión terminal y de solo inserción
+
+**Contexto.** El criterio 4 de la fase exige que las acciones sensibles las confirme una persona, y el criterio 3 que la salida se pueda corregir. `AiReview` guarda la decisión —aceptada, corregida o rechazada— desde el bloque A, con la tabla ya sin `UPDATE` ni `DELETE`.
+
+**Decisión.** `reviewGeneration` escribe una revisión por generación, y esa unicidad la impone la base (`@@unique([generationId])`, migración correctiva del bloque F). Una salida se revisa una vez: aceptar la deja tal cual, corregir la sustituye por el texto de la persona —que es lo que «permite corregirla» significa de verdad—, rechazar la detiene y se explica. Solo se revisa una salida que el modelo **produjo** (`SUCCEEDED`): un rechazo de esquema o un corte por política no dejaron texto que revisar.
+
+**Por qué terminal y no un historial.** La puerta que decide si una salida surte efecto pregunta «¿está aceptada esta generación?», y esa pregunta necesita una sola respuesta. Con la tabla de solo inserción y la unicidad, nadie puede decir después «yo lo rechacé» sobre algo que se aceptó, ni dejar coexistir dos decisiones que se contradigan.
+
+## ADR-0150 · La IA asiste a quien ya puede leer; no reparte el primer acceso
+
+**Contexto.** La Fase 6 decidió que la canalización automática de una solicitud la calcula una **tabla explícita y sin IA** (`domain/routing.ts`, ADR-0106), porque esa propuesta decide quién lee por primera vez un relato que puede contener una agresión o un diagnóstico, y una tabla se audita mientras un modelo no. El PRD §15.2 y el §24 Fase 8 contratan, a la vez, una «clasificación sugerida de solicitudes» con IA, y la columna `SupportRequest.suggestedByAiGenerationId` la espera desde la Fase 0.
+
+**Decisión.** Las dos cosas conviven porque son distintas. La canalización automática al recibir el mensaje sigue siendo la de la tabla, sin IA: reparte el primer acceso. La clasificación asistida la pide una persona que **ya puede leer** la solicitud —tiene `support.request.triage`, y el asiento de su lectura ya quedó escrito—, y produce una propuesta que no ejecuta nada (ADR-0106) hasta que se revisa y confirma. La IA no decide quién lee un relato sensible: ayuda a quien ya lo tiene delante. Esa frontera es la que hace que asista sin decidir.
+
+**Qué escribe.** La sugerencia guarda `suggestedRouting` y apunta `suggestedByAiGenerationId` a la generación que la produjo —lo que distingue una propuesta de un modelo de la que calculó la regla, y cambia cuánto hay que revisarla—. La columna `suggestedByAiGenerationId` no estaba en la lista blanca de columnas actualizables de `support_request` (el bloque A la añadió sin volver a otorgarla); una migración correctiva del bloque F la otorga, el mismo desfase silencioso que ya avisó la Fase 6.
+
+## ADR-0151 · Una canalización sugerida por IA no se confirma sin revisión aceptada
+
+**Contexto.** «Una salida asistida no surte efecto sin que una persona la haya aceptado» es la garantía del bloque F. Para la clasificación, «surtir efecto» es convertirse en la canalización confirmada de la solicitud, que es el acto que abre expediente y fija prioridad.
+
+**Decisión.** `confirmRouting` comprueba, cuando la propuesta vigente la sugirió la IA (`suggestedByAiGenerationId` no nulo) y se va a confirmar **esa misma** canalización, que su generación tenga una revisión aceptada o corregida; si no, se niega. Apartarse de la sugerencia —confirmar otra entidad— no se bloquea: ahí la sugerencia no surte efecto, la sustituye la decisión de quien confirma, y bloquearlo dejaría a una persona rehén de una sugerencia con la que no está de acuerdo. La puerta actúa exactamente en el punto donde la salida asistida se vuelve vinculante, y ni antes ni de más.
+
+**Probado rompiéndolo.** Se forzó la comprobación a «aceptada» siempre y se vio la prueba de la puerta ponerse en rojo: sin ella, una canalización sugerida por IA se confirma sin que nadie la haya mirado.

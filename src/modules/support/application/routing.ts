@@ -8,6 +8,7 @@ import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { isGenerationAccepted } from '@/modules/ai';
 import type { LegalEntityCode, SupportUrgency } from '@prisma-client/enums';
 import { NOMBRE_DE_ENTIDAD, type PropuestaDeCanalizacion } from '../domain/routing';
 
@@ -105,6 +106,7 @@ export async function confirmRouting(
       status: true,
       legalEntityId: true,
       suggestedRouting: true,
+      suggestedByAiGenerationId: true,
       confirmedById: true,
     },
   });
@@ -148,6 +150,24 @@ export async function confirmRouting(
 
   const propuesta = leerPropuesta(solicitud.suggestedRouting);
   const coincide = propuesta !== null && propuesta.entidad === data.legalEntity;
+
+  // La puerta del bloque F. Cuando la propuesta la sugirió la IA y se va a
+  // confirmar **esa misma** canalización, la salida asistida está a punto de
+  // surtir efecto: exige que una persona la haya aceptado o corregido antes.
+  // Apartarse de la propuesta no se bloquea —ahí la sugerencia no surte efecto,
+  // la sustituye la decisión de quien confirma—, y por eso el guardián solo actúa
+  // cuando la confirmación coincide con lo que sugirió el modelo (ADR-0151).
+  if (solicitud.suggestedByAiGenerationId !== null && coincide) {
+    const aceptada = await isGenerationAccepted(solicitud.suggestedByAiGenerationId);
+    if (!aceptada) {
+      return fail(
+        errors.ruleViolation(
+          'Esta canalización la sugirió la IA y nadie la ha aceptado todavía. Acéptala o corrígela en la revisión antes de confirmarla; si no estás de acuerdo, canaliza a otra entidad.',
+          'confirmación de una canalización sugerida por IA sin revisión aceptada',
+        ),
+      );
+    }
+  }
 
   const confirmadoEl = new Date();
   await transaction(async (tx) => {

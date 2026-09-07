@@ -8,7 +8,7 @@ import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
-import type { SupportRequestStatus, SupportRequestType } from '@prisma-client/enums';
+import type { AiReviewDecision, SupportRequestStatus, SupportRequestType } from '@prisma-client/enums';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import type { PropuestaDeCanalizacion } from '../domain/routing';
 import { leerPropuesta } from './routing';
@@ -53,6 +53,12 @@ export interface RequestDetail extends RequestRow {
    * aunque no sea la que propuso el sistema ni la que eligió quien escribió.
    */
   readonly canalizadaA: { readonly id: string; readonly code: string } | null;
+  /**
+   * Cuando la propuesta vigente la sugirió la IA: la generación que la produjo y
+   * la decisión de su revisión, si ya se revisó. Nula cuando la propuesta la
+   * calculó la regla de enrutamiento (Fase 6), que no necesita revisión.
+   */
+  readonly sugeridaPorIa: { readonly generationId: string; readonly decision: AiReviewDecision | null } | null;
   readonly contactEmail: string | null;
   readonly contactPhone: string | null;
   readonly preferredChannel: 'EMAIL' | 'PHONE';
@@ -185,6 +191,7 @@ export async function requestDetail(
       handledByActor: { select: { label: true } },
       privacyNoticeVersion: { select: { version: true } },
       suggestedRouting: true,
+      suggestedByAiGeneration: { select: { id: true, reviews: { select: { decision: true } } } },
       confirmedAt: true,
       confirmedRoutingLegalEntity: { select: { id: true, code: true } },
       confirmedBy: {
@@ -245,6 +252,13 @@ export async function requestDetail(
       fila.confirmedRoutingLegalEntity === null
         ? null
         : { id: fila.confirmedRoutingLegalEntity.id, code: fila.confirmedRoutingLegalEntity.code },
+    sugeridaPorIa:
+      fila.suggestedByAiGeneration === null
+        ? null
+        : {
+            generationId: fila.suggestedByAiGeneration.id,
+            decision: fila.suggestedByAiGeneration.reviews[0]?.decision ?? null,
+          },
   });
 }
 

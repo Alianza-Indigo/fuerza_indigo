@@ -7,6 +7,8 @@ import { REQUEST_TYPE_LABELS } from '../../../(publico)/contacto/labels';
 import { ResolveForm } from './resolve-form';
 import { RoutingForm } from './routing-form';
 import { OpenCaseForm } from './open-case-form';
+import { AssistantTools } from './assistant-tools';
+import { ClassifyPanel } from './classify-panel';
 
 export const metadata = { title: 'Mensaje recibido', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -147,6 +149,11 @@ export default async function MensajePage({ params }: { params: Promise<{ id: st
                 requestId={datos.id}
                 territoryHint={datos.territoryHint}
                 territorios={territorios}
+                origen={datos.sugeridaPorIa === null ? 'REGLA' : 'IA'}
+                revisionAceptada={
+                  datos.sugeridaPorIa !== null &&
+                  (datos.sugeridaPorIa.decision === 'ACCEPTED' || datos.sugeridaPorIa.decision === 'EDITED')
+                }
                 propuesta={
                   datos.propuesta === null
                     ? null
@@ -158,6 +165,25 @@ export default async function MensajePage({ params }: { params: Promise<{ id: st
                       }
                 }
               />
+            </Card>
+            <Card>
+              <ClassifyPanel requestId={datos.id} sugeridaPorIa={datos.sugeridaPorIa} />
+            </Card>
+          </Section>
+        )}
+
+        {(datos.status === 'RECEIVED' || datos.status === 'TRIAGE') && (
+          <Section
+            title="Asistencia con IA"
+            level={2}
+            secondary
+          >
+            <Card>
+              <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
+                La IA prepara borradores —resumen, respuesta, explicación, orientación— que tú revisas antes de usar.
+                Nada de lo que genera sale por sí solo, y lo que se le envía se minimiza en el servidor.
+              </p>
+              <AssistantTools requestId={datos.id} />
             </Card>
           </Section>
         )}

@@ -1951,3 +1951,15 @@ Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el m
 **Contexto.** Una preferencia es por categoría **y canal**. Los canales son `IN_APP`, `EMAIL` y `WEB_PUSH`. La entrega por correo y por web —y las campañas— son de los bloques C y D. Ofrecer ya un interruptor de correo que nadie consulta sería un botón sin acción (PRD §0.3).
 
 **Decisión.** El bloque B ofrece las preferencias del único canal que este bloque entrega de verdad: el centro dentro de la plataforma (`IN_APP`). Cada casilla tiene efecto inmediato —una clase silenciada desaparece del centro—, y ninguna promete algo que todavía no ocurre. El modelo y el caso de uso admiten cualquier canal, de modo que el bloque C leerá estas mismas filas para el correo y el D para la web; pero la pantalla no dibuja un interruptor hasta que su canal entrega. Así no hay preferencia muerta y la regla de lo obligatorio ya queda probada sobre el canal que existe.
+
+## ADR-0160 · Las plantillas de aviso se versionan como las de documento: una publicada no se edita, se publica otra
+
+**Contexto.** El criterio 2 de la Fase 9 pide que las plantillas estén versionadas, y hasta el bloque C las plantillas de aviso solo existían en la semilla, sin forma de redactarlas ni versionarlas. Ya había un patrón probado para lo mismo en `DocumentTemplate` (F5-DOC).
+
+**Decisión.** `NotificationTemplate` se administra igual que `DocumentTemplate`: una versión se redacta como borrador, se publica —y publicar retira la versión publicada anterior del mismo código, canal e idioma, para que enviar nunca tenga que elegir entre dos—, y una publicada no se edita: se publica otra. El consecutivo se calcula bajo cerrojo por código, canal e idioma. Redactar y publicar son permisos distintos (`notifications.template.author` y `notifications.template.publish`), por la misma razón que en los prompts (ADR de la Fase 8) y el CMS: quien pone un texto en boca de la organización para muchas personas no es por eso quien lo revisa. Publicar y retirar exigen motivo. Al publicar se comprueba que las variables usadas en el asunto y el cuerpo y las declaradas coincidan: ni un aviso con huecos ni un dato que se cree enviado y se descarta. No se añade inmutabilidad por columna en la base porque un borrador sí se edita; la garantía es la disciplina de versión, la misma que en los documentos.
+
+## ADR-0161 · La administración de plantillas es del canal que hoy las consume: el correo
+
+**Contexto.** Una plantilla tiene canal (`IN_APP`, `EMAIL`, `WEB_PUSH`). Hoy solo el correo consume plantillas: el centro dentro de la plataforma crea sus avisos directamente y la web no existe hasta el bloque D. Ofrecer redactar plantillas de un canal que nada envía sería texto muerto.
+
+**Decisión.** La pantalla de redacción fija el canal en correo y el idioma en `es-MX` —los que hoy envían— y lo dice a la vista, no lo esconde. El caso de uso sigue siendo general: acepta cualquier canal e idioma, de modo que cuando la web llegue (bloque D) solo hay que abrir la opción en la pantalla. Así la administración de plantillas es completa para lo que existe y no promete lo que todavía no entrega.

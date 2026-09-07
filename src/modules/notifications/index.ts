@@ -19,3 +19,15 @@ export {
   NOTIFICATION_CHANNELS,
   isMandatoryCategory,
 } from './domain/preferences';
+export {
+  draftNotificationTemplate,
+  draftNotificationTemplateSchema,
+  publishNotificationTemplate,
+  publishNotificationTemplateSchema,
+  retireNotificationTemplate,
+  retireNotificationTemplateSchema,
+  notificationTemplateDetail,
+  notificationTemplateList,
+  type DraftNotificationTemplateInput,
+  type NotificationTemplateRow,
+} from './application/templates';

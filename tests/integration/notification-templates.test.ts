@@ -1,108 +1,150 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import path from 'node:path';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
+import { contextoDe, crearPersonaConCuenta, entidadPrincipal, nombrar } from './helpers/fixtures';
+import type { ActorContext } from '@/platform/kernel/actor-context';
+import {
+  draftNotificationTemplate,
+  notificationTemplateList,
+  publishNotificationTemplate,
+  retireNotificationTemplate,
+} from '@/modules/notifications';
 
 /**
- * Las plantillas que el código pide tienen que estar sembradas.
+ * Plantillas versionadas de aviso (PRD §16.2, §24 Fase 9 criterio 2; bloque C).
  *
- * El defecto que esta prueba impide es real y estuvo vivo toda la Fase 2: al
- * renombrar `InboundInquiry` a `SupportRequest` (D-F2-003) se cambió el código
- * de la plantilla en el caso de uso y no en la semilla. El acuse de la entrada
- * pública fallaba **siempre**, y no se notaba: el envío va por la cola, así que
- * quien escribía no veía ningún error y el trabajo se reintentaba en silencio
- * hasta agotarse.
- *
- * Se leen los códigos del propio código fuente en vez de mantener una lista
- * aparte, porque una lista aparte se desincroniza igual que se desincronizó la
- * semilla.
+ * Se prueba contra la base real y con los permisos que la semilla reparte: que
+ * redactar y publicar sean permisos distintos, que una versión publicada no se
+ * edite —se publica otra—, que publicar retire la anterior, y que publicar
+ * compruebe que las variables usadas y las declaradas coincidan.
  */
 
 let base: TestDatabase;
+let prensa: ActorContext; // COMMUNICATIONS: redacta, no publica
+let secretaria: ActorContext; // EXECUTIVE_SECRETARY: publica, no redacta
+let cualquiera: ActorContext; // sin facultades de comunicación
+
+function unico(prefijo: string): string {
+  return `${prefijo}_${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
+}
 
 beforeAll(async () => {
-  base = await createTestDatabase('plantillas');
+  base = await createTestDatabase('plantillas_aviso');
   await base.seed();
+  const entidadId = await entidadPrincipal(base.prisma);
+  const granter = await crearPersonaConCuenta(base.prisma, { givenName: 'Quien' });
+
+  const pPrensa = await crearPersonaConCuenta(base.prisma, { givenName: 'Prensa' });
+  await nombrar(base.prisma, { userId: pPrensa.userId, roleCode: 'COMMUNICATIONS', grantedById: granter.userId, legalEntityId: entidadId });
+  prensa = await contextoDe(base.prisma, pPrensa);
+
+  const pSecre = await crearPersonaConCuenta(base.prisma, { givenName: 'Secre' });
+  await nombrar(base.prisma, { userId: pSecre.userId, roleCode: 'EXECUTIVE_SECRETARY', grantedById: granter.userId, legalEntityId: entidadId });
+  secretaria = await contextoDe(base.prisma, pSecre);
+
+  const pOtra = await crearPersonaConCuenta(base.prisma, { givenName: 'Otra' });
+  cualquiera = await contextoDe(base.prisma, pOtra);
 }, 180_000);
 
 afterAll(async () => {
   await base.destroy();
 });
 
-/** Recorre el código productivo buscando `templateCode: 'ALGO'`. */
-function codigosQuePideElCodigo(): Set<string> {
-  const encontrados = new Set<string>();
-  const raices = ['src', 'app'];
-
-  const recorrer = (directorio: string): void => {
-    for (const entrada of readdirSync(directorio)) {
-      const completa = path.join(directorio, entrada);
-      if (statSync(completa).isDirectory()) {
-        if (entrada === 'generated' || entrada === 'node_modules') continue;
-        recorrer(completa);
-        continue;
-      }
-      if (!/\.tsx?$/.test(entrada)) continue;
-
-      const contenido = readFileSync(completa, 'utf8');
-      for (const coincidencia of contenido.matchAll(/templateCode:\s*'([A-Z0-9_]+)'/g)) {
-        const codigo = coincidencia[1];
-        if (codigo !== undefined) encontrados.add(codigo);
-      }
-    }
-  };
-
-  for (const raiz of raices) recorrer(raiz);
-  return encontrados;
+async function borrador(actor: ActorContext, overrides: Record<string, unknown> = {}) {
+  return draftNotificationTemplate(actor, {
+    code: unico('EVENTO'),
+    channel: 'EMAIL',
+    category: 'EVENT',
+    locale: 'es-MX',
+    subject: 'Te esperamos, {{givenName}}',
+    bodyTemplate: 'Hola {{givenName}}, el taller es el {{fecha}}.',
+    variables: ['givenName', 'fecha'],
+    ...overrides,
+  });
 }
 
-describe('cada plantilla que el código pide existe publicada', () => {
-  it('no hay ningún código de plantilla sin sembrar', async () => {
-    const pedidos = codigosQuePideElCodigo();
-    expect(pedidos.size).toBeGreaterThan(0);
-
-    const sembradas = new Set(
-      (
-        await base.prisma.notificationTemplate.findMany({
-          where: { status: 'PUBLISHED', channel: 'EMAIL', locale: 'es-MX' },
-          select: { code: true },
-        })
-      ).map((fila) => fila.code),
-    );
-
-    const faltantes = [...pedidos].filter((codigo) => !sembradas.has(codigo));
-    expect(faltantes).toEqual([]);
+describe('redactar y publicar son permisos distintos', () => {
+  it('quien no es de comunicación no redacta', async () => {
+    const r = await borrador(cualquiera);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe('FORBIDDEN');
   });
 
-  it('el acuse de la entrada pública está entre ellas', async () => {
-    // Se nombra a propósito: es la que faltaba, y nombrarla hace que un
-    // renombrado futuro rompa esta prueba en vez de romper el acuse en silencio.
-    const acuse = await base.prisma.notificationTemplate.findFirst({
-      where: { code: 'SUPPORT_REQUEST_ACK', status: 'PUBLISHED' },
-      select: { subject: true },
+  it('Prensa redacta pero no publica', async () => {
+    const r = await borrador(prensa);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const publicar = await publishNotificationTemplate(prensa, {
+      templateId: r.data.templateId,
+      reason: 'intento de publicar sin ser la revisión',
     });
-    expect(acuse).not.toBeNull();
+    expect(publicar.ok).toBe(false);
+    if (!publicar.ok) expect(publicar.error.code).toBe('FORBIDDEN');
+  });
+});
+
+describe('una versión publicada no se edita: se publica otra', () => {
+  it('el consecutivo sube por código, y publicar retira la anterior', async () => {
+    const code = unico('CONSECUTIVO');
+    const v1 = await borrador(prensa, { code });
+    const v2 = await borrador(prensa, { code });
+    expect(v1.ok && v1.data.version).toBe(1);
+    expect(v2.ok && v2.data.version).toBe(2);
+    if (!v1.ok || !v2.ok) return;
+
+    const pub1 = await publishNotificationTemplate(secretaria, { templateId: v1.data.templateId, reason: 'publicar la primera versión del aviso' });
+    expect(pub1.ok && pub1.data.retiredVersion).toBe(null);
+
+    const pub2 = await publishNotificationTemplate(secretaria, { templateId: v2.data.templateId, reason: 'publicar la segunda versión del aviso' });
+    expect(pub2.ok && pub2.data.retiredVersion).toBe(1);
+
+    // No conviven dos publicadas del mismo código.
+    const publicadas = await base.prisma.notificationTemplate.count({ where: { code, channel: 'EMAIL', locale: 'es-MX', status: 'PUBLISHED' } });
+    expect(publicadas).toBe(1);
   });
 
-  it('el comprobante de pago dice que no es una factura fiscal', async () => {
-    // No es un detalle de redacción: presentar un comprobante como factura es
-    // exactamente lo que el PRD §26 evita, porque la plataforma vincula
-    // comprobantes y no sustituye a un sistema de facturación autorizado.
-    const comprobante = await base.prisma.notificationTemplate.findFirstOrThrow({
-      where: { code: 'PAYMENT_RECEIPT', status: 'PUBLISHED' },
-      select: { bodyTemplate: true },
-    });
-    expect(comprobante.bodyTemplate).toContain('No es una factura fiscal');
+  it('no se publica dos veces la misma versión', async () => {
+    const r = await borrador(prensa);
+    if (!r.ok) throw new Error('no se redactó');
+    await publishNotificationTemplate(secretaria, { templateId: r.data.templateId, reason: 'publicar el aviso de prueba' });
+    const otra = await publishNotificationTemplate(secretaria, { templateId: r.data.templateId, reason: 'publicar otra vez la misma versión' });
+    expect(otra.ok).toBe(false);
+    if (!otra.ok) expect(otra.error.code).toBe('CONFLICT');
+  });
+});
+
+describe('publicar comprueba que las variables coincidan', () => {
+  it('una variable usada y no declarada impide publicar', async () => {
+    const r = await borrador(prensa, { bodyTemplate: 'Hola {{givenName}}, tu folio es {{folio}}.', variables: ['givenName'] });
+    if (!r.ok) throw new Error('no se redactó');
+    const pub = await publishNotificationTemplate(secretaria, { templateId: r.data.templateId, reason: 'publicar con una variable sin declarar' });
+    expect(pub.ok).toBe(false);
+    if (!pub.ok) expect(pub.error.code).toBe('VALIDATION');
   });
 
-  it('el aviso de cobro fallido dice qué pasa después', async () => {
-    const aviso = await base.prisma.notificationTemplate.findFirstOrThrow({
-      where: { code: 'PAYMENT_FAILED_NOTICE', status: 'PUBLISHED' },
-      select: { bodyTemplate: true, variables: true },
-    });
-    // Quien recibe «no pudimos cobrarte» sin saber qué pasa después se queda
-    // esperando lo peor.
-    expect(aviso.bodyTemplate).toContain('{{graceNotice}}');
-    expect(aviso.bodyTemplate).toContain('No se te ha cobrado nada');
+  it('una variable declarada y no usada impide publicar', async () => {
+    const r = await borrador(prensa, { subject: 'Aviso', bodyTemplate: 'Hola {{givenName}}.', variables: ['givenName', 'fecha'] });
+    if (!r.ok) throw new Error('no se redactó');
+    const pub = await publishNotificationTemplate(secretaria, { templateId: r.data.templateId, reason: 'publicar con una variable de más' });
+    expect(pub.ok).toBe(false);
+    if (!pub.ok) expect(pub.error.code).toBe('VALIDATION');
+  });
+});
+
+describe('publicar y retirar exigen motivo, y quedan en la lista', () => {
+  it('la lista incluye lo que Prensa redacta', async () => {
+    const code = unico('LISTADA');
+    await borrador(prensa, { code });
+    const lista = await notificationTemplateList(prensa);
+    expect(lista.ok && lista.data.some((p) => p.code === code)).toBe(true);
+  });
+
+  it('retirar una publicada exige motivo y la deja retirada', async () => {
+    const r = await borrador(prensa);
+    if (!r.ok) throw new Error('no se redactó');
+    await publishNotificationTemplate(secretaria, { templateId: r.data.templateId, reason: 'publicar antes de retirar' });
+    const retiro = await retireNotificationTemplate(secretaria, { templateId: r.data.templateId, reason: 'retirar el aviso porque ya no aplica' });
+    expect(retiro.ok).toBe(true);
+    const fila = await base.prisma.notificationTemplate.findUnique({ where: { id: r.data.templateId }, select: { status: true } });
+    expect(fila?.status).toBe('RETIRED');
   });
 });

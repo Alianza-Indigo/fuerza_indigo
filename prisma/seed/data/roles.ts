@@ -429,6 +429,9 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'events.attendance.register',
       'events.constancy.issue',
       'events.constancy.revoke',
+      // Comunicaciones (Fase 9). Publica las plantillas de aviso que Prensa
+      // redacta —la misma separación entre autoría y revisión que en los prompts—.
+      'notifications.template.publish',
       'access.role.assign',
       'access.role.revoke',
     ],
@@ -609,6 +612,9 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'events.registration.read',
       'events.attendance.register',
       'events.constancy.issue',
+      // Comunicaciones (Fase 9). Prensa redacta las plantillas de aviso; como con
+      // los prompts, publicarlas es la revisión y la hace la Secretaría.
+      'notifications.template.author',
       'files.file.download_own','files.file.upload', 'files.file.download'],
   },
   {

@@ -273,6 +273,9 @@ export const AUDIT_ACTIONS = {
 
   // Notificaciones — Fase 9
   NOTIFICATION_PREFERENCE_SET: 'notifications.preference.set',
+  NOTIFICATION_TEMPLATE_DRAFTED: 'notifications.template.drafted',
+  NOTIFICATION_TEMPLATE_PUBLISHED: 'notifications.template.published',
+  NOTIFICATION_TEMPLATE_RETIRED: 'notifications.template.retired',
 
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',

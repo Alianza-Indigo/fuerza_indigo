@@ -30,7 +30,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 |---|---|---|
 | A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | **Hecho** |
 | B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | **Hecho** |
-| C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | Pendiente |
+| C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | En curso |
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | Pendiente |
 | F | Cobro de eventos conectado al catálogo financiero | Pendiente |
@@ -88,13 +88,15 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A y B están enteros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A y B están enteros, y el bloque C va a la mitad: **C·1, las plantillas versionadas, está hecho**; falta C·2, las campañas y la entrega por correo que respeta las preferencias. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit del bloque B.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit de C·1.
 
-**Bloque C — el correo, las plantillas versionadas y las campañas.** Lo que toca: la entrega por correo que la Fase 1 dejó apuntada, ahora leyendo las preferencias del bloque B (una clase silenciada para `EMAIL` no se envía, salvo la obligatoria), plantillas versionadas administrables, y campañas operativas autorizadas, separadas de lo obligatorio. `NotificationTemplate` ya tiene `publishedById` desde el bloque A; el envío ya existe en `src/platform/mail`, sin consultar preferencias todavía.
+**Lo que dejó C·1.** La administración de plantillas de aviso versionadas (PRD §16.2, criterio 2): redactar un borrador (Prensa), publicar y retirar (la Secretaría, la revisión), con motivo, comprobando que las variables usadas y las declaradas coincidan y retirando la versión anterior al publicar. Las pantallas viven en `/gestion/comunicaciones/plantillas`. El caso de uso está en `src/modules/notifications/application/templates.ts`; el patrón es el de `DocumentTemplate` (ADR-0160, ADR-0161).
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque C: una campaña que alcanza a quien silenció esa clase, o que apaga un aviso obligatorio.
+**Bloque C·2 — las campañas y el correo que respeta las preferencias.** Lo que falta: la entrega por correo que la Fase 1 dejó apuntada, ahora leyendo las preferencias del bloque B (una clase silenciada para `EMAIL` no se envía, salvo la obligatoria), y campañas operativas autorizadas, separadas de lo obligatorio. **No hay entidad de campaña**: el contrato de fases no admite una entidad nueva en la Fase 9 más allá de las cuatro del bloque A (C-COH-16 y `entityMigrationPhase`), así que una campaña es un envío autorizado sobre `Notification`/`DeliveryAttempt`, registrado en la bitácora, que solo alcanza clases no obligatorias y respeta cada preferencia. El envío ya existe en `src/platform/mail`, sin consultar preferencias todavía; el sistema de trabajos y reintentos está en `src/platform/jobs`.
+
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La de C·2: una campaña que alcanza a quien silenció esa clase, o que envía una clase obligatoria como si fuera difusión.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

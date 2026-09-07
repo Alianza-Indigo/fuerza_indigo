@@ -41,7 +41,14 @@ const DE_LA_PERSONA = [
  * duplicados de `D-F5-010`: cinco campos «Dirección de acceso» con el mismo
  * identificador dejarían a cuatro de ellos sin etiqueta.
  */
-const DE_COMUNICACION = ['/gestion/contenidos/ecosistema', '/gestion/ia', '/gestion/ia/nuevo', '/gestion/ia/fuentes'];
+const DE_COMUNICACION = [
+  '/gestion/contenidos/ecosistema',
+  '/gestion/ia',
+  '/gestion/ia/nuevo',
+  '/gestion/ia/fuentes',
+  '/gestion/comunicaciones/plantillas',
+  '/gestion/comunicaciones/plantillas/nueva',
+];
 
 /** Rutas de gestión. Exigen facultades institucionales. */
 const DE_GESTION = [

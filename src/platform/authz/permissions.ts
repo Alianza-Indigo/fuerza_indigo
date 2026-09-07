@@ -786,6 +786,20 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     requiresReason: true,
   }),
 
+  // notifications — comunicaciones: plantillas versionadas y campañas (PRD §16.2, Fase 9)
+  //
+  // Redactar y publicar están separados por la misma razón que en los prompts y
+  // el CMS: una plantilla de aviso es un texto que la organización pone en boca de
+  // sí misma y hace llegar a muchas personas. Quien la redacta no decide por eso
+  // publicarla; publicar es el acto revisado, y por eso lleva motivo.
+  define('notifications.template.author', 'Redactar y editar plantillas de aviso en borrador', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('notifications.template.publish', 'Publicar o retirar una versión de plantilla de aviso', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+
   // system
   define('system.module.configure', 'Configurar módulos del sistema', { sensitivity: 'CRITICAL', requiresReason: true }),
   define('system.job.manage', 'Administrar trabajos programados', { sensitivity: 'CRITICAL', requiresReason: true }),

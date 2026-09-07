@@ -55,6 +55,7 @@ export async function publicEventCalendar(): Promise<readonly CalendarRow[]> {
 export interface MemberCalendarRow extends CalendarRow {
   readonly eventId: string;
   readonly myStatus: EventRegistrationStatus | null;
+  readonly hasCost: boolean;
 }
 
 /** Los eventos que una persona con cuenta puede ver: públicos y para agremiados. */
@@ -69,7 +70,7 @@ export async function memberEventCalendar(actor: ActorContext): Promise<UseCaseR
       endsAt: { gte: new Date() },
     },
     orderBy: { startsAt: 'asc' },
-    select: { ...SELECT, id: true },
+    select: { ...SELECT, id: true, catalogProductId: true },
   });
 
   const mias = new Map(
@@ -81,7 +82,7 @@ export async function memberEventCalendar(actor: ActorContext): Promise<UseCaseR
     ).map((r) => [r.eventId, r.status]),
   );
 
-  return ok(eventos.map((e) => ({ ...toRow(e), eventId: e.id, myStatus: mias.get(e.id) ?? null })));
+  return ok(eventos.map((e) => ({ ...toRow(e), eventId: e.id, myStatus: mias.get(e.id) ?? null, hasCost: e.catalogProductId !== null })));
 }
 
 export interface EventDetailView extends CalendarRow {

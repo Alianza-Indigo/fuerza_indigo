@@ -20,6 +20,10 @@ export {
   type RegistrationRow,
 } from './application/registration';
 export {
+  startEventCheckout,
+  confirmEventRegistrationFromPayment,
+} from './application/payment';
+export {
   publicEventCalendar,
   memberEventCalendar,
   eventDetailBySlug,

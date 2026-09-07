@@ -1,7 +1,8 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { cancelOwnRegistration, registerForEvent } from '@/modules/events';
+import { cancelOwnRegistration, registerForEvent, startEventCheckout } from '@/modules/events';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -29,4 +30,11 @@ export async function cancelRegistrationAction(_previous: InscripcionState, form
   if (!resultado.ok) return { status: 'error', message: resultado.error.message };
   revalidatePath('/mi/eventos');
   return { status: 'ok', message: resultado.data.cancelled ? 'Cancelamos tu inscripción.' : 'No tenías una inscripción activa.' };
+}
+
+export async function payEventAction(_previous: InscripcionState, formData: FormData): Promise<InscripcionState> {
+  const actor = await currentActor();
+  const resultado = await startEventCheckout(actor, { eventId: textField(formData, 'eventId') });
+  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+  redirect(resultado.data.url);
 }

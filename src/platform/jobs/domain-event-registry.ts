@@ -1,6 +1,7 @@
 import { onDomainEvent } from '@/platform/jobs/queue';
 import { PAYMENT_SUCCEEDED } from '@/modules/billing/application/payment-events';
 import { activateFromConfirmedPayment } from '@/modules/membership/application/memberships';
+import { confirmEventRegistrationFromPayment } from '@/modules/events';
 import { systemActorId } from '@/platform/auth/superadmin';
 import { systemContext } from '@/platform/kernel/actor-context';
 
@@ -35,6 +36,21 @@ export async function registerDomainEventHandlers(): Promise<void> {
     }
 
     await activateFromConfirmedPayment(
+      systemContext({ actorId, jobType: 'domain-events', correlationId }),
+      paymentId,
+    );
+  });
+
+  // Un pago confirmado que corresponde a una inscripción de evento la confirma.
+  // Convive con la activación de membresía: cada manejador toca solo lo suyo y
+  // no hace nada con un pago que no le corresponde.
+  onDomainEvent(PAYMENT_SUCCEEDED, 'event-registration-confirmation', async (payload, correlationId) => {
+    const paymentId = payload['paymentId'];
+    if (typeof paymentId !== 'string' || paymentId === '') {
+      throw new Error('El aviso de cobro confirmado no trae identificador de cobro.');
+    }
+
+    await confirmEventRegistrationFromPayment(
       systemContext({ actorId, jobType: 'domain-events', correlationId }),
       paymentId,
     );

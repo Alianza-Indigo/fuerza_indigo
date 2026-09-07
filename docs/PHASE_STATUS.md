@@ -33,7 +33,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | **Hecho** |
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | **Hecho** |
-| F | Cobro de eventos conectado al catálogo financiero | Pendiente |
+| F | Cobro de eventos conectado al catálogo financiero | **Hecho** |
 | G | Asistencia, materiales, evaluación y constancias verificables y revocables | Pendiente |
 | H | Tableros por rol con decisiones accionables | Pendiente |
 | I | Indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
@@ -55,6 +55,16 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
 | 5 | Las constancias son verificables y revocables | Pendiente |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | Pendiente |
+
+---
+
+## Lo que dejó el bloque F
+
+El cobro de eventos, conectado al catálogo y a los pagos de la Fase 3 (PRD §16.3, §11; ADR-0165).
+
+**Una inscripción de pago no se confirma hasta que el pago se confirma.** Un evento con costo tiene su concepto del catálogo; inscribirse reserva el lugar y, al pagar, el cobro va por la misma pasarela de la Fase 3. Cuando el pago se confirma —por su webhook, a través del buzón de eventos de dominio—, un manejador nuevo (`event-registration-confirmation`) encuentra la inscripción por su `paymentId` y la pasa a `CONFIRMED`. Volver del navegador no confirma nada; solo el webhook. El manejador convive con la activación de membresía sobre el mismo evento de dominio, cada uno toca lo suyo, y es idempotente. Sin tabla nueva: el enlace ya lo daba `EventRegistration.paymentId`.
+
+**Cinco pruebas nuevas, con el método de romper:** el pago aún sin confirmar que no confirma la inscripción, el confirmado que la pasa a `CONFIRMED`, la repetición que no cambia nada, el pago ajeno que no toca ninguna inscripción, y los guardianes del inicio de cobro. Se le quitó el guardián del estado del pago y se vio la confirmación prematura caer en rojo.
 
 ---
 
@@ -118,9 +128,9 @@ Los bloques A, B, C y E están enteros. El bloque D (notificaciones web) se dej�
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque F — el cobro de eventos.** Lo que toca: conectar `Event.catalogProductId` y `EventRegistration.paymentId` al catálogo y a los pagos de la Fase 3, de modo que un evento con costo cobre por la pasarela y confirme la inscripción al confirmarse el pago. El cobro ya existe en `src/modules/billing`; falta enlazarlo con la inscripción por el buzón de eventos de dominio.
+**Bloque G — asistencia, materiales, evaluación y constancias.** Lo que toca: registrar la asistencia y la evaluación de quien participó (`events.attendance.register`), los materiales del evento (reservados a inscritos), y emitir constancias **verificables y revocables** (`events.constancy.issue` y `events.constancy.revoke`, criterio 5) como `GeneratedDocument`, con una ruta pública de verificación que refleje la revocación en vivo. El esquema del bloque A ya tiene `attendanceAt`, `evaluationScore`, `constancyDocumentId` y `constancyRevokedAt`.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque F: una inscripción de pago que se confirma sin que el pago se haya confirmado.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque G: una constancia revocada que sigue verificando como válida.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

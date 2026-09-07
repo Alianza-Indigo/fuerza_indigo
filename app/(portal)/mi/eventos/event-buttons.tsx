@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react';
 import { ErrorNotice, SubmitButton, SuccessNotice } from '@/design-system/primitives';
-import { cancelRegistrationAction, registerAction, type InscripcionState } from './actions';
+import { cancelRegistrationAction, payEventAction, registerAction, type InscripcionState } from './actions';
 
 const INICIAL: InscripcionState = { status: 'idle' };
 
@@ -18,6 +18,17 @@ export function RegisterButton({ eventId }: { eventId: string }) {
           <SubmitButton>{pendiente ? 'Inscribiendo…' : 'Inscribirme'}</SubmitButton>
         </>
       )}
+    </form>
+  );
+}
+
+export function PayButton({ eventId }: { eventId: string }) {
+  const [estado, accion, pendiente] = useActionState(payEventAction, INICIAL);
+  return (
+    <form action={accion} className="space-y-2">
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo iniciar el pago'} />}
+      <input type="hidden" name="eventId" value={eventId} />
+      <SubmitButton>{pendiente ? 'Abriendo el pago…' : 'Pagar mi inscripción'}</SubmitButton>
     </form>
   );
 }

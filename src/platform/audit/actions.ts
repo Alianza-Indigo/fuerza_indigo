@@ -285,6 +285,7 @@ export const AUDIT_ACTIONS = {
   EVENT_CANCELLED: 'events.event.cancelled',
   EVENT_REGISTRATION_CREATED: 'events.registration.created',
   EVENT_REGISTRATION_CANCELLED: 'events.registration.cancelled',
+  EVENT_REGISTRATION_CONFIRMED: 'events.registration.confirmed',
   EVENT_WAITLIST_PROMOTED: 'events.registration.waitlist_promoted',
   EVENT_ATTENDANCE_REGISTERED: 'events.attendance.registered',
   EVENT_CONSTANCY_ISSUED: 'events.constancy.issued',

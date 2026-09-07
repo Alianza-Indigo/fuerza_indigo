@@ -4,7 +4,7 @@ import { currentActor } from '@/platform/http/request-context';
 import { memberEventCalendar, myEventRegistrations } from '@/modules/events';
 import { formatDateTime } from '@/platform/i18n/format';
 import { CLASE_DE_EVENTO, MI_ESTADO } from './etiquetas';
-import { CancelButton, RegisterButton } from './event-buttons';
+import { CancelButton, PayButton, RegisterButton } from './event-buttons';
 
 export const metadata = { title: 'Eventos', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -65,10 +65,16 @@ export default async function MisEventosPage() {
                       <p className="font-semibold">{e.title}</p>
                       {e.venue !== null && <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{e.venue}</p>}
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       {e.myStatus === null && e.registrationOpen && <RegisterButton eventId={e.eventId} />}
                       {e.myStatus === null && !e.registrationOpen && (
                         <p className="text-sm text-[var(--color-ink-soft)]">La inscripción todavía no está abierta.</p>
+                      )}
+                      {e.myStatus === 'REGISTERED' && e.hasCost && (
+                        <>
+                          <p className="text-sm text-[var(--color-ink-soft)]">Tu lugar queda reservado; para confirmarlo, paga tu inscripción.</p>
+                          <PayButton eventId={e.eventId} />
+                        </>
                       )}
                       {(e.myStatus === 'REGISTERED' || e.myStatus === 'WAITLISTED' || e.myStatus === 'CONFIRMED') && (
                         <CancelButton eventId={e.eventId} />

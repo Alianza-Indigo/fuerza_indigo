@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
+  configureProvider,
   createPrompt,
   labRun,
   publishVersion,
@@ -15,7 +16,7 @@ import {
   type RetrievalResult,
 } from '@/modules/ai';
 import { currentActor } from '@/platform/http/request-context';
-import { textField } from '@/platform/http/form-fields';
+import { checkboxField, textField } from '@/platform/http/form-fields';
 
 /**
  * Acciones del panel de prompts.
@@ -205,4 +206,87 @@ export async function labRunAction(_previo: LabState, formData: FormData): Promi
   }
   revalidatePath(`/gestion/ia/${promptId}`);
   return { status: 'ok', outcome: resultado.data };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Gobernanza del proveedor (bloque G)                                        */
+/* -------------------------------------------------------------------------- */
+
+export interface ProviderFormState {
+  readonly status: 'idle' | 'error' | 'ok';
+  readonly message?: string;
+  readonly fieldErrors?: Record<string, string[]>;
+}
+
+/** Convierte pesos con hasta dos decimales a centavos. `null` si no es un importe. */
+function pesosACentavos(bruto: string): bigint | null {
+  const t = bruto.trim().replace(/,/g, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
+  const [entera = '0', decimal = ''] = t.split('.');
+  return BigInt(entera) * 100n + BigInt((decimal + '00').slice(0, 2));
+}
+
+/** Un entero positivo de un campo de texto, o `null`. */
+function enteroPositivo(bruto: string): number | null {
+  const t = bruto.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n > 0 ? n : null;
+}
+
+/**
+ * Configura el proveedor de IA: modelos, límites, techo de gasto y encendido.
+ *
+ * Los importes se escriben en pesos y se guardan en centavos; los límites, en
+ * enteros. Quién puede, y que el modelo por omisión esté entre los permitidos,
+ * lo decide el módulo. La clave no se toca aquí: su nombre de variable es de
+ * despliegue.
+ */
+export async function configureProviderAction(
+  _previo: ProviderFormState,
+  formData: FormData,
+): Promise<ProviderFormState> {
+  const actor = await currentActor();
+
+  const errores: Record<string, string[]> = {};
+  const modelos = textField(formData, 'allowedModels')
+    .split(/[\n,]/)
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+  const techo = pesosACentavos(textField(formData, 'maxMonthlyCost'));
+  const tokens = enteroPositivo(textField(formData, 'maxTokensPerRequest'));
+  const porDia = enteroPositivo(textField(formData, 'maxRequestsPerUserPerDay'));
+
+  if (techo === null) (errores['maxMonthlyCost'] ??= []).push('Escribe el techo mensual en pesos, con hasta dos decimales.');
+  if (tokens === null) (errores['maxTokensPerRequest'] ??= []).push('Escribe un número entero de tokens mayor que cero.');
+  if (porDia === null) (errores['maxRequestsPerUserPerDay'] ??= []).push('Escribe un número entero de peticiones mayor que cero.');
+  if (Object.keys(errores).length > 0) return { status: 'error', message: 'Revisa los datos marcados.', fieldErrors: errores };
+
+  const resultado = await configureProvider(actor, {
+    reason: textField(formData, 'reason'),
+    allowedModels: modelos,
+    defaultModel: textField(formData, 'defaultModel'),
+    maxTokensPerRequest: tokens!,
+    maxRequestsPerUserPerDay: porDia!,
+    maxMonthlyCostMinor: techo!,
+    currency: textField(formData, 'currency') || 'MXN',
+    trainingOptOut: checkboxField(formData, 'trainingOptOut'),
+    isEnabled: checkboxField(formData, 'isEnabled'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/gestion/ia/proveedor');
+  return {
+    status: 'ok',
+    message: resultado.data.isEnabled
+      ? 'Guardado. La IA queda encendida con estos límites.'
+      : 'Guardado. La IA queda apagada: los flujos asistidos operan por el camino humano.',
+  };
 }

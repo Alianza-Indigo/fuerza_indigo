@@ -55,6 +55,8 @@ const DE_GESTION = [
   '/gestion/directorio',
   '/gestion/credenciales',
   '/gestion/consentimientos',
+  '/gestion/ia/proveedor',
+  '/gestion/ia/consumo',
 ];
 
 /**

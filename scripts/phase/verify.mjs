@@ -3294,6 +3294,32 @@ const CHECKS = [
         : ok([`Los ${efectos.length} efectos declarados por los casos de uso asistidos quedan fuera de los diez prohibidos del §15.4.`]);
     },
   },
+  {
+    id: 'C-F8-04',
+    title: 'Fase 8: la consulta de consumo no toca ninguna columna de contenido',
+    phases: [8],
+    run() {
+      // «Los costos y errores se consultan por módulo **sin exponer contenido
+      // sensible**» es el criterio 6, y su fuerza está en el «sin». La consulta
+      // de consumo (ai.usage.read) agrega números y estados; para que se colara
+      // contenido habría que nombrar una columna de texto —`outputSummary`, la
+      // huella `inputDigest`— en su archivo. Este control lo rechaza: quien
+      // vigila el gasto no lee, de paso, lo que se le escribió a un modelo.
+      const usage = read('src/modules/ai/application/usage.ts');
+      if (usage === null) return fail(['No se encuentra src/modules/ai/application/usage.ts.']);
+
+      const prohibidas = ['outputSummary', 'inputDigest'];
+      const encontradas = prohibidas.filter((col) => usage.includes(col));
+
+      return encontradas.length
+        ? fail(
+            encontradas.map(
+              (col) => `La consulta de consumo nombra «${col}», una columna de contenido: el consumo se consulta sin exponer contenido (criterio 6).`,
+            ),
+          )
+        : ok(['La consulta de consumo no nombra ninguna columna de contenido: agrega solo números y estados.']);
+    },
+  },
 ];
 
 

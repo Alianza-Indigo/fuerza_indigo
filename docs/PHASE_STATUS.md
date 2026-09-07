@@ -34,7 +34,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 | D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | **Hecho** |
 | E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | **Hecho** |
 | F | Casos de uso asistidos y revisión humana de cada salida | **Hecho** |
-| G | Pantallas de gobernanza, laboratorio y consulta de costos | Pendiente |
+| G | Pantallas de gobernanza, laboratorio y consulta de costos | **Hecho** |
 | H | Pruebas, controles de fase, documentación y cierre | Pendiente |
 
 ---
@@ -49,8 +49,8 @@ Los seis del PRD §24 Fase 8 se comprobarán ejecutando el sistema, no leyendo e
 | 2 | Fuentes y fragmentos respetan permisos del usuario | Pendiente |
 | 3 | La salida identifica que fue generada con IA y permite corregirla | **Cumplido** (bloque F) |
 | 4 | Las acciones sensibles requieren confirmación humana | **Cumplido** (bloque F) |
-| 5 | La aplicación continúa operando si Gemini está caído | Pendiente |
-| 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | Pendiente |
+| 5 | La aplicación continúa operando si Gemini está caído | **Cumplido** (bloques B y G) |
+| 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | **Cumplido** (bloque G) |
 
 ---
 
@@ -81,6 +81,20 @@ El servicio central de la IA, con las tres defensas que gobiernan la ejecución,
 **Cada ejecución deja huella y no texto.** La fila de `ai_generation` guarda el `sha256` de lo enviado —nunca el contenido—, el modelo, los tokens, el costo, la latencia y el estado. El costo sale de una tabla de precios en el código (un hecho del proveedor), mientras el techo de gasto vive en la fila (una política de la organización): el mismo dato no manda desde dos sitios (ADR-0138). La salida se valida contra el esquema de la versión con un validador acotado y honesto; lo que no encaja se registra como `SCHEMA_REJECTED` y no se enseña.
 
 **Diecinueve pruebas nuevas, cada garantía vista fallar.** Once de integración —los tres límites, las dos degradaciones, el éxito con su huella, el error, el tiempo agotado y las dos formas de rechazo de esquema— y ocho unitarias del validador, del resolver de la clave, del precio y del guardia de solo-servidor. Cada una se rompió a propósito y se vio ponerse en rojo antes de restaurar.
+
+---
+
+## Lo que dejó el bloque G
+
+La consulta de costos por módulo y la gobernanza del proveedor (criterios 5 y 6 de la fase).
+
+**El consumo se consulta sin abrir las conversaciones.** `usageByModule` (`ai.usage.read`) agrega peticiones, tokens, costo y estados por módulo, y **no selecciona ninguna columna de contenido** (ADR-0152). El permiso está separado a propósito de `ai.generation.read`: la contraloría, que tiene el primero y no el segundo, ve el gasto y no lo que se escribió —probado en positivo y en negativo—. El control nuevo `C-F8-04` rechaza que el archivo de la consulta nombre una columna de contenido, ni en un comentario; probado nombrándola y viéndolo fallar.
+
+**Los límites se bajan desde una pantalla, no la clave.** `configureProvider` (`ai.provider.configure`, con motivo) escribe modelos, los tres límites, el techo de gasto, la moneda, el opt-out y el encendido; la clave no se toca, porque su nombre de variable es de despliegue (ADR-0153). El techo de gasto positivo y el modelo por omisión entre los permitidos los exige la base y el caso de uso los comprueba antes para un mensaje claro. Que configurar surte efecto se probó bajando el máximo de tokens y viendo cortarse la siguiente ejecución.
+
+**Apagar no es una avería (criterio 5).** La pantalla del proveedor enseña la salud —operativa, o degradada con su motivo— y, apagada, dice que la aplicación sigue en pie por el camino humano. Probado: apagar el proveedor deja `runGeneration` devolviendo `DEGRADED`, sin lanzar.
+
+**Las pantallas están en `/gestion/ia/consumo`** (costo por módulo, marcado «sin contenido») **y `/gestion/ia/proveedor`** (configuración y salud), con sus entradas de navegación y sus permisos. Cinco pruebas de integración nuevas, cada garantía vista fallar.
 
 ---
 
@@ -154,15 +168,15 @@ Los prompts dejan de ser una promesa del modelo de datos y se administran de ver
 
 ## Cómo se retoma
 
-El bloque F está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+El bloque G está entero, y con él **los seis criterios de la fase están cumplidos**. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (74 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque F**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (75 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque G**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
 
-**Bloque G — pantallas de gobernanza, laboratorio y consulta de costos.** Lo que toca: la consulta de consumo, costo y errores de la IA **por módulo y sin exponer contenido sensible** (criterio 6 de la fase, permiso `ai.usage.read`, que ya existe en el catálogo); y las pantallas de gobernanza que reúnan lo que hoy vive repartido —el proveedor y sus límites, el laboratorio, la trazabilidad de generaciones y revisiones—. El criterio 5 (la aplicación sigue si Gemini está caído) ya lo sostiene la degradación del bloque B y se cierra al comprobarlo por pantalla.
+**Bloque H — pruebas de aceptación, documentación y cierre.** Lo que toca: las pruebas que el PRD §24 Fase 8 exige demostrar ejecutando el sistema —`F8-QA-001` (ningún prompt crítico vive solo en el código) y `F8-QA-002` (las fuentes y fragmentos respetan los permisos del usuario)—, reunidas como los `faseN-criterios.test.ts` de las fases anteriores; el repaso de los seis criterios de aceptación comprobados sobre el sistema y no leyendo el código; la actualización del `docs/BACKLOG.md` (marcar la Fase 8 completa) y de `docs/DATA_MODEL.md` si algo quedó fuera; y el informe de cierre en este documento. Entonces la fase se declara terminada y **se para** a esperar autorización expresa (PRD §23).
 
-**Lo que ya está resuelto y no hay que rehacer.** La máquina de ejecución (B), la administración de prompts (C), la base documental (D), las defensas (E) y los casos de uso asistidos con revisión humana (F) no se tocan. El bloque G es de consulta y presentación: lee lo que las filas de `ai_generation` y `ai_review` ya guardan —costo, tokens, estado, latencia, revisión— y lo enseña por módulo, sin sacar el contenido.
+**Lo que ya está resuelto y no hay que rehacer.** Todo lo construido en A–G. El bloque H no añade funcionalidad: comprueba, documenta y cierra. Si al repasar el alcance contra lo construido aparece un hueco, se abre como defecto y se corrige dentro de la fase, no después.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque G es que la consulta de costos por módulo **no** exponga el contenido de lo generado.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo, y ejecutando el sistema para los criterios de aceptación, nunca leyendo el código.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 

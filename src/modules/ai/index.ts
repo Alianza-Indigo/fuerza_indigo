@@ -51,3 +51,17 @@ export {
   type ReviewGenerationInput,
   type GenerationReviewState,
 } from './application/review';
+export {
+  usageByModule,
+  usageByModuleSchema,
+  type UsageByModuleInput,
+  type UsageReport,
+  type ModuleUsage,
+} from './application/usage';
+export {
+  readProviderConfig,
+  configureProvider,
+  configureProviderSchema,
+  type ProviderConfigView,
+  type ConfigureProviderInput,
+} from './application/provider';

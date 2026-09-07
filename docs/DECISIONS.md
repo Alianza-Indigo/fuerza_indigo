@@ -1897,3 +1897,19 @@ Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el m
 **Decisión.** `confirmRouting` comprueba, cuando la propuesta vigente la sugirió la IA (`suggestedByAiGenerationId` no nulo) y se va a confirmar **esa misma** canalización, que su generación tenga una revisión aceptada o corregida; si no, se niega. Apartarse de la sugerencia —confirmar otra entidad— no se bloquea: ahí la sugerencia no surte efecto, la sustituye la decisión de quien confirma, y bloquearlo dejaría a una persona rehén de una sugerencia con la que no está de acuerdo. La puerta actúa exactamente en el punto donde la salida asistida se vuelve vinculante, y ni antes ni de más.
 
 **Probado rompiéndolo.** Se forzó la comprobación a «aceptada» siempre y se vio la prueba de la puerta ponerse en rojo: sin ella, una canalización sugerida por IA se confirma sin que nadie la haya mirado.
+
+## ADR-0152 · El consumo se consulta con un permiso que no abre las conversaciones
+
+**Contexto.** El criterio 6 de la fase pide consultar «los costos y errores por módulo **sin exponer contenido sensible**». El catálogo separa desde la Fase 0 dos permisos: `ai.generation.read` (el contenido y su trazabilidad) y `ai.usage.read` (el consumo).
+
+**Decisión.** La consulta de consumo (`usageByModule`, `@/modules/ai`) vive detrás de `ai.usage.read` y **no selecciona ninguna columna de contenido**: agrega peticiones, tokens, costo y estados, agrupados por el módulo del prompt que produjo cada ejecución, con un `SELECT` cuya lista son todos números y estados. Que no exponga contenido no es una promesa de la pantalla: es una propiedad de la consulta. La contraloría (`OVERSIGHT_COMMISSION`), que tiene `ai.usage.read` y no `ai.generation.read`, ve el gasto y no las conversaciones —y eso se prueba en positivo y en negativo—.
+
+**El control que lo sostiene.** `C-F8-04` recorre el archivo de la consulta y falla si nombra una columna de contenido —el resumen de la salida o la huella de lo enviado—, ni siquiera en un comentario. La prohibición es del archivo entero, no solo del `SELECT`, para que la garantía no dependa de dónde se escriba el nombre. Probado nombrándola y viéndolo fallar.
+
+## ADR-0153 · Los límites y el encendido del proveedor se gobiernan desde una pantalla, no la clave
+
+**Contexto.** Los límites y el encendido viven en la fila del proveedor desde el bloque A, «porque quien paga la factura tiene que poder bajarlos un martes sin esperar un despliegue». Faltaba la pantalla desde la que se bajan.
+
+**Decisión.** `configureProvider` (`ai.provider.configure`, permiso crítico con motivo) escribe los modelos permitidos, los tres límites, el techo de gasto, la moneda, el opt-out de entrenamiento y el encendido. La clave **no** se toca: la fila guarda el nombre de su variable de entorno, y apuntar a otra es una decisión de despliegue, no de una pantalla —`apiKeyEnvVarName` no está entre las columnas actualizables—. El modelo por omisión tiene que estar entre los permitidos, y el techo de gasto tiene que ser positivo: las dos las exige también la base con sendos `CHECK`, y el caso de uso las comprueba antes para dar un mensaje claro en vez de un error de restricción.
+
+**Apagar no es una avería.** Con el proveedor apagado la aplicación sigue en pie y todo cae al camino humano (criterio 5). La salud lo dice tal cual —`DEGRADED`, no `failed`—, y la pantalla del proveedor la enseña para que el estado de operación se lea sin adivinarlo. Que configurar surte efecto se prueba bajando el máximo de tokens por petición y viendo la siguiente ejecución cortarse antes de llamar.

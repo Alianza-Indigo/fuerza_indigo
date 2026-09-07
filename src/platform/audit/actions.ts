@@ -269,6 +269,7 @@ export const AUDIT_ACTIONS = {
   AI_KNOWLEDGE_SOURCE_DISABLED: 'ai.knowledge.source_disabled',
   AI_GENERATION_REVIEWED: 'ai.generation.reviewed',
   AI_CLASSIFICATION_SUGGESTED: 'ai.support.classification_suggested',
+  AI_PROVIDER_CONFIGURED: 'ai.provider.configured',
 
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',

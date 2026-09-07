@@ -30,6 +30,8 @@ export const RUTAS_DEL_CODIGO: readonly string[] = [
   'contacto',
   'directorio',
   'directorio/:param',
+  'eventos',
+  'eventos/:param',
   'herramientas',
   'herramientas/logotipo/:param',
   'legales/accesibilidad',

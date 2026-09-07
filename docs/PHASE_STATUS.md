@@ -32,7 +32,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | **Hecho** |
 | C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | **Hecho** |
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
-| E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | Pendiente |
+| E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | **Hecho** |
 | F | Cobro de eventos conectado al catálogo financiero | Pendiente |
 | G | Asistencia, materiales, evaluación y constancias verificables y revocables | Pendiente |
 | H | Tableros por rol con decisiones accionables | Pendiente |
@@ -55,6 +55,18 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
 | 5 | Las constancias son verificables y revocables | Pendiente |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | Pendiente |
+
+---
+
+## Lo que dejó el bloque E
+
+El calendario de eventos, la inscripción con aforo y elegibilidad, y la lista de espera (PRD §16.3; ADR-0164).
+
+**El módulo de eventos, que el bloque A dejó como esquema.** Un evento lo organiza quien tiene `events.event.manage`: nace borrador, se publica, abre inscripción y se cancela, por una máquina de estados sin saltos. El calendario tiene tres caras: la pública (`/eventos`, solo lo marcado como público), la de quien entra con cuenta (`/mi/eventos`, además lo de agremiados) y la de gestión (`/gestion/eventos`).
+
+**Inscribirse es un acto de la persona.** Se ancla a su `personId`, sin permiso institucional. El aforo se protege con un cerrojo de aviso: dos inscripciones a la vez no rebasan el cupo. Lleno el cupo, la siguiente entra en **lista de espera**; al cancelar quien ocupaba lugar, sube la primera por orden de llegada. La elegibilidad —hoy, solo para agremiados— la evalúa una función pura, y nadie se inscribe dos veces.
+
+**Diez pruebas nuevas, con el método de romper:** cinco de unidad de la elegibilidad y cinco de integración —el cupo lleno que manda a la espera y la cancelación que promueve, la elegibilidad que rechaza a quien no es agremiado, la doble inscripción y la inscripción a un evento aún cerrado—. Se rompió el guardián del aforo y se vio la promoción caer en rojo.
 
 ---
 
@@ -102,13 +114,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B y C están enteros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B, C y E están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de F, G y los tableros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit de C·2.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque D — las notificaciones web con autorización explícita.** Lo que toca: el canal `WEB_PUSH`, que la persona autoriza explícitamente antes de recibir nada. La preferencia por canal (bloque B) y la plantilla por canal (bloque C·1) ya lo admiten; falta el permiso del navegador, guardar la suscripción y entregar por ese canal respetando la preferencia, como el correo. Ninguna notificación web sin que la persona la haya pedido.
+**Bloque F — el cobro de eventos.** Lo que toca: conectar `Event.catalogProductId` y `EventRegistration.paymentId` al catálogo y a los pagos de la Fase 3, de modo que un evento con costo cobre por la pasarela y confirme la inscripción al confirmarse el pago. El cobro ya existe en `src/modules/billing`; falta enlazarlo con la inscripción por el buzón de eventos de dominio.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque D: una notificación web que sale sin autorización de la persona.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque F: una inscripción de pago que se confirma sin que el pago se haya confirmado.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

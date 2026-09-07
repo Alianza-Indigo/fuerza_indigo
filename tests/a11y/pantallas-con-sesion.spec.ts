@@ -28,6 +28,7 @@ const DE_LA_PERSONA = [
   '/mi/directorio',
   '/mi/consentimientos',
   '/mi/notificaciones',
+  '/mi/eventos',
   '/mi/pagos',
   '/mi/seguridad',
 ];
@@ -49,6 +50,8 @@ const DE_COMUNICACION = [
   '/gestion/comunicaciones/plantillas',
   '/gestion/comunicaciones/plantillas/nueva',
   '/gestion/comunicaciones/campanas',
+  '/gestion/eventos',
+  '/gestion/eventos/nuevo',
 ];
 
 /** Rutas de gestión. Exigen facultades institucionales. */

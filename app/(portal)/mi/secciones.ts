@@ -18,6 +18,9 @@ export const SECCIONES_DEL_PORTAL = [
   // toda cuenta —seguridad, cobros, gobierno—, y leer el propio buzón o silenciar
   // lo que no es obligatorio no es una facultad que un cargo conceda (ADR-0157).
   { href: '/mi/notificaciones', label: 'Notificaciones', permiso: null },
+  // Los eventos los ve cualquier persona con cuenta: el calendario es para
+  // todas, y quien se inscribe lo hace por sí misma (PRD §16.3).
+  { href: '/mi/eventos', label: 'Eventos', permiso: null },
   { href: '/mi/directorio', label: 'Mi ficha pública', permiso: 'directory.publication.manage_own' },
   { href: '/mi/credencial', label: 'Mi credencial', permiso: 'credentialing.credential.read_own' },
   { href: '/mi/pagos', label: 'Mis pagos', permiso: 'billing.payment.read_own' },

@@ -278,6 +278,19 @@ export const AUDIT_ACTIONS = {
   NOTIFICATION_TEMPLATE_RETIRED: 'notifications.template.retired',
   NOTIFICATION_CAMPAIGN_SENT: 'notifications.campaign.sent',
 
+  // Eventos — Fase 9
+  EVENT_CREATED: 'events.event.created',
+  EVENT_PUBLISHED: 'events.event.published',
+  EVENT_REGISTRATION_OPENED: 'events.event.registration_opened',
+  EVENT_CANCELLED: 'events.event.cancelled',
+  EVENT_REGISTRATION_CREATED: 'events.registration.created',
+  EVENT_REGISTRATION_CANCELLED: 'events.registration.cancelled',
+  EVENT_WAITLIST_PROMOTED: 'events.registration.waitlist_promoted',
+  EVENT_ATTENDANCE_REGISTERED: 'events.attendance.registered',
+  EVENT_CONSTANCY_ISSUED: 'events.constancy.issued',
+  EVENT_CONSTANCY_REVOKED: 'events.constancy.revoked',
+  EVENT_MATERIAL_ADDED: 'events.material.added',
+
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',
   MODULE_CONFIGURED: 'system.module.configured',

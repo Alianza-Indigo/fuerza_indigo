@@ -9,10 +9,15 @@
  *
  * `permiso: null` es para lo que cualquier persona con cuenta puede hacer sobre
  * sí misma sin que ningún rol se lo conceda: mirar sus propias sesiones y
- * cerrarlas. Eso no se otorga, se tiene por tener cuenta.
+ * cerrarlas, o leer su propio buzón de avisos. Eso no se otorga, se tiene por
+ * tener cuenta.
  */
 export const SECCIONES_DEL_PORTAL = [
   { href: '/mi/afiliacion', label: 'Mi afiliación', permiso: 'membership.application.read_own' },
+  // El centro de notificaciones no lo abre ningún permiso: los avisos llegan a
+  // toda cuenta —seguridad, cobros, gobierno—, y leer el propio buzón o silenciar
+  // lo que no es obligatorio no es una facultad que un cargo conceda (ADR-0157).
+  { href: '/mi/notificaciones', label: 'Notificaciones', permiso: null },
   { href: '/mi/directorio', label: 'Mi ficha pública', permiso: 'directory.publication.manage_own' },
   { href: '/mi/credencial', label: 'Mi credencial', permiso: 'credentialing.credential.read_own' },
   { href: '/mi/pagos', label: 'Mis pagos', permiso: 'billing.payment.read_own' },

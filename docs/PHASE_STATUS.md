@@ -29,7 +29,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | Bloque | Contenido | Estado |
 |---|---|---|
 | A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | **Hecho** |
-| B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | Pendiente |
+| B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | **Hecho** |
 | C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | Pendiente |
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | Pendiente |
@@ -58,6 +58,20 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 
 ---
 
+## Lo que dejó el bloque B
+
+El centro de notificaciones dentro de la plataforma y las preferencias de la persona, con la garantía de la fase probada sobre el canal que ya entrega (ADR-0157, ADR-0158, ADR-0159).
+
+**Un buzón propio, sin permiso de por medio.** Cada persona lee sus avisos, los marca como leídos y los archiva, todo anclado a su `personId`. No hace falta ningún cargo: leer el propio buzón es un derecho de la cuenta, como ver las sesiones propias, y por eso la sección del portal no lo abre ningún permiso. Un aviso ajeno responde «no encontrado», nunca «prohibido».
+
+**Las preferencias gobiernan el centro.** La persona decide qué clases quiere ver; una clase silenciada desaparece del centro en el acto. El bloque ofrece las preferencias del único canal que este bloque entrega —el centro, `IN_APP`—; el correo y la web leerán estas mismas filas cuando lleguen su entrega (bloques C y D), sin un interruptor muerto antes de tiempo.
+
+**La garantía de la fase, ejercida.** Un aviso obligatorio de gobierno no se puede silenciar: el caso de uso lo rechaza con un mensaje claro **antes** de que la base tenga que hacerlo, y la base es la red de seguridad. Se probó rompiendo el guardián y viendo la prueba caer en el error crudo del `CHECK` (código 23514) en vez del rechazo limpio, y rompiendo el filtro del centro y viendo aparecer lo que debía estar silenciado. Solo se audita el cambio de preferencia —altera lo que la organización puede enviarte—; leer y archivar no.
+
+**Diez pruebas de integración, contra la base y como el rol de la aplicación.** El centro que solo muestra lo propio, el aviso solo-de-correo que no aparece, el ajeno que no se marca, la lectura idempotente, el archivado que no borra, el silencio que quita del centro, el guardado que no cambia nada, y —la de la fase— la supresión de lo obligatorio, rechazada dos veces: por el caso de uso y por el `CHECK`.
+
+---
+
 ## Lo que dejó el bloque A
 
 El esquema de eventos, formación, constancias y preferencias de notificación, con las garantías de la fase puestas en el dato desde el primer día (ADR-0154, ADR-0155, ADR-0156).
@@ -74,13 +88,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-El bloque A está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A y B están enteros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit del bloque A.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit del bloque B.
 
-**Bloque B — el centro de notificaciones y las preferencias.** Lo que toca: leer los avisos de una persona dentro de la plataforma (el centro), y administrar sus preferencias por categoría y canal **sin poder suprimir lo obligatorio** —el esquema ya lo impide; el caso de uso lo comprueba antes para dar un mensaje claro—. La entrega por canal (correo, web) y las campañas son de los bloques C y D.
+**Bloque C — el correo, las plantillas versionadas y las campañas.** Lo que toca: la entrega por correo que la Fase 1 dejó apuntada, ahora leyendo las preferencias del bloque B (una clase silenciada para `EMAIL` no se envía, salvo la obligatoria), plantillas versionadas administrables, y campañas operativas autorizadas, separadas de lo obligatorio. `NotificationTemplate` ya tiene `publishedById` desde el bloque A; el envío ya existe en `src/platform/mail`, sin consultar preferencias todavía.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque B: una preferencia que apaga un aviso obligatorio.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque C: una campaña que alcanza a quien silenció esa clase, o que apaga un aviso obligatorio.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

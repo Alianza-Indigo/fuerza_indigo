@@ -271,6 +271,9 @@ export const AUDIT_ACTIONS = {
   AI_CLASSIFICATION_SUGGESTED: 'ai.support.classification_suggested',
   AI_PROVIDER_CONFIGURED: 'ai.provider.configured',
 
+  // Notificaciones — Fase 9
+  NOTIFICATION_PREFERENCE_SET: 'notifications.preference.set',
+
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',
   MODULE_CONFIGURED: 'system.module.configured',

@@ -27,6 +27,7 @@ const DE_LA_PERSONA = [
   '/mi/credencial',
   '/mi/directorio',
   '/mi/consentimientos',
+  '/mi/notificaciones',
   '/mi/pagos',
   '/mi/seguridad',
 ];

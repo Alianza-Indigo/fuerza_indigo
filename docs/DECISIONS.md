@@ -1933,3 +1933,21 @@ Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el m
 **Contexto.** Es la garantía que gobierna la Fase 9 del lado de las comunicaciones (PRD §16.2, criterio 1). El catálogo de categorías ya distingue `GOVERNANCE_MANDATORY` de `PROMOTIONAL` desde la Fase 1, y `DeliveryStatus.SUPPRESSED` ya advertía que «nunca aplica a un aviso obligatorio». Faltaba dónde vive la preferencia y quién impide suprimir lo obligatorio.
 
 **Decisión.** `NotificationPreference` guarda, por persona, categoría y canal, si la persona pidió no recibir esa categoría por ese canal. La garantía no se deja al caso de uso: la base rechaza con un `CHECK` una preferencia sobre `GOVERNANCE_MANDATORY` que quede suprimida. Ninguna pantalla, ningún guion de datos y ninguna migración futura pueden apagar un aviso que la persona no puede rechazar. Lo promocional sí se silencia, y por eso las dos cosas son categorías distintas y no un mismo canal con una bandera.
+
+## ADR-0157 · El centro de notificaciones y las preferencias son un derecho de la cuenta, no un permiso
+
+**Contexto.** El bloque B de la Fase 9 construye el centro de notificaciones dentro de la plataforma y la administración de preferencias (PRD §16.2). Había que decidir cómo se autoriza: como las fichas de directorio o los consentimientos, con un permiso `*_own` que un rol concede, o como las sesiones propias, que cualquier cuenta gobierna sin que nadie se lo otorgue.
+
+**Decisión.** Sin permiso: leer el propio buzón y decidir qué se recibe es un derecho de la cuenta, igual que ver y cerrar las sesiones propias (`permiso: null` en las secciones del portal). La razón es que los avisos llegan a **toda** cuenta —seguridad, cobros, gobierno—, no solo a quien tiene una ficha o una afiliación; exigir un permiso otorgable dejaría a cuentas sin forma de leer o silenciar su propio correo. Todo se ancla a `actor.personId`; un aviso ajeno responde «no encontrado», nunca «prohibido», como en el portal de sesiones. Leer y las labores de mantenimiento (marcar leído, archivar) no se auditan —son gestos personales de alto volumen y sin valor de gobierno—; cambiar una preferencia sí se registra, porque altera lo que la organización puede o no puede enviarte.
+
+## ADR-0158 · Solo la clase obligatoria de gobierno es no silenciable; el resto lo decide la persona
+
+**Contexto.** El catálogo tiene ocho categorías. La base solo bloquea la supresión de `GOVERNANCE_MANDATORY`. Cabía endurecer el caso de uso para volver también innegociable `SECURITY`.
+
+**Decisión.** El caso de uso bloquea exactamente lo que la base bloquea: solo `GOVERNANCE_MANDATORY`. Que el dominio prohíba más que el `CHECK` rompería el relato de que «la garantía vive en el dato»: habría una supresión que el caso de uso niega y la base permite, y la única prueba de la regla sería el código. Silenciar `SECURITY` en el propio centro es una decisión legítima de la persona sobre su vista; su entrega por canal, cuando exista, decidirá aparte qué avisos de seguridad no admiten silencio. Mantener el dominio y la base diciendo lo mismo hace que la prueba de la garantía sea una sola y que romperla se vea.
+
+## ADR-0159 · En el bloque B las preferencias gobiernan el centro; el correo y la web llegan con su entrega
+
+**Contexto.** Una preferencia es por categoría **y canal**. Los canales son `IN_APP`, `EMAIL` y `WEB_PUSH`. La entrega por correo y por web —y las campañas— son de los bloques C y D. Ofrecer ya un interruptor de correo que nadie consulta sería un botón sin acción (PRD §0.3).
+
+**Decisión.** El bloque B ofrece las preferencias del único canal que este bloque entrega de verdad: el centro dentro de la plataforma (`IN_APP`). Cada casilla tiene efecto inmediato —una clase silenciada desaparece del centro—, y ninguna promete algo que todavía no ocurre. El modelo y el caso de uso admiten cualquier canal, de modo que el bloque C leerá estas mismas filas para el correo y el D para la web; pero la pantalla no dibuja un interruptor hasta que su canal entrega. Así no hay preferencia muerta y la regla de lo obligatorio ya queda probada sobre el canal que existe.

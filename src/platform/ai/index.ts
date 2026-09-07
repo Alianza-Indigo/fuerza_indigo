@@ -1,6 +1,7 @@
 /** Interfaz pública de la IA gobernada (PRD §15, Fase 8). */
 export {
   runGeneration,
+  runLabGeneration,
   aiCapability,
   type RunGenerationInput,
   type RunGenerationResult,

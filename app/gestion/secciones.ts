@@ -30,6 +30,7 @@ export const SECCIONES = [
   { href: '/gestion/credenciales', label: 'Credenciales', permiso: 'credentialing.credential.read' },
   { href: '/gestion/consentimientos', label: 'Avisos y consentimientos', permiso: 'consent.version.manage' },
   { href: '/gestion/contenidos', label: 'Contenidos', permiso: 'content.page.read' },
+  { href: '/gestion/ia', label: 'Prompts de IA', permiso: 'ai.prompt.read' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
   { href: '/gestion/contenidos/ecosistema', label: 'Catálogo del ecosistema', permiso: 'ecosystem.link.manage' },
   { href: '/gestion/redirecciones', label: 'Redirecciones', permiso: 'content.redirect.manage' },

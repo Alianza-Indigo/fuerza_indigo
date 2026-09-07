@@ -105,11 +105,32 @@ function inicioDelMes(zona: string): Date {
  * una versión de prompt inexistente o sin publicar, que es un defecto de quien
  * llama y no una circunstancia de operación.
  */
-export async function runGeneration(input: RunGenerationInput): Promise<RunGenerationResult> {
-  const zona = input.timeZone ?? DEFAULT_TIME_ZONE;
-  const cliente = db();
+/** Límites y moneda de la fila del proveedor. */
+interface ConfigEjecucion {
+  readonly maxTokensPerRequest: number;
+  readonly maxRequestsPerUserPerDay: number;
+  readonly maxMonthlyCostMinor: bigint;
+  readonly currency: string;
+}
 
-  const config = await cliente.aiProviderConfiguration.findUnique({
+/** Lo que una versión aporta a la ejecución. */
+interface VersionEjecutable {
+  readonly model: string;
+  readonly systemText: string;
+  readonly parameters: unknown;
+  readonly outputSchema: unknown;
+  readonly limits: unknown;
+}
+
+/**
+ * Config del proveedor y clave resuelta, o la razón por la que hay que degradar.
+ * Es el paso común a la ejecución de producción y a la del laboratorio: los dos
+ * caen al camino humano exactamente igual cuando la IA no está.
+ */
+async function prepararProveedor(): Promise<
+  { readonly ok: true; readonly config: ConfigEjecucion; readonly apiKey: string } | { readonly ok: false; readonly reason: DegradationReason }
+> {
+  const config = await db().aiProviderConfiguration.findUnique({
     where: { provider: 'GEMINI' },
     select: {
       isEnabled: true,
@@ -123,35 +144,40 @@ export async function runGeneration(input: RunGenerationInput): Promise<RunGener
 
   // Sin fila de proveedor, o apagada: la IA no está. Es el estado por omisión de
   // una instalación nueva, no una avería.
-  if (config === null || !config.isEnabled) {
-    return { status: 'DEGRADED', reason: 'PROVIDER_DISABLED' };
-  }
+  if (config === null || !config.isEnabled) return { ok: false, reason: 'PROVIDER_DISABLED' };
 
   const apiKey = resolveAiApiKey(config.apiKeyEnvVarName);
-  if (apiKey === '') {
-    return { status: 'DEGRADED', reason: 'NO_API_KEY' };
-  }
+  if (apiKey === '') return { ok: false, reason: 'NO_API_KEY' };
 
-  // La versión tiene que existir y estar publicada. Ejecutar un borrador o una
-  // versión retirada es un defecto de quien llama, no una circunstancia: se
-  // detiene en voz alta.
-  const version = await cliente.aiPromptVersion.findUnique({
-    where: { id: input.promptVersionId },
-    select: {
-      model: true,
-      systemText: true,
-      parameters: true,
-      outputSchema: true,
-      limits: true,
-      status: true,
-      prompt: { select: { isActive: true } },
+  return {
+    ok: true,
+    apiKey,
+    config: {
+      maxTokensPerRequest: config.maxTokensPerRequest,
+      maxRequestsPerUserPerDay: config.maxRequestsPerUserPerDay,
+      maxMonthlyCostMinor: config.maxMonthlyCostMinor,
+      currency: config.currency,
     },
-  });
-  if (version === null || version.status !== 'PUBLISHED' || !version.prompt.isActive) {
-    throw new Error(
-      `No se puede ejecutar la versión de prompt ${input.promptVersionId}: no existe, no está publicada o su prompt está inactivo.`,
-    );
-  }
+  };
+}
+
+/**
+ * Ejecuta una generación con todas las defensas del bloque B: límites antes de
+ * llamar, y una fila inmutable por cada llamada. La comparte la producción
+ * (`runGeneration`, solo versiones publicadas) y el laboratorio
+ * (`runLabGeneration`, versiones en borrador o en prueba). Lo único que cambia
+ * entre las dos es qué versiones se dejan ejecutar; una vez elegida, la máquina
+ * es la misma, y por eso los límites y la bitácora no se pueden saltar por el
+ * laboratorio (ADR-0140).
+ */
+async function ejecutar(
+  config: ConfigEjecucion,
+  apiKey: string,
+  version: VersionEjecutable,
+  input: RunGenerationInput,
+  zona: string,
+): Promise<RunGenerationResult> {
+  const cliente = db();
 
   const parametros = (version.parameters ?? {}) as { temperature?: number };
   const limitesVersion = (version.limits ?? {}) as { maxOutputTokens?: number };
@@ -319,6 +345,69 @@ export async function runGeneration(input: RunGenerationInput): Promise<RunGener
     completionTokens: salida.completionTokens,
     costMinor,
   };
+}
+
+/**
+ * Ejecuta una versión **publicada**, para los flujos asistidos de producción.
+ *
+ * Nunca lanza por un estado de operación —IA apagada, sin clave, límite
+ * alcanzado, proveedor caído—: devuelve un resultado que quien llama traduce al
+ * camino humano. Lanza solo por un incumplimiento de precondición del programa:
+ * una versión inexistente o sin publicar, que es un defecto de quien llama.
+ */
+export async function runGeneration(input: RunGenerationInput): Promise<RunGenerationResult> {
+  const zona = input.timeZone ?? DEFAULT_TIME_ZONE;
+
+  const prep = await prepararProveedor();
+  if (!prep.ok) return { status: 'DEGRADED', reason: prep.reason };
+
+  const version = await db().aiPromptVersion.findUnique({
+    where: { id: input.promptVersionId },
+    select: {
+      model: true,
+      systemText: true,
+      parameters: true,
+      outputSchema: true,
+      limits: true,
+      status: true,
+      prompt: { select: { isActive: true } },
+    },
+  });
+  if (version === null || version.status !== 'PUBLISHED' || !version.prompt.isActive) {
+    throw new Error(
+      `No se puede ejecutar la versión de prompt ${input.promptVersionId}: no existe, no está publicada o su prompt está inactivo.`,
+    );
+  }
+
+  return ejecutar(prep.config, prep.apiKey, version, input, zona);
+}
+
+/**
+ * Ejecuta una versión **en borrador o en prueba**, para el laboratorio (PRD
+ * §15.3, ADR-0140). Es la única puerta por la que se ejecuta algo sin publicar,
+ * y por eso la abre solo el caso de uso que exige `ai.prompt.edit`. Comparte con
+ * la producción los límites, la degradación y la bitácora: una prueba de
+ * laboratorio también cuesta, también se registra y también respeta el techo de
+ * gasto. Una versión publicada o retirada no se prueba aquí: para eso está la
+ * ejecución de producción, y una retirada ya no se toca.
+ */
+export async function runLabGeneration(input: RunGenerationInput): Promise<RunGenerationResult> {
+  const zona = input.timeZone ?? DEFAULT_TIME_ZONE;
+
+  const prep = await prepararProveedor();
+  if (!prep.ok) return { status: 'DEGRADED', reason: prep.reason };
+
+  const version = await db().aiPromptVersion.findUnique({
+    where: { id: input.promptVersionId },
+    select: { model: true, systemText: true, parameters: true, outputSchema: true, limits: true, status: true },
+  });
+  if (version === null || (version.status !== 'DRAFT' && version.status !== 'TESTING')) {
+    throw new Error(
+      `El laboratorio solo prueba versiones en borrador o en prueba. La versión ${input.promptVersionId} no existe o no está en ese estado.`,
+    );
+  }
+
+  return ejecutar(prep.config, prep.apiKey, version, input, zona);
 }
 
 /* -------------------------------------------------------------------------- */

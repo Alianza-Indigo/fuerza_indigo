@@ -30,7 +30,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 |---|---|---|
 | A | Esquema de IA y base documental, migración con `pgvector`, permisos y semilla | **Hecho** |
 | B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | **Hecho** |
-| C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | Pendiente |
+| C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | **Hecho** |
 | D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | Pendiente |
 | E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | Pendiente |
 | F | Casos de uso asistidos y revisión humana de cada salida | Pendiente |
@@ -84,17 +84,35 @@ El servicio central de la IA, con las tres defensas que gobiernan la ejecución,
 
 ---
 
+## Lo que dejó el bloque C
+
+Los prompts dejan de ser una promesa del modelo de datos y se administran de verdad: se crean, se versionan, se prueban contra el modelo y se publican, todo desde una pantalla y nada desde el código (criterio 1 de la fase).
+
+**Corregir es una versión nueva.** El módulo `@/modules/ai` crea prompts y versiones, y `saveDraftVersion` **nunca** pisa una versión: inserta otra. Lo sostiene la base con privilegios de columna —el texto, el modelo y el esquema de una versión no son actualizables—, así que la pregunta «¿qué se le pidió al modelo?» siempre tiene la versión exacta por respuesta (ADR-0141).
+
+**Quien redacta no publica.** `ai.prompt.edit` (COMMUNICATIONS) redacta y prueba; `ai.prompt.publish` (EXECUTIVE_SECRETARY) publica. La base exige que el revisor no sea el autor (ADR-0133), y el caso de uso lo comprueba antes para dar un mensaje claro en vez de un error de restricción. Publicar apunta el prompt a la versión y retira la anterior; retirar lo deja sin versión vigente, y sus flujos caen al camino humano igual que con la IA apagada (ADR-0142).
+
+**El laboratorio no es un atajo.** `runLabGeneration` ejecuta una versión en borrador o en prueba compartiendo la máquina del bloque B: los mismos límites, la misma degradación, la misma fila en `ai_generation`. Es la única puerta que ejecuta algo sin publicar, y la abre solo el caso de uso que exige `ai.prompt.edit` (ADR-0140). Una prueba de laboratorio cuesta, se registra y respeta el techo de gasto.
+
+**Reversión que no borra.** Revertir copia el contenido de una versión antigua en una nueva en borrador, con el rastro de su origen; no se publica sola.
+
+**Las pantallas están en `/gestion/ia`.** Listado, creación, y un editor con el historial de versiones, el laboratorio, la publicación, la reversión y el retiro; cada acción aparece solo para quien tiene su facultad, y quien solo lee ve el prompt sin poder tocarlo. El barrido de accesibilidad cubre el listado y el formulario de creación con la cuenta de comunicación.
+
+**Dieciséis pruebas de integración nuevas, cada garantía vista fallar.** Corregir sin pisar, quien redacta no publica, publicar retira la anterior, retirar deja sin vigente, revertir no borra, y el laboratorio que ejecuta un borrador y degrada con la IA apagada sin mover la versión. Se rompió cada una y se la vio en rojo antes de restaurar.
+
+---
+
 ## Cómo se retoma
 
-El bloque B está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+El bloque C está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (72 aprobados, 0 fallidos) y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque B**: mírela antes de dar nada por cerrado.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (72 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque C**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
 
-**Bloque C — prompts administrables.** Lo que toca: versiones con estados (`DRAFT`, `TESTING`, `PUBLISHED`, `RETIRED`), laboratorio para probar un borrador contra el modelo, publicación revisada por otra persona —`ai.prompt.edit` redacta, `ai.prompt.publish` publica, y la base ya exige que quien revisa no sea quien escribió (ADR-0133)— y reversión que copia una versión antigua en una nueva sin borrar el historial. El servicio de ejecución ya existe y exige una versión **publicada**: el bloque C es lo que la publica de verdad, en vez de que una prueba fije el estado a mano.
+**Bloque D — base documental.** Lo que toca: fuentes autorizadas (`KnowledgeSource`), fragmentos (`KnowledgeChunk`) con su vector y su índice léxico —ya en el esquema desde el bloque A—, indexación, y la recuperación del vecino más próximo que **filtra por permiso dentro de la misma consulta** (el `requiredPermissionCode` se copia al fragmento a propósito, para no recuperar primero y filtrar después: eso dejaría que el modelo viera lo que la persona no puede leer). El vínculo prompt→fuente (`AiPromptVersionSource`) ya existe y hoy no lo escribe nadie: el bloque D es donde una versión declara qué fuentes puede consultar.
 
-**Lo que ya está resuelto y no hay que rehacer.** El puerto, los límites, la degradación y la bitácora son del bloque B y no se tocan. El modelo por omisión y los límites viven en la fila y se administran (ADR-0132); `GEMINI_DEFAULT_MODEL` solo lo lee la semilla. El precio por token vive en `src/platform/ai/pricing.ts` y se actualiza cuando el proveedor cambia precios (ADR-0138).
+**Lo que ya está resuelto y no hay que rehacer.** El puerto, los límites, la degradación, la bitácora (bloque B) y toda la administración de prompts (bloque C) no se tocan. `runLabGeneration` es la única puerta a ejecutar sin publicar. El precio por token vive en `src/platform/ai/pricing.ts` (ADR-0138); el modelo y los límites, en la fila (ADR-0132).
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. Una regla que nunca se ha visto fallar no está probada.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. Una regla que nunca se ha visto fallar no está probada. La recuperación con permisos del bloque D es justo del tipo que hay que romper: quitar el filtro y ver que un fragmento restringido alcanza a quien no debe.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 

@@ -256,6 +256,14 @@ export const AUDIT_ACTIONS = {
   DOCUMENT_CANCELLED: 'documents.document.cancelled',
   DOCUMENT_SIGNED: 'documents.document.signed',
 
+  // Inteligencia artificial gobernada — Fase 8
+  AI_PROMPT_CREATED: 'ai.prompt.created',
+  AI_PROMPT_DRAFTED: 'ai.prompt.drafted',
+  AI_PROMPT_TESTED: 'ai.prompt.tested',
+  AI_PROMPT_PUBLISHED: 'ai.prompt.published',
+  AI_PROMPT_RETIRED: 'ai.prompt.retired',
+  AI_PROMPT_REVERTED: 'ai.prompt.reverted',
+
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',
   MODULE_CONFIGURED: 'system.module.configured',

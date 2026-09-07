@@ -1765,3 +1765,42 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Decisión.** Se prueba con un puerto falso que **cuenta llamadas**. Con la IA apagada, sin clave o por encima de cualquiera de los tres límites, el contador queda en cero: la garantía no es «responde rápido» sino «no llama», que es más fuerte y no depende de cuánto tarde en fallar un dominio. La caída real del proveedor se prueba haciendo que el falso lance —error y tiempo agotado— y comprobando que queda fila y que el resultado manda al camino humano.
 
 **La lección, la de siempre aquí.** Cuando se puede afirmar la ausencia de algo —una llamada que no se hizo, una fila que no se escribió— es preferible a medir un tiempo: la ausencia se cuenta, y contar no depende de la máquina.
+
+---
+
+## ADR-0140 · El laboratorio comparte la máquina de ejecución, y es la única puerta que ejecuta sin publicar
+
+**Contexto.** El PRD §15.3 pide un laboratorio para probar un borrador contra el modelo antes de publicarlo. El servicio de ejecución del bloque B (`runGeneration`) solo ejecuta versiones **publicadas**, con razón: en producción, nada sin revisar debe llegar al modelo sobre asuntos de gente real.
+
+**El problema.** Si el laboratorio abriera su propio camino al proveedor, tendría que reimplementar los límites, la degradación y la bitácora —o, peor, saltárselos—. Una prueba de laboratorio también cuesta dinero y también manda algo al proveedor: no puede ser un atajo que no cuente.
+
+**Decisión.** El servicio se parte en dos entradas sobre una **máquina común**. `runGeneration` (producción) exige una versión publicada; `runLabGeneration` (laboratorio) exige una en borrador o en prueba. Una vez elegida la versión, las dos pasan por exactamente el mismo código: los mismos tres límites, la misma degradación al camino humano, la misma fila inmutable en `ai_generation`. Lo único que cambia es qué versiones se dejan ejecutar.
+
+**Y la puerta la abre un solo caso de uso.** `runLabGeneration` no lo llama nadie salvo el caso de uso del laboratorio, que exige `ai.prompt.edit`. Ejecutar algo sin publicar es una facultad, no un descuido: probar cae del lado de redactar (ADR-0133), porque quien prueba un texto es quien puede corregirlo.
+
+**Por qué no un adaptador ni una bandera suelta.** Una bandera `allowUnpublished` en `runGeneration` sería una casilla que algún día se marca «temporalmente» desde un flujo de producción. Dos funciones con nombres distintos hacen que ejecutar sin publicar tenga que escribirse a propósito.
+
+---
+
+## ADR-0141 · Corregir un prompt es una versión nueva, no una edición
+
+**Contexto.** El CMS sobrescribe el borrador vivo al editar, para no llenar el historial de una versión por pulsación de teclado (ADR del bloque de contenidos). Para los prompts se tomó la decisión contraria.
+
+**Decisión.** Cada corrección de una versión de prompt **crea una versión nueva**; nunca se pisa la anterior. Lo sostiene la base con privilegios de columna: el `UPDATE` sobre el texto de sistema, el modelo, los parámetros y el esquema está retirado, y solo se puede mover el estado y las fechas. El caso de uso `saveDraftVersion` no tiene, por tanto, un camino de sobrescritura: siempre inserta.
+
+**Por qué aquí sí y en el CMS no.** Un borrador de comunicado es trabajo en curso de una persona; un prompt es lo que la máquina repetirá sin que nadie lo lea otra vez, sobre expedientes de gente real. La pregunta «¿por qué el sistema dijo eso sobre mí?» se responde con la versión exacta que se ejecutó, y una edición silenciosa la borraría. El historial completo es el precio, y es barato: una versión pesa un texto.
+
+**Consecuencia visible.** Iterar sobre un prompt deja varias versiones en borrador. Es correcto: cada una es un intento con su autoría y su fecha, y publicar elige una, no la última por defecto.
+
+---
+
+## ADR-0142 · Revertir crea un borrador; retirar deja el prompt sin nada que ejecutar
+
+**Contexto.** El §15.3 pide reversión, y el modelo permite retirar una versión. Faltaba decidir qué producen exactamente esos dos actos.
+
+**Decisión.**
+
+- **Revertir** copia el contenido de una versión antigua en una **versión nueva en borrador**, con el rastro de cuál fue el origen (`revertedFromVersionId`). No restaura sobrescribiendo, y no se publica sola: revertir crea el borrador, y publicarlo es otro acto, de otra persona. Cae del lado de redactar (`ai.prompt.edit`), porque lo que produce es un borrador.
+- **Retirar** pone la versión vigente en `RETIRED` y deja el prompt **sin versión vigente**. Es lo que hace que la degradación del bloque B tenga sentido desde la administración: un prompt retirado no se ejecuta, y sus flujos asistidos caen al camino humano, exactamente como con la IA apagada. Cae del lado de publicar (`ai.prompt.publish`), porque decide qué se ejecuta.
+
+**La simetría importa.** Publicar apunta el prompt a una versión; retirar lo deja sin ninguna. Las dos son decisiones de quien responde por lo que la máquina dice en nombre de la organización, y por eso comparten la facultad que exige un motivo escrito.

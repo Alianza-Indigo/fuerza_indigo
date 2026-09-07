@@ -5,12 +5,120 @@
 ---
 ## Situación actual
 
-- **Fase activa:** 8 — Inteligencia artificial Gemini
+- **Fase activa:** 9 — Eventos, formación e indicadores
 - **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 7 de septiembre de 2026
+- **Fecha de inicio:** 7 de septiembre de 2026
+- **Fase anterior:** 8 — `APPROVED`, cerrada en `58601f7`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** 10 — Integración, endurecimiento y producción, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones web; preferencias; plantillas; campañas operativas autorizadas; eventos; registros y asistencia; constancias; capacitación; tableros por rol; indicadores territoriales; reportes institucionales; exportaciones; transparencia publicada; y alertas de vencimientos y obligaciones.
+
+**Qué cierra esta fase.** Es la última fase de operación comunitaria antes del endurecimiento y la puesta en producción (Fase 10). Cierra tres cosas que las fases anteriores dejaron apuntadas: las notificaciones, que la Fase 1 dejó como envío de correo y nada más; los eventos y las constancias, que el modelo de datos contrata desde la Fase 0 y nadie ha construido; y la medición, que hasta hoy vive dispersa en consultas sueltas y aquí se vuelve tableros y reportes por nivel.
+
+**La garantía que gobierna la fase.** **Ningún indicador expone a una persona, y ninguna comunicación obligatoria se puede apagar.** Los indicadores sensibles se sirven agregados y con un umbral de privacidad —por debajo de él no se publica una cifra que señale a alguien—, y las exportaciones respetan los permisos de quien las pide y quedan auditadas. Del otro lado, una comunicación obligatoria —un vencimiento, una obligación legal— no es una preferencia: se separa de lo promocional, que sí se puede silenciar, y no admite que nadie la suprima.
+
+---
+
+## Bloques de trabajo
+
+| Bloque | Contenido | Estado |
+|---|---|---|
+| A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | Pendiente |
+| B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | Pendiente |
+| C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | Pendiente |
+| D | Notificaciones web con autorización explícita de la persona | Pendiente |
+| E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | Pendiente |
+| F | Cobro de eventos conectado al catálogo financiero | Pendiente |
+| G | Asistencia, materiales, evaluación y constancias verificables y revocables | Pendiente |
+| H | Tableros por rol con decisiones accionables | Pendiente |
+| I | Indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
+| J | Reportes institucionales, exportaciones auditadas y transparencia publicada | Pendiente |
+| K | Alertas de vencimientos y obligaciones | Pendiente |
+| L | Pruebas, controles de fase, documentación y cierre | Pendiente |
+
+---
+
+## Criterios de aceptación
+
+Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyendo el código. Se registran aquí al cerrarse cada uno.
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Comunicaciones obligatorias y promocionales se gestionan separadamente | Pendiente |
+| 2 | Las plantillas están versionadas | Pendiente |
+| 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | Pendiente |
+| 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
+| 5 | Las constancias son verificables y revocables | Pendiente |
+| 6 | Los paneles muestran decisiones accionables, no métricas decorativas | Pendiente |
+
+---
+
+## Cómo se retoma
+
+La Fase 9 está recién autorizada y **no se ha construido nada todavía**. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+
+**Bloque A — el esquema.** Lo que toca primero: las entidades de eventos, registros de asistencia, constancias y las de notificación que la fase amplía, con su migración correctiva (nunca reescribiendo una aplicada), sus permisos y su semilla. El modelo de datos ya contrata varias de ellas desde la Fase 0; hay que mirar `docs/DATA_MODEL.md` y construir lo que falta sin reinventar lo que existe.
+
+**La garantía que hay que tener presente desde el esquema.** El umbral de privacidad de los indicadores y la imposibilidad de suprimir una comunicación obligatoria no se añaden al final: se sostienen en el modelo —una categoría de notificación sabe si es obligatoria, un indicador sabe si es sensible— para que ninguna pantalla pueda saltárselos.
+
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo, y ejecutando el sistema para los criterios de aceptación, nunca leyendo el código.
+
+**Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
+
+---
+
+## Defectos abiertos
+
+Ninguno registrado todavía.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse aprobada.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
+| 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
+| 8 | 2026-09-06 | 2026-09-07 | `APPROVED` | `58601f7` |
+| 9 | 2026-09-07 | — | `IN_PROGRESS` | — |
+| 10 | — | — | No iniciada | — |
+
+---
+
+# Archivo — registro completo de la Fase 8
+
+> Inteligencia artificial Gemini. Cerrada el 7 de septiembre de 2026 en `58601f7`, con los seis criterios del PRD §24 Fase 8 cumplidos y la integración continua en verde.
+
+---
+
+## Situación actual
+
+- **Fase activa:** 8 — Inteligencia artificial Gemini
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 6 de septiembre de 2026
 - **Fecha de inicio:** 6 de septiembre de 2026
-- **Fase anterior:** 7 — `APPROVED`, cerrada en `0101a2a`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
-- **Fase siguiente:** 9 — Eventos, formación e indicadores, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+- **Fecha de cierre:** 7 de septiembre de 2026
+- **SHA del punto de control:** `58601f7`
+- **Fase anterior:** 7 — `APPROVED`, cerrada en `0101a2a`.
+- **Fase siguiente:** 9 — Eventos, formación e indicadores
 
 ---
 
@@ -18,9 +126,9 @@
 
 El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servidor; prompts administrables con versiones, estados y reversión; laboratorio de pruebas con publicación revisada; base documental con separación de fuentes por permisos; orientación, clasificación sugerida, resúmenes y documentos asistidos; costos, límites y auditoría; revisión humana; degradación cuando el proveedor no responda; y defensas ante inyección de prompt y exfiltración.
 
-**Qué cierra esta fase.** El modelo de datos contrata desde la Fase 0 ocho entidades de IA que nunca se construyeron, y dos columnas las esperan: `SupportRequest.suggestedByAiGenerationId` —la propuesta de canalización que hoy no genera ninguna inteligencia artificial— y la búsqueda del gestor de contenidos, que es léxica porque la semántica vive aquí.
+**Qué cerró esta fase.** El modelo de datos contrataba desde la Fase 0 ocho entidades de IA que nunca se construyeron, y dos columnas las esperaban: `SupportRequest.suggestedByAiGenerationId` —la propuesta de canalización que ahora sí genera la clasificación asistida— y la búsqueda del gestor de contenidos, que sigue siendo léxica porque la semántica vive en la base documental de esta fase.
 
-**La garantía que gobierna la fase.** **La IA no decide nada.** El PRD §15.4 enumera diez cosas que no puede decidir —admisiones, sanciones, elegibilidad, validez de un voto, conflictos, representación, diagnósticos, pagos, accesos y publicación de datos personales— y esa lista no es una recomendación para quien escriba los prompts: es una comprobación del servicio, que rechaza la ejecución antes de llamar al modelo. Y nada sale hacia el proveedor sin minimizar: lo que se envía se reduce, se redacta o se seudonimiza, y queda registrado qué se envió, con qué prompt, qué costó y quién revisó el resultado.
+**La garantía que gobernó la fase.** **La IA no decide nada.** El PRD §15.4 enumera diez cosas que no puede decidir —admisiones, sanciones, elegibilidad, validez de un voto, conflictos, representación, diagnósticos, pagos, accesos y publicación de datos personales—, y esa lista no es una recomendación para quien escribe los prompts: es una comprobación del servicio, que rechaza la ejecución antes de llamar al modelo. Y nada sale hacia el proveedor sin minimizar: lo que se envía se reduce y se redacta, y queda registrado qué se envió, con qué prompt, qué costó y quién revisó el resultado.
 
 ---
 
@@ -238,8 +346,9 @@ Ninguno registrado todavía.
 | 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
 | 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
 | 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
-| 8 | 2026-09-06 | — | `IN_PROGRESS` | — |
-| 9 y 10 | — | — | No iniciadas | — |
+| 8 | 2026-09-06 | 2026-09-07 | `APPROVED` | `58601f7` |
+| 9 | 2026-09-07 | — | `IN_PROGRESS` | — |
+| 10 | — | — | No iniciada | — |
 
 ---
 

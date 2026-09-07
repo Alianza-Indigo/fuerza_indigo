@@ -19,7 +19,7 @@ import { z } from 'zod';
  * al cerrarla: el control `C-COH-15` lo comprueba ahora contra
  * `docs/PHASE_STATUS.md`, para que no dependa de que alguien se acuerde.
  */
-const ACTIVE_PHASE = 8;
+const ACTIVE_PHASE = 9;
 
 /** 32 bytes en base64url producen 43 caracteres. Se exige ese mínimo. */
 const secret = (purpose: string) =>

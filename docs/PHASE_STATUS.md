@@ -66,6 +66,31 @@ Nueve tablas, una migración verificada por los dos caminos que exige `AGENTS.md
 
 ---
 
+## Cómo se retoma (punto de corte: `c8c39d7`)
+
+El bloque A está entero y empujado. Quien continúe no necesita nada de la sesión anterior: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice exactamente dónde se quedó.
+
+**Estado comprobado en el punto de corte.** `npm run lint`, `npm run typecheck`, `npx vitest run` (1265 pruebas), `npm run phase:verify` (71 aprobados, 0 fallidos) y `npm run db:check`, todo en verde en local. **Falta confirmar la integración continua de `c8c39d7`**, que es la puerta de salida de verdad: es el primer commit en el que la extensión `vector` se crea desde una migración sobre la imagen `pgvector/pgvector:pg17`.
+
+**Lo primero, antes de escribir una línea del bloque B:** mirar esa ejecución. Si está en rojo, se arregla eso y nada más.
+
+**Bloque B — puerto del proveedor.** Lo que toca:
+
+1. Un puerto del proveedor en `src/platform/`, con adaptador de Gemini que **solo corre en servidor** y adaptador falso para las pruebas, igual que el puerto de Stripe de la Fase 3 y el de archivos.
+2. La clave se lee del entorno **por el nombre que dice la fila**, no por una constante: `AiProviderConfiguration.apiKeyEnvVarName` existe para eso, y es el único sitio donde ese nombre se resuelve.
+3. Límites antes de llamar: tokens por petición, peticiones por persona y día y costo mensual máximo. Los tres están en la fila y los tres tienen que negar de verdad, con su prueba.
+4. Degradación: con `isEnabled` en falso, con la clave ausente o con el proveedor sin responder, la aplicación **sigue operando** y el flujo cae al camino humano. Es el criterio 5 del PRD §24 Fase 8, y no se prueba simulando una caída con un dominio inexistente —eso falla al instante y la prueba pasa igual esté o no llamando—: se prueba contando llamadas y comprobando qué camino se tomó (ADR-0130).
+5. Cada ejecución escribe una fila en `ai_generation`: huella de lo enviado y nunca el texto; modelo, tokens, costo, latencia y estado. La tabla ya es inmutable por privilegios.
+
+**Lo que ya está resuelto y no hay que rehacer.** El modelo por omisión y los límites **no** se leen del entorno: viven en la fila y se administran (ADR-0132). `GEMINI_DEFAULT_MODEL` solo lo lee la semilla.
+
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. En el bloque A eso costó treinta ejecuciones y encontró una prueba que pasaba por el motivo equivocado; una regla que nunca se ha visto fallar no está probada.
+
+**Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso.
+
+---
+
+
 ## Defectos abiertos
 
 Ninguno registrado todavía.

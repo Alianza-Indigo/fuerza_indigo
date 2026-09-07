@@ -74,6 +74,15 @@ model SupportRequest {
   /// abajo están vacías (PRD §10.1).
   suggestedRouting Json?
 
+  /// Qué ejecución del modelo produjo la propuesta, cuando la produjo una.
+  ///
+  /// Contratada desde la Fase 0 y sin destino hasta la Fase 8, que es la que
+  /// construye la IA. Nula cuando la propuesta la calculó la regla de
+  /// enrutamiento, que es lo que ocurre desde la Fase 6: apuntar a una
+  /// generación es lo que permite distinguir «lo propuso una regla» de «lo
+  /// propuso un modelo», y eso cambia cuánto hay que revisarla.
+  suggestedByAiGenerationId String? @db.Uuid
+
   confirmedRoutingLegalEntityId String? @db.Uuid
   confirmedById                 String? @db.Uuid
   confirmedAt                   DateTime? @db.Timestamptz(3)
@@ -115,6 +124,8 @@ model SupportRequest {
   emergencyFlags EmergencyFlag[] @relation("EmergencyFlagRequest")
 
   @@map("support_request")
+
+  suggestedByAiGeneration AiGeneration? @relation("SupportRequestSuggestedBy", fields: [suggestedByAiGenerationId], references: [id], onDelete: Restrict)
 }
 
 /// Tipos de la entrada única de ayuda (PRD §10.1).

@@ -2751,6 +2751,78 @@ const CHECKS = [
   },
 
   {
+    id: 'C-COH-18',
+    title: 'La tabla de variables por fase de ENVIRONMENT.md dice lo mismo que el código',
+    phases: 'all',
+    run() {
+      // Cuarta vez que un número de fase escrito a mano sobrevive a una
+      // renumeración. `D-F4-002` fue `ACTIVE_PHASE`, `D-F6-005` el contrato del
+      // verificador, y al abrir la Fase 8 fue `REQUIRED_BY_PHASE`, que exigía
+      // las claves de Gemini «desde la 10» —su número anterior—. Lo atrapó
+      // `C-COH-14`. Lo que nadie cotejaba era la **tabla del §11 de
+      // docs/ENVIRONMENT.md**, que decía 10 igual que el código y siguió
+      // diciéndolo después de corregirlo, contradiciendo a la fila de arriba de
+      // ese mismo documento, que decía 8.
+      //
+      // Una tabla que documenta una constante y no se coteja con ella no
+      // documenta: repite, y las repeticiones se separan.
+      const entorno = read('src/platform/config/env.ts') ?? '';
+      const doc = read('docs/ENVIRONMENT.md') ?? '';
+      if (entorno === '' || doc === '') {
+        return fail(['No se encuentra src/platform/config/env.ts o docs/ENVIRONMENT.md.']);
+      }
+
+      const tabla = /REQUIRED_BY_PHASE[^=]*=\s*\{([\s\S]*?)\n\};/.exec(entorno);
+      if (tabla === null) return fail(['No se puede leer REQUIRED_BY_PHASE en src/platform/config/env.ts.']);
+
+      /** Fase declarada en el código para cada variable. */
+      const enCodigo = new Map();
+      const cuerpo = tabla[1] ?? '';
+      for (const bloque of cuerpo.matchAll(/(\d+)\s*:\s*\[([\s\S]*?)\]/g)) {
+        for (const nombre of (bloque[2] ?? '').matchAll(/'([A-Z0-9_]+)'/g)) {
+          enCodigo.set(nombre[1], Number(bloque[1]));
+        }
+      }
+
+      const seccion = /\|\s*Fase\s*\|\s*Variables que pasan a ser obligatorias\s*\|([\s\S]*?)\n\n/.exec(doc);
+      if (seccion === null) {
+        return fail(['docs/ENVIRONMENT.md no contiene la tabla de variables obligatorias por fase.']);
+      }
+
+      const problemas = [];
+      let variablesCotejadas = 0;
+      for (const fila of (seccion[1] ?? '').split('\n')) {
+        const celdas = /^\|\s*(\d+)\s*\|(.*)\|\s*$/.exec(fila);
+        if (celdas === null) continue;
+        const faseDocumentada = Number(celdas[1]);
+        for (const nombre of (celdas[2] ?? '').matchAll(/`([A-Z0-9_]+)`/g)) {
+          const variable = nombre[1];
+          const faseDelCodigo = enCodigo.get(variable);
+          // Las entradas con comodín (`STRIPE_*`, `SUPERADMIN_*`) y las que el
+          // documento explica que no dependen de la fase no llegan aquí: sin
+          // fila en el código no hay nada que cotejar, y la prosa de su celda
+          // dice por qué.
+          if (faseDelCodigo === undefined) continue;
+          variablesCotejadas += 1;
+          if (faseDelCodigo !== faseDocumentada) {
+            problemas.push(
+              `docs/ENVIRONMENT.md §11 dice que ${variable} es obligatoria desde la Fase ${faseDocumentada} y REQUIRED_BY_PHASE la exige desde la ${faseDelCodigo}.`,
+            );
+          }
+        }
+      }
+
+      if (variablesCotejadas === 0) {
+        return fail(['La tabla del §11 de docs/ENVIRONMENT.md no nombra ninguna variable que el código exija: o cambió el formato o dejó de documentar la constante.']);
+      }
+
+      return problemas.length
+        ? fail(problemas)
+        : ok([`Las ${variablesCotejadas} variables que la tabla del §11 nombra coinciden en fase con REQUIRED_BY_PHASE.`]);
+    },
+  },
+
+  {
     id: 'C-COH-16',
     title: 'El contrato de fases es uno solo y nadie nombra una fase que no existe',
     phases: 'all',

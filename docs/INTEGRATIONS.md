@@ -116,7 +116,7 @@ El libro auxiliar (`LedgerEntry`) es inmutable: una corrección es un asiento de
 
 ### 3.1 Ejecución y configuración (PRD §15.1)
 
-Único proveedor inicial de IA. Se integra mediante el SDK oficial de Google **ejecutado exclusivamente en servidor**. `GEMINI_API_KEY` nunca llega al navegador ni aparece en respuestas, registros o mensajes de error. El modelo por omisión y los límites viven en `GEMINI_DEFAULT_MODEL` y en `AiProviderConfiguration` (modelos permitidos, tokens por petición, peticiones por persona y día, costo mensual máximo).
+Único proveedor inicial de IA. Se integra mediante el SDK oficial de Google **ejecutado exclusivamente en servidor**. `GEMINI_API_KEY` nunca llega al navegador ni aparece en respuestas, registros o mensajes de error. El modelo por omisión y los límites viven en `AiProviderConfiguration` —modelos permitidos, tokens por petición, peticiones por persona y día, costo mensual máximo—, que se administra desde la plataforma y no exige un despliegue para bajar un límite un martes. `GEMINI_DEFAULT_MODEL` **no** compite con esa fila: es el valor con el que la semilla la crea en una instalación nueva, y en marcha no lo lee nadie. La fila guarda además el **nombre de la variable de entorno** que contiene la clave, nunca la clave.
 
 ### 3.2 Contrato del puerto
 

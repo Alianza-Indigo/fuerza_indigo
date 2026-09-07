@@ -78,6 +78,9 @@ model FileObject {
 
   // Catálogo del ecosistema (Fase 7).
   ecosystemLinkLogos EcosystemLink[] @relation("EcosystemLinkLogo")
+
+  // Base documental de la IA (Fase 8).
+  knowledgeSources KnowledgeSource[] @relation("KnowledgeSourceFile")
 }
 
 enum FileClassification {
@@ -148,6 +151,9 @@ model RetentionPolicy {
   fileObjects FileObject[]
 
   @@map("retention_policy")
+
+  // Inteligencia artificial gobernada (Fase 8).
+  aiConversations AiConversation[] @relation("AiConversationRetention")
 }
 
 enum RetentionAction {

@@ -211,6 +211,12 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'cases.referral.propose',
       'cases.emergency.raise',
       'cases.indicator.read',
+      // IA (Fase 8). Prepara informes de su territorio con apoyo del modelo y
+      // responde por lo que sale: lee la salida y decide si la acepta. No
+      // redacta prompts ni toca la base documental —qué puede leer el modelo no
+      // se decide territorio por territorio (PRD §15.3, §15.5)—.
+      'ai.generation.read',
+      'ai.generation.review',
       'files.file.download_own',
       'identity.person.read',
       'territory.unit.read',
@@ -404,6 +410,18 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // acto institucional del Comité Ejecutivo, no una función técnica: por eso
       // está aquí y no en la lista cerrada del Superadmin raíz. La regla de no
       // elevación acota lo que puede otorgar a lo que ya posee.
+      // IA (Fase 8). Publica los prompts que no escribió —la base exige que
+      // quien revisa no sea quien redactó—, fija los límites de gasto y el
+      // encendido, y decide qué fuentes puede leer el modelo. Redactar no está
+      // aquí a propósito: si publicar y redactar cayeran en la misma mano, la
+      // revisión humana del PRD §15.3 dependería de la buena costumbre.
+      'ai.prompt.read',
+      'ai.prompt.publish',
+      'ai.provider.configure',
+      'ai.knowledge.manage',
+      'ai.generation.read',
+      'ai.generation.review',
+      'ai.usage.read',
       'access.role.assign',
       'access.role.revoke',
     ],
@@ -443,6 +461,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'compliance.obligation.read',
       'compliance.archive.read',
       'documents.document.read',
+      // IA (Fase 8). Fiscaliza el gasto del modelo y lee las instrucciones con
+      // las que opera. No lee lo generado: vigilar cuánto cuesta la IA no exige
+      // leer lo que alguien le contó en una orientación (PRD §24 Fase 8).
+      'ai.usage.read',
+      'ai.prompt.read',
       'files.file.download_own','identity.person.read', 'audit.audit.read', 'audit.security.read', 'audit.audit.export', 'territory.unit.read'],
   },
   {
@@ -511,6 +534,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'cases.emergency.raise',
       'cases.emergency.acknowledge',
       'cases.indicator.read',
+      // IA (Fase 8). La clasificación sugerida y el resumen de un expediente
+      // los revisa quien lleva el expediente. Sin `review` la sugerencia no
+      // surte efecto; con él, surte efecto porque una persona lo dijo.
+      'ai.generation.read',
+      'ai.generation.review',
       'files.file.download_own','identity.person.read', 'consent.grant', 'consent.revoke', 'consent.read', 'files.file.upload', 'files.file.download'],
   },
   {
@@ -558,6 +586,14 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       // El catálogo del ecosistema es contenido: cambiar la dirección de una
       // plataforma es un acto editorial, y quien mantiene el sitio público es
       // quien lo hace (Fase 7).
+      // IA (Fase 8). Redacta los prompts y los prueba en el laboratorio, y
+      // mantiene la base documental pública del modelo, que es material
+      // editorial. Publicar no: lo hace la Secretaría, y esa es la revisión.
+      'ai.prompt.read',
+      'ai.prompt.edit',
+      'ai.knowledge.manage',
+      'ai.generation.read',
+      'ai.generation.review',
       'ecosystem.link.manage',
       'files.file.download_own','files.file.upload', 'files.file.download'],
   },
@@ -591,6 +627,13 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'billing.scholarship.read',
       'billing.asset.read',
       'billing.accountability.read',
+      // IA (Fase 8). Solo lectura, como toda su cartera: la instrucción, la
+      // salida y el costo. Auditar una salida sin el prompt que la produjo es
+      // auditar la mitad. No revisa: decidir si una salida vale es del área que
+      // responde por ella, no de quien la audita después.
+      'ai.prompt.read',
+      'ai.generation.read',
+      'ai.usage.read',
       'files.file.download_own','audit.audit.read', 'audit.security.read', 'audit.audit.export', 'identity.person.read'],
   },
   {

@@ -28,7 +28,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 
 | Bloque | Contenido | Estado |
 |---|---|---|
-| A | Esquema de IA y base documental, migración con `pgvector`, permisos y semilla | Pendiente |
+| A | Esquema de IA y base documental, migración con `pgvector`, permisos y semilla | **Hecho** |
 | B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | Pendiente |
 | C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | Pendiente |
 | D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | Pendiente |
@@ -51,6 +51,18 @@ Los seis del PRD §24 Fase 8 se comprobarán ejecutando el sistema, no leyendo e
 | 4 | Las acciones sensibles requieren confirmación humana | Pendiente |
 | 5 | La aplicación continúa operando si Gemini está caído | Pendiente |
 | 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | Pendiente |
+
+---
+
+## Lo que dejó el bloque A
+
+Nueve tablas, una migración verificada por los dos caminos que exige `AGENTS.md` —sobre una base al día y sobre una instalación desde cero, y las dos producen una estructura idéntica salvo un comentario de esquema ajeno a las migraciones—, ocho permisos, la configuración del proveedor sembrada **apagada** y cuarenta pruebas de integración.
+
+**Treinta roturas, y una prueba que pasaba por el motivo equivocado.** Cada garantía de esta tabla se probó quitando lo que la sostiene y viendo la prueba ponerse en rojo. Veintinueve se pusieron en rojo a la primera. Una no: la que decía comprobar que la clave del proveedor no cabe en la base seguía en verde con la restricción quitada, porque lo que fallaba era el **privilegio por columna** —`apiKeyEnvVarName` no es actualizable desde la aplicación—, no la restricción. La prueba comprobaba algo cierto y no lo que decía comprobar. Se partió en dos: una prueba el privilegio por el camino normal, y la otra ejerce la restricción con la conexión de propietaria, que es el camino por el que alguien pegaría una clave donde va un nombre: una migración futura, un guion de operación, la consola.
+
+**Cuarta vez que un número de fase sobrevive a una renumeración.** La tabla del §11 de `docs/ENVIRONMENT.md` decía que las claves de Gemini son obligatorias «desde la Fase 10» mientras el código, ya corregido, decía 8, y la fila de arriba de ese mismo documento también decía 8. El control nuevo `C-COH-18` coteja esa tabla con `REQUIRED_BY_PHASE` y falló nombrando las dos variables antes de corregirlas.
+
+**Y `GEMINI_DEFAULT_MODEL` dejó de competir con la base.** El modelo por omisión estaba contratado en dos sitios: la variable de entorno del PRD §21 y la fila `AiProviderConfiguration` del §18.8. Ahora la variable siembra la fila en una instalación nueva y en marcha no la lee nadie (ADR-0132).
 
 ---
 

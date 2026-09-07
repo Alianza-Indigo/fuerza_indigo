@@ -85,7 +85,7 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `content` | `page.create`, `page.review`, `page.publish`, `page.archive`, `redirect.manage` | Normal · Sensible en `publish` |
 | `events` | `event.manage`, `registration.read`, `attendance.register`, `constancy.issue`, `constancy.revoke` | Normal |
 | `notifications` | `template.manage`, `campaign.send`, `notification.read_own` | Sensible en `campaign.send` |
-| `ai` | `prompt.read`, `prompt.edit`, `prompt.publish`, `generation.read`, `generation.review`, `provider.configure` | Crítica en `prompt.publish` y `provider.configure` |
+| `ai` | `prompt.read`, `prompt.edit`, `prompt.publish`, `generation.read`, `generation.review`, `provider.configure`, `knowledge.manage`, `usage.read` | Sensible · Crítica en `prompt.publish` y `provider.configure`, que exigen motivo. `prompt.edit` incluye probar en el laboratorio: probar antes de publicar no es una facultad aparte, y separarla solo serviría para dársela a quien no puede corregir lo que probó. `knowledge.manage` y `usage.read` no estaban nombrados en este catálogo y se añaden al construir la Fase 8: la base documental decide **qué puede leer el modelo y con qué permiso se lee cada fuente**, que no es lo mismo que redactar el texto de un prompt; y el PRD §24 Fase 8 exige que los costos y errores se consulten por módulo **sin exponer contenido sensible**, cosa imposible con un solo permiso de lectura que abriera también lo generado |
 | `files` | `file.upload`, `file.download`, `file.download_own`, `file.download_sensitive`, `file.delete`, `retention.manage`, `legalhold.manage` | Crítica; `download_sensitive` exige motivo. `download_own` es la `O` de la matriz: lo cubre la titularidad, no una asignación de expediente, y no exige motivo —nadie justifica abrir su propio expediente— |
 | `audit` | `audit.read`, `security.read`, `audit.export` | Crítica; `export` exige motivo |
 | `system` | `module.configure`, `job.manage`, `webhook.replay`, `health.read`, `integration.configure` | Crítica |
@@ -156,8 +156,14 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `page.publish` | — | — | — | — | — | — | P | — | — | — | — | P | — | P |
 | `event.manage` | — | — | — | — | — | P | P | — | — | P | — | P | — | — |
 | `campaign.send` | — | — | — | — | — | P | P | — | — | — | — | P | — | — |
-| `prompt.publish` | — | — | — | — | — | — | — | — | — | — | — | — | — | P |
+| `ai.prompt.read` | — | — | — | — | — | — | P | L | — | — | — | P | L | — |
+| `ai.prompt.edit` | — | — | — | — | — | — | — | — | — | — | — | P | — | — |
+| `ai.prompt.publish` | — | — | — | — | — | — | P | — | — | — | — | — | — | — |
+| `ai.provider.configure` | — | — | — | — | — | — | P | — | — | — | — | — | — | — |
+| `ai.knowledge.manage` | — | — | — | — | — | — | P | — | — | — | — | P | — | — |
+| `ai.generation.read` | — | — | — | — | — | P | P | — | — | P | — | P | L | — |
 | `generation.review` | — | — | — | — | — | P | P | — | — | P | — | P | — | — |
+| `ai.usage.read` | — | — | — | — | — | — | P | P | — | — | — | — | L | — |
 | `file.download_sensitive` | — | — | O | O | O | A | A | A | A | A | A | — | A | — |
 | `file.download_own` | — | O | O | O | O | O | O | O | O | O | O | O | O | — |
 | `audit.read` | — | — | — | — | — | L | L | P | L | — | L | — | P | P |
@@ -279,7 +285,7 @@ audit.audit.read          audit.security.read
 identity.person.read      identity.person.merge
 ```
 
-Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), y `ai.provider.configure` y `ai.prompt.publish` (Fase 8).
+Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3). Los de la Fase 8 quedaron resueltos al construirla y su motivo está abajo.
 
 **Permisos que esta lista tuvo o tenía contratados y no se le conceden, con su motivo:**
 
@@ -287,6 +293,7 @@ Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3), 
 - **`billing.catalog.manage`.** Figuraba como contratado para cuando existiera el módulo. Al construirlo en la Fase 3 se resolvió que **no** se concede: decidir cuánto cobra el sindicato por una cuota es un acto institucional, no una tarea de administración de la plataforma, y el actor raíz no tiene nombramiento que lo respalde. Lo administra `FINANCE`, con alcance de entidad jurídica. Vale además la razón de ADR-0048: el actor raíz no tiene cuenta y no alcanza el área de gestión, de modo que tampoco tendría pantalla desde la que ejercerlo (ADR-0049).
 - **`content.redirect.manage`.** Estuvo concedido con el argumento de que una redirección es encaminamiento técnico y no voz institucional. Se retiró al construir la pantalla que lo ejercería: el área de gestión exige cuenta, que el actor raíz no tiene, de modo que no había desde dónde usarlo; y sin lectura del gestor no puede saber qué páginas existen ni comprobar que un destino sea correcto. Lo tienen `COMMUNICATIONS` y `EXECUTIVE_SECRETARY`, que sí ven el gestor (ADR-0048).
 - **`ecosystem.link.manage`.** Figuraba como contratado para cuando existiera su módulo. Al construirlo en la Fase 7 se resuelve que **no** se concede, por la misma razón que los dos anteriores: el catálogo se administra desde la superficie de contenidos, que exige cuenta, y el actor raíz no la tiene. Un permiso sin pantalla desde la que ejercerse no es una facultad: es una fila en la lista de concesión que un día alguien aprovechará por otro camino. Lo tiene `COMMUNICATIONS`, que es quien mantiene el sitio público.
+- **`ai.provider.configure` y `ai.prompt.publish`.** Figuraban como contratados para cuando existiera el módulo. Al construir la Fase 8 se resuelve que **no** se conceden, y por dos motivos distintos que conviene no mezclar. El primero es el de siempre desde ADR-0048: ambos se ejercen desde el área de gestión, que exige cuenta, y el actor raíz no la tiene. El segundo es propio de esta fase y pesa más: publicar un prompt exige que **quien revisa no sea quien redactó** —la base lo comprueba con una restricción, no con una costumbre—, y el actor raíz no tiene fila en `User`, de modo que no puede figurar como revisor de nadie; y fijar el costo máximo mensual del modelo es decidir cuánto gasta la organización, que es un acto institucional y no una tarea de administración de la plataforma, por la misma razón que `billing.catalog.manage`. Los tiene `EXECUTIVE_SECRETARY`. Que la IA se apague cuando el proveedor falle no depende de ninguno de los dos: la degradación es automática (PRD §24 Fase 8), y por eso no hay aquí una urgencia técnica que justificara la excepción.
 
 Todo lo demás le está **denegado por no figurar en la lista**: admisiones, resoluciones, votos, sanciones, autorización de pagos, expedientes de casos, padrones y directorios.
 

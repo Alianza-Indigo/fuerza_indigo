@@ -30,7 +30,7 @@ async function existe(consulta: string, parametros: unknown[] = []): Promise<boo
 }
 
 describe('instalación limpia', () => {
-  it('crea las 122 tablas de las fases 1 a 7', async () => {
+  it('crea las 131 tablas de las fases 1 a 8', async () => {
     const { rows } = await base.sql.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'
@@ -88,10 +88,16 @@ describe('instalación limpia', () => {
       // dirección. Si algún día aparecieran aquí tablas de derechos, de
       // lanzamientos o de identidad, este conteo lo diría.
       'ecosystem_link',
+      // Fase 8 · inteligencia artificial gobernada. Nueve tablas, y la cuenta
+      // importa: si un día apareciera aquí una que guarde el texto enviado al
+      // modelo en claro, o la clave del proveedor, este conteo lo diría.
+      'ai_provider_configuration', 'ai_prompt', 'ai_prompt_version',
+      'ai_prompt_version_source', 'ai_conversation', 'ai_generation', 'ai_review',
+      'knowledge_source', 'knowledge_chunk',
     ]) {
       expect(tablas, `falta la tabla ${esperada}`).toContain(esperada);
     }
-    expect(tablas).toHaveLength(122);
+    expect(tablas).toHaveLength(131);
   });
 
   it('deja registradas todas las migraciones del repositorio, ninguna a medias', async () => {
@@ -218,11 +224,29 @@ describe('el esquema y las migraciones no se separan', () => {
         .map((linea) => linea.trim())
         .filter((linea) => linea !== '' && !linea.startsWith('--') && !linea.startsWith('Loaded Prisma config'));
 
-      // La única diferencia admitida es el índice de prefijo territorial, que se
-      // escribe a mano porque Prisma no sabe expresar `text_pattern_ops`
-      // (ADR-0027). Cualquier otra sentencia es una separación real entre lo que
-      // el código cree y lo que la base tiene.
-      const inesperadas = sentencias.filter((linea) => !linea.includes('territorial_unit_path_prefijo'));
+      // Las únicas diferencias admitidas son las que Prisma no sabe expresar, y
+      // se enumeran una por una para que cualquier otra siga cayendo:
+      //
+      // - el índice de prefijo territorial, con `text_pattern_ops` (ADR-0027);
+      // - la columna `embedding` de tipo `vector(768)`, su índice HNSW y la
+      //   columna generada `searchVector` con su índice GIN, de la Fase 8. El
+      //   modelo de Prisma las declara ausentes a propósito: no tiene tipo para
+      //   ninguna de las dos, y fingir una columna de texto haría que el cliente
+      //   creyera poder escribirlas.
+      //
+      // Nada de esto es una excepción cómoda: son exactamente las sentencias que
+      // la comparación produce hoy, escritas enteras. Una columna nueva sin
+      // migración seguiría cayendo aquí.
+      const DIFERENCIAS_ADMITIDAS = [
+        'territorial_unit_path_prefijo',
+        'DROP INDEX "knowledge_chunk_search_gin";',
+        'DROP INDEX "knowledge_chunk_embedding_hnsw";',
+        'ALTER TABLE "knowledge_chunk" DROP COLUMN "embedding",',
+        'DROP COLUMN "searchVector";',
+      ];
+      const inesperadas = sentencias.filter(
+        (linea) => !DIFERENCIAS_ADMITIDAS.some((admitida) => linea.includes(admitida)),
+      );
       expect(inesperadas, `el esquema y las migraciones divergen:\n${inesperadas.join('\n')}`).toEqual([]);
     } finally {
       await sombra.drop();

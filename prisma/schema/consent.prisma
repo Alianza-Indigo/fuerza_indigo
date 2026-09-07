@@ -82,6 +82,9 @@ model Consent {
   @@index([purpose])
   @@index([revokedAt])
   @@map("consent")
+
+  // Inteligencia artificial gobernada (Fase 8).
+  aiConversations AiConversation[] @relation("AiConversationConsent")
 }
 
 enum ConsentPurpose {

@@ -5,6 +5,7 @@ import { ROLE_SEEDS } from './data/roles';
 import { pathFor, TERRITORY_SEEDS } from './data/territory';
 import { newPublicId } from '../../src/platform/kernel/ids';
 import { loadLocalEnv } from '../../src/platform/config/local-env';
+import { env } from '../../src/platform/config/env';
 
 /**
  * Semilla idempotente y sin datos personales reales (PRD §24 Fase 1).
@@ -1032,6 +1033,56 @@ async function seedEcosystemLinks(actorId: string): Promise<void> {
   }
 }
 
+/**
+ * Configuración del proveedor de IA (PRD §15.1, Fase 8).
+ *
+ * Nace **apagada**. El PRD §24 Fase 8 exige que la aplicación siga operando si
+ * Gemini está caído, y una instalación nueva es el caso extremo de eso: hasta
+ * que alguien con `ai.provider.configure` la encienda a sabiendas, todos los
+ * flujos asistidos caen al camino humano, que es el que siempre existe.
+ *
+ * No guarda la clave: guarda el **nombre de la variable de entorno** que la
+ * contiene. Un secreto en la base es un secreto en cada copia de seguridad, en
+ * cada volcado de depuración y en cada consulta que alguien pegue en un chat.
+ *
+ * El modelo sale de `GEMINI_DEFAULT_MODEL` una sola vez, aquí. En marcha manda
+ * esta fila, que se administra desde la plataforma: bajar un límite un martes no
+ * puede exigir un despliegue, y el mismo dato no puede mandar desde dos sitios.
+ */
+async function seedAiProvider(actorId: string): Promise<void> {
+  const modelo = env().GEMINI_DEFAULT_MODEL;
+  if (modelo === undefined || modelo === '') {
+    throw new Error(
+      'Falta GEMINI_DEFAULT_MODEL: la configuración del proveedor de IA no se puede crear sin modelo por omisión.',
+    );
+  }
+
+  await prisma.aiProviderConfiguration.upsert({
+    where: { provider: 'GEMINI' },
+    // Vacío a propósito: los límites y el modelo son administrables, y volver a
+    // ejecutar la semilla no puede deshacer lo que la organización decidió.
+    update: {},
+    create: {
+      provider: 'GEMINI',
+      defaultModel: modelo,
+      allowedModels: [modelo],
+      // Techos de arranque, no valores institucionales en disputa: existen para
+      // que una instalación recién encendida no pueda gastar sin medida antes de
+      // que nadie mire. Quien paga la factura los sube o los baja desde la
+      // plataforma.
+      maxTokensPerRequest: 8192,
+      maxRequestsPerUserPerDay: 50,
+      maxMonthlyCostMinor: 500_000n,
+      currency: 'MXN',
+      apiKeyEnvVarName: 'GEMINI_API_KEY',
+      trainingOptOut: true,
+      isEnabled: false,
+      createdByActorId: actorId,
+      updatedByActorId: actorId,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   const actorId = await seedActors();
   await seedLegalEntities(actorId);
@@ -1046,6 +1097,7 @@ async function main(): Promise<void> {
   await seedConsentTexts();
   await seedStripeAccounts();
   await seedEcosystemLinks(actorId);
+  await seedAiProvider(actorId);
 
   const counts = {
     entidadesJuridicas: await prisma.legalEntity.count(),
@@ -1061,6 +1113,7 @@ async function main(): Promise<void> {
     productosDelCatalogo: await prisma.catalogProduct.count(),
     reglasNormativas: await prisma.normativeRuleSet.count(),
     fichasDelEcosistema: await prisma.ecosystemLink.count(),
+    proveedoresDeIaEncendidos: await prisma.aiProviderConfiguration.count({ where: { isEnabled: true } }),
   };
   console.log('Semilla aplicada:', JSON.stringify(counts, null, 2));
 }

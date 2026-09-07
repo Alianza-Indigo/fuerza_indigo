@@ -1,0 +1,418 @@
+/// Inteligencia artificial gobernada (PRD §15, Fase 8).
+///
+/// Todo lo de este archivo existe para una sola frase del PRD §15.4: **la IA no
+/// decide**. Ni admisiones, ni sanciones, ni elegibilidad, ni la validez de un
+/// voto, ni conflictos, ni representación, ni diagnósticos, ni pagos, ni
+/// accesos, ni la publicación de datos de nadie.
+///
+/// Un modelo que redacta un borrador y una persona que lo firma son dos cosas
+/// distintas, y la diferencia tiene que verse en el dato: por eso cada ejecución
+/// deja una fila inmutable con qué prompt la produjo, qué se envió —en huella,
+/// no en claro—, qué costó y quién la revisó después.
+
+/// Configuración del proveedor. Una fila por proveedor; hoy solo Gemini.
+///
+/// **La clave no está aquí.** Se guarda el *nombre de la variable de entorno*
+/// que la contiene, que es lo que permite auditar qué se está usando sin que el
+/// secreto toque la base ni una copia de respaldo (PRD §15.1).
+model AiProviderConfiguration {
+  id       String     @id @default(uuid(7)) @db.Uuid
+  provider AiProvider @unique
+
+  defaultModel  String   @db.VarChar(80)
+  allowedModels String[] @db.VarChar(80)
+
+  /// Límites. Se guardan aquí y no en el código porque quien paga la factura
+  /// tiene que poder bajarlos un martes sin esperar un despliegue.
+  maxTokensPerRequest     Int
+  maxRequestsPerUserPerDay Int
+  maxMonthlyCostMinor     BigInt
+  currency                String @db.Char(3)
+
+  /// Nombre de la variable de entorno que guarda la clave. Nunca la clave.
+  apiKeyEnvVarName String @db.VarChar(80)
+
+  /// El proveedor no debe usar lo enviado para entrenar. Se guarda como hecho
+  /// declarado, para poder responder la pregunta sin depender de la memoria de
+  /// quien configuró la cuenta.
+  trainingOptOut Boolean @default(true)
+
+  /// Apagar la IA es una decisión de la organización, no una avería. Con esto
+  /// en falso el sistema sigue funcionando: todo cae al flujo humano.
+  isEnabled Boolean @default(false)
+
+  /// Qué se le enseña a la gente cuando la IA no está. Es contenido editable,
+  /// no un texto en el código: se escribe una vez y se corrige sin desplegar.
+  degradedModeMessageId String? @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  degradedModeMessage ContentPage? @relation("AiDegradedMessage", fields: [degradedModeMessageId], references: [id], onDelete: Restrict)
+  createdByActor      Actor        @relation("AiProviderCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor      Actor        @relation("AiProviderUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@map("ai_provider_configuration")
+}
+
+enum AiProvider {
+  GEMINI
+}
+
+/// Prompt administrable. **Nunca disperso en el código** (PRD §15.3).
+///
+/// Un prompt escrito en el código no se puede revisar sin leer el repositorio,
+/// no se puede corregir sin desplegar, y no deja rastro de quién lo cambió. Los
+/// tres problemas importan más aquí que en otro sitio: el prompt es lo que
+/// decide qué se le pide al modelo sobre asuntos de gente real.
+model AiPrompt {
+  id      String @id @default(uuid(7)) @db.Uuid
+  code    String @unique @db.VarChar(80)
+  purpose String @db.VarChar(300)
+  module  String @db.VarChar(40)
+
+  /// Un prompt crítico no se publica sin que otra persona lo revise.
+  criticality AiCriticality @default(STANDARD)
+
+  /// Versión vigente. Nula mientras ninguna se haya publicado: un prompt sin
+  /// versión publicada no se puede ejecutar, y eso es lo correcto.
+  currentVersionId String? @unique @db.Uuid
+
+  isActive Boolean @default(true)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  currentVersion AiPromptVersion? @relation("PromptCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  createdByActor Actor            @relation("AiPromptCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor            @relation("AiPromptUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  versions AiPromptVersion[] @relation("PromptVersions")
+
+  @@index([module])
+  @@index([isActive])
+  @@map("ai_prompt")
+}
+
+enum AiCriticality {
+  STANDARD
+  CRITICAL
+}
+
+/// Versión concreta de un prompt. Inmutable una vez publicada.
+///
+/// Revertir no borra: copia una versión antigua en una nueva y deja escrito de
+/// cuál salió. El historial de lo que se le pidió a un modelo sobre expedientes
+/// de gente es parte del expediente.
+model AiPromptVersion {
+  id        String @id @default(uuid(7)) @db.Uuid
+  promptId  String @db.Uuid
+  version   Int
+
+  systemText       String   @db.Text
+  /// Qué variables admite el texto. Lo que no esté aquí no se interpola: es lo
+  /// que impide que alguien meta el expediente entero en un prompt de saludo.
+  allowedVariables String[] @db.VarChar(60)
+
+  model      String @db.VarChar(80)
+  parameters Json
+
+  /// Forma que la salida debe tener. Se valida contra ella; lo que no encaje se
+  /// rechaza en vez de enseñarse (PRD §24 Fase 8).
+  outputSchema Json
+  limits       Json
+
+  status AiPromptStatus @default(DRAFT)
+
+  authorId    String    @db.Uuid
+  reviewerId  String?   @db.Uuid
+  reviewedAt  DateTime? @db.Timestamptz(3)
+  publishedAt DateTime? @db.Timestamptz(3)
+  retiredAt   DateTime? @db.Timestamptz(3)
+
+  revertedFromVersionId String? @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  prompt              AiPrompt         @relation("PromptVersions", fields: [promptId], references: [id], onDelete: Restrict)
+  author              User             @relation("AiPromptAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  reviewer            User?            @relation("AiPromptReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  revertedFromVersion AiPromptVersion? @relation("AiPromptRevertedFrom", fields: [revertedFromVersionId], references: [id], onDelete: Restrict)
+  createdByActor      Actor            @relation("AiPromptVersionCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor      Actor            @relation("AiPromptVersionUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  revertedInto    AiPromptVersion[] @relation("AiPromptRevertedFrom")
+  currentOfPrompt AiPrompt?         @relation("PromptCurrentVersion")
+  authorizedSources AiPromptVersionSource[]
+  generations       AiGeneration[]
+
+  @@unique([promptId, version])
+  @@index([status])
+  @@map("ai_prompt_version")
+}
+
+enum AiPromptStatus {
+  DRAFT
+  TESTING
+  PUBLISHED
+  RETIRED
+}
+
+/// Qué fuentes puede consultar una versión de prompt.
+///
+/// Es una tabla y no un arreglo de identificadores por la regla de §11.bis: un
+/// arreglo no tiene clave foránea y sobreviviría al borrado de la fuente,
+/// dejando un prompt autorizado a consultar algo que ya no existe.
+model AiPromptVersionSource {
+  promptVersionId   String @db.Uuid
+  knowledgeSourceId String @db.Uuid
+
+  promptVersion   AiPromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
+  knowledgeSource KnowledgeSource @relation(fields: [knowledgeSourceId], references: [id], onDelete: Restrict)
+
+  @@id([promptVersionId, knowledgeSourceId])
+  @@map("ai_prompt_version_source")
+}
+
+/// Hilo de asistencia con una persona.
+model AiConversation {
+  id            String  @id @default(uuid(7)) @db.Uuid
+  personId      String? @db.Uuid
+  module        String  @db.VarChar(40)
+  purpose       AiPurpose
+  legalEntityId String? @db.Uuid
+  /// Consentimiento con propósito `AI_ASSISTANCE`, cuando la conversación trata
+  /// datos de la persona. Nulo en la orientación anónima, que no los trata.
+  consentId     String? @db.Uuid
+
+  startedAt    DateTime  @default(now()) @db.Timestamptz(3)
+  endedAt      DateTime? @db.Timestamptz(3)
+  messageCount Int       @default(0)
+
+  retentionPolicyId String? @db.Uuid
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person          Person?          @relation("AiConversationPerson", fields: [personId], references: [id], onDelete: Restrict)
+  legalEntity     LegalEntity?     @relation("AiConversationEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  consent         Consent?         @relation("AiConversationConsent", fields: [consentId], references: [id], onDelete: Restrict)
+  retentionPolicy RetentionPolicy? @relation("AiConversationRetention", fields: [retentionPolicyId], references: [id], onDelete: Restrict)
+  createdByActor  Actor            @relation("AiConversationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor  Actor            @relation("AiConversationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  generations AiGeneration[]
+
+  @@index([personId])
+  @@index([module])
+  @@map("ai_conversation")
+}
+
+/// Para qué se usó el modelo. Cerrado a propósito: un propósito nuevo obliga a
+/// mirar si el PRD §15.4 lo permite, en vez de colarse como texto libre.
+enum AiPurpose {
+  INITIAL_GUIDANCE
+  PROCEDURE_EXPLANATION
+  REQUEST_CLASSIFICATION
+  SUMMARY
+  DRAFTING_ASSISTANCE
+  STRUCTURED_EXTRACTION
+  DELEGATE_REPORT
+  SEMANTIC_SEARCH
+  TRANSLATION
+}
+
+/// Ejecución concreta del modelo. **Inmutable** (PRD §15.5).
+///
+/// No guarda lo enviado en claro: guarda su huella. Si un día hay que
+/// comprobar qué se mandó, se recompone desde el origen —que sigue en su sitio,
+/// con sus permisos— en vez de tener una segunda copia de datos personales
+/// viviendo en una tabla de telemetría.
+model AiGeneration {
+  id               String  @id @default(uuid(7)) @db.Uuid
+  conversationId   String? @db.Uuid
+  promptVersionId  String  @db.Uuid
+  model            String  @db.VarChar(80)
+  requestedById    String? @db.Uuid
+  purpose          AiPurpose
+
+  /// Huella de lo enviado. Nunca el contenido.
+  inputDigest      String  @db.Char(64)
+  /// Si se redactó o seudonimizó antes de enviar.
+  redactionApplied Boolean
+
+  /// El resultado, marcado siempre como generado con IA en la interfaz.
+  outputSummary     String  @db.Text
+  outputSchemaValid Boolean
+
+  promptTokens     Int
+  completionTokens Int
+  costMinor        BigInt
+  currency         String  @db.Char(3)
+  latencyMs        Int
+
+  status AiGenerationStatus
+
+  /// Sospecha de instrucciones incrustadas en el material consultado. No se
+  /// borra el resultado: se marca, porque quien lo revise necesita saberlo.
+  injectionSuspected Boolean @default(false)
+
+  occurredAt       DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+
+  conversation   AiConversation? @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  promptVersion  AiPromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Restrict)
+  requestedBy    User?           @relation("AiGenerationRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  createdByActor Actor           @relation("AiGenerationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  reviews         AiReview[]
+  supportRequests SupportRequest[] @relation("SupportRequestSuggestedBy")
+
+  @@index([conversationId])
+  @@index([promptVersionId])
+  @@index([status])
+  @@index([occurredAt])
+  @@map("ai_generation")
+}
+
+enum AiGenerationStatus {
+  SUCCEEDED
+  SCHEMA_REJECTED
+  BLOCKED_BY_POLICY
+  PROVIDER_ERROR
+  TIMEOUT
+}
+
+/// Revisión humana de una salida.
+///
+/// Existe porque el PRD §15.4 exige que las acciones sensibles las confirme una
+/// persona. Guardar la decisión —aceptada, editada o rechazada— y el texto
+/// corregido es lo que convierte «lo revisó alguien» en un hecho comprobable.
+model AiReview {
+  id           String         @id @default(uuid(7)) @db.Uuid
+  generationId String         @db.Uuid
+  reviewerId   String         @db.Uuid
+  decision     AiReviewDecision
+  editedOutput String?        @db.Text
+  comment      String?        @db.VarChar(1000)
+  reviewedAt   DateTime       @default(now()) @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+
+  generation     AiGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  reviewer       User         @relation("AiReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  createdByActor Actor        @relation("AiReviewCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  @@index([generationId])
+  @@map("ai_review")
+}
+
+enum AiReviewDecision {
+  ACCEPTED
+  EDITED
+  REJECTED
+}
+
+/// Fuente documental autorizada para la búsqueda semántica.
+///
+/// `requiredPermissionCode` es lo que separa las fuentes por permisos: un
+/// fragmento nunca alcanza a quien no puede leer su origen. Nulo significa
+/// pública, no «sin restricción por descuido»: la diferencia se documenta aquí
+/// porque nulo es justo el valor que alguien pone sin pensar.
+model KnowledgeSource {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  code          String            @unique @db.VarChar(80)
+  name          String            @db.VarChar(200)
+  sourceKind    KnowledgeSourceKind
+  legalEntityId String?           @db.Uuid
+  fileObjectId  String?           @db.Uuid
+  contentPageId String?           @db.Uuid
+
+  requiredPermissionCode String? @db.VarChar(80)
+
+  indexedAt   DateTime? @db.Timestamptz(3)
+  chunkCount  Int       @default(0)
+  /// Huella del contenido indexado. Cuando cambia, la fuente queda `STALE`.
+  contentHash String    @db.Char(64)
+  status      KnowledgeSourceStatus @default(PENDING)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity    LegalEntity? @relation("KnowledgeSourceEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  fileObject     FileObject?  @relation("KnowledgeSourceFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  contentPage    ContentPage? @relation("KnowledgeSourcePage", fields: [contentPageId], references: [id], onDelete: Restrict)
+  createdByActor Actor        @relation("KnowledgeSourceCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor        @relation("KnowledgeSourceUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  chunks            KnowledgeChunk[]
+  authorizedPrompts AiPromptVersionSource[]
+
+  @@index([status])
+  @@index([requiredPermissionCode])
+  @@map("knowledge_source")
+}
+
+enum KnowledgeSourceKind {
+  STATUTE
+  POLICY
+  PUBLIC_CONTENT
+  PROCEDURE_GUIDE
+}
+
+enum KnowledgeSourceStatus {
+  PENDING
+  INDEXED
+  STALE
+  DISABLED
+}
+
+/// Fragmento indexado. Es lo que la búsqueda recupera de verdad.
+///
+/// `requiredPermissionCode` se **copia** desde la fuente, y esa duplicación es
+/// deliberada: permite filtrar dentro de la misma consulta del vecino más
+/// próximo, sin unir tablas. Recuperar primero y filtrar después significaría
+/// que el modelo ya vio fragmentos que la persona no puede leer.
+///
+/// El vector y el índice léxico no se declaran aquí: Prisma no expresa el tipo
+/// `vector` ni `tsvector`, así que los añade la migración y esta entidad los
+/// ignora. Lo que Prisma no ve, la consulta de recuperación lo usa en SQL.
+model KnowledgeChunk {
+  id                String @id @default(uuid(7)) @db.Uuid
+  knowledgeSourceId String @db.Uuid
+  ordinal           Int
+  text              String @db.Text
+  tokenCount        Int
+  sectionPath       String? @db.VarChar(300)
+
+  requiredPermissionCode String? @db.VarChar(80)
+
+  indexedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+
+  knowledgeSource KnowledgeSource @relation(fields: [knowledgeSourceId], references: [id], onDelete: Cascade)
+  createdByActor  Actor           @relation("KnowledgeChunkCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([knowledgeSourceId, ordinal])
+  @@index([requiredPermissionCode])
+  @@map("knowledge_chunk")
+}

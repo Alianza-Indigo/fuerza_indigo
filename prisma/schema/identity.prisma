@@ -45,6 +45,21 @@ model Actor {
   createdEcosystemLinks EcosystemLink[] @relation("EcosystemLinkCreatedBy")
   updatedEcosystemLinks EcosystemLink[] @relation("EcosystemLinkUpdatedBy")
 
+  // Inteligencia artificial gobernada (Fase 8).
+  createdAiProviders        AiProviderConfiguration[] @relation("AiProviderCreatedBy")
+  updatedAiProviders        AiProviderConfiguration[] @relation("AiProviderUpdatedBy")
+  createdAiPrompts          AiPrompt[]                @relation("AiPromptCreatedBy")
+  updatedAiPrompts          AiPrompt[]                @relation("AiPromptUpdatedBy")
+  createdAiPromptVersions   AiPromptVersion[]         @relation("AiPromptVersionCreatedBy")
+  updatedAiPromptVersions   AiPromptVersion[]         @relation("AiPromptVersionUpdatedBy")
+  createdAiConversations    AiConversation[]          @relation("AiConversationCreatedBy")
+  updatedAiConversations    AiConversation[]          @relation("AiConversationUpdatedBy")
+  createdAiGenerations      AiGeneration[]            @relation("AiGenerationCreatedBy")
+  createdAiReviews          AiReview[]                @relation("AiReviewCreatedBy")
+  createdKnowledgeSources   KnowledgeSource[]         @relation("KnowledgeSourceCreatedBy")
+  updatedKnowledgeSources   KnowledgeSource[]         @relation("KnowledgeSourceUpdatedBy")
+  createdKnowledgeChunks    KnowledgeChunk[]          @relation("KnowledgeChunkCreatedBy")
+
   // Finanzas (Fase 3). Un asiento puede originarlo el manejador de un webhook.
   createdCatalogProducts CatalogProduct[] @relation("CatalogProductCreatedBy")
   updatedCatalogProducts CatalogProduct[] @relation("CatalogProductUpdatedBy")
@@ -254,6 +269,8 @@ model Person {
   @@index([primaryEmail])
   @@map("person")
   labourFilings LabourAuthorityFiling[] @relation("LabourFilingPerson")
+  // Inteligencia artificial gobernada (Fase 8).
+  aiConversations AiConversation[] @relation("AiConversationPerson")
 }
 
 enum GenderIdentity {
@@ -349,6 +366,11 @@ model User {
   acknowledgedEmergencies  EmergencyFlag[]  @relation("EmergencyAcknowledgedBy")
 
   @@map("user_account")
+  // Inteligencia artificial gobernada (Fase 8).
+  aiPromptsAuthored   AiPromptVersion[] @relation("AiPromptAuthor")
+  aiPromptsReviewed   AiPromptVersion[] @relation("AiPromptReviewer")
+  aiGenerationsAsked  AiGeneration[]    @relation("AiGenerationRequestedBy")
+  aiReviews           AiReview[]        @relation("AiReviewReviewer")
 }
 
 enum UserStatus {

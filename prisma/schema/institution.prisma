@@ -39,6 +39,10 @@ model LegalEntity {
   // que la ficha anuncia no se opera desde aquí.
   ecosystemLinks EcosystemLink[]
 
+  // Inteligencia artificial gobernada (Fase 8).
+  aiConversations  AiConversation[]  @relation("AiConversationEntity")
+  knowledgeSources KnowledgeSource[] @relation("KnowledgeSourceEntity")
+
   // Finanzas (Fase 3). La entidad receptora está en cada movimiento.
   stripeAccountConfiguration StripeAccountConfiguration?
   catalogProducts CatalogProduct[]

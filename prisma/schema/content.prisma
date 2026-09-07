@@ -37,6 +37,10 @@ model ContentPage {
   // Protocolos de riesgo inmediato que esta página sostiene (Fase 6).
   emergencyFlags EmergencyFlag[] @relation("EmergencyProtocolPage")
 
+  // Inteligencia artificial gobernada (Fase 8).
+  aiDegradedFor    AiProviderConfiguration[] @relation("AiDegradedMessage")
+  knowledgeSources KnowledgeSource[]         @relation("KnowledgeSourcePage")
+
   @@index([kind, status, publishedAt])
   @@index([status, scheduledFor])
   @@index([legalEntityId])

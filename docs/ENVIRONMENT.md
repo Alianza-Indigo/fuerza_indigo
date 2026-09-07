@@ -124,7 +124,7 @@ En desarrollo y vista previa se usan claves de prueba. Si al inicio se opera una
 | Variable | Propósito | Formato | Desarrollo | Vista previa | Producción |
 |---|---|---|---|---|---|
 | `GEMINI_API_KEY` | Clave del SDK oficial de Google. Se usa **exclusivamente en servidor**. | Clave del proveedor | Opc. hasta Fase 8 | Obl. desde Fase 8 | Obl. desde Fase 8 |
-| `GEMINI_DEFAULT_MODEL` | Modelo por omisión cuando la versión del prompt no fija uno. | Identificador de modelo, p. ej. `gemini-2.5-flash` | Opc. hasta Fase 8 | Obl. desde Fase 8 | Obl. desde Fase 8 |
+| `GEMINI_DEFAULT_MODEL` | Modelo con el que se **siembra** la configuración del proveedor en una instalación nueva. En marcha no lo lee nadie: el modelo por omisión y los modelos permitidos son `AiProviderConfiguration`, que se administra desde la plataforma (PRD §15.1). Cambiar esta variable en una instalación ya sembrada no cambia nada, y ese es el punto: el mismo dato no puede mandar desde dos sitios. | Identificador de modelo, p. ej. `gemini-2.5-flash` | Opc. hasta Fase 8 | Obl. desde Fase 8 | Obl. desde Fase 8 |
 
 Sin estas variables, el servicio de IA queda deshabilitado y la aplicación **continúa operando** por los flujos humanos equivalentes (PRD §15.5). Los límites de tokens, peticiones y costo se administran en `AiProviderConfiguration`, no por entorno.
 
@@ -186,13 +186,15 @@ La fase que manda es la constante `ACTIVE_PHASE` de `src/platform/config/env.ts`
 | 3 | `STRIPE_*` de ambas cuentas |
 | 4 | `QR_SIGNING_SECRET`, que en realidad se exige desde el primer arranque: un llavero de firma vacío no tiene valor por omisión razonable, así que su formato se valida siempre |
 | 5 | `VOTE_CREDENTIAL_SECRET`, secreto maestro del que se deriva la clave de firma de cada votación (ADR-0012) |
-| 10 | `GEMINI_API_KEY`, `GEMINI_DEFAULT_MODEL` |
+| 8 | `GEMINI_API_KEY`, y `GEMINI_DEFAULT_MODEL`, que el arranque exige porque la instalación no está completa sin ella: la semilla se niega a escribir una configuración de proveedor sin modelo, y el arranque lo advierte antes y más barato |
 
 `EMAIL_API_KEY` no entra en esta tabla porque no depende de la fase sino del proveedor: con `EMAIL_PROVIDER=console` no hace falta, y con un proveedor real es obligatoria desde el primer envío.
 
 ### La tabla se comprueba contra la integración continua
 
 El control `C-COH-14` coteja `REQUIRED_BY_PHASE` con las variables que declara `.github/workflows/calidad.yml`, y falla nombrando la que falte.
+
+Y el control `C-COH-18` coteja **esta tabla** con esa misma constante. Se escribió porque la fila de Gemini decía «Fase 10» —su número antes de la corrección de alcance— mientras la tabla de arriba de este documento decía 8: la cuarta vez que un número de fase escrito a mano sobrevive a una renumeración. Una tabla que repite una constante y no se coteja con ella no documenta; se separa.
 
 Existe por un fallo real. `VOTE_CREDENTIAL_SECRET` se introdujo al abrir la Fase 5, quien la introdujo la escribió en su `.env.local` y siguió trabajando: en su máquina todo pasaba y la integración continua se caía en la primera prueba que arranca la aplicación, con un mensaje que aconseja copiar `.env.example` —un consejo dirigido a una persona, inútil dentro de un contenedor—. Estuvo tres commits en rojo, el cierre de la Fase 5 entre ellos.
 

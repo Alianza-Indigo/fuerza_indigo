@@ -1656,3 +1656,61 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Sin variable de entorno que lo configure.** No es una decisión de despliegue —quien despliegue de verdad pone el token— y una variable más sería una que documentar, validar y explicar para nada.
 
 **La lección, que es la de siempre en este proyecto.** Una prueba que comprueba que un elemento está en la pantalla no comprueba que funcione. Cuando se puede preguntar por el efecto —los píxeles de una imagen, el conteo de llamadas, la fila en la base— hay que preguntar por el efecto.
+
+---
+
+## ADR-0132 · El mismo dato no manda desde dos sitios: `GEMINI_DEFAULT_MODEL` siembra, `AiProviderConfiguration` gobierna
+
+**Contexto.** El PRD §21 contrata la variable de entorno `GEMINI_DEFAULT_MODEL`, y el §15.1 dice que claves, modelos y límites se configuran «mediante variables de entorno **y** configuración administrativa segura». El modelo de datos, además, contrata desde la Fase 0 una fila `AiProviderConfiguration` con `defaultModel` y `allowedModels`.
+
+**El problema.** Leídos juntos, dos sitios guardan el mismo hecho. Ese es exactamente el patrón que este proyecto lleva encontrado cuatro veces —`D-F4-002`, `D-F6-005`, el número de fase de estas mismas claves y la tabla del §11 de `docs/ENVIRONMENT.md`—: una regla escrita dos veces se corrige una vez.
+
+**Decisión.** Se reparten sin solaparse.
+
+- **La clave va solo al entorno.** `GEMINI_API_KEY` nunca toca la base. La fila guarda el **nombre de la variable** que la contiene, y una restricción de la base lo comprueba: `apiKeyEnvVarName` tiene que parecerse a un nombre de variable y no a una clave. Un secreto en la base es un secreto en cada copia de seguridad y en cada volcado de depuración.
+- **El modelo y los límites van solo a la fila.** Es lo administrable: quien paga la factura tiene que poder bajar el costo máximo un martes sin esperar un despliegue.
+- **`GEMINI_DEFAULT_MODEL` es el valor con el que la semilla crea esa fila en una instalación nueva.** Se lee una vez, ahí. En marcha no lo lee nadie, y cambiarlo en una instalación ya sembrada no cambia nada. Queda escrito en `.env.example`, en `docs/ENVIRONMENT.md` y en `docs/INTEGRATIONS.md`, porque una variable que no hace lo que su nombre sugiere es peor que ninguna si no se dice.
+
+**Por qué sigue siendo obligatoria desde la Fase 8.** No porque el arranque la use, sino porque una instalación no está completa sin ella: la semilla se niega a escribir la configuración del proveedor sin modelo, y el arranque avisa antes y más barato que un despliegue a medio sembrar.
+
+**Y la fila nace apagada.** `isEnabled` en falso. El PRD §24 Fase 8 exige que la aplicación siga operando con Gemini caído; una instalación nueva es el caso extremo de eso. Encenderla es un acto de alguien con `ai.provider.configure`, no el estado por omisión.
+
+---
+
+## ADR-0133 · Redactar un prompt y publicarlo son dos permisos porque si no, la revisión depende de la buena costumbre
+
+**Contexto.** El PRD §15.3 exige que la publicación de un prompt crítico pase por revisión humana. La base lo sostiene con una restricción: `reviewerId` no puede ser `authorId`.
+
+**El problema.** Una restricción así se cumple sola cuando dos personas distintas hacen las dos cosas, y se convierte en un estorbo cuando una sola persona tiene ambas facultades: escribe, le pide a alguien que firme, y la firma es un trámite. La restricción sigue verde y la revisión no existe.
+
+**Decisión.** `ai.prompt.edit` y `ai.prompt.publish` son permisos distintos, en manos distintas: redacta y prueba `COMMUNICATIONS`, publica `EXECUTIVE_SECRETARY`. La separación deja de depender de que la organización reparta el trabajo con cuidado y pasa a ser la forma del sistema.
+
+**Probar cae del lado de redactar.** El laboratorio ejecuta una versión en borrador con datos que escribe quien prueba. Un permiso propio para el laboratorio solo serviría para dárselo a quien no puede corregir lo que probó, que es alguien mirando un problema que no puede arreglar.
+
+**`ai.provider.configure` y `ai.prompt.publish` no van al Superadmin raíz**, aunque el catálogo de la Fase 0 los tenía apuntados ahí. Por el motivo de ADR-0048 —no tiene cuenta ni pantalla desde la que ejercerlos— y por uno propio de esta fase: el actor raíz no tiene fila en `User`, de modo que no puede figurar como revisor de nadie, y fijar el costo máximo mensual es decidir cuánto gasta la organización, que es un acto institucional. Que la IA se apague cuando el proveedor falle no depende de ninguno de los dos: la degradación es automática.
+
+---
+
+## ADR-0134 · Vigilar el gasto de la IA no da acceso a lo que la gente le contó
+
+**Contexto.** El PRD §24 Fase 8 pide que los costos y errores puedan consultarse por módulo **sin exponer contenido sensible**. El catálogo de permisos de la Fase 0 nombraba `generation.read`, que es lectura de la salida —contenido incluido—.
+
+**Decisión.** Se añade `ai.usage.read`, que da consumo, costo, latencia y errores agregados por módulo y ninguna línea de texto. La Comisión de Vigilancia lo tiene y no tiene `ai.generation.read`: fiscalizar cuánto cuesta el modelo no exige leer lo que alguien escribió en una orientación.
+
+**Con un solo permiso, la única forma de vigilar el gasto habría sido conceder la lectura del contenido**, y ese es el camino por el que un permiso de auditoría se convierte en una puerta.
+
+**`AUDITOR` va al revés y por eso la pareja no sobra.** Lee la instrucción (`ai.prompt.read`), lee la salida (`ai.generation.read`) y **no** decide sobre ella (`ai.generation.review`). Auditar una salida sin el prompt que la produjo es auditar la mitad; decidir si vale es del área que responde por ella, no de quien la audita después.
+
+---
+
+## ADR-0135 · Una conversación no cambia de persona ni de consentimiento
+
+**Contexto.** La orientación inicial se puede dar sin identificar a nadie: `AiConversation` admite `personId` nulo. Cuando sí hay persona, una restricción exige consentimiento: `personId IS NULL OR consentId IS NOT NULL`.
+
+**El problema.** Esa restricción se comprueba al insertar y también al actualizar, pero no impide el movimiento que de verdad preocupa: tomar una conversación anónima, ponerle una persona **y** un consentimiento firmado después, y quedarse con un hilo «consentido» cuyo texto se produjo cuando nadie había consentido nada. Con la restricción sola, eso pasa.
+
+**Decisión.** Los privilegios por columna retiran `UPDATE` sobre `personId`, `legalEntityId`, `consentId`, `module` y `purpose`. Lo que se puede mover es lo que cambia mientras la conversación transcurre: cerrarla, contar sus mensajes, atarla a una política de retención.
+
+**Cuando alguien se identifica a mitad de camino, empieza una conversación nueva.** Es más trabajo y es lo correcto: lo dicho antes se dijo en otro marco.
+
+**El mismo razonamiento retira `UPDATE` de `ai_prompt_version_source`.** Sus dos columnas son la clave: un vínculo se crea o se quita, no se edita.

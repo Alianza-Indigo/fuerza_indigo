@@ -702,6 +702,62 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     sensitivity: 'SENSITIVE',
   }),
 
+  // ai — inteligencia artificial gobernada (PRD §15, Fase 8)
+  //
+  // Los seis primeros son los que el catálogo del §3 de docs/PERMISSIONS.md
+  // contrató desde la Fase 0. Los dos últimos los pide el alcance de la fase y
+  // no estaban nombrados; su motivo queda escrito en ese documento.
+  define('ai.prompt.read', 'Consultar los prompts del sistema y su historial de versiones'),
+  /**
+   * Editar incluye probar. El laboratorio ejecuta una versión en borrador
+   * contra el modelo con datos que escribe quien prueba, y probar antes de
+   * publicar no es una facultad aparte: es lo que hace que publicar sea
+   * responsable. Un permiso propio para el laboratorio solo serviría para
+   * concedérselo a quien no puede editar, que es alguien probando un texto
+   * que no podrá corregir.
+   */
+  define('ai.prompt.edit', 'Redactar prompts y versiones en borrador, y probarlas en el laboratorio', {
+    sensitivity: 'SENSITIVE',
+  }),
+  /**
+   * Publicar un prompt es poner en boca del sindicato un texto que la máquina
+   * repetirá sin que nadie lo lea otra vez. El PRD §15.3 exige revisión humana
+   * y la base exige que quien revisa no sea quien escribió. Por eso `edit` y
+   * `publish` son permisos distintos y no dos acciones del mismo: si fueran
+   * uno, la separación entre autoría y revisión dependería de que la
+   * organización tuviera la disciplina de repartirlos, y no la tendría un
+   * martes por la tarde.
+   */
+  define('ai.prompt.publish', 'Publicar, retirar o revertir una versión de prompt', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  define('ai.generation.read', 'Consultar el contenido generado y su trazabilidad', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('ai.generation.review', 'Aceptar, corregir o rechazar una salida antes de que surta efecto', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('ai.provider.configure', 'Configurar el proveedor: modelos permitidos, límites, costo máximo y encendido', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+  /**
+   * La base documental decide qué puede leer el modelo y con qué permiso se
+   * lee cada fuente. No cabe en `prompt.edit`: quien redacta el texto de un
+   * prompt no decide por eso a qué documentos alcanza.
+   */
+  define('ai.knowledge.manage', 'Registrar, indexar y retirar fuentes de la base documental', {
+    sensitivity: 'SENSITIVE',
+  }),
+  /**
+   * Separado de `generation.read` porque el PRD §24 Fase 8 lo pide separado:
+   * los costos y errores se consultan por módulo **sin exponer contenido
+   * sensible**. Con un solo permiso, vigilar el gasto obligaría a poder leer
+   * lo que se escribió en una orientación.
+   */
+  define('ai.usage.read', 'Consultar consumo, costo y errores de la IA por módulo, sin contenido'),
+
   // system
   define('system.module.configure', 'Configurar módulos del sistema', { sensitivity: 'CRITICAL', requiresReason: true }),
   define('system.job.manage', 'Administrar trabajos programados', { sensitivity: 'CRITICAL', requiresReason: true }),

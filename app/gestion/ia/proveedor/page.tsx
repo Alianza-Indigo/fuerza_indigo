@@ -23,7 +23,12 @@ function centavosAPesos(minor: bigint): string {
  */
 export default async function ProveedorPage() {
   const actor = await currentActor();
-  if (!can(actor, 'ai.provider.configure', { kind: 'AiProviderConfiguration', legalEntityId: null }).allowed) {
+  // `ai.provider.configure` exige motivo (permiso crítico). El guardián de la
+  // pantalla lo lleva, igual que la navegación y el propio caso de uso: sin él,
+  // `can` niega aunque la persona tenga la facultad, y la pantalla se convertiría
+  // en una denegación para quien sí puede.
+  const sonda = { ...actor, reason: 'abrir la configuración del proveedor de IA' };
+  if (!can(sonda, 'ai.provider.configure', { kind: 'AiProviderConfiguration', legalEntityId: null }).allowed) {
     return (
       <PageShell title="Proveedor de IA">
         <ForbiddenNotice />

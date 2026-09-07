@@ -263,6 +263,10 @@ export const AUDIT_ACTIONS = {
   AI_PROMPT_PUBLISHED: 'ai.prompt.published',
   AI_PROMPT_RETIRED: 'ai.prompt.retired',
   AI_PROMPT_REVERTED: 'ai.prompt.reverted',
+  AI_PROMPT_SOURCES_CHANGED: 'ai.prompt.sources_changed',
+  AI_KNOWLEDGE_SOURCE_REGISTERED: 'ai.knowledge.source_registered',
+  AI_KNOWLEDGE_SOURCE_INDEXED: 'ai.knowledge.source_indexed',
+  AI_KNOWLEDGE_SOURCE_DISABLED: 'ai.knowledge.source_disabled',
 
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',

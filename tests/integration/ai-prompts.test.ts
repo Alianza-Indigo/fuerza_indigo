@@ -41,6 +41,7 @@ const puertoFalso: AiProviderPort = {
     if (comportamiento === 'error') throw new Error('el proveedor falló');
     return Promise.resolve({ text: JSON.stringify({ ok: true }), promptTokens: 50, completionTokens: 20 });
   },
+  embed: () => Promise.resolve([]),
 };
 
 const CONTENIDO = {

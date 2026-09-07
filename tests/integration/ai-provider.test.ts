@@ -45,6 +45,7 @@ const puertoFalso: AiProviderPort = {
     }
     return Promise.resolve({ text: JSON.stringify({ ok: true, respuesta: 'hola' }), promptTokens: 120, completionTokens: 80 });
   },
+  embed: () => Promise.resolve([]),
 };
 
 beforeAll(async () => {

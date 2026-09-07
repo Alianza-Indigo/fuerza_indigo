@@ -44,9 +44,25 @@ export class AiProviderTimeoutError extends Error {
   }
 }
 
+/** Modelo y dimensión de los vectores de la base documental (ADR-0143).
+ * La dimensión tiene que coincidir con `vector(768)` del esquema: cambiarla exige
+ * una migración y reindexar, así que vive junto al puerto que la produce. */
+export const EMBEDDING_MODEL = 'text-embedding-004';
+export const EMBEDDING_DIM = 768;
+
+export interface AiEmbedInput {
+  readonly apiKey: string;
+  readonly model: string;
+  /** Los textos a vectorizar, en orden. La salida devuelve un vector por texto. */
+  readonly texts: readonly string[];
+  readonly timeoutMs: number;
+}
+
 export interface AiProviderPort {
   readonly name: string;
   generate(input: AiGenerateInput): Promise<AiGenerateOutput>;
+  /** Vectoriza uno o varios textos. Devuelve un vector de `EMBEDDING_DIM` por texto. */
+  embed(input: AiEmbedInput): Promise<number[][]>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -136,6 +152,49 @@ const geminiHttpAdapter: AiProviderPort = {
         promptTokens: payload.usageMetadata?.promptTokenCount ?? 0,
         completionTokens: payload.usageMetadata?.candidatesTokenCount ?? 0,
       };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new AiProviderTimeoutError(input.timeoutMs);
+      }
+      throw error;
+    } finally {
+      clearTimeout(temporizador);
+    }
+  },
+
+  embed: async (input) => {
+    assertSoloServidor();
+    if (input.apiKey === '') {
+      throw new Error('El adaptador de Gemini se invocó sin clave. Es un defecto de quien llama: debió degradar antes.');
+    }
+
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), input.timeoutMs);
+
+    try {
+      const respuesta = await fetch(`${GEMINI_API}/models/${encodeURIComponent(input.model)}:batchEmbedContents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': input.apiKey },
+        body: JSON.stringify({
+          requests: input.texts.map((text) => ({
+            model: `models/${input.model}`,
+            content: { parts: [{ text }] },
+          })),
+        }),
+        signal: controlador.signal,
+      });
+
+      if (!respuesta.ok) {
+        logger.error('El proveedor de IA rechazó la vectorización', {
+          module: 'ai',
+          outcome: 'failed',
+          context: { status: respuesta.status },
+        });
+        throw new Error(`El proveedor de IA respondió ${respuesta.status} al vectorizar.`);
+      }
+
+      const payload = (await respuesta.json()) as { embeddings?: { values?: number[] }[] };
+      return (payload.embeddings ?? []).map((e) => e.values ?? []);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new AiProviderTimeoutError(input.timeoutMs);

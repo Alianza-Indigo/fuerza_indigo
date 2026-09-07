@@ -7,9 +7,12 @@ import {
   labRun,
   publishVersion,
   retirePrompt,
+  retrieveForVersion,
   revertToVersion,
   saveDraftVersion,
+  setVersionSources,
   type LabRunOutcome,
+  type RetrievalResult,
 } from '@/modules/ai';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
@@ -149,6 +152,33 @@ export async function revertAction(_previo: PromptFormState, formData: FormData)
   if (!resultado.ok) return fallo(resultado.error);
   revalidatePath(`/gestion/ia/${promptId}`);
   return { status: 'ok', message: `Se creó la versión ${resultado.data.version} con el contenido anterior, en borrador. Publícala cuando quieras.` };
+}
+
+export async function setSourcesAction(_previo: PromptFormState, formData: FormData): Promise<PromptFormState> {
+  const actor = await currentActor();
+  const promptId = textField(formData, 'promptId');
+  const sourceIds = formData.getAll('sourceIds').filter((v): v is string => typeof v === 'string');
+  const resultado = await setVersionSources(actor, { promptVersionId: textField(formData, 'promptVersionId'), sourceIds });
+  if (!resultado.ok) return fallo(resultado.error);
+  revalidatePath(`/gestion/ia/${promptId}`);
+  return { status: 'ok', message: `La versión consultará ${resultado.data.count} fuente(s).` };
+}
+
+export interface RetrievalState {
+  readonly status: 'idle' | 'error' | 'ok';
+  readonly message?: string;
+  readonly result?: RetrievalResult;
+}
+
+export async function retrievalTestAction(_previo: RetrievalState, formData: FormData): Promise<RetrievalState> {
+  const actor = await currentActor();
+  const resultado = await retrieveForVersion(actor, {
+    promptVersionId: textField(formData, 'promptVersionId'),
+    queryText: textField(formData, 'queryText'),
+    limit: 8,
+  });
+  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+  return { status: 'ok', result: resultado.data };
 }
 
 export interface LabState {

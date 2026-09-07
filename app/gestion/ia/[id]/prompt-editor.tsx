@@ -21,14 +21,25 @@ import {
   labRunAction,
   publishAction,
   retireAction,
+  retrievalTestAction,
   revertAction,
   saveDraftAction,
+  setSourcesAction,
   type LabState,
   type PromptFormState,
+  type RetrievalState,
 } from '../actions';
+
+interface Fuente {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly requiredPermissionCode: string | null;
+}
 
 const INICIAL: PromptFormState = { status: 'idle' };
 const LAB_INICIAL: LabState = { status: 'idle' };
+const RETRIEVAL_INICIAL: RetrievalState = { status: 'idle' };
 
 const ESTADO_VERSION: Record<string, { etiqueta: string; tono: 'neutral' | 'accent' | 'success' | 'warning' }> = {
   DRAFT: { etiqueta: 'Borrador', tono: 'neutral' },
@@ -241,6 +252,89 @@ function RevertForm({ prompt }: { prompt: PromptDetail }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Fuentes autorizadas y prueba de recuperación                               */
+/* -------------------------------------------------------------------------- */
+
+function SourcesForm({ prompt, fuentes }: { prompt: PromptDetail; fuentes: Fuente[] }) {
+  const [estado, accion, pendiente] = useActionState(setSourcesAction, INICIAL);
+  const objetivo = prompt.versions.find((v) => v.status === 'DRAFT' || v.status === 'TESTING');
+
+  if (objetivo === undefined) {
+    return <p className="text-sm text-[var(--color-ink-soft)]">Solo se editan las fuentes de una versión en borrador o en prueba. Crea o edita un borrador primero.</p>;
+  }
+  if (fuentes.length === 0) {
+    return <p className="text-sm text-[var(--color-ink-soft)]">No hay fuentes registradas todavía. Regístralas en la base documental de IA.</p>;
+  }
+  const marcadas = new Set(objetivo.authorizedSourceIds);
+
+  return (
+    <form action={accion} className="space-y-3">
+      <input type="hidden" name="promptId" value={prompt.id} />
+      <input type="hidden" name="promptVersionId" value={objetivo.id} />
+      <Feedback estado={estado} />
+      <p className="text-sm text-[var(--color-ink-soft)]">
+        Marca qué fuentes puede consultar la versión {objetivo.version}. Un prompt lee solo lo que se le autoriza.
+      </p>
+      <fieldset className="space-y-2">
+        <legend className="sr-only">Fuentes autorizadas de la versión</legend>
+        {fuentes.map((f) => (
+          <label key={f.id} className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="sourceIds" value={f.id} defaultChecked={marcadas.has(f.id)} className="mt-1" />
+            <span>
+              {f.code} — {f.name}
+              {f.requiredPermissionCode !== null && (
+                <span className="text-xs text-[var(--color-ink-faint)]"> · exige {f.requiredPermissionCode}</span>
+              )}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      <SubmitButton>{pendiente ? 'Guardando…' : 'Guardar fuentes de la versión'}</SubmitButton>
+      <p aria-live="polite" className="sr-only">{pendiente ? 'Guardando' : ''}</p>
+    </form>
+  );
+}
+
+function RetrievalTest({ prompt }: { prompt: PromptDetail }) {
+  const [estado, accion, pendiente] = useActionState(retrievalTestAction, RETRIEVAL_INICIAL);
+  const versiones = prompt.versions.filter((v) => v.authorizedSourceIds.length > 0);
+
+  if (versiones.length === 0) {
+    return <p className="text-sm text-[var(--color-ink-soft)]">Ninguna versión tiene fuentes autorizadas. Autoriza fuentes arriba para poder probar la recuperación.</p>;
+  }
+
+  return (
+    <form action={accion} className="space-y-4">
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo recuperar'} />}
+      <Select name="promptVersionId" label="Versión" required options={versiones.map((v) => ({ value: v.id, label: `Versión ${v.version}` }))} />
+      <TextArea name="queryText" label="Consulta" required rows={2} hint="Lo que se buscaría en las fuentes. Verás solo los fragmentos que tú puedes leer." />
+      <SubmitButton>{pendiente ? 'Recuperando…' : 'Probar recuperación'}</SubmitButton>
+      <p aria-live="polite" className="sr-only">{pendiente ? 'Recuperando' : ''}</p>
+      {estado.status === 'ok' && estado.result !== undefined ? (
+        estado.result.status === 'DEGRADED' ? (
+          <Notice title="La IA no está disponible" tone="warning">
+            <p>Sin proveedor no hay vectorización: la búsqueda semántica cae al camino humano.</p>
+          </Notice>
+        ) : estado.result.chunks.length === 0 ? (
+          <Notice title="Sin resultados" tone="neutral">
+            <p>Ningún fragmento que tú puedas leer coincide, o la versión no tiene fuentes indexadas.</p>
+          </Notice>
+        ) : (
+          <ul className="space-y-2">
+            {estado.result.chunks.map((c) => (
+              <li key={c.id} className="rounded border border-[var(--color-line)] p-3 text-sm">
+                <span className="block text-xs text-[var(--color-ink-faint)]">{c.sourceCode} · similitud {(c.similarity * 100).toFixed(0)}%</span>
+                {c.text}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+    </form>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Editor completo                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -249,12 +343,14 @@ export function PromptEditor({
   canEdit,
   canPublish,
   modelos,
+  fuentes,
   timeZone,
 }: {
   prompt: PromptDetail;
   canEdit: boolean;
   canPublish: boolean;
   modelos: string[];
+  fuentes: Fuente[];
   timeZone: string;
 }) {
   const formatter = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short', timeZone });
@@ -315,6 +411,18 @@ export function PromptEditor({
               <EditDraftForm prompt={prompt} modelos={modelos} />
             </Disclosure>
           </Card>
+        </Section>
+      )}
+
+      {canEdit && (
+        <Section title="Fuentes autorizadas" description="Qué fuentes de la base documental puede consultar este prompt. Lee solo lo que se le autoriza, y solo lo que quien pregunta puede leer.">
+          <Card><SourcesForm prompt={prompt} fuentes={fuentes} /></Card>
+        </Section>
+      )}
+
+      {canEdit && (
+        <Section title="Probar recuperación" description="Busca en las fuentes autorizadas con tus propios permisos: verás solo los fragmentos que tú puedes leer.">
+          <Card><RetrievalTest prompt={prompt} /></Card>
         </Section>
       )}
 

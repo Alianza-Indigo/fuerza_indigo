@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { ForbiddenNotice, PageShell } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { can } from '@/platform/authz/policy';
-import { promptModels, readPrompt } from '@/modules/ai';
+import { listSources, promptModels, readPrompt } from '@/modules/ai';
 import { PromptEditor } from './prompt-editor';
 
 export const metadata = { title: 'Prompt', robots: { index: false, follow: false } };
@@ -24,7 +24,7 @@ export default async function PromptDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
-  const modelos = await promptModels(actor);
+  const [modelos, fuentes] = await Promise.all([promptModels(actor), listSources(actor)]);
   const canEdit = can(actor, 'ai.prompt.edit', { kind: 'AiPrompt', id, legalEntityId: null }).allowed;
   const canPublish = can(actor, 'ai.prompt.publish', { kind: 'AiPrompt', id, legalEntityId: null }).allowed;
 
@@ -39,6 +39,7 @@ export default async function PromptDetailPage({ params }: { params: Promise<{ i
         canEdit={canEdit}
         canPublish={canPublish}
         modelos={modelos.ok ? modelos.data.models : []}
+        fuentes={fuentes.ok ? fuentes.data.map((f) => ({ id: f.id, code: f.code, name: f.name, requiredPermissionCode: f.requiredPermissionCode })) : []}
         timeZone={actor.timeZone}
       />
     </PageShell>

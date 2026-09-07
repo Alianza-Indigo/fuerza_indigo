@@ -93,6 +93,7 @@ export interface PromptVersionDetail {
   readonly publishedAt: Date | null;
   readonly retiredAt: Date | null;
   readonly revertedFromVersion: number | null;
+  readonly authorizedSourceIds: string[];
   readonly isCurrent: boolean;
   readonly createdAt: Date;
 }
@@ -141,6 +142,7 @@ export async function readPrompt(actor: ActorContext, promptId: string): Promise
           author: { select: { person: { select: { givenName: true, familyName: true } } } },
           reviewer: { select: { person: { select: { givenName: true, familyName: true } } } },
           revertedFromVersion: { select: { version: true } },
+          authorizedSources: { select: { knowledgeSourceId: true } },
         },
       },
     },
@@ -171,6 +173,7 @@ export async function readPrompt(actor: ActorContext, promptId: string): Promise
       publishedAt: v.publishedAt,
       retiredAt: v.retiredAt,
       revertedFromVersion: v.revertedFromVersion?.version ?? null,
+      authorizedSourceIds: v.authorizedSources.map((s) => s.knowledgeSourceId),
       isCurrent: v.id === prompt.currentVersionId,
       createdAt: v.createdAt,
     })),

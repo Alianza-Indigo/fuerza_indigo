@@ -14,6 +14,19 @@ export {
 } from './application/prompts';
 export { labRun, labRunSchema, type LabRunOutcome } from './application/lab';
 export {
+  registerSource,
+  registerSourceSchema,
+  indexSourceNow,
+  disableSource,
+  setVersionSources,
+  setVersionSourcesSchema,
+  retrieveForVersion,
+  listSources,
+  permissionOptions,
+  type SourceListItem,
+  type RetrievalResult,
+} from './application/knowledge';
+export {
   listPrompts,
   readPrompt,
   promptModels,

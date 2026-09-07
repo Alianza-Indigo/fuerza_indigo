@@ -1804,3 +1804,30 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 - **Retirar** pone la versión vigente en `RETIRED` y deja el prompt **sin versión vigente**. Es lo que hace que la degradación del bloque B tenga sentido desde la administración: un prompt retirado no se ejecuta, y sus flujos asistidos caen al camino humano, exactamente como con la IA apagada. Cae del lado de publicar (`ai.prompt.publish`), porque decide qué se ejecuta.
 
 **La simetría importa.** Publicar apunta el prompt a una versión; retirar lo deja sin ninguna. Las dos son decisiones de quien responde por lo que la máquina dice en nombre de la organización, y por eso comparten la facultad que exige un motivo escrito.
+
+---
+
+## ADR-0143 · Los vectores vienen del puerto, con un modelo y una dimensión fijados en código
+
+**Contexto.** La base documental de la Fase 8 guarda un vector de 768 dimensiones por fragmento y busca por el más próximo (esquema del bloque A). Hacía falta decidir de dónde salen esos vectores y quién fija su modelo y su dimensión.
+
+**Decisión.** Se añade `embed()` al mismo puerto del proveedor que ya hace `generate()`: una prueba de vectorización se sustituye entera por el adaptador falso, igual que la generación, y por eso las pruebas de recuperación no dependen de la red (ni de la cuenta). El **modelo de embeddings** (`text-embedding-004`) y la **dimensión** (768) son constantes junto al puerto, no filas administrables, por la misma razón que el precio (ADR-0138): son hechos del proveedor, y además la dimensión está atada al `vector(768)` del esquema —cambiarla exige una migración y reindexar todo—, así que no puede ser algo que alguien ajuste desde una pantalla.
+
+**Vectorizar comparte la degradación de generar.** Sin proveedor encendido o sin clave, no se vectoriza: la indexación se queda como estaba y la recuperación devuelve vacío, y el flujo asistido cae al camino humano. Es la misma regla del bloque B, aplicada a la otra mitad del puerto.
+
+---
+
+## ADR-0144 · La recuperación filtra por permiso en la misma consulta, no después
+
+**Contexto.** El PRD §15.2 exige que las fuentes y los fragmentos respeten los permisos de quien pregunta. El modelo de datos copia `requiredPermissionCode` de la fuente a cada fragmento —una duplicación deliberada del bloque A— justo para esto.
+
+**El problema, y por qué el orden importa.** Lo natural sería recuperar los fragmentos más próximos y después descartar los que la persona no puede leer. Pero «después» es demasiado tarde de dos maneras: el fragmento restringido ya se leyó de la base, y —peor— si el resultado alimenta al modelo, el modelo ya lo vio. Un dato que no se puede desver no se protege quitándolo del resultado final.
+
+**Decisión.** El filtro va **dentro** de la consulta del vecino más próximo, junto al orden por distancia:
+
+- `requiredPermissionCode` del fragmento tiene que ser nulo (público) o estar entre los permisos de quien pregunta, que salen de `effectiveGrantedPermissions` —la misma función que decide todo lo demás, de modo que un permiso obtenido por cualquier vía cuenta aquí también—.
+- La fuente tiene que estar entre las que la versión del prompt autoriza. Un prompt no lee cualquier cosa indexada: lee lo que se le autorizó, y esa lista es parte de lo que se revisó al publicar (por eso solo se edita en borrador).
+
+Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el mismo `WHERE`. Se probó rompiéndolo: quitar el filtro de permiso hace que un fragmento restringido alcance a quien no puede leer su origen, y la prueba se pone en rojo.
+
+**Deshabilitar una fuente borra sus fragmentos.** No basta con marcarla: dejar los vectores de una fuente deshabilitada sería dejar abierta una puerta que la consulta cree cerrada. Reindexar hace lo mismo —borra y vuelve a insertar—, porque un fragmento no se edita: reescribir su texto dejaría el vector apuntando a algo que ya no dice eso.

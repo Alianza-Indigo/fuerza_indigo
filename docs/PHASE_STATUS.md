@@ -31,7 +31,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 | A | Esquema de IA y base documental, migración con `pgvector`, permisos y semilla | **Hecho** |
 | B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | **Hecho** |
 | C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | **Hecho** |
-| D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | Pendiente |
+| D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | **Hecho** |
 | E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | Pendiente |
 | F | Casos de uso asistidos y revisión humana de cada salida | Pendiente |
 | G | Pantallas de gobernanza, laboratorio y consulta de costos | Pendiente |
@@ -84,6 +84,22 @@ El servicio central de la IA, con las tres defensas que gobiernan la ejecución,
 
 ---
 
+## Lo que dejó el bloque D
+
+La base documental que la Fase 0 contrató y nunca se construyó: fuentes autorizadas, fragmentos con su vector, y una recuperación que **respeta los permisos de quien pregunta**. Es el criterio 2 de la fase.
+
+**Un fragmento no alcanza a quien no puede leer su origen.** La garantía delicada del bloque. `retrieveChunks` (`src/platform/ai/knowledge.ts`) filtra por permiso **dentro** de la consulta del vecino más próximo: el `requiredPermissionCode` del fragmento tiene que ser nulo o estar entre los permisos de quien pregunta (`effectiveGrantedPermissions`), y la fuente tiene que estar entre las que la versión del prompt autoriza. Los dos filtros van en el mismo `WHERE` porque recuperar primero y filtrar después dejaría que el modelo ya lo hubiera visto (ADR-0144). Probado rompiéndolo: sin el filtro, el fragmento restringido alcanza a quien no debe, y la prueba se pone en rojo.
+
+**Los vectores vienen del puerto.** `embed()` se añadió al mismo puerto que genera, con adaptador falso para las pruebas; el modelo de embeddings y la dimensión 768 son constantes en código, atadas al `vector(768)` del esquema (ADR-0143). Vectorizar comparte la degradación de generar: sin proveedor, no se indexa y la recuperación devuelve vacío.
+
+**Indexar es fragmentar, vectorizar e insertar por SQL** —el vector no lo expresa Prisma—, copiando el permiso a cada fragmento. Reindexar borra y reinserta, y deshabilitar una fuente borra sus fragmentos: un fragmento no se edita, y un vector huérfano sería una puerta que la consulta cree cerrada. Una fuente cuyo contenido cambió queda `STALE`.
+
+**Las pantallas están en `/gestion/ia/fuentes`** (registrar, indexar, deshabilitar) y en el editor de prompts (qué fuentes autoriza una versión, y un panel para **probar la recuperación con los propios permisos** de quien prueba). Accesibilidad en verde.
+
+**Ocho pruebas de integración nuevas, la garantía crítica vista fallar** de dos maneras: quitar el filtro de permiso y quitar el de fuentes autorizadas. Más indexación, copia del permiso al fragmento, `STALE` por cambio y deshabilitar que borra.
+
+---
+
 ## Lo que dejó el bloque C
 
 Los prompts dejan de ser una promesa del modelo de datos y se administran de verdad: se crean, se versionan, se prueban contra el modelo y se publican, todo desde una pantalla y nada desde el código (criterio 1 de la fase).
@@ -104,15 +120,15 @@ Los prompts dejan de ser una promesa del modelo de datos y se administran de ver
 
 ## Cómo se retoma
 
-El bloque C está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+El bloque D está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (72 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque C**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (72 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque D**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
 
-**Bloque D — base documental.** Lo que toca: fuentes autorizadas (`KnowledgeSource`), fragmentos (`KnowledgeChunk`) con su vector y su índice léxico —ya en el esquema desde el bloque A—, indexación, y la recuperación del vecino más próximo que **filtra por permiso dentro de la misma consulta** (el `requiredPermissionCode` se copia al fragmento a propósito, para no recuperar primero y filtrar después: eso dejaría que el modelo viera lo que la persona no puede leer). El vínculo prompt→fuente (`AiPromptVersionSource`) ya existe y hoy no lo escribe nadie: el bloque D es donde una versión declara qué fuentes puede consultar.
+**Bloque E — minimización, redacción y defensas.** Lo que toca: antes de enviar algo al modelo, **minimizar y redactar o seudonimizar** lo que se manda (el `redactionApplied` de `ai_generation` hoy lo declara quien llama; el bloque E es quien lo hace de verdad); las **defensas de inyección de prompt** —marcar `injectionSuspected` cuando el material consultado trae instrucciones incrustadas— y de exfiltración; y los **efectos prohibidos del PRD §15.4**: la lista de diez decisiones que la IA no puede tomar, comprobada por el servicio, que **rechaza la ejecución antes de llamar al modelo** (ahí es donde entra el estado `BLOCKED_BY_POLICY` de `ai_generation`, que hoy no produce nadie).
 
-**Lo que ya está resuelto y no hay que rehacer.** El puerto, los límites, la degradación, la bitácora (bloque B) y toda la administración de prompts (bloque C) no se tocan. `runLabGeneration` es la única puerta a ejecutar sin publicar. El precio por token vive en `src/platform/ai/pricing.ts` (ADR-0138); el modelo y los límites, en la fila (ADR-0132).
+**Lo que ya está resuelto y no hay que rehacer.** El puerto y `embed()` (bloque B/D), los límites, la degradación y la bitácora (B), la administración de prompts (C) y toda la base documental con su recuperación filtrada por permiso (D) no se tocan. `retrieveForVersion` es el punto por donde un flujo asistido pide contexto; el bloque F lo usará. El precio por token vive en `pricing.ts` (ADR-0138); el modelo y los límites, en la fila (ADR-0132).
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. Una regla que nunca se ha visto fallar no está probada. La recuperación con permisos del bloque D es justo del tipo que hay que romper: quitar el filtro y ver que un fragmento restringido alcanza a quien no debe.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La lista de efectos prohibidos es justo del tipo que hay que romper: quitar una entrada y ver que una ejecución que debía negarse se permite.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 

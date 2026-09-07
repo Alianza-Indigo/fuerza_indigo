@@ -307,24 +307,24 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 ## Fase 8 — Inteligencia artificial Gemini
 | Id | Tarea | Estado |
 |---|---|---|
-| F8-DAT-001 | Migrar las entidades de configuración, prompts, conversaciones, generaciones y revisiones | Pendiente |
-| F8-IA-001 | Implementar el servicio central de Gemini ejecutado solo en servidor | Pendiente |
-| F8-IA-002 | Implementar prompts administrables con versiones, estados y reversión | Pendiente |
-| F8-IA-003 | Implementar el laboratorio de pruebas de prompts y su publicación con revisión humana | Pendiente |
-| F8-IA-004 | Implementar la base documental con separación de fuentes por permisos | Pendiente |
-| F8-IA-005 | Implementar la minimización, redacción y seudonimización antes de enviar al modelo | Pendiente |
-| F8-IA-006 | Implementar la validación de la salida contra el esquema declarado | Pendiente |
-| F8-IA-007 | Implementar las defensas contra inyección de prompt y exfiltración | Pendiente |
-| F8-IA-008 | Implementar la lista de efectos prohibidos y su rechazo en el servicio | Pendiente |
-| F8-IA-009 | Implementar orientación inicial y explicación de trámites en lenguaje claro | Pendiente |
-| F8-IA-010 | Implementar clasificación sugerida de solicitudes y resúmenes asistidos | Pendiente |
-| F8-IA-011 | Implementar el apoyo para redactar comunicaciones y documentos | Pendiente |
-| F8-IA-012 | Implementar la revisión humana de salidas y su registro | Pendiente |
-| F8-IA-013 | Implementar el control de costos, límites y su consulta por módulo | Pendiente |
-| F8-IA-014 | Implementar la degradación al flujo humano cuando el proveedor no responde | Pendiente |
-| F8-QA-001 | Probar que ningún prompt crítico vive solamente en el código | Pendiente |
-| F8-QA-002 | Probar que las fuentes respetan los permisos del usuario | Pendiente |
-| F8-DOC-001 | Documentar la gobernanza de la IA y actualizar el estado de la fase | Pendiente |
+| F8-DAT-001 | Migrar las entidades de configuración, prompts, conversaciones, generaciones y revisiones | Hecho |
+| F8-IA-001 | Implementar el servicio central de Gemini ejecutado solo en servidor | Hecho |
+| F8-IA-002 | Implementar prompts administrables con versiones, estados y reversión | Hecho |
+| F8-IA-003 | Implementar el laboratorio de pruebas de prompts y su publicación con revisión humana | Hecho |
+| F8-IA-004 | Implementar la base documental con separación de fuentes por permisos | Hecho |
+| F8-IA-005 | Implementar la minimización, redacción y seudonimización antes de enviar al modelo | Hecho |
+| F8-IA-006 | Implementar la validación de la salida contra el esquema declarado | Hecho |
+| F8-IA-007 | Implementar las defensas contra inyección de prompt y exfiltración | Hecho |
+| F8-IA-008 | Implementar la lista de efectos prohibidos y su rechazo en el servicio | Hecho |
+| F8-IA-009 | Implementar orientación inicial y explicación de trámites en lenguaje claro | Hecho |
+| F8-IA-010 | Implementar clasificación sugerida de solicitudes y resúmenes asistidos | Hecho |
+| F8-IA-011 | Implementar el apoyo para redactar comunicaciones y documentos | Hecho |
+| F8-IA-012 | Implementar la revisión humana de salidas y su registro | Hecho |
+| F8-IA-013 | Implementar el control de costos, límites y su consulta por módulo | Hecho |
+| F8-IA-014 | Implementar la degradación al flujo humano cuando el proveedor no responde | Hecho |
+| F8-QA-001 | Probar que ningún prompt crítico vive solamente en el código | Hecho |
+| F8-QA-002 | Probar que las fuentes respetan los permisos del usuario | Hecho |
+| F8-DOC-001 | Documentar la gobernanza de la IA y actualizar el estado de la fase | Hecho |
 
 ---
 

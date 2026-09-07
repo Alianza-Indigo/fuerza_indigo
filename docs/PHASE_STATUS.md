@@ -35,22 +35,22 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 | E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | **Hecho** |
 | F | Casos de uso asistidos y revisión humana de cada salida | **Hecho** |
 | G | Pantallas de gobernanza, laboratorio y consulta de costos | **Hecho** |
-| H | Pruebas, controles de fase, documentación y cierre | Pendiente |
+| H | Pruebas, controles de fase, documentación y cierre | **Hecho** |
 
 ---
 
 ## Criterios de aceptación
 
-Los seis del PRD §24 Fase 8 se comprobarán ejecutando el sistema, no leyendo el código. Se registran aquí al cerrarse cada uno.
+Los seis del PRD §24 Fase 8, comprobados **ejecutando el sistema** y mirando después lo que quedó en la base con las credenciales de la aplicación, nunca leyendo el código (`tests/integration/fase8-criterios.test.ts`).
 
-| # | Criterio | Estado |
-|---|---|---|
-| 1 | Ningún prompt crítico vive solamente en código | Pendiente |
-| 2 | Fuentes y fragmentos respetan permisos del usuario | Pendiente |
-| 3 | La salida identifica que fue generada con IA y permite corregirla | **Cumplido** (bloque F) |
-| 4 | Las acciones sensibles requieren confirmación humana | **Cumplido** (bloque F) |
-| 5 | La aplicación continúa operando si Gemini está caído | **Cumplido** (bloques B y G) |
-| 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | **Cumplido** (bloque G) |
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | Ningún prompt crítico vive solamente en código | **Cumplido** | Sin un prompt administrado publicado, el flujo asistido degrada al camino humano —no hay texto en el código que lo supla—; publicado uno, ejecuta con la versión exacta que quedó en la base |
+| 2 | Fuentes y fragmentos respetan permisos del usuario | **Cumplido** | Una fuente restringida a `membership.roster.read`: quien lo tiene recupera sus fragmentos, quien no, no —ni para que el modelo los vea y luego se descarten— |
+| 3 | La salida identifica que fue generada con IA y permite corregirla | **Cumplido** | Una salida asistida deja fila con la huella (no el contenido), y la revisión `EDITED` sustituye su texto por el de la persona |
+| 4 | Las acciones sensibles requieren confirmación humana | **Cumplido** | Una canalización sugerida por IA no se confirma sin una revisión aceptada; tras aceptarla, se confirma |
+| 5 | La aplicación continúa operando si Gemini está caído | **Cumplido** | Con el proveedor apagado, la salud dice `DEGRADED` y el flujo asistido devuelve degradación sin lanzar ni dejar fila nueva |
+| 6 | Los costos y errores pueden consultarse por módulo sin exponer contenido sensible | **Cumplido** | La contraloría (`ai.usage.read`, sin `ai.generation.read`) ve el consumo por módulo y en el reporte no aparece el contenido generado; y no puede configurar el proveedor |
 
 ---
 
@@ -81,6 +81,38 @@ El servicio central de la IA, con las tres defensas que gobiernan la ejecución,
 **Cada ejecución deja huella y no texto.** La fila de `ai_generation` guarda el `sha256` de lo enviado —nunca el contenido—, el modelo, los tokens, el costo, la latencia y el estado. El costo sale de una tabla de precios en el código (un hecho del proveedor), mientras el techo de gasto vive en la fila (una política de la organización): el mismo dato no manda desde dos sitios (ADR-0138). La salida se valida contra el esquema de la versión con un validador acotado y honesto; lo que no encaja se registra como `SCHEMA_REJECTED` y no se enseña.
 
 **Diecinueve pruebas nuevas, cada garantía vista fallar.** Once de integración —los tres límites, las dos degradaciones, el éxito con su huella, el error, el tiempo agotado y las dos formas de rechazo de esquema— y ocho unitarias del validador, del resolver de la clave, del precio y del guardia de solo-servidor. Cada una se rompió a propósito y se vio ponerse en rojo antes de restaurar.
+
+---
+
+## Lo que dejó el bloque H — y el cierre de la fase
+
+Las pruebas de aceptación, el repaso de los seis criterios ejecutando el sistema, y este informe. **La fase está construida al 100 %.**
+
+**Los seis criterios, comprobados ejecutando el sistema.** `tests/integration/fase8-criterios.test.ts` reúne los seis como los `faseN-criterios.test.ts` de las fases anteriores: no leen el código, ejecutan los casos de uso y miran después la base con las credenciales de la aplicación. La tabla de criterios de arriba dice cómo se comprobó cada uno. Los dos que el PRD nombra explícitamente —`F8-QA-001`, que ningún prompt crítico viva solo en el código, y `F8-QA-002`, que las fuentes respeten los permisos— tienen ahí su prueba.
+
+**No se construyó nada de la fase siguiente.** Se repasó el alcance contratado del §24 Fase 8 contra lo construido en A–H: servicio central, prompts administrables, laboratorio, base documental por permisos, orientación, clasificación sugerida, resúmenes, documentos asistidos, costos, límites, auditoría, revisión humana, degradación y defensas —todo está—. La búsqueda del gestor de contenidos sigue siendo léxica, que es lo contratado; la semántica vive en la base documental de esta fase. La columna `SupportRequest.suggestedByAiGenerationId`, contratada desde la Fase 0 y sin destino hasta hoy, la escribe ya la clasificación asistida (bloque F).
+
+### Pruebas y resultados
+
+| Comprobación | Resultado |
+|---|---|
+| `npm run typecheck` | Sin errores |
+| `npm run lint` | Sin errores ni avisos |
+| `npm run phase:verify` | **75 aprobados, 0 fallidos**, 1 no aplicable; los cuatro controles nuevos de la fase (`C-F8-01`…`C-F8-04`) en verde |
+| `npx vitest run` | Toda la suite en verde, con las pruebas nuevas de los bloques B–H |
+| `npm run build` | Compila; las rutas de IA son dinámicas |
+| `npx playwright test` | Extremo a extremo y accesibilidad en verde en móvil y escritorio, claro y oscuro |
+| `npm run db:check` | La base configurada coincide con las migraciones del repositorio |
+| Integración continua | Verde en cada bloque, comprobada en GitHub Actions antes de dar por cerrado ninguno |
+
+### Defectos que aparecieron y se corrigieron dentro de la fase
+
+- **La lista blanca de columnas no crece sola.** El bloque A añadió `SupportRequest.suggestedByAiGenerationId` como columna sin devolverla a la lista de columnas actualizables; la clasificación asistida habría fallado con «permiso denegado». Corregido con una migración correctiva en el bloque F. Es la reaparición del mismo desfase que ya avisó la Fase 6.
+- **Un guardián de pantalla sin motivo.** La pantalla del proveedor comprobaba `ai.provider.configure` —un permiso que exige motivo— sin darlo, así que negaba el acceso a quien sí tiene la facultad. **Lo destapó la integración continua**, en el barrido de accesibilidad, que comprueba que una pantalla no sea una denegación disfrazada. Corregido dándole el motivo, como ya hacían la navegación y el caso de uso. La lección quedó: una pantalla que gobierna un permiso con motivo tiene que llevarlo también en su guardián de visibilidad.
+
+### A la espera de autorización
+
+Construida la fase al 100 % y con la integración continua en verde, **el proyecto se detiene aquí a esperar autorización expresa de la persona usuaria** (PRD §23). Hasta que llegue, la Fase 9 no se inicia. Cuando llegue, se registra el estado `APPROVED` y el SHA del punto de control en el historial de abajo.
 
 ---
 
@@ -168,15 +200,13 @@ Los prompts dejan de ser una promesa del modelo de datos y se administran de ver
 
 ## Cómo se retoma
 
-El bloque G está entero, y con él **los seis criterios de la fase están cumplidos**. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+La fase está construida al 100 % (bloques A–H) y **espera autorización de cierre**. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (75 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque G**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (75 aprobados, 0 fallidos), `npm run build`, `npm run db:check` y `npx playwright test`, todo en verde en local, y la integración continua en verde sobre el commit del cierre.
 
-**Bloque H — pruebas de aceptación, documentación y cierre.** Lo que toca: las pruebas que el PRD §24 Fase 8 exige demostrar ejecutando el sistema —`F8-QA-001` (ningún prompt crítico vive solo en el código) y `F8-QA-002` (las fuentes y fragmentos respetan los permisos del usuario)—, reunidas como los `faseN-criterios.test.ts` de las fases anteriores; el repaso de los seis criterios de aceptación comprobados sobre el sistema y no leyendo el código; la actualización del `docs/BACKLOG.md` (marcar la Fase 8 completa) y de `docs/DATA_MODEL.md` si algo quedó fuera; y el informe de cierre en este documento. Entonces la fase se declara terminada y **se para** a esperar autorización expresa (PRD §23).
+**Lo único que queda es una decisión, no trabajo.** El PRD §23 exige que la fase, terminada al 100 %, **se pare a esperar autorización expresa** antes de tocar la Fase 9. Eso es lo que está pasando. Si la persona usuaria autoriza, se registra `APPROVED` y el SHA del punto de control en el historial; si al revisar aparece algo, se abre como defecto y se corrige dentro de esta fase, no después.
 
-**Lo que ya está resuelto y no hay que rehacer.** Todo lo construido en A–G. El bloque H no añade funcionalidad: comprueba, documenta y cierra. Si al repasar el alcance contra lo construido aparece un hueco, se abre como defecto y se corrige dentro de la fase, no después.
-
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo, y ejecutando el sistema para los criterios de aceptación, nunca leyendo el código.
+**Si se reabre por un defecto**, el método es el de siempre: romper lo que sostiene la garantía y verla ponerse en rojo, y ejecutar el sistema para los criterios de aceptación, nunca leer el código.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 

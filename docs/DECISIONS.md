@@ -1714,3 +1714,54 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 **Cuando alguien se identifica a mitad de camino, empieza una conversación nueva.** Es más trabajo y es lo correcto: lo dicho antes se dijo en otro marco.
 
 **El mismo razonamiento retira `UPDATE` de `ai_prompt_version_source`.** Sus dos columnas son la clave: un vínculo se crea o se quita, no se edita.
+
+---
+
+## ADR-0136 · La clave del proveedor se resuelve por el nombre que guarda la fila, en un solo sitio
+
+**Contexto.** ADR-0132 dejó la clave fuera de la base: la fila `AiProviderConfiguration` guarda `apiKeyEnvVarName` —el **nombre** de la variable de entorno que la contiene— y no el secreto. Faltaba quién convierte ese nombre en la clave, y dónde.
+
+**Decisión.** Una sola función, `resolveAiApiKey(varName)`, en `src/platform/config/`. Es el único punto del sistema que hace `process.env[nombre]` para la IA, y vive en el único árbol donde el linter admite leer `process.env` (PRD §21). Que la resolución esté en un solo lugar tiene una consecuencia que se paga sola el día de una auditoría: para saber quién puede leer una clave basta mirar quién importa esta función.
+
+**La cadena vacía es la señal de degradación, no un error.** Una variable ausente devuelve `''`, y el servicio cae al camino humano. Lanzar por una clave ausente confundiría un estado de operación legítimo —una instalación que todavía no configuró el proveedor— con una avería.
+
+**Y rechaza un nombre que no parece un nombre.** La función comprueba la misma forma que la restricción de la base (`^[A-Z][A-Z0-9_]{2,79}$`). No es redundante: la base defiende su fila, y esto defiende el `process.env` de que alguien pase, por otro camino —una prueba que fija el entorno, un valor pegado a mano—, una clave donde va un nombre. `process.env['AIza…']` devuelve indefinido en silencio y haría parecer «sin clave» a un proveedor que sí la tiene.
+
+---
+
+## ADR-0137 · Un solo servicio llama al proveedor, y ahí viven los límites, la degradación y la bitácora
+
+**Contexto.** La Fase 8 pide ejecutar el modelo con tres defensas —límites antes de llamar, degradación al camino humano y una bitácora inmutable— y hacerlo solo en servidor.
+
+**Decisión.** `runGeneration`, en `src/platform/ai/ai-service.ts`, es el **único** que invoca el puerto del proveedor. El puerto (`provider-port.ts`) solo habla con Gemini; toda la política vive en el servicio. Un puerto que además decidiera la política sería un segundo camino por el que saltársela, y el control `C-F8-01` lo impide desde fuera: el host del proveedor solo puede aparecer en el puerto.
+
+**Qué deja fila y qué no.** Una llamada al proveedor —con éxito, con error o agotada— es una ejecución y deja fila en `ai_generation`, porque el criterio de la fase pide poder consultar los costos y los errores por módulo. La degradación (apagada o sin clave) y el corte por límite **no** dejan fila: no hubo ejecución que registrar, y una fila sin llamada ensuciaría los contadores por persona y por mes que esas mismas filas alimentan.
+
+**La forma de la salida se valida contra el esquema de la versión.** Un validador propio cubre el subconjunto de JSON Schema que los prompts usan de verdad —`type`, `required`, `properties`, `items`, `enum`— y sobre él valida por completo; lo que no cubre lo dice en voz alta (`unsupportedKeywords`) en vez de aprobarlo. Una salida que no encaja se registra como `SCHEMA_REJECTED` y **no se enseña ni se guarda** como si fuera un resultado. Se prefirió un validador acotado y honesto a una dependencia de validación completa: el subconjunto es el que existe, y ampliarlo es añadir un caso y su prueba.
+
+**Lo que no vive aquí.** La minimización y la redacción de lo que se envía (bloque E), la resolución del prompt vigente y los casos de uso (bloques C y F). El servicio recibe el texto ya preparado y la versión ya elegida; este bloque construye la máquina de ejecutar, no lo que se ejecuta.
+
+---
+
+## ADR-0138 · El precio por token vive en el código; el techo de gasto, en la base
+
+**Contexto.** Para registrar el costo de cada ejecución y sostener el techo mensual hace falta un precio por token. `AiProviderConfiguration` guarda el techo mensual y la moneda, pero no un precio: no tiene columna para ello, y añadirla fue una decisión, no un olvido.
+
+**Decisión.** Son dos cosas distintas y se guardan en dos sitios distintos.
+
+- **El techo mensual es política de la organización** —cuánto está dispuesta a gastar— y por eso se administra en la base, para bajarlo un martes sin desplegar.
+- **El precio por token es un hecho del proveedor** —lo pone Google y cambia cuando Google lo cambia, igual que la dirección de su API—. Vive en `pricing.ts`, atado a un commit revisable. Ponerlo en la base invitaría a que alguien «ajuste el precio» y descuadre la factura.
+
+**Ante lo desconocido, se sobrestima.** Un modelo sin tarifa se cobra a la más cara conocida: para un techo de gasto, subestimar no es seguro y sobrestimar sí. Y si la moneda del techo no coincide con la de la tabla, el costo se registra como cero y se dice en voz alta —sin tipo de cambio, cualquier cifra sería inventada, y una cifra inventada en una factura es peor que un cero explicable—.
+
+---
+
+## ADR-0139 · La degradación y los límites se prueban contando llamadas, no simulando una caída
+
+**Contexto.** El PRD §24 Fase 8 exige que la aplicación siga operando con Gemini caído. La forma obvia de probarlo es apuntar el puerto a un dominio inexistente y comprobar que el flujo no se cuelga.
+
+**Por qué esa forma no prueba nada.** Es exactamente la trampa de ADR-0130 en otro módulo: un dominio inexistente falla al instante, y la prueba pasa igual esté o no llamando. Mide el entorno, no la regla.
+
+**Decisión.** Se prueba con un puerto falso que **cuenta llamadas**. Con la IA apagada, sin clave o por encima de cualquiera de los tres límites, el contador queda en cero: la garantía no es «responde rápido» sino «no llama», que es más fuerte y no depende de cuánto tarde en fallar un dominio. La caída real del proveedor se prueba haciendo que el falso lance —error y tiempo agotado— y comprobando que queda fila y que el resultado manda al camino humano.
+
+**La lección, la de siempre aquí.** Cuando se puede afirmar la ausencia de algo —una llamada que no se hizo, una fila que no se escribió— es preferible a medir un tiempo: la ausencia se cuenta, y contar no depende de la máquina.

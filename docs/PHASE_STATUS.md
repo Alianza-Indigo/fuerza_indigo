@@ -29,7 +29,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 | Bloque | Contenido | Estado |
 |---|---|---|
 | A | Esquema de IA y base documental, migración con `pgvector`, permisos y semilla | **Hecho** |
-| B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | Pendiente |
+| B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | **Hecho** |
 | C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | Pendiente |
 | D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | Pendiente |
 | E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | Pendiente |
@@ -66,27 +66,37 @@ Nueve tablas, una migración verificada por los dos caminos que exige `AGENTS.md
 
 ---
 
-## Cómo se retoma (punto de corte: `c8c39d7`)
+## Lo que dejó el bloque B
 
-El bloque A está entero y empujado. Quien continúe no necesita nada de la sesión anterior: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice exactamente dónde se quedó.
+El servicio central de la IA, con las tres defensas que gobiernan la ejecución, y sin construir todavía ni un caso de uso: el bloque B es la máquina de ejecutar, no lo que se ejecuta.
 
-**Estado comprobado en el punto de corte.** `npm run lint`, `npm run typecheck`, `npx vitest run` (1265 pruebas), `npm run phase:verify` (71 aprobados, 0 fallidos) y `npm run db:check`, todo en verde en local. **Falta confirmar la integración continua de `c8c39d7`**, que es la puerta de salida de verdad: es el primer commit en el que la extensión `vector` se crea desde una migración sobre la imagen `pgvector/pgvector:pg17`.
+**Un solo camino al proveedor.** `runGeneration` (`src/platform/ai/ai-service.ts`) es el único que llama al puerto de Gemini (`provider-port.ts`), y el puerto es lo único que habla con el proveedor —por `fetch`, sin SDK, como el de Stripe y el de correo—. El control nuevo `C-F8-01` lo sostiene desde fuera: el host del proveedor solo puede aparecer en el puerto, y la clave jamás lleva prefijo `NEXT_PUBLIC_`. Un adaptador falso sustituye el puerto entero en las pruebas (ADR-0137).
 
-**Lo primero, antes de escribir una línea del bloque B:** mirar esa ejecución. Si está en rojo, se arregla eso y nada más.
+**La clave se resuelve por el nombre que dice la fila, en un solo sitio.** `resolveAiApiKey` (`src/platform/config/ai-key.ts`) es el único punto que hace `process.env[nombre]` para la IA, y rechaza un valor que no parezca un nombre de variable: la defensa ante una clave pegada donde va un nombre, por el camino que la restricción de la base no cubre (ADR-0136).
 
-**Bloque B — puerto del proveedor.** Lo que toca:
+**Los tres límites niegan antes de llamar.** Tokens por petición, peticiones por persona y día y costo mensual máximo, los tres desde la fila del proveedor. Ninguno se probó simulando una caída: se probó **contando llamadas** a un puerto falso —cero cuando el límite corta— porque «no llama» es más fuerte que «responde rápido» y no depende del entorno (ADR-0139, aplicación de ADR-0130).
 
-1. Un puerto del proveedor en `src/platform/`, con adaptador de Gemini que **solo corre en servidor** y adaptador falso para las pruebas, igual que el puerto de Stripe de la Fase 3 y el de archivos.
-2. La clave se lee del entorno **por el nombre que dice la fila**, no por una constante: `AiProviderConfiguration.apiKeyEnvVarName` existe para eso, y es el único sitio donde ese nombre se resuelve.
-3. Límites antes de llamar: tokens por petición, peticiones por persona y día y costo mensual máximo. Los tres están en la fila y los tres tienen que negar de verdad, con su prueba.
-4. Degradación: con `isEnabled` en falso, con la clave ausente o con el proveedor sin responder, la aplicación **sigue operando** y el flujo cae al camino humano. Es el criterio 5 del PRD §24 Fase 8, y no se prueba simulando una caída con un dominio inexistente —eso falla al instante y la prueba pasa igual esté o no llamando—: se prueba contando llamadas y comprobando qué camino se tomó (ADR-0130).
-5. Cada ejecución escribe una fila en `ai_generation`: huella de lo enviado y nunca el texto; modelo, tokens, costo, latencia y estado. La tabla ya es inmutable por privilegios.
+**La degradación mantiene la aplicación en pie.** Apagada, sin clave o con el proveedor caído, `runGeneration` devuelve un resultado que cae al camino humano, sin lanzar. Apagada y sin clave no dejan fila —no hubo ejecución—; el error y el tiempo agotado sí, porque el criterio 6 pide poder consultar los errores por módulo. La salud gana su comprobación de IA, `degraded` y no `failed` cuando está apagada: es un estado de operación legítimo, no una avería.
 
-**Lo que ya está resuelto y no hay que rehacer.** El modelo por omisión y los límites **no** se leen del entorno: viven en la fila y se administran (ADR-0132). `GEMINI_DEFAULT_MODEL` solo lo lee la semilla.
+**Cada ejecución deja huella y no texto.** La fila de `ai_generation` guarda el `sha256` de lo enviado —nunca el contenido—, el modelo, los tokens, el costo, la latencia y el estado. El costo sale de una tabla de precios en el código (un hecho del proveedor), mientras el techo de gasto vive en la fila (una política de la organización): el mismo dato no manda desde dos sitios (ADR-0138). La salida se valida contra el esquema de la versión con un validador acotado y honesto; lo que no encaja se registra como `SCHEMA_REJECTED` y no se enseña.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. En el bloque A eso costó treinta ejecuciones y encontró una prueba que pasaba por el motivo equivocado; una regla que nunca se ha visto fallar no está probada.
+**Diecinueve pruebas nuevas, cada garantía vista fallar.** Once de integración —los tres límites, las dos degradaciones, el éxito con su huella, el error, el tiempo agotado y las dos formas de rechazo de esquema— y ocho unitarias del validador, del resolver de la clave, del precio y del guardia de solo-servidor. Cada una se rompió a propósito y se vio ponerse en rojo antes de restaurar.
 
-**Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso.
+---
+
+## Cómo se retoma
+
+El bloque B está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (72 aprobados, 0 fallidos) y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque B**: mírela antes de dar nada por cerrado.
+
+**Bloque C — prompts administrables.** Lo que toca: versiones con estados (`DRAFT`, `TESTING`, `PUBLISHED`, `RETIRED`), laboratorio para probar un borrador contra el modelo, publicación revisada por otra persona —`ai.prompt.edit` redacta, `ai.prompt.publish` publica, y la base ya exige que quien revisa no sea quien escribió (ADR-0133)— y reversión que copia una versión antigua en una nueva sin borrar el historial. El servicio de ejecución ya existe y exige una versión **publicada**: el bloque C es lo que la publica de verdad, en vez de que una prueba fije el estado a mano.
+
+**Lo que ya está resuelto y no hay que rehacer.** El puerto, los límites, la degradación y la bitácora son del bloque B y no se tocan. El modelo por omisión y los límites viven en la fila y se administran (ADR-0132); `GEMINI_DEFAULT_MODEL` solo lo lee la semilla. El precio por token vive en `src/platform/ai/pricing.ts` y se actualiza cuando el proveedor cambia precios (ADR-0138).
+
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. Una regla que nunca se ha visto fallar no está probada.
+
+**Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 
 ---
 

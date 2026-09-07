@@ -3,6 +3,7 @@ import { env } from '@/platform/config/env';
 import { mailerCapability } from '@/platform/mail/mailer';
 import { blobStoreCapability } from '@/platform/files/blob-store';
 import { stripeCapability } from '@/platform/payments';
+import { aiCapability } from '@/platform/ai';
 import { stuckJobs } from '@/platform/jobs/queue';
 import { GLOBAL_CHAIN, verifyAuditChain } from '@/platform/audit/audit-service';
 import { transaction } from '@/platform/db/unit-of-work';
@@ -184,6 +185,16 @@ export async function healthReport(): Promise<HealthReport> {
         status: capability === 'PERSISTS' ? ('ok' as const) : ('degraded' as const),
         detail,
       });
+    }),
+
+    timed('inteligencia_artificial', async () => {
+      // Igual que el correo y el cobro: lo dice el estado real, no una lista
+      // aparte. `degraded` y no `failed` cuando está apagada o sin clave: es un
+      // estado de operación legítimo —la aplicación sigue funcionando por el
+      // camino humano— y una instalación nueva nace así a propósito. Marcarlo
+      // como fallo enseñaría a ignorar el rojo de un despliegue correcto.
+      const { capability, detail } = await aiCapability();
+      return { status: capability === 'OPERATIONAL' ? ('ok' as const) : ('degraded' as const), detail };
     }),
 
     timed('firma_de_credenciales', () => {

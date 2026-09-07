@@ -3153,6 +3153,59 @@ const CHECKS = [
           ]);
     },
   },
+
+  {
+    id: 'C-F8-01',
+    title: 'Fase 8: la IA solo habla con el proveedor por su puerto, y la clave no llega al cliente',
+    phases: [8],
+    run() {
+      // El PRD §15.1 exige que la ejecución sea **solo en servidor** y que la
+      // clave viva en el entorno. Dos garantías que nadie rompe de golpe:
+      //
+      //  1. Se rompe la primera el día que alguien llama a Gemini «rápido» desde
+      //     otro módulo, saltándose los límites, la degradación y la bitácora que
+      //     solo existen en el servicio. Por eso el host del proveedor solo puede
+      //     aparecer en el puerto: cualquier otro sitio que lo nombre está
+      //     hablando con el proveedor por su cuenta.
+      //  2. Se rompe la segunda el día que alguien expone la clave al navegador
+      //     con un `NEXT_PUBLIC_`, que es la única forma en que una variable llega
+      //     al cliente. La clave del proveedor jamás lleva ese prefijo.
+      const HOST = 'generativelanguage.googleapis.com';
+      const PUERTO = 'src/platform/ai/provider-port.ts';
+      const problems = [];
+
+      const fuentes = tracked().filter(
+        (ruta) =>
+          (ruta.startsWith('app/') || ruta.startsWith('src/')) &&
+          (ruta.endsWith('.ts') || ruta.endsWith('.tsx')) &&
+          !ruta.startsWith('src/generated/'),
+      );
+
+      for (const ruta of fuentes) {
+        const contenido = read(ruta);
+        if (contenido === null) continue;
+
+        if (contenido.includes(HOST) && ruta !== PUERTO) {
+          problems.push(
+            `${ruta} nombra el host del proveedor de IA. Solo ${PUERTO} habla con él: los límites, la degradación y la bitácora viven en el servicio y saltárselos deja una llamada sin gobernar (PRD §15.1).`,
+          );
+        }
+
+        // La clave nunca lleva prefijo NEXT_PUBLIC_: sería exponerla al cliente.
+        if (/NEXT_PUBLIC_GEMINI/.test(contenido)) {
+          problems.push(
+            `${ruta} declara una variable NEXT_PUBLIC_GEMINI. La clave del proveedor vive en el entorno del servidor y jamás se expone al navegador (PRD §15.1, §21).`,
+          );
+        }
+      }
+
+      return problems.length
+        ? fail([...new Set(problems)])
+        : ok([
+            `El host del proveedor solo aparece en ${PUERTO}, y ninguna variable expone la clave al cliente.`,
+          ]);
+    },
+  },
 ];
 
 

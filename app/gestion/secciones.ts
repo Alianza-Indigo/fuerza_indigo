@@ -35,6 +35,7 @@ export const SECCIONES = [
   { href: '/gestion/ia/proveedor', label: 'Proveedor de IA', permiso: 'ai.provider.configure' },
   { href: '/gestion/ia/consumo', label: 'Consumo de IA', permiso: 'ai.usage.read' },
   { href: '/gestion/comunicaciones/plantillas', label: 'Plantillas de aviso', permiso: 'notifications.template.author' },
+  { href: '/gestion/comunicaciones/campanas', label: 'Campañas', permiso: 'notifications.campaign.send' },
   { href: '/gestion/mensajes', label: 'Mensajes recibidos', permiso: 'support.request.read' },
   { href: '/gestion/contenidos/ecosistema', label: 'Catálogo del ecosistema', permiso: 'ecosystem.link.manage' },
   { href: '/gestion/redirecciones', label: 'Redirecciones', permiso: 'content.redirect.manage' },

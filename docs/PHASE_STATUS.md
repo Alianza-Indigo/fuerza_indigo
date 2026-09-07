@@ -30,7 +30,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 |---|---|---|
 | A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | **Hecho** |
 | B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | **Hecho** |
-| C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | En curso |
+| C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | **Hecho** |
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | Pendiente |
 | F | Cobro de eventos conectado al catálogo financiero | Pendiente |
@@ -55,6 +55,20 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
 | 5 | Las constancias son verificables y revocables | Pendiente |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | Pendiente |
+
+---
+
+## Lo que dejó el bloque C
+
+El correo que respeta las preferencias, las plantillas de aviso versionadas y las campañas operativas separadas de lo obligatorio (PRD §16.2, §24 Fase 9 criterios 1 y 2; ADR-0160 a ADR-0163).
+
+**Plantillas versionadas y administrables (C·1).** Las plantillas de aviso dejan de vivir solo en la semilla: se redactan como borrador (Prensa, `notifications.template.author`), se publican y se retiran con motivo (la Secretaría, `notifications.template.publish`, la revisión). Una publicada no se edita: se publica otra, y publicar retira la anterior del mismo código, canal e idioma. Al publicar se comprueba que las variables usadas en el asunto y el cuerpo y las declaradas coincidan. Las pantallas viven en `/gestion/comunicaciones/plantillas`, sobre el patrón de `DocumentTemplate`.
+
+**Campañas autorizadas, separadas de lo obligatorio (C·2).** Una campaña sale de una plantilla ya publicada y alcanza a los miembros activos de la entidad (`notifications.campaign.send`, crítico y con motivo, como exportar un padrón). **No hay entidad de campaña**: el contrato de fases no la admite, así que la campaña vive en la bitácora y en las notificaciones que crea (ADR-0162). Una campaña **no envía una clase obligatoria** —lo obligatorio va por su flujo, no como difusión—, y respeta la preferencia: a quien silenció esa clase por correo se le crea la notificación pero no se le envía, y le queda un intento `SUPPRESSED`; a los demás se les encola un trabajo `notification-email` que al correr registra la entrega como `SENT` o `FAILED` y deja que la cola reintente (ADR-0163). La pantalla vive en `/gestion/comunicaciones/campanas`.
+
+**La garantía de la fase, ejercida sobre el correo.** Comunicaciones obligatorias y promocionales se gestionan por separado (criterio 1): solo la clase obligatoria de gobierno es no silenciable, y una campaña no la envía. Lo vigila el control nuevo **C-F9-01**, que se probó rompiéndolo —volviendo `SECURITY` no silenciable, y quitándole a la campaña el rechazo de lo obligatorio— y viéndolo caer en rojo.
+
+**Once pruebas nuevas, cada garantía vista fallar:** ocho de plantillas versionadas (redactar≠publicar, la publicada no se edita, publicar retira la anterior, las variables coinciden) y tres de campañas (no envía lo obligatorio, respeta la preferencia con un `SUPPRESSED`, el trabajo encolado entrega y registra `SENT`), más cuatro de unidad de la parte pura. El correo transaccional de la Fase 1 sigue saliendo directo: no es difusión, es la respuesta a lo que la persona pidió.
 
 ---
 
@@ -88,15 +102,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A y B están enteros, y el bloque C va a la mitad: **C·1, las plantillas versionadas, está hecho**; falta C·2, las campañas y la entrega por correo que respeta las preferencias. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B y C están enteros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit de C·1.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit de C·2.
 
-**Lo que dejó C·1.** La administración de plantillas de aviso versionadas (PRD §16.2, criterio 2): redactar un borrador (Prensa), publicar y retirar (la Secretaría, la revisión), con motivo, comprobando que las variables usadas y las declaradas coincidan y retirando la versión anterior al publicar. Las pantallas viven en `/gestion/comunicaciones/plantillas`. El caso de uso está en `src/modules/notifications/application/templates.ts`; el patrón es el de `DocumentTemplate` (ADR-0160, ADR-0161).
+**Bloque D — las notificaciones web con autorización explícita.** Lo que toca: el canal `WEB_PUSH`, que la persona autoriza explícitamente antes de recibir nada. La preferencia por canal (bloque B) y la plantilla por canal (bloque C·1) ya lo admiten; falta el permiso del navegador, guardar la suscripción y entregar por ese canal respetando la preferencia, como el correo. Ninguna notificación web sin que la persona la haya pedido.
 
-**Bloque C·2 — las campañas y el correo que respeta las preferencias.** Lo que falta: la entrega por correo que la Fase 1 dejó apuntada, ahora leyendo las preferencias del bloque B (una clase silenciada para `EMAIL` no se envía, salvo la obligatoria), y campañas operativas autorizadas, separadas de lo obligatorio. **No hay entidad de campaña**: el contrato de fases no admite una entidad nueva en la Fase 9 más allá de las cuatro del bloque A (C-COH-16 y `entityMigrationPhase`), así que una campaña es un envío autorizado sobre `Notification`/`DeliveryAttempt`, registrado en la bitácora, que solo alcanza clases no obligatorias y respeta cada preferencia. El envío ya existe en `src/platform/mail`, sin consultar preferencias todavía; el sistema de trabajos y reintentos está en `src/platform/jobs`.
-
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La de C·2: una campaña que alcanza a quien silenció esa clase, o que envía una clase obligatoria como si fuera difusión.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque D: una notificación web que sale sin autorización de la persona.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

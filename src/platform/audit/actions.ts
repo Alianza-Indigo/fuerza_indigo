@@ -276,6 +276,7 @@ export const AUDIT_ACTIONS = {
   NOTIFICATION_TEMPLATE_DRAFTED: 'notifications.template.drafted',
   NOTIFICATION_TEMPLATE_PUBLISHED: 'notifications.template.published',
   NOTIFICATION_TEMPLATE_RETIRED: 'notifications.template.retired',
+  NOTIFICATION_CAMPAIGN_SENT: 'notifications.campaign.sent',
 
   AUDIT_EXPORTED: 'audit.exported',
   SUPERADMIN_ACTION: 'system.superadmin.action',

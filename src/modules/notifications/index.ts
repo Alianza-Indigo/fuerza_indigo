@@ -31,3 +31,10 @@ export {
   type DraftNotificationTemplateInput,
   type NotificationTemplateRow,
 } from './application/templates';
+export {
+  sendCampaign,
+  sendCampaignSchema,
+  campaignTemplateOptions,
+  type SendCampaignInput,
+  type CampaignTemplateOption,
+} from './application/campaigns';

@@ -1,4 +1,5 @@
 import type { ClaimedJob } from '@/platform/jobs/queue';
+import { db } from '@/platform/db/client';
 import { sendTemplatedMail } from '@/platform/mail/mailer';
 import { logger } from '@/platform/observability/logger';
 
@@ -120,6 +121,47 @@ const HANDLERS: Record<string, JobHandler> = {
 
     const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
     return { providerMessageId: sent.providerMessageId };
+  },
+
+  /**
+   * Envío de una campaña a un destinatario (PRD §16.2, Fase 9).
+   *
+   * La notificación ya existe —la creó el acto de enviar la campaña—; este
+   * trabajo la entrega por correo y **registra el intento**: entrega, fallo y,
+   * si falla, el reintento que la cola programa sola. El identificador de la
+   * notificación es la clave de negocio, así que reintentar no duplica el aviso.
+   */
+  'notification-email': async (job) => {
+    const to = textValue(job.payload, 'to');
+    const templateCode = textValue(job.payload, 'templateCode');
+    const variables = stringMap(job.payload, 'variables');
+    const notificationId = textValue(job.payload, 'notificationId');
+
+    if (to === '' || templateCode === '' || notificationId === '') {
+      throw new Error('El envío de campaña no trae destinatario, plantilla o notificación.');
+    }
+
+    const previos = await db().deliveryAttempt.count({ where: { notificationId, channel: 'EMAIL' } });
+    try {
+      const sent = await sendTemplatedMail({ to, templateCode, variables, correlationId: job.correlationId });
+      await db().deliveryAttempt.create({
+        data: {
+          notificationId,
+          channel: 'EMAIL',
+          attemptNumber: previos + 1,
+          status: 'SENT',
+          providerMessageId: sent.providerMessageId,
+        },
+      });
+      return { providerMessageId: sent.providerMessageId };
+    } catch (error) {
+      // El fallo queda registrado y se relanza para que la cola reintente con su
+      // propia espera: un fallo sin rastro es un fallo que nadie investiga.
+      await db().deliveryAttempt.create({
+        data: { notificationId, channel: 'EMAIL', attemptNumber: previos + 1, status: 'FAILED' },
+      });
+      throw error;
+    }
   },
 
   /** Aviso de que un cobro periódico falló y de cuánto tiempo hay para resolverlo. */

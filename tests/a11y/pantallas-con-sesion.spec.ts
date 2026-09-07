@@ -48,6 +48,7 @@ const DE_COMUNICACION = [
   '/gestion/ia/fuentes',
   '/gestion/comunicaciones/plantillas',
   '/gestion/comunicaciones/plantillas/nueva',
+  '/gestion/comunicaciones/campanas',
 ];
 
 /** Rutas de gestión. Exigen facultades institucionales. */

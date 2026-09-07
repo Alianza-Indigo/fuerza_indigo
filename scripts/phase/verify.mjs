@@ -3320,6 +3320,40 @@ const CHECKS = [
         : ok(['La consulta de consumo no nombra ninguna columna de contenido: agrega solo números y estados.']);
     },
   },
+  {
+    id: 'C-F9-01',
+    title: 'Fase 9: lo obligatorio y lo promocional se gestionan por separado',
+    phases: [9],
+    run() {
+      // El criterio 1 exige que las comunicaciones obligatorias y las
+      // promocionales se gestionen por separado. Dos cosas lo sostienen y este
+      // control las vigila: que solo la clase obligatoria de gobierno sea no
+      // silenciable —ni una más, para que el relato «lo demás lo decide la
+      // persona» se cumpla—, y que una campaña rechace enviar una plantilla de
+      // esa clase, porque lo obligatorio no viaja como difusión.
+      const dominio = read('src/modules/notifications/domain/preferences.ts');
+      if (dominio === null) return fail(['No se encuentra el dominio de preferencias de notificación.']);
+
+      const setMatch = dominio.match(/NO_SILENCIABLES\s*=\s*new Set<[^>]*>\(\[([^\]]*)\]\)/);
+      if (setMatch === null) return fail(['El dominio no declara qué clases no se pueden silenciar.']);
+      const clases = [...(setMatch[1] ?? '').matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]);
+      if (clases.length !== 1 || clases[0] !== 'GOVERNANCE_MANDATORY') {
+        return fail([
+          `Las clases no silenciables deberían ser solo GOVERNANCE_MANDATORY; son: ${clases.join(', ') || 'ninguna'}.`,
+        ]);
+      }
+
+      const campanas = read('src/modules/notifications/application/campaigns.ts');
+      if (campanas === null) return fail(['No se encuentra el caso de uso de campañas.']);
+      if (!/isMandatoryCategory\(template\.category\)/.test(campanas) || !campanas.includes('ruleViolation')) {
+        return fail([
+          'El envío de campaña no rechaza una plantilla de clase obligatoria: una campaña no debe enviar lo obligatorio.',
+        ]);
+      }
+
+      return ok(['Solo el aviso obligatorio de gobierno es no silenciable, y una campaña no lo envía.']);
+    },
+  },
 ];
 
 

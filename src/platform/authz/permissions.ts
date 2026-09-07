@@ -799,6 +799,16 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     sensitivity: 'CRITICAL',
     requiresReason: true,
   }),
+  /**
+   * Enviar una campaña alcanza a muchas personas a la vez con un mismo texto. Es
+   * un acto masivo, como exportar un padrón, y por eso es crítico y exige motivo.
+   * La base y el caso de uso impiden que una campaña envíe un aviso obligatorio:
+   * lo obligatorio va por su flujo, no como difusión.
+   */
+  define('notifications.campaign.send', 'Enviar una campaña de comunicación a un público', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
 
   // system
   define('system.module.configure', 'Configurar módulos del sistema', { sensitivity: 'CRITICAL', requiresReason: true }),

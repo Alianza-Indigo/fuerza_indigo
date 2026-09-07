@@ -613,8 +613,11 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'events.attendance.register',
       'events.constancy.issue',
       // Comunicaciones (Fase 9). Prensa redacta las plantillas de aviso; como con
-      // los prompts, publicarlas es la revisión y la hace la Secretaría.
+      // los prompts, publicarlas es la revisión y la hace la Secretaría. Y envía
+      // las campañas —sobre plantillas ya publicadas y revisadas—, que es un acto
+      // masivo, crítico y con motivo.
       'notifications.template.author',
+      'notifications.campaign.send',
       'files.file.download_own','files.file.upload', 'files.file.download'],
   },
   {

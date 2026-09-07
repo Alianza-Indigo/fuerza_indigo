@@ -1831,3 +1831,35 @@ Tres cosas lo impiden: las suscripciones viven en un solo archivo que se puede l
 Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el mismo `WHERE`. Se probó rompiéndolo: quitar el filtro de permiso hace que un fragmento restringido alcance a quien no puede leer su origen, y la prueba se pone en rojo.
 
 **Deshabilitar una fuente borra sus fragmentos.** No basta con marcarla: dejar los vectores de una fuente deshabilitada sería dejar abierta una puerta que la consulta cree cerrada. Reindexar hace lo mismo —borra y vuelve a insertar—, porque un fragmento no se edita: reescribir su texto dejaría el vector apuntando a algo que ya no dice eso.
+
+---
+
+## ADR-0145 · Lo que se envía al modelo se redacta en el servicio, no aguas arriba
+
+**Contexto.** El PRD §15.5 pide minimizar y redactar o seudonimizar lo que se manda al modelo. En el bloque B, `redactionApplied` lo declaraba quien llamaba: una promesa, no un hecho.
+
+**Decisión.** El servicio de ejecución **redacta él mismo** el texto antes de enviarlo: sustituye la PII que reconoce —correo, CURP, RFC, teléfono, tiras largas de dígitos— por un marcador, y la huella se calcula sobre el texto ya redactado, que es lo que de verdad sale. `redactionApplied` de la fila queda en verdadero si la redacción del servicio **o** la de quien llama tocó algo. Que la haga el servicio y no el llamador es lo que la vuelve una garantía y no una cortesía: ningún camino que pase por aquí manda PII reconocible por descuido.
+
+**No es cifrado ni exhaustividad.** Es la primera línea, la que quita lo evidente. El segundo muro es el del bloque B —la bitácora guarda la huella y nunca el texto—, de modo que lo que se escapara al redactor tampoco queda en una tabla de telemetría. Un texto sin PII reconocida sale igual que entró, y por eso la huella de una petición sin datos personales no cambia respecto del bloque B.
+
+---
+
+## ADR-0146 · La inyección se marca, no se bloquea
+
+**Contexto.** El PRD §15.5 pide filtros contra instrucciones incrustadas en documentos. La base documental (bloque D) trae material que puede contener «ignora las instrucciones anteriores».
+
+**Decisión.** El servicio revisa la entrada y el material consultado en busca de patrones de inyección y, si los halla, **marca** la fila (`injectionSuspected`) en lugar de bloquear. Bloquear castigaría a quien pregunta por lo que dice un documento que no escribió; marcar le dice a la revisión humana —que en esta fase revisa cada salida (bloque F)— que el material intentaba secuestrar al modelo. El rechazo, cuando toca, es de la persona que revisa, no de una expresión regular.
+
+**Por qué una marca y no un umbral.** Un detector de inyección nunca es completo; tratarlo como una puerta daría una falsa sensación de barrera. Como señal para la revisión, en cambio, un falso positivo cuesta una mirada y un falso negativo no desactiva ninguna otra defensa.
+
+---
+
+## ADR-0147 · La IA no decide: el servicio rechaza los efectos del §15.4 antes de llamar
+
+**Contexto.** Es la garantía que gobierna la fase entera. El PRD §15.4 enumera diez decisiones que la IA no puede tomar. El `AiGenerationStatus` reserva `BLOCKED_BY_POLICY` para esto desde el bloque A.
+
+**Decisión.** El servicio de ejecución lleva un registro de los diez efectos (`PROHIBITED_EFFECTS`), y cuando la petición **declara** que su salida produciría uno de ellos, rechaza la ejecución **antes de llamar al modelo** y deja fila `BLOCKED_BY_POLICY`. No es una recomendación para quien escribe los prompts: es una comprobación del servicio, en el único sitio por el que se llama al proveedor.
+
+**Por qué un efecto declarado y no una inferencia.** El servicio no adivina si una salida «decide» una admisión: lo declara quien conecta la IA a un flujo (bloque F). Es defensa en profundidad, no la única defensa —la otra es que **toda** salida la confirma una persona (bloque F), de modo que la IA nunca produce por sí sola un efecto vinculante—. Este guardián añade que ni siquiera se le pida al modelo producir una de las diez decisiones cuando el flujo lo declara.
+
+**El registro se coteja con el contrato.** El texto de cada efecto es, palabra por palabra, el del §15.4, y el control `C-F8-02` falla si alguna vez divergen: una entrada que se pierda aquí es una decisión que la IA podría volver a tomar sin que nadie lo note. Probado quitando una entrada y viendo el control ponerse en rojo.

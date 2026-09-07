@@ -3206,6 +3206,56 @@ const CHECKS = [
           ]);
     },
   },
+
+  {
+    id: 'C-F8-02',
+    title: 'Fase 8: la lista de efectos que la IA no puede producir es la del PRD §15.4',
+    phases: [8],
+    run() {
+      // «La IA no decide» es la garantía que gobierna la fase. El servicio la
+      // sostiene rechazando la ejecución cuando el efecto declarado es uno de los
+      // diez del §15.4 (ADR-0147). Ese registro vive en el código, y si una
+      // entrada se pierde, la IA podría volver a tomar esa decisión sin que nadie
+      // lo note. Este control coteja el registro contra el contrato: los dos
+      // dicen lo mismo, o falla nombrando la diferencia.
+      const prd = read('docs/PRD.md');
+      const policy = read('src/platform/ai/policy.ts');
+      if (prd === null || policy === null) {
+        return fail(['No se encuentra docs/PRD.md o src/platform/ai/policy.ts.']);
+      }
+
+      // Viñetas del §15.4: desde su encabezado hasta el siguiente «## ».
+      const seccion = /##\s*15\.4[^\n]*\n([\s\S]*?)\n##\s/.exec(prd);
+      if (seccion === null) return fail(['No se pudo aislar la sección §15.4 del PRD.']);
+      const viñetas = seccion[1]
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith('- '))
+        .map((l) => l.slice(2).replace(/[;.]$/, '').trim());
+
+      // Descripciones del registro PROHIBITED_EFFECTS.
+      const descripciones = [...policy.matchAll(/^\s*[A-Z_]+:\s*'([^']+)',/gm)].map((m) => m[1]);
+
+      const problems = [];
+      for (const v of viñetas) {
+        if (!descripciones.includes(v)) {
+          problems.push(`El §15.4 prohíbe «${v}» y el registro PROHIBITED_EFFECTS no lo recoge con ese texto.`);
+        }
+      }
+      for (const d of descripciones) {
+        if (!viñetas.includes(d)) {
+          problems.push(`El registro PROHIBITED_EFFECTS incluye «${d}», que ya no está en el §15.4 del PRD.`);
+        }
+      }
+      if (viñetas.length !== descripciones.length) {
+        problems.push(`El §15.4 enumera ${viñetas.length} efectos y el registro tiene ${descripciones.length}.`);
+      }
+
+      return problems.length
+        ? fail([...new Set(problems)])
+        : ok([`Los ${viñetas.length} efectos prohibidos del §15.4 coinciden, palabra por palabra, con el registro del servicio.`]);
+    },
+  },
 ];
 
 

@@ -7,6 +7,8 @@ import { logger } from '@/platform/observability/logger';
 import { aiProvider, AiProviderTimeoutError } from './provider-port';
 import { priceGenerationMinor } from './pricing';
 import { validateAgainstSchema } from './output-schema';
+import { detectInjection, redact } from './redaction';
+import { isProhibitedEffect, PROHIBITED_EFFECTS } from './policy';
 
 /**
  * Servicio central de ejecución de la IA (PRD §15, §24 Fase 8; ADR-0137, ADR-0139).
@@ -37,10 +39,25 @@ export interface RunGenerationInput {
   /** Versión de prompt a ejecutar. Debe estar publicada (lo comprueba el servicio). */
   readonly promptVersionId: string;
   readonly purpose: AiPurpose;
-  /** El texto a enviar, ya minimizado o redactado por quien llama (bloque E). */
+  /** El texto de la persona. El servicio lo **redacta** antes de enviarlo (bloque E). */
   readonly userText: string;
-  /** Si quien llama minimizó o redactó antes de enviar. Se registra tal cual. */
+  /**
+   * Si quien llama ya minimizó o redactó aguas arriba. El servicio redacta
+   * igualmente por su cuenta; `redactionApplied` de la fila queda en verdadero si
+   * cualquiera de las dos redacciones tocó algo (ADR-0145).
+   */
   readonly redactionApplied: boolean;
+  /**
+   * Material consultado que acompaña a la petición —fragmentos recuperados
+   * (bloque D)—. Se revisa en busca de instrucciones incrustadas (ADR-0146).
+   */
+  readonly contextText?: string;
+  /**
+   * Efecto que produciría el uso de esta salida, si quien llama lo declara. Si es
+   * uno de los del PRD §15.4, el servicio **rechaza la ejecución antes de llamar**
+   * (ADR-0147).
+   */
+  readonly intendedEffect?: string;
   /** Usuario que pide, para el límite por persona y para la atribución. Nulo en la orientación anónima. */
   readonly requestedById: string | null;
   /** Actor de auditoría que queda como autor de la fila. */
@@ -66,6 +83,8 @@ export type RunGenerationResult =
   | { readonly status: 'DEGRADED'; readonly reason: DegradationReason }
   /** Un límite se alcanzó antes de llamar: no se llamó al proveedor. */
   | { readonly status: 'LIMIT_EXCEEDED'; readonly reason: LimitReason }
+  /** El efecto declarado es de los que la IA no puede producir (§15.4): no se llamó. */
+  | { readonly status: 'BLOCKED_BY_POLICY'; readonly reason: string; readonly generationId: string }
   /** Se llamó, la salida no encaja en el esquema y no se enseña. Queda registrada. */
   | { readonly status: 'SCHEMA_REJECTED'; readonly generationId: string }
   | { readonly status: 'PROVIDER_ERROR'; readonly generationId: string }
@@ -188,12 +207,71 @@ async function ejecutar(
       : 1024;
 
   /* ---------------------------------------------------------------------- */
+  /* Minimización, inyección y huella (bloque E), antes de nada.             */
+  /* ---------------------------------------------------------------------- */
+
+  // Se redacta lo que se enviará: la PII reconocida se sustituye por un marcador
+  // antes de salir del servidor (ADR-0145). La huella se calcula sobre el texto
+  // ya redactado, que es lo que de verdad se manda.
+  const redaccion = redact(input.userText);
+  const userTextEnviado = redaccion.text;
+  const redactionApplied = redaccion.applied || input.redactionApplied;
+
+  // El material consultado y la entrada se revisan en busca de instrucciones
+  // incrustadas. No se bloquea: se marca, para que la revisión humana lo sepa
+  // (ADR-0146).
+  const injectionSuspected =
+    detectInjection(input.userText) || (input.contextText !== undefined && detectInjection(input.contextText));
+
+  const digest = huella(version.model, version.systemText, userTextEnviado);
+  const comun = {
+    conversationId: input.conversationId ?? null,
+    promptVersionId: input.promptVersionId,
+    model: version.model,
+    requestedById: input.requestedById,
+    purpose: input.purpose,
+    inputDigest: digest,
+    redactionApplied,
+    injectionSuspected,
+    currency: config.currency,
+    createdByActorId: input.actorId,
+  };
+
+  /* ---------------------------------------------------------------------- */
+  /* Efectos prohibidos (§15.4): rechaza antes de llamar.                    */
+  /* ---------------------------------------------------------------------- */
+
+  // La IA no decide. Si quien llama declara que la salida produciría uno de los
+  // diez efectos del §15.4, no se llama al modelo: queda fila BLOCKED_BY_POLICY.
+  if (input.intendedEffect !== undefined && isProhibitedEffect(input.intendedEffect)) {
+    const fila = await cliente.aiGeneration.create({
+      data: {
+        ...comun,
+        outputSummary: '',
+        outputSchemaValid: false,
+        promptTokens: 0,
+        completionTokens: 0,
+        costMinor: 0n,
+        latencyMs: 0,
+        status: 'BLOCKED_BY_POLICY',
+      },
+      select: { id: true },
+    });
+    logger.warn('Generación de IA rechazada por política: la IA no decide esto', {
+      module: 'ai',
+      outcome: 'failed',
+      context: { effect: input.intendedEffect, purpose: input.purpose, generationId: fila.id },
+    });
+    return { status: 'BLOCKED_BY_POLICY', reason: PROHIBITED_EFFECTS[input.intendedEffect], generationId: fila.id };
+  }
+
+  /* ---------------------------------------------------------------------- */
   /* Límites, antes de llamar. Los tres niegan de verdad.                    */
   /* ---------------------------------------------------------------------- */
 
-  // 1. Tokens por petición. Se estima la entrada y se suma el techo de salida:
-  //    una petición que no cabría se rechaza antes de gastarla.
-  const tokensEstimados = estimarTokens(version.systemText) + estimarTokens(input.userText) + maxOutputTokens;
+  // 1. Tokens por petición. Se estima la entrada (ya redactada) y se suma el
+  //    techo de salida: una petición que no cabría se rechaza antes de gastarla.
+  const tokensEstimados = estimarTokens(version.systemText) + estimarTokens(userTextEnviado) + maxOutputTokens;
   if (tokensEstimados > config.maxTokensPerRequest) {
     logger.warn('Generación de IA negada: excede el máximo de tokens por petición', {
       module: 'ai',
@@ -239,19 +317,6 @@ async function ejecutar(
   /* Llamada al proveedor, con su latencia y su bitácora.                    */
   /* ---------------------------------------------------------------------- */
 
-  const digest = huella(version.model, version.systemText, input.userText);
-  const comun = {
-    conversationId: input.conversationId ?? null,
-    promptVersionId: input.promptVersionId,
-    model: version.model,
-    requestedById: input.requestedById,
-    purpose: input.purpose,
-    inputDigest: digest,
-    redactionApplied: input.redactionApplied,
-    currency: config.currency,
-    createdByActorId: input.actorId,
-  };
-
   const inicio = Date.now();
   let salida: { text: string; promptTokens: number; completionTokens: number };
   try {
@@ -259,7 +324,7 @@ async function ejecutar(
       apiKey,
       model: version.model,
       systemText: version.systemText,
-      userText: input.userText,
+      userText: userTextEnviado,
       temperature,
       maxOutputTokens,
       timeoutMs: TIMEOUT_MS,

@@ -32,7 +32,7 @@ El PRD §24 Fase 8 contrata: servicio central de Gemini ejecutado solo en servid
 | B | Puerto del proveedor, ejecución solo en servidor, límites, costos y degradación | **Hecho** |
 | C | Prompts administrables: versiones, laboratorio, publicación revisada y reversión | **Hecho** |
 | D | Base documental: fuentes autorizadas, fragmentos y recuperación con permisos | **Hecho** |
-| E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | Pendiente |
+| E | Minimización, redacción y seudonimización; defensas de inyección y efectos prohibidos | **Hecho** |
 | F | Casos de uso asistidos y revisión humana de cada salida | Pendiente |
 | G | Pantallas de gobernanza, laboratorio y consulta de costos | Pendiente |
 | H | Pruebas, controles de fase, documentación y cierre | Pendiente |
@@ -84,6 +84,20 @@ El servicio central de la IA, con las tres defensas que gobiernan la ejecución,
 
 ---
 
+## Lo que dejó el bloque E
+
+Las tres defensas del §15.4 y §15.5, todas en el servicio de ejecución, que es el único sitio por el que se llama al proveedor.
+
+**La IA no decide.** Es la garantía que gobierna la fase. El servicio lleva el registro de los diez efectos del §15.4 (`PROHIBITED_EFFECTS`) y, cuando la petición declara que su salida produciría uno, **rechaza la ejecución antes de llamar al modelo** y deja fila `BLOCKED_BY_POLICY` (ADR-0147). El control nuevo `C-F8-02` coteja ese registro, palabra por palabra, con el §15.4 del PRD: una entrada que se pierda es una decisión que la IA podría volver a tomar. Probado rompiéndolo.
+
+**Lo que se envía se redacta en el servicio.** La PII reconocida —correo, CURP, RFC, teléfono, tiras largas de dígitos— se sustituye por un marcador antes de salir, y la huella se calcula sobre el texto ya redactado. `redactionApplied` deja de ser una promesa de quien llama y pasa a ser un hecho del servicio (ADR-0145). Probado: el proveedor falso no recibe el correo ni la CURP.
+
+**La inyección se marca, no se bloquea.** El material consultado y la entrada se revisan en busca de instrucciones incrustadas; si las hay, la fila queda con `injectionSuspected`, para que la revisión humana lo sepa (ADR-0146). Castigar a quien pregunta por lo que dice un documento ajeno sería el error contrario.
+
+**Once pruebas nuevas** —seis unitarias del redactor, el detector de inyección y el registro; cinco de integración que comprueban que el servicio aplica las tres de verdad—, cada garantía vista fallar: enviar sin redactar, no marcar la inyección, y dejar pasar un efecto prohibido.
+
+---
+
 ## Lo que dejó el bloque D
 
 La base documental que la Fase 0 contrató y nunca se construyó: fuentes autorizadas, fragmentos con su vector, y una recuperación que **respeta los permisos de quien pregunta**. Es el criterio 2 de la fase.
@@ -120,15 +134,15 @@ Los prompts dejan de ser una promesa del modelo de datos y se administran de ver
 
 ## Cómo se retoma
 
-El bloque D está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
+El bloque E está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, y esta sección dice dónde se quedó.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (72 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque D**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (73 aprobados, 0 fallidos), `npm run build` y `npm run db:check`, todo en verde en local. La puerta de salida de verdad es la **integración continua sobre el commit del bloque E**: mírela antes de dar nada por cerrado, y en especial las pruebas de extremo a extremo y de accesibilidad, que en local piden un solo recorrido de Playwright a la vez.
 
-**Bloque E — minimización, redacción y defensas.** Lo que toca: antes de enviar algo al modelo, **minimizar y redactar o seudonimizar** lo que se manda (el `redactionApplied` de `ai_generation` hoy lo declara quien llama; el bloque E es quien lo hace de verdad); las **defensas de inyección de prompt** —marcar `injectionSuspected` cuando el material consultado trae instrucciones incrustadas— y de exfiltración; y los **efectos prohibidos del PRD §15.4**: la lista de diez decisiones que la IA no puede tomar, comprobada por el servicio, que **rechaza la ejecución antes de llamar al modelo** (ahí es donde entra el estado `BLOCKED_BY_POLICY` de `ai_generation`, que hoy no produce nadie).
+**Bloque F — casos de uso asistidos y revisión humana.** Lo que toca: los casos de uso que el PRD §24 Fase 8 contrata —orientación, explicación de trámite, clasificación sugerida de una solicitud (la columna `SupportRequest.suggestedByAiGenerationId`, que espera desde la Fase 0 la propuesta que hoy no genera nadie), resúmenes y documentos asistidos—, cada uno armando su petición con el prompt vigente, la recuperación (`retrieveForVersion`) y el efecto que declara (para el guardián §15.4), y **la revisión humana de cada salida** (`AiReview`: aceptar, corregir o rechazar) antes de que surta efecto. La salida siempre se marca como generada con IA y se puede corregir (criterios 3 y 4 de la fase).
 
-**Lo que ya está resuelto y no hay que rehacer.** El puerto y `embed()` (bloque B/D), los límites, la degradación y la bitácora (B), la administración de prompts (C) y toda la base documental con su recuperación filtrada por permiso (D) no se tocan. `retrieveForVersion` es el punto por donde un flujo asistido pide contexto; el bloque F lo usará. El precio por token vive en `pricing.ts` (ADR-0138); el modelo y los límites, en la fila (ADR-0132).
+**Lo que ya está resuelto y no hay que rehacer.** Toda la máquina de ejecución (B), la administración de prompts (C), la base documental con recuperación filtrada por permiso (D) y las defensas —redacción, inyección, efectos prohibidos— (E) no se tocan. `runGeneration` ya aplica las tres defensas; un caso de uso del bloque F le pasa `userText`, `contextText` (los fragmentos recuperados) y, cuando conecta la IA a una decisión, su `intendedEffect`. `AiReview` ya existe en el esquema con sus restricciones; el bloque F es quien la escribe.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La lista de efectos prohibidos es justo del tipo que hay que romper: quitar una entrada y ver que una ejecución que debía negarse se permite.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La revisión humana es del tipo que hay que romper: una salida asistida que surte efecto sin que nadie la haya aceptado.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto. `docs/HANDOFF.md` trae el comando para levantarlo; si `npm run db:migrate` falla con «no server running», es eso. La extensión `pgvector` tiene que estar instalada: sin ella, la migración de la Fase 8 no aplica y las pruebas de integración no corren.
 

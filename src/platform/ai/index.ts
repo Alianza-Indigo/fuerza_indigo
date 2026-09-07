@@ -21,6 +21,8 @@ export {
   type AiEmbedInput,
 } from './provider-port';
 export { validateAgainstSchema, unsupportedKeywords, type SchemaValidation } from './output-schema';
+export { redact, detectInjection, type RedactionResult } from './redaction';
+export { PROHIBITED_EFFECTS, isProhibitedEffect, type ProhibitedEffect } from './policy';
 export { priceGenerationMinor, AI_PRICE_CURRENCY } from './pricing';
 export {
   chunkMarkdown,

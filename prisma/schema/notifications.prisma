@@ -18,14 +18,48 @@ model NotificationTemplate {
   variables    Json                 @default("[]")
   status       TemplateStatus       @default(DRAFT)
 
+  /// Quién publicó esta versión. Nulo mientras es borrador: una plantilla se
+  /// publica una vez, y esta columna es la respuesta a «¿quién puso este texto
+  /// en boca de la organización?».
+  publishedById String? @db.Uuid
+
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
+  publishedBy   Actor? @relation("NotificationTemplatePublishedBy", fields: [publishedById], references: [id], onDelete: Restrict)
   notifications Notification[]
 
   @@unique([code, version, channel, locale])
   @@index([code])
   @@map("notification_template")
+}
+
+/// Preferencia de una persona sobre una categoría y un canal.
+///
+/// **Un aviso obligatorio de gobierno no es una preferencia.** La base lo
+/// impone: una preferencia sobre `GOVERNANCE_MANDATORY` no puede quedar
+/// suprimida. Lo que gobierna la fase se sostiene aquí, en el dato, para que
+/// ninguna pantalla pueda apagar un aviso que la persona no puede rechazar.
+model NotificationPreference {
+  id         String              @id @default(uuid(7)) @db.Uuid
+  personId   String              @db.Uuid
+  category   NotificationCategory
+  channel    NotificationChannel
+  /// Si la persona pidió no recibir esta categoría por este canal. Nunca cierto
+  /// para una categoría obligatoria: la base lo rechaza.
+  suppressed Boolean             @default(false)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  person         Person @relation("NotificationPreferencePerson", fields: [personId], references: [id], onDelete: Restrict)
+  createdByActor Actor  @relation("NotificationPreferenceCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([personId, category, channel])
+  @@index([personId])
+  @@map("notification_preference")
 }
 
 enum TemplateStatus {

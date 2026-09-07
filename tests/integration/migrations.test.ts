@@ -30,7 +30,7 @@ async function existe(consulta: string, parametros: unknown[] = []): Promise<boo
 }
 
 describe('instalación limpia', () => {
-  it('crea las 131 tablas de las fases 1 a 8', async () => {
+  it('crea las 135 tablas de las fases 1 a 9', async () => {
     const { rows } = await base.sql.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'
@@ -94,10 +94,16 @@ describe('instalación limpia', () => {
       'ai_provider_configuration', 'ai_prompt', 'ai_prompt_version',
       'ai_prompt_version_source', 'ai_conversation', 'ai_generation', 'ai_review',
       'knowledge_source', 'knowledge_chunk',
+      // Fase 9 · eventos, formación e indicadores. Cuatro tablas nuevas, y la
+      // cuenta importa: `event` y `event_registration` los contrataba el modelo
+      // desde la Fase 0 y no existían; `event_material` y `notification_preference`
+      // los añade esta fase. Si un día apareciera aquí una tabla que guardara una
+      // preferencia capaz de apagar un aviso obligatorio, este conteo lo diría.
+      'event', 'event_registration', 'event_material', 'notification_preference',
     ]) {
       expect(tablas, `falta la tabla ${esperada}`).toContain(esperada);
     }
-    expect(tablas).toHaveLength(131);
+    expect(tablas).toHaveLength(135);
   });
 
   it('deja registradas todas las migraciones del repositorio, ninguna a medias', async () => {

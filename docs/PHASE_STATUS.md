@@ -28,7 +28,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 
 | Bloque | Contenido | Estado |
 |---|---|---|
-| A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | Pendiente |
+| A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | **Hecho** |
 | B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | Pendiente |
 | C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | Pendiente |
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
@@ -58,15 +58,29 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 
 ---
 
+## Lo que dejó el bloque A
+
+El esquema de eventos, formación, constancias y preferencias de notificación, con las garantías de la fase puestas en el dato desde el primer día (ADR-0154, ADR-0155, ADR-0156).
+
+**Lo que el modelo de datos contrataba y nadie había construido.** `Event` y `EventRegistration` viven desde la Fase 0 en `docs/DATA_MODEL.md` y no existían. Ahora sí: el evento con su aforo, su elegibilidad, su cobro y su plantilla de constancia; la inscripción con su lista de espera (un estado, no una tabla, ADR-0154), su asistencia, su evaluación y su constancia. Más `EventMaterial` y `NotificationPreference`, que la fase necesita.
+
+**Tres garantías en el dato, no en una pantalla.** Un evento que dice emitir constancia tiene que nombrar su plantilla; una constancia no se revoca si nunca se emitió —la marca queda, no se borra la fila (ADR-0155)—; y **un aviso obligatorio no se puede suprimir por preferencia** (ADR-0156), que es la garantía que gobierna la fase del lado de las comunicaciones. Las tres las impone un `CHECK`, y el identificador público y el slug de un evento no se pueden reescribir: un enlace compartido no cambia de destino.
+
+**Permisos y semilla.** Los cinco permisos del grupo `events` que `docs/PERMISSIONS.md` contrata desde la Fase 0 —`event.manage`, `registration.read`, `attendance.register`, `constancy.issue`, `constancy.revoke`—, repartidos a Prensa (que organiza) y a la Secretaría (que además revoca, el acto grave que exige motivo).
+
+**Once pruebas de esquema, cada garantía vista fallar:** la constancia sin plantilla, el aforo de cero, las fechas incoherentes, el slug inmutable, la doble inscripción, la inscripción que no cambia de evento, la revocación sin constancia, la evaluación fuera de rango y —la de la fase— la supresión de un aviso obligatorio. Una regla que nunca se ha visto en rojo no está probada.
+
+---
+
 ## Cómo se retoma
 
-La Fase 9 está recién autorizada y **no se ha construido nada todavía**. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha y se corre cada suite, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+El bloque A está entero. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Bloque A — el esquema.** Lo que toca primero: las entidades de eventos, registros de asistencia, constancias y las de notificación que la fase amplía, con su migración correctiva (nunca reescribiendo una aplicada), sus permisos y su semilla. El modelo de datos ya contrata varias de ellas desde la Fase 0; hay que mirar `docs/DATA_MODEL.md` y construir lo que falta sin reinventar lo que existe.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua sobre el commit del bloque A.
 
-**La garantía que hay que tener presente desde el esquema.** El umbral de privacidad de los indicadores y la imposibilidad de suprimir una comunicación obligatoria no se añaden al final: se sostienen en el modelo —una categoría de notificación sabe si es obligatoria, un indicador sabe si es sensible— para que ninguna pantalla pueda saltárselos.
+**Bloque B — el centro de notificaciones y las preferencias.** Lo que toca: leer los avisos de una persona dentro de la plataforma (el centro), y administrar sus preferencias por categoría y canal **sin poder suprimir lo obligatorio** —el esquema ya lo impide; el caso de uso lo comprueba antes para dar un mensaje claro—. La entrega por canal (correo, web) y las campañas son de los bloques C y D.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo, y ejecutando el sistema para los criterios de aceptación, nunca leyendo el código.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque B: una preferencia que apaga un aviso obligatorio.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

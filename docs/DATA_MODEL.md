@@ -625,7 +625,11 @@ Las acciones sensibles requieren confirmación humana; la IA nunca decide admisi
 
 **`EventRegistration`** — Inscripción y asistencia.
 `id` PK · `eventId` FK IX · `personId` FK IX · `registeredAt` · `status` *enum* (`REGISTERED`, `WAITLISTED`, `CONFIRMED`, `ATTENDED`, `NO_SHOW`, `CANCELLED`) IX · `paymentId` NULL FK · `attendanceAt` NULL · `evaluationScore` NULL *int* · `constancyDocumentId` NULL FK→`GeneratedDocument` · `constancyRevokedAt` NULL.
-Único `(eventId, personId)`.
+Único `(eventId, personId)`. La base impide revocar una constancia que nunca se emitió (`constancyRevokedAt` exige `constancyDocumentId`) y acota la evaluación a 0..100. `eventId` y `personId` no son actualizables: cambiarlos es otra inscripción.
+
+**`EventMaterial`** — Material de un evento (lectura, presentación, guía). **Añadida en la Fase 9.**
+`id` PK · `eventId` FK IX · `title` · `fileObjectId` FK→`FileObject` · `ordinal` *int* · `membersOnly` *bool* — un material reservado no se sirve a quien no está inscrito.
+Único `(eventId, ordinal)`.
 
 **`Notification`** — Aviso dirigido a una persona.
 `id` PK · `personId` FK IX · `templateId` NULL FK→`NotificationTemplate` · `category` *enum* (`GOVERNANCE_MANDATORY`, `MEMBERSHIP`, `PAYMENT`, `CASE`, `APPOINTMENT`, `EVENT`, `SECURITY`, `PROMOTIONAL`) IX — los avisos obligatorios de gobierno sindical se distinguen de las comunicaciones promocionales · `title` · `body` · `linkPath` NULL · `channels` *enum[]* (`IN_APP`, `EMAIL`, `WEB_PUSH`) · `createdAt` IX · `readAt` NULL · `archivedAt` NULL · `relatedKind` NULL *enum* · `relatedId` NULL.
@@ -637,6 +641,10 @@ Las acciones sensibles requieren confirmación humana; la IA nunca decide admisi
 **`DeliveryAttempt`** — Intento de entrega por canal. Inmutable.
 `id` PK · `notificationId` FK IX · `channel` *enum* · `providerMessageId` NULL · `attemptNumber` *int* · `status` *enum* (`QUEUED`, `SENT`, `DELIVERED`, `BOUNCED`, `FAILED`, `SUPPRESSED`) IX · `errorCode` NULL · `occurredAt` IX · `nextRetryAt` NULL.
 `SUPPRESSED` refleja la preferencia de la persona; una preferencia nunca suprime un aviso obligatorio de gobierno.
+
+**`NotificationPreference`** — Preferencia de una persona sobre una categoría y un canal. **Añadida en la Fase 9.**
+`id` PK · `personId` FK IX · `category` *enum* · `channel` *enum* · `suppressed` *bool*.
+Único `(personId, category, channel)`. La base impone la garantía que gobierna la fase: una preferencia sobre `GOVERNANCE_MANDATORY` **no puede quedar suprimida**. Un aviso obligatorio no es una preferencia.
 
 **`BackgroundJob`** — Trabajo asíncrono con bloqueo e idempotencia (PRD §17.5).
 `id` PK · `jobType` IX · `businessKey` — `(jobType, businessKey)` único parcial mientras el trabajo no esté terminado · `payload` *json* · `status` *enum* (`PENDING`, `CLAIMED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED`) IX · `runAt` IX · `claimedAt` NULL · `claimedBy` NULL · `attempts` *int* · `maxAttempts` *int* · `lastError` NULL · `result` *json* NULL · `alertedAt` NULL · `correlationId`.

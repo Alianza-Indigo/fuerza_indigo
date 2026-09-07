@@ -39,6 +39,7 @@ model DocumentTemplate {
   updatedByActor Actor       @relation("DocumentTemplateUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
 
   documents GeneratedDocument[]
+  constancyEvents Event[] @relation("EventConstancyTemplate")
 
   @@unique([code, version])
   @@index([code])
@@ -119,6 +120,7 @@ model GeneratedDocument {
   bargainingProposals     BargainingProposal[]   @relation("BargainingProposalDocument")
   disciplinaryDecisions   DisciplinaryDecision[] @relation("DisciplinaryDecisionDocument")
   normativeRuleSets       NormativeRuleSet[]     @relation("RuleSetDocument")
+  eventConstancies        EventRegistration[]    @relation("EventConstancyDocument")
 
   @@index([templateId])
   @@index([legalEntityId])

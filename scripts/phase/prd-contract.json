@@ -385,7 +385,8 @@
     "9": [
       "Event",
       "EventRegistration",
-      "EventMaterial"
+      "EventMaterial",
+      "NotificationPreference"
     ]
   },
   "forwardReferenceAllowlist": {

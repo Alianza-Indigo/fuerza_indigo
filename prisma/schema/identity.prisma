@@ -135,6 +135,12 @@ model Actor {
   updatedGeneratedDocuments      GeneratedDocument[]            @relation("GeneratedDocumentUpdatedBy")
   createdSignatureRecords        SignatureRecord[]              @relation("SignatureRecordCreatedBy")
   updatedSignatureRecords        SignatureRecord[]              @relation("SignatureRecordUpdatedBy")
+  createdEvents                  Event[]                        @relation("EventCreatedBy")
+  updatedEvents                  Event[]                        @relation("EventUpdatedBy")
+  createdEventRegistrations      EventRegistration[]            @relation("EventRegistrationCreatedBy")
+  createdEventMaterials          EventMaterial[]                @relation("EventMaterialCreatedBy")
+  publishedNotificationTemplates NotificationTemplate[]         @relation("NotificationTemplatePublishedBy")
+  createdNotificationPreferences NotificationPreference[]       @relation("NotificationPreferenceCreatedBy")
 
   @@index([kind])
   @@map("actor")
@@ -251,6 +257,8 @@ model Person {
   submittedSupportRequests SupportRequest[]  @relation("SupportRequestSubmittedBy")
   caseParticipations       CaseParticipant[] @relation("CaseParticipantPerson")
   emergencyFlags           EmergencyFlag[]   @relation("EmergencyFlagPerson")
+  eventRegistrations       EventRegistration[]      @relation("EventRegistrationPerson")
+  notificationPreferences  NotificationPreference[] @relation("NotificationPreferencePerson")
 
   @@index([familyName, givenName])
   @@index([matchKey])

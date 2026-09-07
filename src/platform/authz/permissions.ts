@@ -758,6 +758,34 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
    */
   define('ai.usage.read', 'Consultar consumo, costo y errores de la IA por módulo, sin contenido'),
 
+  // events — eventos, formación y constancias (PRD §16.3, Fase 9)
+  //
+  // El catálogo del §7 de docs/PERMISSIONS.md contrata estos cinco desde la
+  // Fase 0. Registrarse a un evento no está aquí: lo hace la propia persona, con
+  // su consentimiento `EVENT_PARTICIPATION`, no una facultad institucional.
+  define('events.event.manage', 'Crear, editar y publicar eventos, cursos y talleres', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('events.registration.read', 'Consultar las inscripciones y la lista de espera de un evento', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('events.attendance.register', 'Registrar la asistencia y la evaluación de quien participó', {
+    sensitivity: 'SENSITIVE',
+  }),
+  /**
+   * Emitir una constancia pone el nombre de la organización sobre un documento
+   * verificable. Revocarla desdice ese documento, y por eso exige motivo: una
+   * constancia revocada sin explicación no se puede defender ante quien la
+   * presentó.
+   */
+  define('events.constancy.issue', 'Emitir la constancia de participación de un evento', {
+    sensitivity: 'SENSITIVE',
+  }),
+  define('events.constancy.revoke', 'Revocar una constancia ya emitida', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
+  }),
+
   // system
   define('system.module.configure', 'Configurar módulos del sistema', { sensitivity: 'CRITICAL', requiresReason: true }),
   define('system.job.manage', 'Administrar trabajos programados', { sensitivity: 'CRITICAL', requiresReason: true }),

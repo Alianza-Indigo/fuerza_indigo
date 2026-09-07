@@ -1,0 +1,176 @@
+// Eventos, formación y constancias (PRD §16.3, §24 Fase 9).
+//
+// El modelo de datos contrata `Event` y `EventRegistration` desde la Fase 0 y
+// nadie los había construido. Aquí viven el calendario, la inscripción con
+// capacidad y lista de espera, la asistencia, la evaluación y las constancias
+// verificables y revocables.
+//
+// Dos garantías se sostienen en el esquema, no en una pantalla: una constancia
+// no se puede revocar si nunca se emitió, y un evento que dice emitir
+// constancias tiene que nombrar la plantilla con la que las emite. Lo que el
+// esquema impide, ninguna ruta lo puede saltar.
+
+/// Evento, curso, taller o convocatoria.
+model Event {
+  id       String @id @default(uuid(7)) @db.Uuid
+  publicId String @unique @db.VarChar(30)
+  slug     String @unique @db.VarChar(140)
+  title    String @db.VarChar(200)
+  kind     EventKind
+
+  legalEntityId   String  @db.Uuid
+  territorialUnitId String? @db.Uuid
+
+  startsAt DateTime @db.Timestamptz(3)
+  endsAt   DateTime @db.Timestamptz(3)
+  modality EventModality
+  venue    String? @db.VarChar(300)
+
+  /// Aforo. Nulo es «sin límite»; cero no es un aforo, es un evento cerrado, y
+  /// por eso la base exige que si hay número, sea positivo.
+  capacity Int?
+
+  /// Reglas de elegibilidad, evaluadas por el caso de uso al inscribir.
+  eligibilityRules Json @default("{}")
+
+  /// Cobro del evento, cuando lo hay. Nulo en los gratuitos.
+  catalogProductId String? @db.Uuid
+
+  visibility EventVisibility @default(MEMBERS)
+
+  /// Si el evento emite constancia y con qué plantilla. La base exige que, si la
+  /// emite, nombre la plantilla: una constancia sin plantilla no se puede emitir.
+  issuesConstancy    Boolean @default(false)
+  constancyTemplateId String? @db.Uuid
+
+  status EventStatus @default(DRAFT)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  legalEntity       LegalEntity       @relation("EventLegalEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
+  territorialUnit   TerritorialUnit?  @relation("EventTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  catalogProduct    CatalogProduct?   @relation("EventCatalogProduct", fields: [catalogProductId], references: [id], onDelete: Restrict)
+  constancyTemplate DocumentTemplate? @relation("EventConstancyTemplate", fields: [constancyTemplateId], references: [id], onDelete: Restrict)
+  createdByActor    Actor             @relation("EventCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor    Actor             @relation("EventUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  materials     EventMaterial[]
+  registrations EventRegistration[]
+
+  @@index([legalEntityId])
+  @@index([territorialUnitId])
+  @@index([kind])
+  @@index([startsAt])
+  @@index([status])
+  @@map("event")
+}
+
+enum EventKind {
+  ASSEMBLY_PUBLIC
+  COURSE
+  WORKSHOP
+  DIPLOMA
+  MEETING
+  CAMPAIGN
+}
+
+enum EventModality {
+  IN_PERSON
+  REMOTE
+  HYBRID
+}
+
+enum EventVisibility {
+  PUBLIC
+  MEMBERS
+  INVITATION
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// Inscripción y asistencia a un evento.
+///
+/// Una persona se inscribe una vez por evento (único). La lista de espera es un
+/// estado, no una tabla aparte: `WAITLISTED` es una inscripción que espera un
+/// hueco. La constancia se emite al final y **se puede revocar**; la base impide
+/// revocar una que nunca se emitió, porque «revocada» sin haber existido no
+/// dice nada.
+model EventRegistration {
+  id       String @id @default(uuid(7)) @db.Uuid
+  eventId  String @db.Uuid
+  personId String @db.Uuid
+
+  registeredAt DateTime @default(now()) @db.Timestamptz(3)
+  status       EventRegistrationStatus @default(REGISTERED)
+
+  /// Pago de la inscripción, cuando el evento cobra. Nulo en los gratuitos.
+  paymentId String? @db.Uuid
+
+  attendanceAt    DateTime? @db.Timestamptz(3)
+  evaluationScore Int?
+
+  /// Constancia emitida y su revocación. Verificable (el documento tiene su
+  /// huella y su código) y revocable (la marca queda, no se borra la fila).
+  constancyDocumentId String?   @db.Uuid
+  constancyRevokedAt  DateTime? @db.Timestamptz(3)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  event             Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  person            Person            @relation("EventRegistrationPerson", fields: [personId], references: [id], onDelete: Restrict)
+  payment           Payment?          @relation("EventRegistrationPayment", fields: [paymentId], references: [id], onDelete: Restrict)
+  constancyDocument GeneratedDocument? @relation("EventConstancyDocument", fields: [constancyDocumentId], references: [id], onDelete: Restrict)
+  createdByActor    Actor             @relation("EventRegistrationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, personId])
+  @@index([personId])
+  @@index([status])
+  @@map("event_registration")
+}
+
+enum EventRegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CONFIRMED
+  ATTENDED
+  NO_SHOW
+  CANCELLED
+}
+
+/// Material de un evento: una lectura, una presentación, una guía.
+model EventMaterial {
+  id           String  @id @default(uuid(7)) @db.Uuid
+  eventId      String  @db.Uuid
+  title        String  @db.VarChar(200)
+  fileObjectId String  @db.Uuid
+  ordinal      Int     @default(0)
+  /// Si el material solo lo ven quienes se inscribieron, o cualquiera que vea el
+  /// evento. Un material reservado no se sirve a quien no está inscrito.
+  membersOnly  Boolean @default(true)
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+
+  event          Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fileObject     FileObject @relation("EventMaterialFile", fields: [fileObjectId], references: [id], onDelete: Restrict)
+  createdByActor Actor      @relation("EventMaterialCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, ordinal])
+  @@index([eventId])
+  @@map("event_material")
+}

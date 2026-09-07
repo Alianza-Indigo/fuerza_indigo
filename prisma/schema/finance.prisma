@@ -94,6 +94,7 @@ model CatalogProduct {
 
   /// Calidades que se cobran con este concepto (Fase 4).
   membershipTypes MembershipType[]
+  events          Event[] @relation("EventCatalogProduct")
 
   @@index([legalEntityId, isActive])
   @@index([kind])
@@ -305,6 +306,7 @@ model Payment {
 
   /// Solicitud cuya cuota de inscripción cubre este cobro (Fase 4).
   applications   MembershipApplication[] @relation("ApplicationPayment")
+  eventRegistrations EventRegistration[] @relation("EventRegistrationPayment")
 
   @@index([billingAccountId])
   @@index([legalEntityId, status])

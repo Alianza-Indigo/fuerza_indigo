@@ -72,6 +72,7 @@ model LegalEntity {
   referralsFrom             Referral[]       @relation("ReferralFrom")
   referralsTo               Referral[]       @relation("ReferralTo")
   confirmedSupportRoutings  SupportRequest[] @relation("SupportRequestConfirmedRouting")
+  events                    Event[]          @relation("EventLegalEntity")
 
   @@map("legal_entity")
   labourFilings LabourAuthorityFiling[]
@@ -143,6 +144,7 @@ model TerritorialUnit {
   /// Acuerdo habilitante de la unidad (PRD §9.1).
   enablingResolutionId String?    @db.Uuid
   enablingResolution   Resolution? @relation("TerritorialEnabling", fields: [enablingResolutionId], references: [id], onDelete: Restrict)
+  events               Event[]     @relation("EventTerritory")
 
   @@index([parentId])
   @@index([type])

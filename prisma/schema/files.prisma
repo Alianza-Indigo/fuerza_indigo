@@ -38,6 +38,7 @@ model FileObject {
 
   versions FileVersion[] @relation("ObjectVersions")
   contentVersions ContentVersion[]
+  eventMaterials EventMaterial[] @relation("EventMaterialFile")
 
   @@index([legalEntityId])
   @@index([ownerPersonId])

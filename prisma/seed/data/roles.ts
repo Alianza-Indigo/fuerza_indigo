@@ -422,6 +422,13 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'ai.generation.read',
       'ai.generation.review',
       'ai.usage.read',
+      // Eventos (Fase 9): la Secretaría organiza y, sobre todo, es quien puede
+      // revocar una constancia —el acto grave que desdice un documento emitido—.
+      'events.event.manage',
+      'events.registration.read',
+      'events.attendance.register',
+      'events.constancy.issue',
+      'events.constancy.revoke',
       'access.role.assign',
       'access.role.revoke',
     ],
@@ -595,6 +602,13 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'ai.generation.read',
       'ai.generation.review',
       'ecosystem.link.manage',
+      // Eventos y formación (Fase 9). Prensa organiza los eventos, lleva la
+      // asistencia y emite las constancias; revocarlas es un acto más grave que
+      // se reserva a la Secretaría.
+      'events.event.manage',
+      'events.registration.read',
+      'events.attendance.register',
+      'events.constancy.issue',
       'files.file.download_own','files.file.upload', 'files.file.download'],
   },
   {

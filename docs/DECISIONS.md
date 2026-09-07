@@ -1913,3 +1913,23 @@ Los dos filtros no se pueden separar sin abrir un hueco, y por eso viven en el m
 **Decisión.** `configureProvider` (`ai.provider.configure`, permiso crítico con motivo) escribe los modelos permitidos, los tres límites, el techo de gasto, la moneda, el opt-out de entrenamiento y el encendido. La clave **no** se toca: la fila guarda el nombre de su variable de entorno, y apuntar a otra es una decisión de despliegue, no de una pantalla —`apiKeyEnvVarName` no está entre las columnas actualizables—. El modelo por omisión tiene que estar entre los permitidos, y el techo de gasto tiene que ser positivo: las dos las exige también la base con sendos `CHECK`, y el caso de uso las comprueba antes para dar un mensaje claro en vez de un error de restricción.
 
 **Apagar no es una avería.** Con el proveedor apagado la aplicación sigue en pie y todo cae al camino humano (criterio 5). La salud lo dice tal cual —`DEGRADED`, no `failed`—, y la pantalla del proveedor la enseña para que el estado de operación se lea sin adivinarlo. Que configurar surte efecto se prueba bajando el máximo de tokens por petición y viendo la siguiente ejecución cortarse antes de llamar.
+
+---
+
+## ADR-0154 · La lista de espera es un estado de la inscripción, no una tabla aparte
+
+**Contexto.** Un evento con aforo (PRD §16.3) necesita lista de espera: quien llega cuando ya no hay lugar espera un hueco. Se podría modelar como una tabla `EventWaitlist` separada.
+
+**Decisión.** No hay tabla de lista de espera: `WAITLISTED` es uno de los estados de `EventRegistration`. Una inscripción en espera es la misma fila que una confirmada, en otro estado, y el ascenso al liberarse un lugar es una transición de estado, no un movimiento entre tablas. El único `(eventId, personId)` vale igual para la lista y para la inscripción, de modo que nadie está a la vez inscrito y en espera. Modelarlo aparte duplicaría la unicidad y abriría la puerta a las dos filas contradictorias.
+
+## ADR-0155 · Una constancia es verificable y revocable, y la base impide revocar la que no se emitió
+
+**Contexto.** El criterio 5 de la Fase 9 pide que las constancias sean verificables y revocables. Verificable ya lo da el patrón de `GeneratedDocument` (huella y código, como la credencial de la Fase 3). Revocable es lo nuevo.
+
+**Decisión.** La constancia de una inscripción es un `GeneratedDocument` (`constancyDocumentId`) y su revocación es una **marca** (`constancyRevokedAt`), no un borrado: la fila permanece como evidencia de que existió y de que se revocó. La base impone que no se pueda revocar una constancia que nunca se emitió —`constancyRevokedAt` exige `constancyDocumentId`—, porque «revocada» sin haber existido no dice nada y ensuciaría cualquier verificación. Y un evento que declara emitir constancias tiene que nombrar su plantilla (`issuesConstancy` exige `constancyTemplateId`): «emite constancia» sin plantilla es una promesa que no se puede cumplir.
+
+## ADR-0156 · Un aviso obligatorio no es una preferencia: la base lo impone
+
+**Contexto.** Es la garantía que gobierna la Fase 9 del lado de las comunicaciones (PRD §16.2, criterio 1). El catálogo de categorías ya distingue `GOVERNANCE_MANDATORY` de `PROMOTIONAL` desde la Fase 1, y `DeliveryStatus.SUPPRESSED` ya advertía que «nunca aplica a un aviso obligatorio». Faltaba dónde vive la preferencia y quién impide suprimir lo obligatorio.
+
+**Decisión.** `NotificationPreference` guarda, por persona, categoría y canal, si la persona pidió no recibir esa categoría por ese canal. La garantía no se deja al caso de uso: la base rechaza con un `CHECK` una preferencia sobre `GOVERNANCE_MANDATORY` que quede suprimida. Ninguna pantalla, ningún guion de datos y ninguna migración futura pueden apagar un aviso que la persona no puede rechazar. Lo promocional sí se silencia, y por eso las dos cosas son categorías distintas y no un mismo canal con una bandera.

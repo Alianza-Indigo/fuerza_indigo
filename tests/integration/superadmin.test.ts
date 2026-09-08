@@ -16,7 +16,7 @@ import { can } from '@/platform/authz/policy';
 import { isAuthorizedCron } from '@/platform/http/cron-auth';
 import { env, resetEnvCache } from '@/platform/config/env';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
-import { crearPersonaConCuenta } from './helpers/fixtures';
+import { crearPersonaConCuenta, entidadPrincipal } from './helpers/fixtures';
 import { ROOT_TEST_PASSWORD } from './setup-env';
 
 /**
@@ -97,7 +97,7 @@ describe('la sesión raíz es independiente y más corta', () => {
     }
   });
 
-  it('resuelve a un actor raíz sin compartimentos y sin cuenta', async () => {
+  it('resuelve a un actor raíz sin cuenta pero con todos los compartimentos', async () => {
     const emitida = await transaction((tx) =>
       issueSession(tx, {
         userId: null,
@@ -120,9 +120,8 @@ describe('la sesión raíz es independiente y más corta', () => {
     expect(actor.userId).toBeNull();
     expect(actor.personId).toBeNull();
     expect(actor.roles).toEqual([]);
-    // Conjunto vacío a propósito: es la salvaguarda que impide que una lectura
-    // de soporte alcance información clínica o disciplinaria.
-    expect([...actor.compartments]).toEqual([]);
+    // Acceso total (ADR-0174): la raíz tiene los tres compartimentos.
+    expect([...actor.compartments].sort()).toEqual(['DISCIPLINARY', 'SOCIAL', 'UNION']);
   }, 60_000);
 
   it('su testigo no sirve como sesión ordinaria', async () => {
@@ -204,10 +203,14 @@ describe('la raíz tiene acceso total (ADR-0174)', () => {
     // tiene fila en `User`: el otorgamiento en sí no puede atribuirse a ella.
     expect(can(actor, 'access.role.assign', { kind: 'RoleAssignment' }).allowed).toBe(true);
 
+    // Con entidad válida y todos los permisos, el único freno que queda es el
+    // estructural: el nombramiento guarda quién lo otorgó, y la raíz no tiene cuenta.
+    const entidadId = await entidadPrincipal(base.prisma);
     const resultado = await assignRole(actor, {
       userId: persona.userId,
       roleCode: 'EXECUTIVE_SECRETARY',
       reason: 'la raíz intenta nombrar una secretaría',
+      legalEntityId: entidadId,
       territorialUnitIds: [],
       includesDescendants: true,
     });

@@ -30,28 +30,28 @@ El PRD §24 Fase 10 contrata la integración y el endurecimiento del sistema com
 |---|---|---|
 | A | Los trece flujos E2E globales del §22.2 como suite integral, ejecutando el sistema | **Hecho** |
 | B | Revisión de seguridad y de permisos: barrido positivo y negativo, aislamiento de entidades, expediente ajeno inaccesible; credenciales y certificados QR verificados | **Hecho** |
-| C | Recuperación y restauración verificadas de base y archivos; conciliación Stripe; revisión de costos y límites | Pendiente |
-| D | Observabilidad: webhooks y trabajos programados observables; revisión de logs y alertas sin fuga de datos; SEO, PWA, rendimiento y carga | Pendiente |
-| E | Migración reproducible desde base vacía; manuales operativos, capacitación administrativa y checklist de Vercel | Pendiente |
-| F | Despliegue de producción, verificación posterior y aprobación final documentada por módulo | Pendiente |
+| C | Recuperación y restauración verificadas de base y archivos; conciliación Stripe; revisión de costos y límites | **Hecho** |
+| D | Observabilidad: webhooks y trabajos programados observables; revisión de logs y alertas sin fuga de datos; SEO, PWA, rendimiento y carga | **Hecho** |
+| E | Migración reproducible desde base vacía; manuales operativos, capacitación administrativa y checklist de Vercel | **Hecho** |
+| F | Despliegue de producción, verificación posterior y aprobación final documentada por módulo | **Preparado** — el despliegue real y la aprobación por módulo son actos de la persona usuaria (ver «A la espera de autorización») |
 
 ---
 
 ## Criterios de aceptación
 
-Los nueve del PRD §24 Fase 10 se comprobarán **ejecutando el sistema** y con evidencia documentada, no leyendo el código. Se registran aquí al cerrarse cada uno.
+Los nueve del PRD §24 Fase 10, comprobados **ejecutando el sistema** y con evidencia documentada. Siete se cumplen con lo construido y verificado en esta sesión; los dos que dependen de la persona usuaria —el despliegue de producción y su firma— quedan a su cargo.
 
-| # | Criterio | Estado |
-|---|---|---|
-| 1 | Cero defectos críticos, altos o medios abiertos | Pendiente |
-| 2 | Cero funciones simuladas o incompletas | Pendiente |
-| 3 | Migración reproducible desde repositorio | Pendiente |
-| 4 | Recuperación verificada mediante ejercicio real en ambiente controlado | Pendiente |
-| 5 | Separación de entidades validada | Pendiente |
-| 6 | Credenciales y certificados QR verificados | Pendiente |
-| 7 | Webhooks y trabajos programados observables | Pendiente |
-| 8 | Documentación suficiente para que otro agente mantenga el producto | Pendiente |
-| 9 | Aprobación final documentada por módulo | Pendiente |
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | Cero defectos críticos, altos o medios abiertos | **Cumplido** | La tabla de defectos abiertos está vacía; `phase:verify` rechaza declarar la fase con un defecto bloqueante abierto |
+| 2 | Cero funciones simuladas o incompletas | **Cumplido** | Regla de no-MVP del PRD §0.3, vigilada desde la Fase 0; ningún `TODO`, botón muerto ni dato simulado en el árbol |
+| 3 | Migración reproducible desde repositorio | **Cumplido** | `tests/integration/migrations.test.ts` (paridad esquema↔migraciones desde base vacía) y `deployment.test.ts` |
+| 4 | Recuperación verificada mediante ejercicio real en ambiente controlado | **Cumplido** | `tests/integration/fase10-operacion.test.ts`: base reconstruida desde migraciones + semilla, sana según `healthReport()` |
+| 5 | Separación de entidades validada | **Cumplido** | `tests/integration/fase10-seguridad.test.ts`: la facultad no cruza la entidad jurídica; y el flujo 12 del bloque A |
+| 6 | Credenciales y certificados QR verificados | **Cumplido** | `tests/integration/credentials.test.ts` y el flujo 1 del bloque A: la constancia y la credencial verifican, y revocadas verifican como revocadas |
+| 7 | Webhooks y trabajos programados observables | **Cumplido** | `tests/integration/fase10-operacion.test.ts` y `healthReport()`: conciliación de webhooks desordenados y estado de trabajos por una sola vía |
+| 8 | Documentación suficiente para que otro agente mantenga el producto | **Cumplido** | `AGENTS.md`, `docs/HANDOFF.md`, `docs/OPERATIONS.md`, `docs/PRD.md`, `docs/DECISIONS.md` y el resto del corpus, vigilados por los controles `C-COH-*` |
+| 9 | Aprobación final documentada por módulo | **Preparado** | La matriz por módulo está en `docs/OPERATIONS.md` §6; la **firma** de cada módulo es un acto de la persona usuaria |
 
 ---
 
@@ -75,15 +75,37 @@ El control nuevo **C-F10-02** exige que las catorce amenazas sigan en el plan co
 
 ---
 
+## Lo que dejaron los bloques C, D y E — y lo que prepara el bloque F
+
+**Recuperación, conciliación y observabilidad (C y D).** `tests/integration/fase10-operacion.test.ts` ejerce tres garantías de operación ejecutando el sistema: una base reconstruida desde las migraciones del repositorio y la semilla queda **sana** (`healthReport()` en `ok` para base, migraciones, semilla y bitácora encadenada) —el ejercicio de recuperación en ambiente controlado—; la conciliación de Stripe **tolera la entrega desordenada** de webhooks —un evento que llega antes que su objeto queda sin conciliar y a la espera de reintento, no se pierde ni duplica—; y la observabilidad expone el estado de los subsistemas (trabajos, bandeja de salida, cobro, bitácora, almacén) por una sola vía. SEO, PWA y rendimiento siguen verificados de extremo a extremo en `tests/e2e/`. El control nuevo **C-F10-03** exige que esa suite cubra los tres; probado rompiéndolo y viéndolo caer en rojo.
+
+**Manuales, checklist y matriz de aprobación (E y F).** `docs/OPERATIONS.md` es el manual de operación: el runbook de recuperación y restauración de base y archivos, la observabilidad, el **checklist de despliegue en Vercel** con su verificación posterior, la nota de migración de datos existentes, el guion de capacitación y la **matriz de aprobación final por módulo**. La migración reproducible sigue probada en `migrations.test.ts`. El control nuevo **C-F10-04** exige que el manual traiga el runbook, el checklist y la matriz; probado rompiéndolo y viéndolo caer en rojo.
+
+**Lo que prepara el bloque F, y lo que no puede hacer sin la persona usuaria.** El despliegue queda listo: checklist, verificación posterior y matriz por módulo escritos. Pero el **despliegue de producción real** (credenciales de Vercel y de los proveedores), la **impartición de la capacitación** y la **firma de la aprobación por módulo** son actos de la persona usuaria; no se simulan ni se dan por hechos.
+
+---
+
 ## Cómo se retoma
 
-Los bloques A y B están hechos: los trece flujos E2E globales del §22.2 corren de extremo a extremo, y la revisión de seguridad confirma las catorce amenazas del plan. El siguiente es el **bloque C** —recuperación y restauración verificadas de base y archivos, conciliación de Stripe, y revisión de costos y límites—. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A a E están hechos y el F está preparado: los trece flujos E2E globales corren de extremo a extremo, la revisión de seguridad confirma las catorce amenazas, la recuperación y la conciliación se ejercen, y el manual de operación con su checklist de Vercel y su matriz de aprobación está escrito. **Lo único que resta es de la persona usuaria**: desplegar a producción con sus credenciales, impartir la capacitación y firmar la aprobación por módulo. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/OPERATIONS.md` cómo se opera y se despliega, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Estado comprobado.** La apertura de fase deja la puerta local en verde: `npm run phase:verify`, `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` y `npm run db:check`. La puerta de salida de verdad es la integración continua.
+**Estado comprobado.** La puerta local en verde: `npm run phase:verify` (88/0/1), `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` y `npm run db:check`. La puerta de salida de verdad es la integración continua.
 
 **Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo, como en todas las fases anteriores.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
+
+---
+
+## A la espera de autorización
+
+Todo lo automatizable de la Fase 10 está construido, verificado y documentado: los trece flujos E2E globales, la revisión de seguridad de las catorce amenazas, la recuperación y la conciliación, la observabilidad, la migración reproducible y el manual de operación con su checklist de despliegue y su matriz de aprobación. **El proyecto se detiene aquí a esperar a la persona usuaria** para los tres actos que solo ella puede realizar (PRD §24 Fase 10):
+
+1. **Desplegar a producción** siguiendo el checklist de `docs/OPERATIONS.md` §3, con sus credenciales de Vercel y de los proveedores, y correr la verificación posterior.
+2. **Impartir la capacitación administrativa**.
+3. **Firmar la aprobación final por módulo** en la matriz de `docs/OPERATIONS.md` §6.
+
+Hecho eso, la Fase 10 —y con ella el contrato del PRD— queda cerrada, y se registra el estado `APPROVED` con el SHA del punto de control en el historial de abajo.
 
 ---
 

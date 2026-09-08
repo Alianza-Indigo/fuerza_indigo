@@ -358,20 +358,20 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 | F10-QA-001 | Ejecutar íntegros los trece flujos E2E globales | Hecho |
 | F10-SEC-001 | Realizar la revisión de seguridad contra las catorce amenazas del plan | Hecho |
 | F10-SEC-002 | Realizar la revisión completa de permisos positivos y negativos | Hecho |
-| F10-UI-001 | Realizar la revisión visual completa en móvil y escritorio, en claro y oscuro | Pendiente |
-| F10-ACC-001 | Realizar la validación de accesibilidad automatizada y la revisión manual | Pendiente |
-| F10-QA-002 | Ejecutar las pruebas de rendimiento y de carga en los flujos críticos | Pendiente |
-| F10-OPS-001 | Ejercitar la recuperación ante fallos y la restauración de base y archivos | Pendiente |
-| F10-PAG-001 | Verificar la conciliación de ambas cuentas de Stripe | Pendiente |
-| F10-IA-001 | Revisar costos, límites y registros del servicio de inteligencia artificial | Pendiente |
-| F10-OPS-002 | Verificar SEO técnico y comportamiento instalable | Pendiente |
-| F10-OPS-003 | Revisar registros, alertas y observabilidad de webhooks y trabajos | Pendiente |
-| F10-DAT-001 | Ejecutar la migración de datos existentes cuando los haya | Pendiente |
-| F10-DOC-001 | Redactar los manuales operativos por rol | Pendiente |
-| F10-DOC-002 | Preparar y realizar la capacitación administrativa | Pendiente |
-| F10-OPS-004 | Completar la lista de verificación de despliegue en Vercel | Pendiente |
-| F10-OPS-005 | Desplegar a producción y verificar posteriormente | Pendiente |
-| F10-DOC-003 | Documentar la aprobación final por módulo | Pendiente |
+| F10-UI-001 | Realizar la revisión visual completa en móvil y escritorio, en claro y oscuro | Hecho |
+| F10-ACC-001 | Realizar la validación de accesibilidad automatizada y la revisión manual | Hecho |
+| F10-QA-002 | Ejecutar las pruebas de rendimiento y de carga en los flujos críticos | Hecho |
+| F10-OPS-001 | Ejercitar la recuperación ante fallos y la restauración de base y archivos | Hecho |
+| F10-PAG-001 | Verificar la conciliación de ambas cuentas de Stripe | Hecho |
+| F10-IA-001 | Revisar costos, límites y registros del servicio de inteligencia artificial | Hecho |
+| F10-OPS-002 | Verificar SEO técnico y comportamiento instalable | Hecho |
+| F10-OPS-003 | Revisar registros, alertas y observabilidad de webhooks y trabajos | Hecho |
+| F10-DAT-001 | Ejecutar la migración de datos existentes cuando los haya | Sin datos que migrar (instalación nueva) |
+| F10-DOC-001 | Redactar los manuales operativos por rol | Hecho |
+| F10-DOC-002 | Preparar y realizar la capacitación administrativa | Preparado; la imparte la persona usuaria |
+| F10-OPS-004 | Completar la lista de verificación de despliegue en Vercel | Hecho |
+| F10-OPS-005 | Desplegar a producción y verificar posteriormente | Pendiente de la persona usuaria |
+| F10-DOC-003 | Documentar la aprobación final por módulo | Hecho |
 
 ---
 

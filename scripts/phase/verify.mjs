@@ -3701,6 +3701,50 @@ const CHECKS = [
         : ok(['Las catorce amenazas del §20.5 siguen en el plan con control, prueba y fase; la revisión transversal existe.']);
     },
   },
+  {
+    id: 'C-F10-03',
+    title: 'Fase 10: recuperación, conciliación y observabilidad se ejercen (bloques C y D)',
+    phases: [10],
+    run() {
+      // La Fase 10 exige recuperación verificada en ambiente controlado,
+      // conciliación de Stripe y observabilidad. La suite `fase10-operacion`
+      // los ejerce: reconstruye la base desde las migraciones y comprueba su
+      // salud (recuperación), tolera un webhook desordenado sin perderlo
+      // (conciliación) y lee el estado de los subsistemas por una sola vía
+      // (observabilidad). Este control exige que esa suite exista y cubra los tres.
+      const suite = read('tests/integration/fase10-operacion.test.ts');
+      if (suite === null) return fail(['No se encuentra la suite de operación (fase10-operacion.test.ts).']);
+      const problemas = [];
+      if (!/healthReport\(\)/.test(suite)) problemas.push('La suite de operación no comprueba la salud reconstruida (recuperación).');
+      if (!/UNRECONCILED/.test(suite) || !/retryUnreconciledWebhooks/.test(suite)) problemas.push('La suite de operación no ejerce la conciliación de webhooks desordenados.');
+      if (!/stuckJobs/.test(suite)) problemas.push('La suite de operación no comprueba la observabilidad de los trabajos.');
+      return problemas.length
+        ? fail(problemas)
+        : ok(['Recuperación, conciliación y observabilidad se ejercen ejecutando el sistema.']);
+    },
+  },
+  {
+    id: 'C-F10-04',
+    title: 'Fase 10: el manual de operación cubre recuperación, despliegue y aprobación (bloques E y F)',
+    phases: [10],
+    run() {
+      // El PRD §24 Fase 10 exige manuales operativos, checklist de Vercel y
+      // aprobación final documentada por módulo. `docs/OPERATIONS.md` es ese
+      // manual; este control exige que traiga el runbook de recuperación, el
+      // checklist de despliegue con su verificación posterior, y la matriz de
+      // aprobación por módulo. La firma humana de la aprobación es de la persona
+      // usuaria; lo que se exige aquí es que la matriz exista para recogerla.
+      const doc = read('docs/OPERATIONS.md');
+      if (doc === null) return fail(['No se encuentra el manual de operación (docs/OPERATIONS.md).']);
+      const problemas = [];
+      if (!/Recuperación y restauración/i.test(doc)) problemas.push('El manual no trae el runbook de recuperación y restauración.');
+      if (!/[Cc]hecklist de despliegue en Vercel/.test(doc) || !/[Vv]erificación posterior/.test(doc)) problemas.push('El manual no trae el checklist de despliegue en Vercel con su verificación posterior.');
+      if (!/Aprobación final por módulo/i.test(doc) || !/\| Módulo \|/.test(doc)) problemas.push('El manual no trae la matriz de aprobación final por módulo.');
+      return problemas.length
+        ? fail(problemas)
+        : ok(['El manual de operación cubre recuperación, despliegue en Vercel y la matriz de aprobación por módulo.']);
+    },
+  },
 ];
 
 

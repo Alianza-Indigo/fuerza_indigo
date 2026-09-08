@@ -133,6 +133,12 @@ El orden que ha funcionado, dentro de cada bloque:
 6. **Actualizar `docs/PHASE_STATUS.md`**: el bloque pasa a `Completo`, y cualquier
    defecto encontrado entra en el registro con su corrección.
 
+Los pasos 1–4 son iterativos: mientras se trabaja, se corren **solo las pruebas
+que ejercen lo que se toca** (el archivo, el módulo o el control afectado), no
+toda la suite en cada guardado. La **puerta completa** del paso 5 es el acto de
+**cierre del bloque**, y la integración continua es quien la corre entera. No se
+reejecuta todo tras cada cambio intermedio: se reserva para cerrar.
+
 ### Reglas de esquema
 
 - Nunca `prisma format`.

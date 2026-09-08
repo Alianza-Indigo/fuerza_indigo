@@ -55,7 +55,14 @@ que ninguna otra revisión vio, incluidas reglas que no ejercía nadie.
 Y la puerta de salida no es lo que corre en su máquina: **la integración continua
 tiene que estar en verde** antes de dar por cerrado un bloque.
 
-## Antes de cerrar cualquier cosa
+**No hace falta correr toda la suite en cada cambio.** Mientras se construye, se
+corren las pruebas que ejercen lo que se toca —el archivo, el módulo, el control
+afectado— y se avanza. La suite completa se reserva para **el cierre** de un
+bloque o una fase, y la integración continua es quien la corre entera y la da por
+buena. Un cambio no está terminado por pasar sus pruebas locales; lo está cuando
+la puerta de cierre pasa y la CI está en verde sobre ese commit.
+
+## Antes de cerrar un bloque o una fase
 
 ```bash
 npm run phase:verify   # controles de la puerta universal (PRD §23.2)

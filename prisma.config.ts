@@ -31,6 +31,6 @@ export default defineConfig({
   },
   migrations: {
     path: path.join('prisma', 'migrations'),
-    seed: 'tsx prisma/seed/index.ts',
+    seed: 'node --import tsx prisma/seed/index.ts',
   },
 });

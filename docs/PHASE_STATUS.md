@@ -35,7 +35,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | **Hecho** |
 | F | Cobro de eventos conectado al catálogo financiero | **Hecho** |
 | G | Asistencia, materiales, evaluación y constancias verificables y revocables | **Hecho** |
-| H | Tableros por rol con decisiones accionables | Pendiente |
+| H | Tableros por rol con decisiones accionables | **Hecho** |
 | I | Indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
 | J | Reportes institucionales, exportaciones auditadas y transparencia publicada | Pendiente |
 | K | Alertas de vencimientos y obligaciones | Pendiente |
@@ -54,7 +54,19 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | Pendiente |
 | 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
 | 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
-| 6 | Los paneles muestran decisiones accionables, no métricas decorativas | Pendiente |
+| 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** (bloque H) |
+
+---
+
+## Lo que dejó el bloque H
+
+El tablero de gestión: una cola de decisiones por rol, no un panel de métricas (PRD §5.5, §6.3, §6.4, §24 Fase 9 criterio 6; ADR-0168).
+
+**Abre con lo que hay que decidir.** El tablero (`/gestion`) muestra colas de trabajo —solicitudes de afiliación por revisar, mensajes sin atender, pagos por confirmar, devoluciones por resolver, cortes de conciliación por cerrar—, cada una con su cuenta y un enlace a donde se atiende. Una cola vacía no aparece; si no hay ninguna, lo dice. No hay contadores sueltos: una tarjeta con un número y sin enlace es la métrica decorativa que el criterio prohíbe. Es el mismo criterio que ya cumplía la agenda personal de la persona, ahora del lado de la gestión.
+
+**Uno solo, adaptado por permiso, no por rol.** No hay un panel de la Secretaría y otro de la delegación: cada cola pregunta a su módulo por su interfaz pública, y ese módulo evalúa el permiso y acota al alcance de quien mira. A quien no alcanza una cola, esa cola ni se le cuenta. Vive en su módulo `dashboards`, que compone lo de varios y no es de ninguno.
+
+**Cuatro pruebas de integración con el método de romper:** la cola vacía que no aparece (se le quitó el guardián y salió una tarjeta con un cero, en rojo), la cola con trabajo que sale con su cuenta y su enlace, la garantía de que toda tarea lleva a donde se atiende, y quien no alcanza una cola no la ve aunque haya trabajo. El control nuevo **C-F9-03** la vigila estáticamente.
 
 ---
 
@@ -138,13 +150,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B, C, E, F y G están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de los tableros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B, C, E, F, G y H están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de los indicadores. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque H — tableros por rol con decisiones accionables.** Lo que toca (criterio 6): tableros que muestren lo que hay que hacer —no métricas decorativas—, cada uno acotado a lo que su rol puede accionar. La medición hasta hoy vive dispersa en consultas sueltas; aquí se vuelve panel por nivel. El contrato es `docs/PRD.md` §24 Fase 9 criterio 6.
+**Bloque I — indicadores territoriales con agregación y umbrales de privacidad.** Lo que toca (criterio 3): indicadores por territorio que agreguen y **no revelen a la persona detrás del número**; por debajo de un umbral, el dato se suprime en vez de exponer un caso individual. El contrato es `docs/PRD.md` §24 Fase 9 criterio 3.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque I: un agregado por debajo del umbral que igual deja ver el caso individual.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

@@ -3388,6 +3388,47 @@ const CHECKS = [
       return ok(['La verificación de constancias lee la revocación en vivo; revocar la marca y cancela el documento.']);
     },
   },
+  {
+    id: 'C-F9-03',
+    title: 'Fase 9: el tablero muestra decisiones accionables, no métricas decorativas',
+    phases: [9],
+    run() {
+      // El criterio 6 exige que los paneles muestren «decisiones accionables, no
+      // métricas decorativas». Dos cosas lo sostienen y este control las vigila:
+      // que toda tarea del tablero lleve a donde se atiende —un contador sin
+      // enlace es una métrica—, y que una cola vacía no aparezca —una tarjeta con
+      // un cero es decoración—.
+      const fuente = read('src/modules/dashboards/application/management-panel.ts');
+      if (fuente === null) return fail(['No se encuentra el tablero de gestión.']);
+
+      // Toda tarea que se construye trae una acción: tantos `accion:` como
+      // tareas (cada tarea se identifica con `id: '…'`). Un contador sin enlace
+      // es justo la métrica que el criterio prohíbe.
+      const tareas = (fuente.match(/\bid:\s*'/g) ?? []).length;
+      const acciones = (fuente.match(/\baccion:\s*\{\s*href:/g) ?? []).length;
+      if (tareas === 0 || tareas !== acciones) {
+        return fail([
+          `El tablero tiene ${tareas} tarea(s) y ${acciones} con enlace: toda tarea debe llevar a donde se atiende.`,
+        ]);
+      }
+
+      // Cada fuente omite la cola vacía: hay al menos tantos guardianes de cero
+      // como tareas. Sin ese guardián, una cola sin trabajo saldría con un cero.
+      const guardias = (fuente.match(/cantidad === 0\)\s*return null;/g) ?? []).length;
+      if (guardias < tareas) {
+        return fail([
+          `El tablero tiene ${tareas} tarea(s) pero solo ${guardias} omiten la cola vacía: una tarjeta con un cero es decoración.`,
+        ]);
+      }
+
+      // Y el panel descarta las colas que no aplican en vez de mostrarlas vacías.
+      if (!fuente.includes('!== null')) {
+        return fail(['El tablero no descarta las colas vacías o inalcanzables.']);
+      }
+
+      return ok(['Toda tarea del tablero lleva a donde se atiende, y una cola vacía no aparece.']);
+    },
+  },
 ];
 
 

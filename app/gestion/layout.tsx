@@ -51,6 +51,14 @@ export default async function GestionLayout({ children }: { children: ReactNode 
         </div>
         <nav aria-label="Secciones" className="mx-auto w-full max-w-6xl overflow-x-auto px-4 sm:px-6">
           <ul className="flex gap-1 pb-2">
+            <li key="/gestion">
+              <Link
+                href="/gestion"
+                className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 py-2 font-medium hover:bg-[var(--color-accent-soft)]"
+              >
+                Tablero
+              </Link>
+            </li>
             {visibles.map((seccion) => (
               <li key={seccion.href}>
                 <Link

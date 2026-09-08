@@ -28,7 +28,7 @@ El PRD §24 Fase 10 contrata la integración y el endurecimiento del sistema com
 
 | Bloque | Contenido | Estado |
 |---|---|---|
-| A | Los trece flujos E2E globales del §22.2 como suite integral, ejecutando el sistema | Pendiente |
+| A | Los trece flujos E2E globales del §22.2 como suite integral, ejecutando el sistema | **Hecho** |
 | B | Revisión de seguridad y de permisos: barrido positivo y negativo, aislamiento de entidades, expediente ajeno inaccesible; credenciales y certificados QR verificados | Pendiente |
 | C | Recuperación y restauración verificadas de base y archivos; conciliación Stripe; revisión de costos y límites | Pendiente |
 | D | Observabilidad: webhooks y trabajos programados observables; revisión de logs y alertas sin fuga de datos; SEO, PWA, rendimiento y carga | Pendiente |
@@ -55,9 +55,19 @@ Los nueve del PRD §24 Fase 10 se comprobarán **ejecutando el sistema** y con e
 
 ---
 
+## Lo que dejó el bloque A
+
+Los trece flujos E2E globales del §22.2 como una suite integral (`tests/integration/fase10-flujos-globales.test.ts`), ejercidos de extremo a extremo sobre la base real con los puertos externos falsos. No es una prueba de un módulo: es la prueba de que el sistema **entero** —lo construido de la Fase 0 a la 9— opera junto, cruzando módulos, con las credenciales de la aplicación.
+
+**Los trece, ejecutando el sistema:** agremiado (solicitud→revisión→pago→activación→verificación QR); afiliación honoraria que paga y accede sin derecho de voto; beneficiario protegido sin afiliación ni cobro; consentimiento y canalización de Fuerza a Alianza con confirmación humana; pago fallido→reintento→conciliación por webhook→activación correcta; directorio privado con publicación voluntaria y retiro; convocatoria→padrón congelado→quórum→voto secreto→escrutinio; caso disciplinario con audiencia, resolución y recurso que restituye en el mismo acto; acceso a una plataforma del ecosistema desde su ficha, con la dirección del catálogo; consulta Gemini con permisos y revisión humana; revocación de un rol territorial sin perder el historial; expediente ajeno negado, idéntico a un identificador inventado; y despliegue desde base vacía por las migraciones del repositorio.
+
+El control nuevo **C-F10-01** vigila que no se caiga ninguno de los trece: exige que la suite declare los trece flujos; se probó rompiéndolo —renombrando uno— y viéndolo caer en rojo. Los flujos de máquina propia y ya cubiertos exhaustivamente por su suite dedicada (votación, `fase5-criterios`; disciplina, `discipline-due-process`; base vacía, `migrations`) se ejercen aquí en su recorrido integral, y su prueba exhaustiva sigue en su sitio.
+
+---
+
 ## Cómo se retoma
 
-La Fase 10 se abrió el 8 de septiembre de 2026, tras la aprobación expresa de la Fase 9. El primer bloque es la suite integral de los trece flujos E2E globales del §22.2, que ejerce de extremo a extremo lo construido en las fases 0 a 9. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
+El bloque A está hecho: los trece flujos E2E globales del §22.2 corren de extremo a extremo. El siguiente es el **bloque B** —revisión de seguridad y de permisos: barrido positivo y negativo por módulo, aislamiento de entidades, expediente ajeno inaccesible, y verificación de credenciales y certificados QR—. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** La apertura de fase deja la puerta local en verde: `npm run phase:verify`, `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` y `npm run db:check`. La puerta de salida de verdad es la integración continua.
 

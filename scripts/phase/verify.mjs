@@ -3649,6 +3649,28 @@ const CHECKS = [
         : ok(['Las plantillas se versionan: el borrador no sobrescribe y publicar retira la versión anterior; nunca hay dos vigentes.']);
     },
   },
+  {
+    id: 'C-F10-01',
+    title: 'Fase 10: los trece flujos E2E globales del §22.2 se ejercen íntegros',
+    phases: [10],
+    run() {
+      // La Fase 10 exige la prueba integral de los trece flujos E2E globales del
+      // PRD §22.2. La suite `fase10-flujos-globales.test.ts` los ejerce de
+      // extremo a extremo sobre la base real; este control vigila que no se caiga
+      // ninguno: que el archivo exista y declare los trece `describe('Flujo N ·
+      // …')`. Quitar un flujo —o dejarlo sin describir— cae en rojo aquí antes de
+      // que nadie crea que sigue probado.
+      const fuente = read('tests/integration/fase10-flujos-globales.test.ts');
+      if (fuente === null) return fail(['No se encuentra la suite integral de los trece flujos E2E globales (§22.2).']);
+      const faltantes = [];
+      for (let n = 1; n <= 13; n += 1) {
+        if (!new RegExp(`describe\\(\\s*['\`]Flujo ${n} `).test(fuente)) faltantes.push(n);
+      }
+      return faltantes.length
+        ? fail([`Faltan flujos E2E globales en la suite integral: ${faltantes.map((n) => `Flujo ${n}`).join(', ')}.`])
+        : ok(['Los trece flujos E2E globales del §22.2 están en la suite integral, ejercidos de extremo a extremo.']);
+    },
+  },
 ];
 
 

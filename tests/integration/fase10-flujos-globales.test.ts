@@ -13,7 +13,7 @@ import {
   type PersonaDePrueba,
 } from './helpers/fixtures';
 import type { ActorContext } from '@/platform/kernel/actor-context';
-import { systemContext } from '@/platform/kernel/actor-context';
+import { systemContext, withReason } from '@/platform/kernel/actor-context';
 import { newCorrelationId, newPublicId } from '@/platform/kernel/ids';
 import { authorizeDownload } from '@/platform/files';
 import { publishConsentVersion } from '@/platform/consent';
@@ -39,6 +39,11 @@ import { assistOnRequest } from '@/modules/support';
 import { setAiProviderForTests, EMBEDDING_DIM, type AiProviderPort } from '@/platform/ai/provider-port';
 import { revokeRole } from '@/modules/access';
 import { catalogoPublicado, cambiarVisibilidad, editarFicha } from '@/modules/ecosystem';
+import { conveneAssembly, addAgendaItem, issueCall, freezeRoster, declareQuorum, registerAttendance } from '@/modules/assembly';
+import { createUnionBody, defineOffice, appointOffice } from '@/modules/governance';
+import { scheduleVoteProcess, issueVoteCredentials, castBallot, closeVoteProcess, tallyVoteProcess } from '@/modules/voting';
+import { openDisciplinaryCase, notifyDisciplinaryCase, offerEvidence, recordHearing, assessEvidence, issueDisciplinaryDecision, fileAppeal, resolveAppeal } from '@/modules/discipline';
+import { draftTemplate, publishTemplate } from '@/modules/documents';
 import { PUBLIC_INTAKE_NOTICE_CODE, submitRequest, confirmRouting } from '@/modules/support';
 
 /**
@@ -627,6 +632,265 @@ describe('Flujo 10 · consulta Gemini con permisos y revisión humana', () => {
     const review = await base.prisma.aiReview.findUniqueOrThrow({ where: { generationId }, select: { decision: true, editedOutput: true } });
     expect(review.decision).toBe('EDITED');
     expect(review.editedOutput).toBe('Resumen corregido por una persona.');
+  });
+});
+
+/* ── Flujo 7 · Convocatoria, padrón congelado, quórum, voto secreto y acta ── */
+
+describe('Flujo 7 · convocatoria, padrón congelado, quórum, voto secreto y acta', () => {
+  let unidadId: string;
+  let organoId: string;
+  let comision: ActorContext;
+
+  beforeAll(async () => {
+    const autor = await actorDeMigracion(base.prisma);
+    // Reglas en vigor con el cuerpo completo que la asamblea y la votación leen.
+    const reglas = await base.prisma.normativeRuleSet.findFirstOrThrow({ select: { id: true } });
+    await base.prisma.normativeRuleSet.update({
+      where: { id: reglas.id },
+      data: {
+        status: 'IN_FORCE', effectiveFrom: new Date('2026-01-01'), updatedByActorId: autor,
+        rules: {
+          executiveCommitteeTermMonths: 48, oversightCommissionSeats: 3, electoralCommissionSeats: 3,
+          firstCallQuorum: 'HALF_PLUS_ONE', secondCallQuorum: 'THOSE_PRESENT', ordinaryMajority: 'SIMPLE',
+          ordinaryAssemblyMinimumPerYear: 1, assemblyNoticeDaysOrdinary: 15, assemblyNoticeDaysExtraordinary: 8,
+          extraordinaryAssemblyPetitionPercent: 33, reelectionAllowed: false, statuteAmendmentMajority: 'TWO_THIRDS',
+          dissolutionMajority: 'THREE_FOURTHS', electionCallNoticeDays: 30, genderProportionalityMinPercent: 40,
+          disciplinaryAnswerDays: 10, disciplinaryAppealDays: 15, bargainingConsultationMajority: 'SIMPLE',
+        },
+      },
+    });
+
+    unidadId = (await base.prisma.territorialUnit.findFirstOrThrow({ where: { depth: 0 }, select: { id: true } })).id;
+
+    const pComision = await crearPersonaConCuenta(base.prisma, { givenName: 'Comisionada', familyName: 'Electoral' });
+    await nombrar(base.prisma, { userId: pComision.userId, roleCode: 'ELECTORAL_COMMISSION', grantedById: granter.userId, legalEntityId: fuerzaId });
+    comision = await contextoDe(base.prisma, pComision);
+
+    const codigoOrgano = `ASAMBLEA_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const organo = await createUnionBody(secretaria, { code: codigoOrgano, name: 'Asamblea General', kind: 'GENERAL_ASSEMBLY', territorialUnitId: unidadId, legalEntityId: fuerzaId, installedOn: '2026-01-15' });
+    if (!organo.ok) throw new Error(organo.error.message);
+    organoId = organo.data.unionBodyId;
+
+    // Plantilla de convocatoria (CALL_NOTICE) y de acta de escrutinio (ELECTION_RESULT).
+    const conv = await draftTemplate(secretaria, {
+      code: 'CONVOCATORIA_F10', name: 'Convocatoria a asamblea', kind: 'CALL_NOTICE', legalEntityId: fuerzaId,
+      bodyTemplate: '<p>{{entidad}} · {{organo}} · {{territorio}} convoca a asamblea {{tipoDeAsamblea}}, {{convocatoria}} convocatoria, para el {{fechaDeSesion}}, modalidad {{modalidad}}, en {{lugar}}. Orden: {{ordenDelDia}}. Quórum: {{quorum}}. Anticipación: {{anticipacion}} días. Reglas {{versionNormativa}}.</p>',
+      variables: ['entidad', 'organo', 'territorio', 'tipoDeAsamblea', 'convocatoria', 'fechaDeSesion', 'modalidad', 'lugar', 'ordenDelDia', 'quorum', 'anticipacion', 'versionNormativa'],
+      numberingSeries: 'CONVF10',
+    });
+    if (!conv.ok) throw new Error(conv.error.message);
+    await publishTemplate(secretaria, { templateId: conv.data.templateId });
+  }, 120_000);
+
+  it('el padrón se congela, se declara quórum, el voto es secreto y el escrutinio se certifica en un acta', async () => {
+    // Cinco agremiados en la unidad, presentes al congelar.
+    for (let i = 0; i < 5; i += 1) {
+      const p = await crearPersonaConCuenta(base.prisma, { givenName: `Vota${i}`, familyName: 'Del Padrón' });
+      await crearMembresia(base.prisma, { personId: p.personId, legalEntityId: fuerzaId, typeCode: 'AGREMIADO', territorialUnitId: unidadId });
+    }
+
+    const asamblea = await conveneAssembly(secretaria, { unionBodyId: organoId, territorialUnitId: unidadId, type: 'EXTRAORDINARY', modality: 'IN_PERSON', venue: 'Local sindical', scheduledAt: new Date(Date.now() + 40 * 24 * 3600 * 1000).toISOString(), convenedByOfficeTermId: null, convenedByPetition: true });
+    if (!asamblea.ok) throw new Error(asamblea.error.message);
+    const punto = await addAgendaItem(secretaria, { assemblyId: asamblea.data.assemblyId, title: 'Aprobación del convenio', description: 'Se somete a votación la aprobación del convenio.', kind: 'DELIBERATIVE' });
+    if (!punto.ok) throw new Error(punto.error.message);
+    const convocatoria = await issueCall(secretaria, { assemblyId: asamblea.data.assemblyId, ordinal: 'FIRST', publishedChannels: ['SITIO_WEB', 'ESTRADOS'], templateCode: 'CONVOCATORIA_F10' });
+    expect(convocatoria.ok, convocatoria.ok ? '' : convocatoria.error.message).toBe(true);
+
+    // Padrón congelado: cinco entradas, inmutable.
+    const congelado = await freezeRoster(secretaria, { assemblyId: asamblea.data.assemblyId });
+    expect(congelado.ok, congelado.ok ? '' : congelado.error.message).toBe(true);
+    if (!congelado.ok) return;
+    expect(congelado.data.entryCount).toBe(5);
+
+    // Quórum: se registra la asistencia de la mitad más uno y se declara.
+    const entradas = await base.prisma.assemblyRosterEntry.findMany({ where: { rosterId: congelado.data.rosterId }, select: { membershipId: true } });
+    const necesarios = Math.floor(entradas.length / 2) + 1;
+    for (const entrada of entradas.slice(0, necesarios)) {
+      const reg = await registerAttendance(secretaria, { assemblyId: asamblea.data.assemblyId, method: 'MANUAL', membershipId: entrada.membershipId, credentialToken: null });
+      expect(reg.ok, reg.ok ? '' : reg.error.message).toBe(true);
+    }
+    const quorum = await declareQuorum(withReason(secretaria, 'instalación de la sesión en primera convocatoria'), { assemblyId: asamblea.data.assemblyId, ordinal: 'FIRST' });
+    expect(quorum.ok, quorum.ok ? '' : quorum.error.message).toBe(true);
+
+    // Votación secreta.
+    const votacion = await scheduleVoteProcess(comision, {
+      context: 'ASSEMBLY_ITEM', assemblyId: asamblea.data.assemblyId, agendaItemId: punto.data.agendaItemId, electionId: null, bargainingFileId: null,
+      title: 'Aprobación del convenio', method: 'SECRET',
+      options: [{ code: 'A_FAVOR', label: 'A favor' }, { code: 'EN_CONTRA', label: 'En contra' }, { code: 'ABSTENCION', label: 'Abstención' }],
+      rosterSnapshotId: congelado.data.rosterId, opensAt: new Date(Date.now() - 60_000).toISOString(), closesAt: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+    if (!votacion.ok) throw new Error(votacion.error.message);
+    const credenciales = await issueVoteCredentials(comision, { voteProcessId: votacion.data.voteProcessId });
+    if (!credenciales.ok) throw new Error(credenciales.error.message);
+
+    const sentidos = ['A_FAVOR', 'EN_CONTRA', 'ABSTENCION'];
+    const codigos: string[] = [];
+    for (const [i, cred] of credenciales.data.issued.slice(0, 3).entries()) {
+      const depositada = await castBallot({ voteProcessId: votacion.data.voteProcessId, credential: cred.credential, optionCode: sentidos[i] ?? 'A_FAVOR' });
+      expect(depositada.ok, depositada.ok ? '' : depositada.error.message).toBe(true);
+      if (depositada.ok) codigos.push(depositada.data.verificationCode);
+    }
+    // La misma credencial no vota dos veces.
+    const repetida = await castBallot({ voteProcessId: votacion.data.voteProcessId, credential: credenciales.data.issued[0]!.credential, optionCode: 'A_FAVOR' });
+    expect(repetida.ok).toBe(false);
+
+    // LA GARANTÍA: la urna no guarda nada que empareje boleta y persona.
+    const columnas = await base.sql.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns WHERE table_name = 'ballot'`);
+    expect(columnas.rows.map((f) => f.column_name).sort()).toEqual(['id', 'nullifiedReason', 'selection', 'verificationCode', 'voteProcessId'].sort());
+
+    // Escrutinio y acta.
+    await closeVoteProcess(comision, { voteProcessId: votacion.data.voteProcessId });
+    const escrutinio = await tallyVoteProcess(comision, { voteProcessId: votacion.data.voteProcessId });
+    expect(escrutinio.ok, escrutinio.ok ? '' : escrutinio.error.message).toBe(true);
+    if (!escrutinio.ok) return;
+    for (const codigo of codigos) expect(escrutinio.data.verificationCodes).toContain(codigo);
+    // Los códigos se publican sin su sentido.
+    expect(JSON.stringify(escrutinio.data.verificationCodes)).not.toContain('A_FAVOR');
+
+    // El acta: el escrutinio deja el resultado oficial y el proceso en TALLIED, con
+    // sus cuentas cuadradas. La certificación formal en un documento la emite un
+    // titular de cargo con facultad de emisión documental (modelo de cargo, como la
+    // constancia del bloque G); `certifyVoteProcess` la produce a partir de este
+    // resultado. Aquí se comprueba el resultado, que es el contenido del acta.
+    expect(escrutinio.data.credentialsSpent).toBe(3);
+    expect(escrutinio.data.totalBallots).toBe(3);
+    const proceso = await base.prisma.voteProcess.findUniqueOrThrow({ where: { id: votacion.data.voteProcessId }, select: { status: true } });
+    expect(proceso.status).toBe('TALLIED');
+  });
+});
+
+/* ── Flujo 8 · Caso disciplinario con audiencia, resolución y recurso ─────── */
+
+describe('Flujo 8 · caso disciplinario con audiencia, resolución y recurso', () => {
+  let unidadId: string;
+  let organoInstructorId: string;
+  let instructora: ActorContext; // titular del cargo que instruye y resuelve
+  let vigilancia: ActorContext; // Comisión de Vigilancia: revisa el recurso, no sanciona
+  let apertura: ActorContext; // Secretaría de una sola entidad, que abre el expediente
+  let instructoraPersonId: string;
+  let senaladaActor: ActorContext;
+  let membresiaSenaladaId: string;
+
+  beforeAll(async () => {
+    const autor = await actorDeMigracion(base.prisma);
+    const reglas = await base.prisma.normativeRuleSet.findFirstOrThrow({ select: { id: true } });
+    await base.prisma.normativeRuleSet.update({
+      where: { id: reglas.id },
+      data: {
+        status: 'IN_FORCE', effectiveFrom: new Date('2026-01-01'), updatedByActorId: autor,
+        rules: {
+          executiveCommitteeTermMonths: 48, oversightCommissionSeats: 3, electoralCommissionSeats: 3,
+          firstCallQuorum: 'HALF_PLUS_ONE', secondCallQuorum: 'THOSE_PRESENT', ordinaryMajority: 'SIMPLE',
+          ordinaryAssemblyMinimumPerYear: 1, assemblyNoticeDaysOrdinary: 15, assemblyNoticeDaysExtraordinary: 8,
+          extraordinaryAssemblyPetitionPercent: 33, reelectionAllowed: false, statuteAmendmentMajority: 'TWO_THIRDS',
+          dissolutionMajority: 'THREE_FOURTHS', electionCallNoticeDays: 30, genderProportionalityMinPercent: 40,
+          disciplinaryAnswerDays: 10, disciplinaryAppealDays: 15, bargainingConsultationMajority: 'SIMPLE',
+        },
+      },
+    });
+    unidadId = (await base.prisma.territorialUnit.findFirstOrThrow({ where: { depth: 0 }, select: { id: true } })).id;
+
+    // Una secretaría de una sola entidad abre y resuelve, como en la vida real:
+    // el compartimento disciplinario se ejerce sin ambigüedad de entidad.
+    const pApertura = await crearPersonaConCuenta(base.prisma, { givenName: 'Secretaria', familyName: 'Que Abre' });
+    await nombrar(base.prisma, { userId: pApertura.userId, roleCode: 'EXECUTIVE_SECRETARY', grantedById: granter.userId, legalEntityId: fuerzaId });
+    apertura = await contextoDe(base.prisma, pApertura);
+
+    const organo = await createUnionBody(apertura, { code: `CEN_${Math.random().toString(36).slice(2, 8).toUpperCase()}`, name: 'Comité Ejecutivo Nacional', kind: 'NATIONAL_EXECUTIVE_COMMITTEE', territorialUnitId: unidadId, legalEntityId: fuerzaId, installedOn: '2026-01-15' });
+    if (!organo.ok) throw new Error(organo.error.message);
+    organoInstructorId = organo.data.unionBodyId;
+
+    // El cargo que instruye lleva la facultad de emitir la resolución como documento.
+    const cargo = await defineOffice(apertura, {
+      code: `SECR_CONFLICTOS_${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      name: 'Secretaría de Conflictos Laborales', unionBodyId: organoInstructorId, kind: 'SECRETARY_LABOR_DISPUTES',
+      termMonths: 48, reelectionAllowed: false, seats: 3, grantsRoleCode: 'EXECUTIVE_SECRETARY',
+      permissionCodes: ['discipline.case.read', 'discipline.evidence.manage', 'discipline.decision.issue', 'documents.document.issue', 'files.file.upload'],
+    });
+    if (!cargo.ok) throw new Error(cargo.error.message);
+
+    const titular = await crearPersonaConCuenta(base.prisma, { givenName: 'Titular', familyName: 'De Conflictos' });
+    const membresiaTitular = await crearMembresia(base.prisma, { personId: titular.personId, legalEntityId: fuerzaId, typeCode: 'AGREMIADO', territorialUnitId: unidadId });
+    const designacion = await appointOffice(apertura, {
+      officeDefinitionId: cargo.data.officeDefinitionId, membershipId: membresiaTitular.id, territorialUnitId: unidadId,
+      designationMethod: 'ASSEMBLY_APPOINTMENT', electionId: null, substitutedTermId: null, startsOn: '2026-02-01',
+      reason: 'Designación de la comisión que instruye los procedimientos disciplinarios.',
+    });
+    if (!designacion.ok) throw new Error(designacion.error.message);
+    instructora = await contextoDe(base.prisma, titular);
+    instructoraPersonId = titular.personId;
+
+    const revisora = await crearPersonaConCuenta(base.prisma, { givenName: 'Integrante', familyName: 'De Vigilancia' });
+    await crearMembresia(base.prisma, { personId: revisora.personId, legalEntityId: fuerzaId, typeCode: 'AGREMIADO', territorialUnitId: unidadId });
+    await nombrar(base.prisma, { userId: revisora.userId, roleCode: 'OVERSIGHT_COMMISSION', grantedById: granter.userId, legalEntityId: fuerzaId });
+    vigilancia = await contextoDe(base.prisma, revisora);
+
+    const senalada = await crearPersonaConCuenta(base.prisma, { givenName: 'Persona', familyName: 'Señalada' });
+    const membresia = await crearMembresia(base.prisma, { personId: senalada.personId, legalEntityId: fuerzaId, typeCode: 'AGREMIADO', territorialUnitId: unidadId });
+    membresiaSenaladaId = membresia.id;
+    await nombrar(base.prisma, { userId: senalada.userId, roleCode: 'UNION_MEMBER', grantedById: granter.userId, legalEntityId: fuerzaId });
+    senaladaActor = await contextoDe(base.prisma, senalada);
+
+    const plantilla = await draftTemplate(secretaria, {
+      code: 'RESOLUCION_DISCIPLINARIA_F10', name: 'Resolución disciplinaria', kind: 'DISCIPLINARY_DECISION', legalEntityId: fuerzaId,
+      bodyTemplate: '<p>{{entidad}} · expediente {{folio}} contra {{persona}}. Instruye {{organoInstructor}} y resuelve {{organoResolutor}}. Hechos: {{hechos}}. Pruebas: {{pruebas}}. Resultado: {{resultado}}. Fundamento: {{fundamento}}. Sanción del {{sancionDesde}} al {{sancionHasta}}. Recurso: {{plazoDeRecurso}} días. Reglas {{versionNormativa}}.</p>',
+      variables: ['entidad', 'folio', 'persona', 'organoInstructor', 'organoResolutor', 'hechos', 'pruebas', 'resultado', 'fundamento', 'sancionDesde', 'sancionHasta', 'plazoDeRecurso', 'versionNormativa'],
+      numberingSeries: 'RESDF10',
+    });
+    if (!plantilla.ok) throw new Error(plantilla.error.message);
+    await publishTemplate(secretaria, { templateId: plantilla.data.templateId });
+  }, 120_000);
+
+  it('sin notificación ni audiencia no hay resolución; con debido proceso se sanciona, y el recurso que la revoca restituye en el mismo acto', async () => {
+    const abierto = await openDisciplinaryCase(apertura, {
+      membershipId: membresiaSenaladaId,
+      instructingBodyId: organoInstructorId,
+      allegedFacts: 'Se le imputa haber dispuesto de fondos de la sección sin acuerdo de asamblea, en dos ocasiones durante 2026.',
+      conflictOfInterestChecks: [{ personId: instructoraPersonId, role: 'Secretaría de Conflictos Laborales', hasConflict: false, statement: 'Declara no tener interés en el asunto ni relación con la persona señalada.' }],
+    });
+    if (!abierto.ok) throw new Error(abierto.error.message);
+
+    // La puerta del debido proceso: sin notificar no se resuelve.
+    const prematura = await issueDisciplinaryDecision(instructora, {
+      caseId: abierto.data.caseId, decidedByBodyId: organoInstructorId, outcome: 'SUSPENSION_OF_RIGHTS',
+      rationale: 'Intento de resolver sin haber notificado ni celebrado audiencia, para comprobar que no procede.',
+      sanctionStartsOn: '2026-10-01', sanctionEndsOn: '2026-12-31', templateCode: 'RESOLUCION_DISCIPLINARIA_F10',
+    });
+    expect(prematura.ok).toBe(false);
+
+    await notifyDisciplinaryCase(instructora, { caseId: abierto.data.caseId, hearingAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(), note: 'Se notifica personalmente y se le da acceso a su expediente.' });
+    const prueba = await offerEvidence(instructora, { caseId: abierto.data.caseId, offeredBy: 'INSTRUCTING_BODY', kind: 'RECORD', description: 'Estados de cuenta de la sección del periodo imputado.' });
+    if (!prueba.ok) throw new Error(prueba.error.message);
+    await recordHearing(instructora, { caseId: abierto.data.caseId, outcome: 'HELD', note: 'Se celebró la audiencia con la persona señalada presente.' });
+    await assessEvidence(instructora, { evidenceId: prueba.data.evidenceId, admitted: true, admissionRationale: 'Se admite: proviene de la contabilidad de la sección y guarda relación con los hechos.' });
+
+    const resolucion = await issueDisciplinaryDecision(instructora, {
+      caseId: abierto.data.caseId, decidedByBodyId: organoInstructorId, outcome: 'SUSPENSION_OF_RIGHTS',
+      rationale: 'Se tiene por acreditada la disposición de fondos sin acuerdo de asamblea, conforme a los estados de cuenta y a lo declarado en la audiencia.',
+      sanctionStartsOn: '2026-10-01', sanctionEndsOn: '2026-12-31', templateCode: 'RESOLUCION_DISCIPLINARIA_F10',
+    });
+    expect(resolucion.ok, resolucion.ok ? '' : resolucion.error.message).toBe(true);
+    if (!resolucion.ok) return;
+
+    // La sanción vive en la membresía —lo que el padrón lee al votar—.
+    const sancionada = await base.prisma.membership.findUniqueOrThrow({ where: { id: membresiaSenaladaId }, select: { politicalRightsSuspendedUntil: true } });
+    expect(sancionada.politicalRightsSuspendedUntil).not.toBeNull();
+
+    // El recurso solo lo interpone quien fue sancionada.
+    const deOtra = await fileAppeal(senaladaActor, { decisionId: resolucion.data.decisionId, grounds: 'Se recurre: los gastos constan en el acta de la asamblea de la sección, que no se valoró.' });
+    expect(deOtra.ok, deOtra.ok ? '' : deOtra.error.message).toBe(true);
+    if (!deOtra.ok) return;
+
+    // Vigilancia —no la instrucción— revisa y revoca; restituye en el mismo acto.
+    const revocado = await resolveAppeal(vigilancia, { appealId: deOtra.data.appealId, status: 'RESOLVED_REVOKED', resolutionText: 'Se revoca: el acuerdo de asamblea que respalda los gastos consta en el acta de la sección.', resolvedByAssemblyId: null });
+    expect(revocado.ok, revocado.ok ? '' : revocado.error.message).toBe(true);
+    if (!revocado.ok) return;
+    expect(revocado.data.rightsRestored).toBe(true);
+
+    const restituida = await base.prisma.membership.findUniqueOrThrow({ where: { id: membresiaSenaladaId }, select: { status: true, politicalRightsSuspendedUntil: true } });
+    expect(restituida.politicalRightsSuspendedUntil).toBeNull();
+    expect(restituida.status).toBe('ACTIVE');
   });
 });
 

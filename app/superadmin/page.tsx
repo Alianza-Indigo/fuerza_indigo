@@ -2,6 +2,20 @@ import Link from 'next/link';
 import { Badge, Card, PageShell } from '@/design-system/primitives';
 import { healthReport } from '@/platform/health';
 import { systemOverview } from '@/modules/admin';
+import { SECCIONES as SECCIONES_GESTION } from '../gestion/secciones';
+import { SECCIONES as SECCIONES_INSTITUCIONAL } from '../institucional/secciones';
+
+/**
+ * Directorio de áreas para el acceso total de la raíz (ADR-0174): cada pantalla
+ * de administración, enlazada directamente desde el panel. Las listas se toman
+ * de las mismas fuentes que arman la navegación de cada área, así que no se
+ * desincronizan.
+ */
+const AREAS = [
+  { titulo: 'Gestión', enlaces: SECCIONES_GESTION.map((s) => ({ href: s.href, label: s.label })) },
+  { titulo: 'Institucional', enlaces: SECCIONES_INSTITUCIONAL.map((s) => ({ href: s.href, label: s.label })) },
+  { titulo: 'Casos y apoyo', enlaces: [{ href: '/casos', label: 'Casos y protección' }] },
+] as const;
 
 export const metadata = { title: 'Estado general', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -85,14 +99,26 @@ export default async function SuperadminHomePage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Módulos de fases posteriores</h2>
-          <Card>
-            <p className="text-sm text-[var(--color-ink-soft)]">
-              El catálogo de plataformas y herramientas del ecosistema y la inteligencia artificial se incorporan
-              en sus fases correspondientes. Esta pantalla no los anuncia todavía, porque anunciar lo que aún no
-              existe no le sirve a nadie: cuando existan, aparecerán aquí en funcionamiento.
-            </p>
-          </Card>
+          <h2 className="mb-3 text-lg font-semibold">Áreas de administración</h2>
+          <p className="mb-3 text-sm text-[var(--color-ink-soft)]">
+            Acceso total: todas las pantallas de la organización, enlazadas directamente.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {AREAS.map((area) => (
+              <Card key={area.titulo}>
+                <h3 className="mb-2 font-semibold">{area.titulo}</h3>
+                <ul className="space-y-1 text-sm">
+                  {area.enlaces.map((enlace) => (
+                    <li key={enlace.href}>
+                      <Link href={enlace.href} className="underline underline-offset-4 hover:no-underline">
+                        {enlace.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ))}
+          </div>
         </section>
       </div>
     </PageShell>

@@ -356,8 +356,8 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 | Id | Tarea | Estado |
 |---|---|---|
 | F10-QA-001 | Ejecutar íntegros los trece flujos E2E globales | Hecho |
-| F10-SEC-001 | Realizar la revisión de seguridad contra las catorce amenazas del plan | Pendiente |
-| F10-SEC-002 | Realizar la revisión completa de permisos positivos y negativos | Pendiente |
+| F10-SEC-001 | Realizar la revisión de seguridad contra las catorce amenazas del plan | Hecho |
+| F10-SEC-002 | Realizar la revisión completa de permisos positivos y negativos | Hecho |
 | F10-UI-001 | Realizar la revisión visual completa en móvil y escritorio, en claro y oscuro | Pendiente |
 | F10-ACC-001 | Realizar la validación de accesibilidad automatizada y la revisión manual | Pendiente |
 | F10-QA-002 | Ejecutar las pruebas de rendimiento y de carga en los flujos críticos | Pendiente |

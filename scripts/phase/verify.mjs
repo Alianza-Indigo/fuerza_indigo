@@ -3671,6 +3671,36 @@ const CHECKS = [
         : ok(['Los trece flujos E2E globales del §22.2 están en la suite integral, ejercidos de extremo a extremo.']);
     },
   },
+  {
+    id: 'C-F10-02',
+    title: 'Fase 10: la revisión de seguridad cubre las catorce amenazas del plan (§20.5)',
+    phases: [10],
+    run() {
+      // El PRD §20.5 y `docs/SECURITY.md` §8 enumeran catorce amenazas, y cada
+      // una «tiene control, prueba automatizada y fase propietaria; la ausencia
+      // de cualquiera de estas pruebas bloquea el cierre de su fase». La revisión
+      // de seguridad de la Fase 10 exige que el plan siga completo —las catorce
+      // filas, cada una con su control, su prueba y su fase— y que la suite de
+      // revisión transversal exista.
+      const plan = read('docs/SECURITY.md');
+      if (plan === null) return fail(['No se encuentra docs/SECURITY.md.']);
+      const seccion = plan.slice(plan.search(/^## 8\. Amenazas/m));
+      if (seccion === '') return fail(['docs/SECURITY.md no tiene la sección §8 de amenazas.']);
+      const problemas = [];
+      for (let n = 1; n <= 14; n += 1) {
+        // Cada fila empieza por «| n |» y ha de traer control, prueba y fase (cinco columnas).
+        const fila = new RegExp(`^\\|\\s*${n}\\s*\\|([^\\n]*\\|){4}`, 'm').exec(seccion);
+        if (fila === null) problemas.push(`La amenaza ${n} no está en la tabla del §8 con control, prueba y fase.`);
+      }
+      const suite = read('tests/integration/fase10-seguridad.test.ts');
+      if (suite === null || !/Amenaza 2|Amenaza 14/.test(suite)) {
+        problemas.push('Falta la suite de revisión de seguridad transversal (fase10-seguridad.test.ts).');
+      }
+      return problemas.length
+        ? fail(problemas)
+        : ok(['Las catorce amenazas del §20.5 siguen en el plan con control, prueba y fase; la revisión transversal existe.']);
+    },
+  },
 ];
 
 

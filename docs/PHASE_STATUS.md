@@ -29,7 +29,7 @@ El PRD §24 Fase 10 contrata la integración y el endurecimiento del sistema com
 | Bloque | Contenido | Estado |
 |---|---|---|
 | A | Los trece flujos E2E globales del §22.2 como suite integral, ejecutando el sistema | **Hecho** |
-| B | Revisión de seguridad y de permisos: barrido positivo y negativo, aislamiento de entidades, expediente ajeno inaccesible; credenciales y certificados QR verificados | Pendiente |
+| B | Revisión de seguridad y de permisos: barrido positivo y negativo, aislamiento de entidades, expediente ajeno inaccesible; credenciales y certificados QR verificados | **Hecho** |
 | C | Recuperación y restauración verificadas de base y archivos; conciliación Stripe; revisión de costos y límites | Pendiente |
 | D | Observabilidad: webhooks y trabajos programados observables; revisión de logs y alertas sin fuga de datos; SEO, PWA, rendimiento y carga | Pendiente |
 | E | Migración reproducible desde base vacía; manuales operativos, capacitación administrativa y checklist de Vercel | Pendiente |
@@ -65,9 +65,19 @@ El control nuevo **C-F10-01** vigila que no se caiga ninguno de los trece: exige
 
 ---
 
+## Lo que dejó el bloque B
+
+La revisión de seguridad y de permisos (PRD §20.5, §24 Fase 10). Las catorce amenazas del plan (`docs/SECURITY.md` §8) ya tienen su prueba propietaria en la fase que las construyó; la revisión de la Fase 10 confirma que el plan sigue completo y reejerce integralmente las garantías transversales cuya caída sería más grave (`tests/integration/fase10-seguridad.test.ts`).
+
+**Tres garantías, ejecutando el sistema:** el escalamiento vertical se niega —quien nombra no otorga un rol con permisos que no tiene (la Secretaría no puede conceder las facultades de la Comisión Electoral)—; la bitácora es inmutable **en la base**, no solo en la interfaz —el rol de la aplicación no puede alterarla ni borrarla, y se probó intentándolo—; y el aislamiento entre entidades se sostiene —quien lleva las finanzas de una entidad no exporta el libro de la otra, aunque tenga la misma facultad—. El acceso horizontal a un expediente ajeno ya quedó en el flujo 12 del bloque A, y el secreto del voto en el flujo 7.
+
+El control nuevo **C-F10-02** exige que las catorce amenazas sigan en el plan con su control, su prueba y su fase, y que la suite de revisión transversal exista; se probó rompiéndolo —quitando una amenaza de la tabla— y viéndolo caer en rojo. La revisión no encontró defectos: dos aparentes hallazgos —que la Secretaría pudiera «asignar» el rol `SUPERADMIN` y que `exportLedger` negara a una finanzas legítima— resultaron ser, el primero, un rol de catálogo sin permisos (su poder viene del entorno, no del rol, así que asignarlo no concede nada), y el segundo, la convención de que la exportación se llama con el motivo en el contexto (`withReason`), como hace la capa de acciones.
+
+---
+
 ## Cómo se retoma
 
-El bloque A está hecho: los trece flujos E2E globales del §22.2 corren de extremo a extremo. El siguiente es el **bloque B** —revisión de seguridad y de permisos: barrido positivo y negativo por módulo, aislamiento de entidades, expediente ajeno inaccesible, y verificación de credenciales y certificados QR—. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A y B están hechos: los trece flujos E2E globales del §22.2 corren de extremo a extremo, y la revisión de seguridad confirma las catorce amenazas del plan. El siguiente es el **bloque C** —recuperación y restauración verificadas de base y archivos, conciliación de Stripe, y revisión de costos y límites—. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** La apertura de fase deja la puerta local en verde: `npm run phase:verify`, `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` y `npm run db:check`. La puerta de salida de verdad es la integración continua.
 

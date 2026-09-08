@@ -2069,3 +2069,11 @@ El control nuevo `C-F9-05` vigila que la transparencia solo cuente (nada de `sel
 **Decisión.** La variable pasa a llamarse `SUPERADMIN_PASSWORD` y guarda la contraseña **en texto plano**, en el entorno. `verifyRootCredentials` la compara directamente en tiempo constante (`safeEquals`), sin hash; deja de ser asíncrona. Se retira el uso de `verifyPassword` para la raíz. La variable se renombra en su fuente de contrato (`scripts/phase/prd-contract.json`), el esquema (`env.ts`), `.env.example`, `docs/ENVIRONMENT.md`, la CI (que ya no calcula un hash de prueba) y las pruebas (unidad e integración). `scripts/auth/hash-password.ts` deja de usarse para la raíz.
 
 **Consecuencias.** Es una **reducción deliberada de seguridad**: una contraseña en texto plano es menos defensa en profundidad que un hash —aunque, como el resto de los secretos, vive solo en el entorno y nunca en la base ni el repositorio—. Se acepta por decisión de la persona usuaria y por su beneficio operativo directo: poder entrar sin la fricción del hash. Se conserva lo que protegía el acceso: sesión raíz firmada, de duración limitada y revocable subiendo `SUPERADMIN_SESSION_VERSION`, límite de intentos, comparación en tiempo constante y auditoría de cada inicio de sesión. La rotación de la credencial ahora es cambiar `SUPERADMIN_PASSWORD` y subir `SUPERADMIN_SESSION_VERSION`.
+
+## ADR-0176 · La sesión del Superadmin raíz es de larga duración (revierte la sesión corta de PRD §4.4)
+
+**Contexto.** La sesión raíz duraba una hora (`SUPERADMIN_SESSION_TTL_MS = 60*60*1000`), corta a propósito como defensa. La persona usuaria, dueña de la plataforma, pidió que su acceso no caduque solo.
+
+**Decisión.** `SUPERADMIN_SESSION_TTL_MS` pasa a diez años: prácticamente sin límite. La sesión deja de caducar por tiempo; su corte inmediato sigue siendo la revocación subiendo `SUPERADMIN_SESSION_VERSION` (que invalida al instante toda sesión raíz abierta) y el cierre de sesión explícito. Se actualiza la prueba de `tests/integration/superadmin.test.ts` y el PRD §4.4.
+
+**Consecuencias.** Es una reducción deliberada de seguridad: una cookie de sesión raíz robada sirve por mucho más tiempo. Se acepta por decisión de la persona usuaria. Se conserva lo que la contiene: cookie `HttpOnly`, `Secure` y `SameSite=strict`, revocación inmediata por versión, y auditoría de cada acceso.

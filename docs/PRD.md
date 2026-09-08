@@ -366,7 +366,8 @@ El Superadmin raíz:
   la persona usuaria (ADR-0174, que revierte ADR-0026)—: todos los permisos del
   catálogo, todos los compartimentos, y sin freno de asignación, de motivo ni de
   lectura masiva;
-- usará sesión firmada, segura, de duración limitada y revocable;
+- usará sesión firmada y segura, de larga duración (no caduca sola, ADR-0176) y
+  revocable de inmediato subiendo `SUPERADMIN_SESSION_VERSION`;
 - estará sujeto a límite de intentos, alertas y auditoría.
 
 La contraseña se define en texto plano en `SUPERADMIN_PASSWORD` (ADR-0175), en el entorno; no se guarda en la base ni en el repositorio.

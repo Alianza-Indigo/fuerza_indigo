@@ -15,8 +15,12 @@ import { hashToken, newOpaqueToken } from '@/platform/kernel/ids';
 
 /** Duración de la sesión ordinaria. */
 export const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-/** Duración de la sesión del Superadmin raíz: corta a propósito (PRD §4.4). */
-export const SUPERADMIN_SESSION_TTL_MS = 60 * 60 * 1000;
+/**
+ * Duración de la sesión del Superadmin raíz: prácticamente sin límite (diez
+ * años), por decisión de la persona usuaria (ADR-0176). Ya no caduca sola; su
+ * corte inmediato es la revocación subiendo `SUPERADMIN_SESSION_VERSION`.
+ */
+export const SUPERADMIN_SESSION_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 export const SESSION_COOKIE = 'fi_session';
 export const SUPERADMIN_COOKIE = 'fi_root_session';

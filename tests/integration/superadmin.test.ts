@@ -78,10 +78,10 @@ describe('acceso del actor raíz', () => {
   });
 });
 
-describe('la sesión raíz es independiente y más corta', () => {
-  it('vive una hora frente a las doce de una sesión ordinaria', () => {
-    expect(SUPERADMIN_SESSION_TTL_MS).toBeLessThan(SESSION_TTL_MS);
-    expect(SUPERADMIN_SESSION_TTL_MS).toBe(60 * 60 * 1000);
+describe('la sesión raíz es independiente y de larga duración', () => {
+  it('no caduca sola: dura mucho más que una sesión ordinaria (ADR-0176)', () => {
+    expect(SUPERADMIN_SESSION_TTL_MS).toBeGreaterThan(SESSION_TTL_MS);
+    expect(SUPERADMIN_SESSION_TTL_MS).toBe(10 * 365 * 24 * 60 * 60 * 1000);
   });
 
   it('usa su propia cookie, con SameSite estricto', () => {

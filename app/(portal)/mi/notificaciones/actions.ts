@@ -62,20 +62,28 @@ export async function savePreferencesAction(
     return { status: 'error', message: 'Para cambiar tus preferencias necesitas entrar con tu cuenta.' };
   }
 
-  const entries = NOTIFICATION_CATEGORIES.filter((category) => !isMandatoryCategory(category)).map((category) => ({
+  const opcionales = NOTIFICATION_CATEGORIES.filter((category) => !isMandatoryCategory(category));
+  const entriesCentro = opcionales.map((category) => ({
     category,
     suppressed: !checkboxField(formData, `receive:${category}`),
   }));
+  const entriesWeb = opcionales.map((category) => ({
+    category,
+    suppressed: !checkboxField(formData, `web:${category}`),
+  }));
 
-  const resultado = await setNotificationPreferences(actor, { channel: 'IN_APP', entries });
-  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+  const centro = await setNotificationPreferences(actor, { channel: 'IN_APP', entries: entriesCentro });
+  if (!centro.ok) return { status: 'error', message: centro.error.message };
+  const web = await setNotificationPreferences(actor, { channel: 'WEB_PUSH', entries: entriesWeb });
+  if (!web.ok) return { status: 'error', message: web.error.message };
 
   revalidatePath('/mi/notificaciones');
+  const cambios = centro.data.changed + web.data.changed;
   return {
     status: 'ok',
     message:
-      resultado.data.changed === 0
+      cambios === 0
         ? 'No cambiaste nada: tus preferencias ya estaban así.'
-        : 'Guardamos tus preferencias. Tu centro ya solo muestra lo que pediste.',
+        : 'Guardamos tus preferencias. Tu centro y tus avisos web ya solo muestran lo que pediste.',
   };
 }

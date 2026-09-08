@@ -118,7 +118,10 @@ export default async function MisNotificacionesPage() {
           description="Elige qué clases de aviso ves en tu centro. Los obligatorios de gobierno no se pueden silenciar."
         >
           <Card>
-            <PreferencesForm categories={preferencias.data.categories} />
+            <PreferencesForm
+              categories={preferencias.data.categories}
+              webPushSubscribed={preferencias.data.webPushSubscribed}
+            />
           </Card>
         </Section>
       </div>

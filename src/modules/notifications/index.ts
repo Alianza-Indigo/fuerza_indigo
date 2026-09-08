@@ -39,3 +39,9 @@ export {
   type CampaignTemplateOption,
 } from './application/campaigns';
 export { dispatchExpiryAlerts } from './application/expiry-alerts';
+export {
+  saveWebPushSubscription,
+  removeWebPushSubscription,
+  deliverWebPushForNotification,
+  type SaveWebPushInput,
+} from './application/web-push';

@@ -334,7 +334,7 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 | F9-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Pendiente |
 | F9-NOT-001 | Implementar el centro de notificaciones dentro de la plataforma | Pendiente |
 | F9-NOT-002 | Ampliar el envío por correo con campañas, preferencias y reintentos sobre la base construida en la Fase 1 | Pendiente |
-| F9-NOT-003 | Implementar notificaciones web con autorización explícita de la persona | Pendiente |
+| F9-NOT-003 | Implementar notificaciones web con autorización explícita de la persona | Hecho |
 | F9-NOT-004 | Implementar preferencias por categoría sin permitir suprimir avisos obligatorios | Pendiente |
 | F9-NOT-005 | Implementar campañas operativas autorizadas y su separación de lo obligatorio | Pendiente |
 | F9-EVE-001 | Implementar el calendario público y privado de eventos | Pendiente |

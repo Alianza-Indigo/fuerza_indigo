@@ -2,6 +2,7 @@ import { db } from '@/platform/db/client';
 import { ok, type UseCaseResult } from '@/platform/kernel/result';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { formatDate } from '@/platform/i18n/format';
+import { enqueue } from '@/platform/jobs/queue';
 
 /**
  * Alertas de vencimientos (PRD §24 Fase 9).
@@ -49,17 +50,27 @@ async function avisarUnaVez(input: {
   });
   if (yaExiste !== null) return 0;
 
-  await db().notification.create({
+  const aviso = await db().notification.create({
     data: {
       personId: input.personId,
       category: input.category,
       title: input.title,
       body: input.body,
       linkPath: input.linkPath,
-      channels: ['IN_APP'],
+      channels: ['IN_APP', 'WEB_PUSH'],
       relatedKind: input.relatedKind,
       relatedId: input.relatedId,
     },
+    select: { id: true },
+  });
+
+  // El aviso ya está en el centro; además se intenta por la web. La entrega web
+  // solo alcanza a quien se suscribió: esa puerta vive en el caso de uso de
+  // entrega, no aquí.
+  await enqueue({
+    jobType: 'notification-web-push',
+    businessKey: `web-push:${aviso.id}`,
+    payload: { notificationId: aviso.id },
   });
   return 1;
 }

@@ -140,6 +140,16 @@ Sin estas variables, el servicio de IA queda deshabilitado y la aplicación **co
 
 En desarrollo se usa `console`: los mensajes se registran sin enviarse y sin exponer datos personales. En pruebas automatizadas se usa un adaptador de captura que permite verificar el contenido sin salida real.
 
+Los avisos web (Web Push, PRD §16.2, Fase 9) usan tres variables, todas **opcionales**: sin ellas el canal se degrada con claridad —la pantalla lo dice y los avisos siguen llegando al centro y por correo— igual que el correo con `console`.
+
+| Variable | Para qué sirve | Formato | Desarrollo | Preproducción | Producción |
+|---|---|---|---|---|---|
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | Clave privada VAPID (RFC 8292) que **firma cada envío** ante el servicio de push. **Nunca se guarda en la base**: vive solo en el entorno. | Clave privada VAPID (P-256, base64url) | Opc. | Opc. | Opc. |
+| `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` | Clave pública VAPID. **Pública por diseño**: el navegador la usa al suscribirse. | Clave pública VAPID (base64url) | Opc. | Opc. | Opc. |
+| `WEB_PUSH_VAPID_SUBJECT` | Sujeto del JWT de VAPID: un contacto del emisor. | `mailto:…` o URL | Opc. | Opc. | Opc. |
+
+Las tres van juntas: si falta una, el adaptador no puede firmar y el canal queda inactivo (`degraded` en el panel de salud, no `failed`: es un estado de operación legítimo). Se generan con cualquier utilidad VAPID —p. ej. `npx web-push generate-vapid-keys`— y no dependen de la fase, sino de si la organización quiere ofrecer el canal web.
+
 ---
 
 ## 9. Trabajos programados y verificación pública

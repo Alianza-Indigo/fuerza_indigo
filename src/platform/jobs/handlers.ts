@@ -1,6 +1,7 @@
 import type { ClaimedJob } from '@/platform/jobs/queue';
 import { db } from '@/platform/db/client';
 import { sendTemplatedMail } from '@/platform/mail/mailer';
+import { deliverWebPushForNotification } from '@/modules/notifications';
 import { logger } from '@/platform/observability/logger';
 
 /**
@@ -162,6 +163,20 @@ const HANDLERS: Record<string, JobHandler> = {
       });
       throw error;
     }
+  },
+
+  /**
+   * Entrega de un aviso por el canal web (RFC 8291). Va por la cola porque
+   * alcanza a varios dispositivos y depende de un servicio externo; la puerta de
+   * la autorización explícita vive en el caso de uso, que no envía a quien no se
+   * suscribió. Best-effort: un fallo de push no se reintenta con la insistencia
+   * de un correo —el aviso ya está en el centro—.
+   */
+  'notification-web-push': async (job) => {
+    const notificationId = textValue(job.payload, 'notificationId');
+    if (notificationId === '') throw new Error('El aviso web no trae la notificación.');
+    const resultado = await deliverWebPushForNotification(notificationId);
+    return { sent: resultado.ok ? resultado.data.sent : 0 };
   },
 
   /** Aviso de que un cobro periódico falló y de cuánto tiempo hay para resolverlo. */

@@ -4,6 +4,7 @@ import { mailerCapability } from '@/platform/mail/mailer';
 import { blobStoreCapability } from '@/platform/files/blob-store';
 import { stripeCapability } from '@/platform/payments';
 import { aiCapability } from '@/platform/ai';
+import { webPushCapability } from '@/platform/push/web-push-port';
 import { stuckJobs } from '@/platform/jobs/queue';
 import { GLOBAL_CHAIN, verifyAuditChain } from '@/platform/audit/audit-service';
 import { transaction } from '@/platform/db/unit-of-work';
@@ -195,6 +196,17 @@ export async function healthReport(): Promise<HealthReport> {
       // como fallo enseñaría a ignorar el rojo de un despliegue correcto.
       const { capability, detail } = await aiCapability();
       return { status: capability === 'OPERATIONAL' ? ('ok' as const) : ('degraded' as const), detail };
+    }),
+
+    timed('avisos_web', () => {
+      // Igual que el correo, el cobro y la IA: lo declara el propio adaptador.
+      // `degraded` y no `failed` sin claves VAPID: es un estado de operación
+      // legítimo —los avisos siguen llegando al centro y por correo— y una
+      // instalación nueva nace así. Un panel que dijera «avisos web configurados»
+      // sin las claves engañaría a quien investigue por qué el navegador no
+      // recibe nada.
+      const { capability, detail } = webPushCapability();
+      return Promise.resolve({ status: capability === 'DELIVERS' ? ('ok' as const) : ('degraded' as const), detail });
     }),
 
     timed('firma_de_credenciales', () => {

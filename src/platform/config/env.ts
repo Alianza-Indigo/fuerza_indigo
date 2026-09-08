@@ -120,6 +120,16 @@ const schema = z.object({
   NEXT_PUBLIC_STRIPE_ALIANZA_PUBLISHABLE_KEY: optionalSecret(),
   GEMINI_API_KEY: optionalSecret(),
   GEMINI_DEFAULT_MODEL: optionalSecret(),
+  /**
+   * Claves VAPID de las notificaciones web (RFC 8292). La privada firma cada
+   * envío y **vive en el entorno, nunca en la base**; la pública viaja al
+   * navegador para que la persona se suscriba. Sin ellas, el canal web queda
+   * indisponible —como el correo por SMTP sin configurar—: el centro y el correo
+   * siguen funcionando, y la salud lo dice.
+   */
+  WEB_PUSH_VAPID_PRIVATE_KEY: optionalSecret(),
+  WEB_PUSH_VAPID_SUBJECT: optionalSecret(),
+  NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY: optionalSecret(),
 });
 
 export type Env = z.infer<typeof schema>;

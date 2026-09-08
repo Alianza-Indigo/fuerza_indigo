@@ -199,6 +199,12 @@ model Person {
   locale             String         @default("es-MX") @db.VarChar(10)
   /// Preferencias sensoriales persistentes por persona (PRD §5.3).
   accessibilityPreferences Json     @default("{}")
+  /// Suscripciones de notificación web del navegador de la persona (RFC 8291,
+  /// PRD §16.2). Un arreglo de `{ endpoint, keys: { p256dh, auth } }`, una por
+  /// dispositivo que la persona autorizó explícitamente. La clave privada VAPID
+  /// no vive aquí —va en el entorno—; esto es material público del navegador,
+  /// inútil sin su endpoint.
+  webPushSubscriptions     Json     @default("[]")
   deceasedAt         DateTime?      @db.Timestamptz(3)
   /// Clave de comparación de nombres, calculada por el motor (ADR-0070).
   ///

@@ -23,21 +23,29 @@ export interface CategoryPreferenceView {
   readonly category: NotificationCategory;
   readonly mandatory: boolean;
   readonly inAppSuppressed: boolean;
+  readonly webPushSuppressed: boolean;
 }
 
-/** El estado de las preferencias de la persona en su centro, clase por clase. */
+/** El estado de las preferencias de la persona, clase por clase y por canal. */
 export async function myNotificationPreferences(
   actor: ActorContext,
-): Promise<UseCaseResult<{ categories: CategoryPreferenceView[] }>> {
+): Promise<UseCaseResult<{ categories: CategoryPreferenceView[]; webPushSubscribed: boolean }>> {
   if (actor.personId === null) return fail(errors.unauthenticated());
 
-  const silenciadas = await suppressedSet(actor.personId, 'IN_APP');
+  const [silenciadasCentro, silenciadasWeb, persona] = await Promise.all([
+    suppressedSet(actor.personId, 'IN_APP'),
+    suppressedSet(actor.personId, 'WEB_PUSH'),
+    db().person.findUnique({ where: { id: actor.personId }, select: { webPushSubscriptions: true } }),
+  ]);
   const categories = NOTIFICATION_CATEGORIES.map((category) => ({
     category,
     mandatory: isMandatoryCategory(category),
-    inAppSuppressed: silenciadas.has(category),
+    inAppSuppressed: silenciadasCentro.has(category),
+    webPushSuppressed: silenciadasWeb.has(category),
   }));
-  return ok({ categories });
+  const suscripciones = persona?.webPushSubscriptions;
+  const webPushSubscribed = Array.isArray(suscripciones) && suscripciones.length > 0;
+  return ok({ categories, webPushSubscribed });
 }
 
 export const setNotificationPreferencesSchema = z.object({

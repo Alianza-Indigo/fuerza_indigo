@@ -162,3 +162,43 @@ self.addEventListener('fetch', (evento) => {
     evento.respondWith(pagina(peticion));
   }
 });
+
+/**
+ * Avisos web (PRD §16.2, Fase 9 bloque D).
+ *
+ * El otro oficio de este trabajador: recibir el aviso ya cifrado que el
+ * servidor envió al endpoint del navegador (RFC 8291), mostrarlo, y al pulsarlo
+ * abrir donde el aviso apunta. No guarda nada ni consulta nada —igual que la
+ * caché, aquí tampoco queda en disco lo que es de alguien—: es el último tramo
+ * de la entrega, del lado del dispositivo que la persona autorizó.
+ */
+self.addEventListener('push', (evento) => {
+  let datos = { title: 'Fuerza Índigo', body: 'Tienes un aviso nuevo.', url: '/mi/notificaciones' };
+  try {
+    if (evento.data) datos = { ...datos, ...evento.data.json() };
+  } catch {
+    // Un cuerpo que no es JSON se muestra con el texto por omisión.
+  }
+
+  evento.waitUntil(
+    self.registration.showNotification(datos.title, {
+      body: datos.body,
+      icon: '/icono-192.png',
+      badge: '/icono-192.png',
+      data: { url: datos.url },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (evento) => {
+  evento.notification.close();
+  const destino = (evento.notification.data && evento.notification.data.url) || '/mi/notificaciones';
+  evento.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientes) => {
+      for (const cliente of clientes) {
+        if ('focus' in cliente && cliente.url && new URL(cliente.url).pathname === destino) return cliente.focus();
+      }
+      return self.clients.openWindow(destino);
+    }),
+  );
+});

@@ -31,7 +31,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | A | Esquema de eventos, registros, constancias y notificaciones; migración y permisos | **Hecho** |
 | B | Centro de notificaciones y preferencias por categoría, sin suprimir lo obligatorio | **Hecho** |
 | C | Correo, plantillas versionadas y campañas operativas autorizadas separadas de lo obligatorio | **Hecho** |
-| D | Notificaciones web con autorización explícita de la persona | Pendiente |
+| D | Notificaciones web con autorización explícita de la persona | **Hecho** |
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | **Hecho** |
 | F | Cobro de eventos conectado al catálogo financiero | **Hecho** |
 | G | Asistencia, materiales, evaluación y constancias verificables y revocables | **Hecho** |
@@ -55,6 +55,20 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 4 | Las exportaciones respetan permisos y quedan auditadas | **Cumplido** (bloque J) |
 | 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** (bloque H) |
+
+---
+
+## Lo que dejó el bloque D
+
+Notificaciones web con autorización explícita de la persona (PRD §16.2, §24 Fase 9; ADR-0172).
+
+**El estándar, no un SDK.** El envío web es el del estándar abierto: mensaje cifrado extremo a extremo al endpoint que el navegador entregó al suscribirse (RFC 8291, `aes128gcm`), firmado con VAPID (RFC 8292, JWT ES256), todo con `node:crypto`. Se envuelve en un puerto con adaptadores intercambiables —`vapid` con claves, `console` en desarrollo, `unavailable` en producción sin claves, y un falso para las pruebas—, igual que el correo y el cobro. La clave privada VAPID firma cada envío y vive en el entorno, nunca en la base; la salud reporta la capacidad del adaptador vigente. El canal se degrada con claridad: sin claves, la pantalla lo dice en vez de ofrecer un botón muerto.
+
+**La suscripción, en la persona.** El material que el navegador entrega —endpoint y claves públicas— se guarda en una columna `webPushSubscriptions` (Json) de la propia `Person`, una por dispositivo, reemplazando en vez de duplicar. Una tabla nueva habría sido un modelo que el contrato de fases prohíbe (C-COH-03); una columna escalar sobre una entidad existente sí se admite.
+
+**La puerta de la autorización explícita.** La garantía que distingue este canal del centro y del correo: la entrega web **nunca llama al servicio de push sin una suscripción guardada**. Sin ella, se registra un intento `SUPPRESSED` y se sale antes de tomar el puerto; con ella, se respeta además la preferencia por el canal web —una clase silenciada no sale, salvo la obligatoria de gobierno—; y un endpoint que el navegador ya retiró (404/410) se olvida. El aviso de vencimiento (bloque K) ya sale por los dos canales: entra al centro y, si la persona lo autorizó, se encola su entrega web.
+
+**El control nuevo C-F9-08** vigila la puerta —que el puerto no se tome antes de comprobar la suscripción— y exige la prueba con puerto falso. **Cinco pruebas de integración con el método de romper:** la persona suscrita recibe (el puerto se llama, el intento queda `SENT`); la persona sin suscripción no —el puerto no se llama, el intento queda `SUPPRESSED`— y esa es la garantía que se rompió (quitando el corte) y se vio caer en rojo, control y prueba; la clase silenciada no sale aunque haya suscripción; el aviso obligatorio de gobierno sale igual; y el endpoint retirado se olvida.
 
 ---
 
@@ -188,13 +202,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B, C, E, F, G, H, I, J y K están enteros. Solo queda el bloque D (notificaciones web), que se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID). Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A a K están enteros. Solo queda el bloque L —el cierre de la fase—: la suite de criterios de aceptación que ejerce los seis criterios del PRD §24 Fase 9 ejecutando el sistema, los controles de cierre, la actualización de `docs/BACKLOG.md` y la documentación, y declarar la fase `APPROVED` a la espera de autorización expresa (PRD §23). Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque D — notificaciones web con autorización explícita de la persona.** Lo que toca: la entrega por web push, que exige la suscripción explícita del navegador (permiso del usuario, claves VAPID por el patrón de puerto sin SDK), como tercer canal junto al centro y el correo. El contrato es `docs/PRD.md` §16.2 y §24 Fase 9.
+**Bloque L — criterios de aceptación, controles y cierre.** Lo que toca: una suite `fase9-criterios.test.ts` que compruebe los seis criterios ejecutando el sistema (no leyendo el código), los controles de cierre de fase, el repaso de `docs/BACKLOG.md` sin tareas huérfanas, y el informe de cierre. El contrato es `docs/PRD.md` §24 Fase 9 y §23.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque D: una entrega web a quien no dio su autorización explícita.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque L: cada criterio de aceptación tiene una prueba que cae si el criterio deja de cumplirse.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

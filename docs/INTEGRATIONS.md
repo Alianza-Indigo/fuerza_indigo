@@ -203,6 +203,28 @@ Adaptadores: `resend` (producción), `smtp` (alternativa institucional) y `conso
 
 ---
 
+## 5-bis. Avisos web (Web Push, PRD §16.2, Fase 9)
+
+```ts
+interface WebPushPort {
+  name: string;
+  capability: 'DELIVERS' | 'LOGS_ONLY' | 'UNAVAILABLE';
+  send(subscription: WebPushSubscription, message: WebPushMessage): Promise<{
+    delivered: boolean; gone: boolean; statusCode: number | null;
+  }>;
+}
+```
+
+El canal web es el del estándar abierto, **no un SDK de terceros**: el servidor cifra el mensaje extremo a extremo hacia el endpoint que el propio navegador entregó al suscribirse (RFC 8291, codificación `aes128gcm`) y lo firma con VAPID (RFC 8292, JWT ES256), todo con `node:crypto`. Adaptadores: `vapid` (con claves), `console` (desarrollo sin claves) y `unavailable` (producción sin claves). Se selecciona por la presencia de las tres variables `WEB_PUSH_VAPID_*`.
+
+- La **clave privada VAPID firma cada envío y vive solo en el entorno, nunca en la base.** La pública es pública por diseño: el navegador la usa al suscribirse.
+- La suscripción del navegador —endpoint y claves públicas— se guarda en la propia persona (`Person.webPushSubscriptions`), una por dispositivo; no hay entidad nueva.
+- **La autorización es explícita:** sin una suscripción guardada no hay entrega web —se registra `DeliveryAttempt` `SUPPRESSED` y no se toca el servicio de push—. Se respeta además la preferencia por canal; lo obligatorio de gobierno no se silencia.
+- Un endpoint retirado por el navegador (404/410) se olvida.
+- Sin claves configuradas el canal se degrada con claridad (`degraded` en salud): los avisos siguen llegando al centro y por correo.
+
+---
+
 ## 6. Plataformas y herramientas del ecosistema
 
 CIAN, CENI, NeuroPlan, ADIA y NEXO tienen operación propia fuera de este repositorio. Aquí **no hay integración**: hay un catálogo con su ficha y su dirección de acceso (PRD §12, §13 y §14).
@@ -275,6 +297,8 @@ La verificación lee siempre el **estado vivo**: una revocación surte efecto de
 | `NEXT_PUBLIC_STRIPE_*_PUBLISHABLE_KEY` | Stripe | Navegador | Valor público por diseño |
 | `GEMINI_API_KEY` | Google | Servidor | Por proveedor |
 | `EMAIL_API_KEY` | Correo | Servidor | Por proveedor |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | Interno (VAPID) | Servidor | Manual; obliga a resuscribir los navegadores |
+| `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` | Interno (VAPID) | Navegador | Valor público por diseño |
 | `CRON_SECRET` | Interno | Servidor | Manual |
 | `QR_SIGNING_SECRET` | Interno | Servidor | Manual; requiere reemisión planificada de credenciales |
 | `SUPERADMIN_PASSWORD_HASH` | Interno | Servidor | Manual, con `SUPERADMIN_SESSION_VERSION` |
@@ -298,7 +322,7 @@ Ningún secreto lleva prefijo público. La ausencia de una variable obligatoria 
 | §15.3 Prompts administrables | §3.2 |
 | §15.4 Límites de decisión | §3.3 |
 | §15.5 Privacidad y trazabilidad | §3.2, §3.4 |
-| §16.2 Notificaciones | §5 |
+| §16.2 Notificaciones (correo y web) | §5, §5-bis |
 | §17.4 Archivos | §4 |
 | §17.5 Trabajos asíncronos | §7 |
 | §21 Variables de entorno | §9 y `ENVIRONMENT.md` |

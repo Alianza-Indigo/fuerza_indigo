@@ -796,16 +796,19 @@ const CHECKS = [
       // función que nadie puede invocar es alcance no entregado, aunque el código
       // esté escrito.
       // Las superficies son las pantallas, las rutas y los guiones… y el
-      // registro de suscripciones a eventos de dominio. Un caso de uso que solo
-      // se invoca desde un manejador de la bandeja de salida sí está entregado:
-      // `C-F1-12` garantiza que ese registro lo llame quien reparte, así que la
-      // cadena hasta una ruta real está comprobada. Sin esta línea, el control
-      // exigiría inventar una pantalla para algo que ocurre solo.
+      // registro de suscripciones a eventos de dominio, y el registro de
+      // manejadores de trabajos. Un caso de uso que solo se invoca desde un
+      // manejador de la cola de trabajos sí está entregado: la ruta de reparto
+      // (`app/api/v1/cron/dispatch/route.ts`) drena la cola llamando a `runJob`,
+      // que despacha al manejador; la cadena hasta una ruta real está
+      // comprobada. Igual que el registro de eventos de dominio, sin esta línea
+      // el control exigiría inventar una pantalla para algo que ocurre solo.
       const superficies = walk().filter(
         (file) =>
           (file.startsWith('app/') ||
             file.startsWith('scripts/') ||
-            file === 'src/platform/jobs/domain-event-registry.ts') &&
+            file === 'src/platform/jobs/domain-event-registry.ts' ||
+            file === 'src/platform/jobs/handlers.ts') &&
           /\.tsx?$/.test(file),
       );
       const invocado = superficies.map((file) => read(file) ?? '').join('\n');
@@ -3562,6 +3565,46 @@ const CHECKS = [
       }
 
       return ok(['Las alertas de vencimiento se dan una sola vez: el propio aviso es la marca de que ya se dio.']);
+    },
+  },
+  {
+    id: 'C-F9-08',
+    title: 'Fase 9: el aviso web no llega a quien no lo pidió (criterio 9 bloque D)',
+    phases: [9],
+    run() {
+      // La notificación web se distingue del centro y del correo: exige la
+      // suscripción explícita del navegador de la persona. La garantía es que la
+      // entrega web **nunca llama al servicio de push sin una suscripción
+      // guardada**. Se sostiene en `deliverWebPushForNotification`: si no hay
+      // suscripción, registra `SUPPRESSED` y sale antes de tomar el puerto.
+      const fuente = read('src/modules/notifications/application/web-push.ts');
+      if (fuente === null) return fail(['No se encuentra la entrega de avisos web.']);
+
+      const sinComentarios = fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+      // La puerta: sin suscripción se suprime y se sale antes de tomar el puerto.
+      const puertaIndex = sinComentarios.search(/if \(suscripciones\.length === 0\) \{[\s\S]*?return ok\(/);
+      if (puertaIndex === -1) {
+        return fail(['La entrega web no cierra la puerta: falta el corte «sin suscripción, no hay entrega».']);
+      }
+
+      // El puerto solo se toma después de esa puerta: si `webPushPort()` apareciera
+      // antes del corte, se llamaría al servicio de push sin autorización.
+      const puertoIndex = sinComentarios.indexOf('webPushPort()');
+      if (puertoIndex === -1) {
+        return fail(['La entrega web no toma el puerto de push por ninguna parte.']);
+      }
+      if (puertoIndex < puertaIndex) {
+        return fail(['El puerto de push se toma antes de comprobar la suscripción: podría enviarse sin autorización.']);
+      }
+
+      // Y hay una prueba que rompe y restaura esa puerta con un puerto falso.
+      const prueba = read('tests/integration/notification-web-push.test.ts');
+      if (prueba === null || !/setWebPushForTests/.test(prueba) || !/toHaveLength\(0\)/.test(prueba)) {
+        return fail(['Falta la prueba con puerto falso que verifica que sin suscripción el puerto no se llama.']);
+      }
+
+      return ok(['El aviso web solo sale a quien tiene una suscripción guardada: sin ella, el puerto no se llama.']);
     },
   },
 ];

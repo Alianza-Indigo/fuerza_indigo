@@ -13,6 +13,11 @@ const SECTIONS = [
   { href: '/superadmin/personas', label: 'Personas y roles' },
   { href: '/superadmin/auditoria', label: 'Auditoría' },
   { href: '/superadmin/salud', label: 'Salud técnica' },
+  // Acceso total (ADR-0174): desde el panel se entra a todas las áreas de
+  // administración de la organización, no solo a las técnicas.
+  { href: '/gestion', label: 'Gestión' },
+  { href: '/institucional', label: 'Institucional' },
+  { href: '/casos', label: 'Casos' },
 ];
 
 /**
@@ -37,9 +42,9 @@ export default async function SuperadminLayout({ children }: { children: ReactNo
       <header className="border-b border-[var(--color-line)] bg-[var(--color-surface-raised)]">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="font-semibold">Administración técnica</span>
+            <span className="font-semibold">Administración</span>
             <span className="rounded-full border border-[var(--color-indigo-500)] px-2 py-0.5 text-xs text-[var(--color-indigo-600)]">
-              Sin derechos sindicales
+              Acceso total
             </span>
           </div>
           <form action={rootLogoutAction}>

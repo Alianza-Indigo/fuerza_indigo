@@ -22,7 +22,7 @@ export default async function SuperadminHomePage() {
   return (
     <PageShell
       title="Estado general del sistema"
-      description="Configuración técnica y operación. Este acceso no concede derechos sindicales ni alcanza expedientes."
+      description="Acceso total a la plataforma y a todas sus áreas de administración."
     >
       <div className="space-y-8">
         {failing.length > 0 && (

@@ -3538,6 +3538,32 @@ const CHECKS = [
         : ok(['Las exportaciones de padrón, directorio y finanzas quedan registradas en la bitácora.']);
     },
   },
+  {
+    id: 'C-F9-07',
+    title: 'Fase 9: las alertas de vencimiento no se repiten',
+    phases: [9],
+    run() {
+      // El alcance incluye «alertas de vencimientos y obligaciones». Correr el
+      // trabajo cada día no debe llenar el buzón de la misma persona con el
+      // mismo aviso. La idempotencia se sostiene en el propio aviso —su
+      // `relatedKind` y `relatedId`—: antes de crear uno se comprueba que no
+      // exista ya. Sin esa comprobación, la segunda pasada duplica.
+      const fuente = read('src/modules/notifications/application/expiry-alerts.ts');
+      if (fuente === null) return fail(['No se encuentra el trabajo de alertas de vencimiento.']);
+
+      // El aviso lleva de qué vencimiento es, para poder reconocerlo.
+      if (!/relatedKind:\s*input\.relatedKind/.test(fuente) || !/relatedId:\s*input\.relatedId/.test(fuente)) {
+        return fail(['El aviso de vencimiento no lleva qué vence y cuál: sin eso no se puede evitar repetirlo.']);
+      }
+
+      // Antes de crear, se comprueba que no exista ya, y si existe no se crea.
+      if (!/findFirst\(/.test(fuente) || !/if \(yaExiste !== null\) return 0;/.test(fuente)) {
+        return fail(['El trabajo no comprueba si el aviso ya existe antes de crearlo: se repetiría cada pasada.']);
+      }
+
+      return ok(['Las alertas de vencimiento se dan una sola vez: el propio aviso es la marca de que ya se dio.']);
+    },
+  },
 ];
 
 

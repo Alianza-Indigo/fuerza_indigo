@@ -38,7 +38,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | H | Tableros por rol con decisiones accionables | **Hecho** |
 | I | Indicadores territoriales con agregación y umbrales de privacidad | **Hecho** |
 | J | Reportes institucionales, exportaciones auditadas y transparencia publicada | **Hecho** |
-| K | Alertas de vencimientos y obligaciones | Pendiente |
+| K | Alertas de vencimientos y obligaciones | **Hecho** |
 | L | Pruebas, controles de fase, documentación y cierre | Pendiente |
 
 ---
@@ -55,6 +55,20 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 4 | Las exportaciones respetan permisos y quedan auditadas | **Cumplido** (bloque J) |
 | 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** (bloque H) |
+
+---
+
+## Lo que dejó el bloque K
+
+Las alertas de vencimientos y obligaciones (PRD §24 Fase 9; ADR-0171).
+
+**Avisar antes, una sola vez.** Ya existían los trabajos que dan de baja al vencer; faltaba avisar antes. Un trabajo nuevo (`expiry-alerts`, diario) busca lo que se acerca a vencer —membresías y nombramientos dentro de treinta días— y crea un aviso en el centro de notificaciones de cada persona, con su enlace a donde se renueva. Entra al centro, no al correo: un vencimiento propio no es difusión. Respeta la preferencia —el centro ya la filtra— y no es clase obligatoria, así que se puede silenciar.
+
+**No se repite, sin registro aparte.** El aviso lleva `relatedKind` y `relatedId` —qué vence y cuál—, y antes de crear uno se comprueba que no exista ya. Correr el trabajo cada día no duplica. No hizo falta una tabla que recuerde qué se avisó (que el contrato de fases no admitiría): el aviso es su propia marca. El control nuevo **C-F9-07** lo vigila.
+
+**Las obligaciones ante autoridad, en el tablero.** Una obligación es de la entidad, no de una persona, así que se suma como una cola del tablero de gestión: las sin entregar, vencidas o por vencer, con su enlace a cumplimiento.
+
+**Dos pruebas de integración con el método de romper:** la membresía que vence pronto y genera un aviso que la segunda pasada no repite (se le quitó la comprobación y se vio duplicar, en rojo), y la que vence lejos y todavía no se avisa.
 
 ---
 
@@ -174,13 +188,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B, C, E, F, G, H, I y J están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de las alertas. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B, C, E, F, G, H, I, J y K están enteros. Solo queda el bloque D (notificaciones web), que se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID). Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque K — alertas de vencimientos y obligaciones.** Lo que toca: avisar de lo que vence —membresías, nombramientos, obligaciones de cumplimiento— antes de que sea tarde, por los canales de la fase, sin duplicar y respetando la preferencia. El contrato es `docs/PRD.md` §24 Fase 9.
+**Bloque D — notificaciones web con autorización explícita de la persona.** Lo que toca: la entrega por web push, que exige la suscripción explícita del navegador (permiso del usuario, claves VAPID por el patrón de puerto sin SDK), como tercer canal junto al centro y el correo. El contrato es `docs/PRD.md` §16.2 y §24 Fase 9.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque D: una entrega web a quien no dio su autorización explícita.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

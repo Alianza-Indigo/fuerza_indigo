@@ -38,3 +38,4 @@ export {
   type SendCampaignInput,
   type CampaignTemplateOption,
 } from './application/campaigns';
+export { dispatchExpiryAlerts } from './application/expiry-alerts';

@@ -915,4 +915,11 @@ export const JOB_GRANTS: Readonly<Record<string, ReadonlySet<string>>> = {
    * de baja a nadie ni termina ninguna, que son facultades de una persona.
    */
   'membership-expiry': new Set(['membership.record.read']),
+  /**
+   * Alertas de vencimientos. Lee qué se acerca a vencer y crea un aviso en el
+   * centro de la persona, una sola vez. No cambia nada institucional —no da de
+   * baja, no revoca, no termina—: solo avisa. Por eso no lleva ninguna facultad,
+   * como el reparto de la bandeja de salida.
+   */
+  'expiry-alerts': new Set<string>(),
 };

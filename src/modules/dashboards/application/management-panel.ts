@@ -3,6 +3,7 @@ import type { ActorContext } from '@/platform/kernel/actor-context';
 import { applicationQueue } from '@/modules/membership';
 import { requestList } from '@/modules/support';
 import { pendingManualPayments, reconciliationList, refundQueue } from '@/modules/billing';
+import { obligationList } from '@/modules/bargaining';
 
 /**
  * El tablero de gestión: lo que hay que decidir, por rol (PRD §5.5, §6.3, §6.4;
@@ -132,11 +133,35 @@ const conciliacionPorCerrar: Fuente = async (actor) => {
   };
 };
 
+const NO_ENTREGADAS = new Set(['PENDING', 'PREPARED']);
+const DIAS_DE_AVISO = 30;
+
+const obligacionesPorVencer: Fuente = async (actor) => {
+  const cola = await obligationList(actor);
+  if (!cola.ok) return null;
+  const limite = new Date(Date.now() + DIAS_DE_AVISO * 24 * 60 * 60 * 1000);
+  // Obligaciones ante autoridad sin entregar: las vencidas y las que vencen
+  // pronto. Un plazo ante autoridad que se pasa no se recupera.
+  const cantidad = cola.data.filter(
+    (o) => NO_ENTREGADAS.has(o.status) && (o.overdue || o.dueAt <= limite),
+  ).length;
+  if (cantidad === 0) return null;
+  return {
+    id: 'obligaciones-por-vencer',
+    titulo: `${cantidad} obligación(es) ante autoridad por vencer`,
+    detalle: 'Reportes y avisos ante autoridad con plazo cerca o ya pasado. Un plazo ante autoridad no se recupera.',
+    cantidad,
+    accion: { href: '/institucional/cumplimiento', etiqueta: 'Revisar obligaciones' },
+  };
+};
+
 // El orden es el del daño de no atenderlas: primero las personas que esperan una
-// decisión, después el dinero que espera confirmarse.
+// decisión, después los plazos ante autoridad, después el dinero que espera
+// confirmarse.
 const FUENTES: readonly Fuente[] = [
   afiliacionPorRevisar,
   mensajesSinAtender,
+  obligacionesPorVencer,
   pagosPorConfirmar,
   devolucionesPorResolver,
   conciliacionPorCerrar,

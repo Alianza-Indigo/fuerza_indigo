@@ -3607,6 +3607,48 @@ const CHECKS = [
       return ok(['El aviso web solo sale a quien tiene una suscripción guardada: sin ella, el puerto no se llama.']);
     },
   },
+  {
+    id: 'C-F9-09',
+    title: 'Fase 9: las plantillas de aviso están versionadas (criterio 2)',
+    phases: [9],
+    run() {
+      // El criterio 2 exige que las plantillas estén versionadas. Dos cosas lo
+      // sostienen y este control las vigila en `templates.ts`: que un borrador
+      // **no sobrescriba** —calcula la versión siguiente a partir de la mayor,
+      // nunca reescribe una existente—, y que publicar **retire** la versión
+      // publicada anterior del mismo (código, canal, idioma), de modo que nunca
+      // haya dos publicadas a la vez: la vigente es una, y las anteriores quedan
+      // como historia, no borradas.
+      const fuente = read('src/modules/notifications/application/templates.ts');
+      if (fuente === null) return fail(['No se encuentra el caso de uso de plantillas de aviso.']);
+      const sinComentarios = fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+      const problemas = [];
+
+      // El borrador calcula la versión siguiente; no reescribe.
+      if (!/orderBy:\s*\{\s*version:\s*'desc'\s*\}/.test(sinComentarios) || !/\(\s*ultima\?\.version\s*\?\?\s*0\s*\)\s*\+\s*1/.test(sinComentarios)) {
+        problemas.push('El borrador no calcula la versión siguiente a partir de la mayor: una plantilla sin versión creciente no está versionada.');
+      }
+
+      // Al publicar, se busca la publicada anterior del mismo (código, canal, idioma) y se retira
+      // esa misma —por su id—, no una cualquiera: la vigente pasa a historia.
+      const buscaAnterior = /where:\s*\{\s*code:\s*plantilla\.code,\s*channel:\s*plantilla\.channel,\s*locale:\s*plantilla\.locale,\s*status:\s*'PUBLISHED'\s*\}/.test(sinComentarios);
+      const retira = /where:\s*\{\s*id:\s*anterior\.id\s*\},\s*data:\s*\{\s*status:\s*'RETIRED'\s*\}/.test(sinComentarios);
+      if (!buscaAnterior || !retira) {
+        problemas.push('Publicar no retira la versión publicada anterior: sin eso podrían quedar dos vigentes y la versión dejaría de tener sentido.');
+      }
+
+      // Y hay una prueba que ejerce el versionado ejecutando el sistema.
+      const prueba = read('tests/integration/notification-templates.test.ts');
+      if (prueba === null || !/retiredVersion/.test(prueba)) {
+        problemas.push('Falta la prueba que comprueba que publicar una versión retira la anterior.');
+      }
+
+      return problemas.length
+        ? fail(problemas)
+        : ok(['Las plantillas se versionan: el borrador no sobrescribe y publicar retira la versión anterior; nunca hay dos vigentes.']);
+    },
+  },
 ];
 
 

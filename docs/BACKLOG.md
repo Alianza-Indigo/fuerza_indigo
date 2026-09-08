@@ -331,24 +331,24 @@ CIAN, CENI, NeuroPlan, ADIA y NEXO son plataformas y herramientas con operación
 ## Fase 9 — Eventos, formación e indicadores
 | Id | Tarea | Estado |
 |---|---|---|
-| F9-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Pendiente |
-| F9-NOT-001 | Implementar el centro de notificaciones dentro de la plataforma | Pendiente |
-| F9-NOT-002 | Ampliar el envío por correo con campañas, preferencias y reintentos sobre la base construida en la Fase 1 | Pendiente |
+| F9-DAT-001 | Migrar las entidades de eventos y registros de asistencia | Hecho |
+| F9-NOT-001 | Implementar el centro de notificaciones dentro de la plataforma | Hecho |
+| F9-NOT-002 | Ampliar el envío por correo con campañas, preferencias y reintentos sobre la base construida en la Fase 1 | Hecho |
 | F9-NOT-003 | Implementar notificaciones web con autorización explícita de la persona | Hecho |
-| F9-NOT-004 | Implementar preferencias por categoría sin permitir suprimir avisos obligatorios | Pendiente |
-| F9-NOT-005 | Implementar campañas operativas autorizadas y su separación de lo obligatorio | Pendiente |
-| F9-EVE-001 | Implementar el calendario público y privado de eventos | Pendiente |
-| F9-EVE-002 | Implementar registro, capacidad, elegibilidad y lista de espera | Pendiente |
-| F9-EVE-003 | Conectar el cobro de eventos con el catálogo financiero | Pendiente |
-| F9-EVE-004 | Implementar asistencia, materiales y evaluación | Pendiente |
-| F9-EVE-005 | Implementar constancias verificables y revocables | Pendiente |
-| F9-IND-001 | Construir los tableros por rol con decisiones accionables | Pendiente |
-| F9-IND-002 | Implementar indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
-| F9-IND-003 | Implementar los reportes institucionales y sus exportaciones auditadas | Pendiente |
-| F9-IND-004 | Implementar la publicación de transparencia autorizada | Pendiente |
-| F9-IND-005 | Implementar alertas de vencimientos y obligaciones | Pendiente |
-| F9-QA-001 | Probar que las plantillas están versionadas y que las exportaciones respetan permisos | Pendiente |
-| F9-DOC-001 | Documentar comunicaciones e indicadores, y actualizar el estado de la fase | Pendiente |
+| F9-NOT-004 | Implementar preferencias por categoría sin permitir suprimir avisos obligatorios | Hecho |
+| F9-NOT-005 | Implementar campañas operativas autorizadas y su separación de lo obligatorio | Hecho |
+| F9-EVE-001 | Implementar el calendario público y privado de eventos | Hecho |
+| F9-EVE-002 | Implementar registro, capacidad, elegibilidad y lista de espera | Hecho |
+| F9-EVE-003 | Conectar el cobro de eventos con el catálogo financiero | Hecho |
+| F9-EVE-004 | Implementar asistencia, materiales y evaluación | Hecho |
+| F9-EVE-005 | Implementar constancias verificables y revocables | Hecho |
+| F9-IND-001 | Construir los tableros por rol con decisiones accionables | Hecho |
+| F9-IND-002 | Implementar indicadores territoriales con agregación y umbrales de privacidad | Hecho |
+| F9-IND-003 | Implementar los reportes institucionales y sus exportaciones auditadas | Hecho |
+| F9-IND-004 | Implementar la publicación de transparencia autorizada | Hecho |
+| F9-IND-005 | Implementar alertas de vencimientos y obligaciones | Hecho |
+| F9-QA-001 | Probar que las plantillas están versionadas y que las exportaciones respetan permisos | Hecho |
+| F9-DOC-001 | Documentar comunicaciones e indicadores, y actualizar el estado de la fase | Hecho |
 
 ---
 

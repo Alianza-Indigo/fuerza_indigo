@@ -6,9 +6,10 @@
 ## Situación actual
 
 - **Fase activa:** 9 — Eventos, formación e indicadores
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `IN_PROGRESS` — **construida al 100 %, a la espera de autorización expresa** (PRD §23); el estado pasa a `APPROVED` cuando la persona usuaria la autorice
 - **Autorizada por la persona usuaria:** 7 de septiembre de 2026
 - **Fecha de inicio:** 7 de septiembre de 2026
+- **Construcción terminada:** 8 de septiembre de 2026 (bloques A–L cerrados)
 - **Fase anterior:** 8 — `APPROVED`, cerrada en `58601f7`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
 - **Fase siguiente:** 10 — Integración, endurecimiento y producción, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
 
@@ -39,22 +40,51 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | I | Indicadores territoriales con agregación y umbrales de privacidad | **Hecho** |
 | J | Reportes institucionales, exportaciones auditadas y transparencia publicada | **Hecho** |
 | K | Alertas de vencimientos y obligaciones | **Hecho** |
-| L | Pruebas, controles de fase, documentación y cierre | Pendiente |
+| L | Pruebas, controles de fase, documentación y cierre | **Hecho** |
 
 ---
 
 ## Criterios de aceptación
 
-Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyendo el código. Se registran aquí al cerrarse cada uno.
+Los seis del PRD §24 Fase 9, comprobados **ejecutando el sistema** y mirando después lo que quedó en la base con las credenciales de la aplicación, nunca leyendo el código (`tests/integration/fase9-criterios.test.ts`).
 
-| # | Criterio | Estado |
-|---|---|---|
-| 1 | Comunicaciones obligatorias y promocionales se gestionan separadamente | Pendiente |
-| 2 | Las plantillas están versionadas | Pendiente |
-| 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | **Cumplido** (bloque I) |
-| 4 | Las exportaciones respetan permisos y quedan auditadas | **Cumplido** (bloque J) |
-| 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
-| 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** (bloque H) |
+| # | Criterio | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1 | Comunicaciones obligatorias y promocionales se gestionan separadamente | **Cumplido** | Una campaña rechaza una plantilla de clase obligatoria de gobierno (`RULE_VIOLATION`), y una promocional respeta a quien la silenció; una clase obligatoria no se puede silenciar |
+| 2 | Las plantillas están versionadas | **Cumplido** | Dos borradores del mismo código son versiones 1 y 2; publicar la segunda retira la primera, y nunca hay dos publicadas del mismo (código, canal, idioma) |
+| 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | **Cumplido** | Una cuenta de personas por debajo del umbral se suprime entera; al alcanzarlo, se publica; el número de eventos —que no señala a nadie— se publica en crudo, y la transparencia pública hace lo mismo |
+| 4 | Las exportaciones respetan permisos y quedan auditadas | **Cumplido** | Sin el permiso no se exporta (`FORBIDDEN`); con él, la exportación deja un asiento en la bitácora con su actor, su motivo y su resultado |
+| 5 | Las constancias son verificables y revocables | **Cumplido** | Se emite a quien asistió y verifica como válida; revocada, verifica como revocada —nunca como válida— y su documento queda cancelado |
+| 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** | Cada tarea del tablero lleva una cuenta positiva y una acción con enlace; una cola vacía no aparece, y quien no gestiona ve un tablero sin tareas |
+
+---
+
+## Lo que dejó el bloque L — y el cierre de la fase
+
+Las pruebas de aceptación, el repaso de los seis criterios ejecutando el sistema, y este informe. **La fase está construida al 100 %.**
+
+**Los seis criterios, comprobados ejecutando el sistema.** `tests/integration/fase9-criterios.test.ts` reúne los seis como los `faseN-criterios.test.ts` de las fases anteriores: no leen el código, ejecutan los casos de uso y miran después la base con las credenciales de la aplicación. La tabla de criterios de arriba dice cómo se comprobó cada uno. Diez pruebas nuevas, y cada garantía tiene además su control estático en `phase:verify` (`C-F9-01`…`C-F9-09`): lo obligatorio que no viaja como campaña ni se silencia, la plantilla que se versiona, el indicador que agrega y suprime bajo el umbral, la exportación que queda auditada, la constancia que verifica su revocación, y el tablero que solo muestra decisiones con acción.
+
+**Un control que faltaba.** El criterio 2 —plantillas versionadas— era el único de los seis sin control estático propio; los otros cinco ya lo tenían de los bloques G a K. El bloque L cierra ese hueco con `C-F9-09`, que vigila en `templates.ts` que un borrador no sobrescriba —calcula la versión siguiente— y que publicar retire por su id la versión publicada anterior del mismo (código, canal, idioma), de modo que nunca haya dos vigentes. Se probó rompiéndolo —haciendo que publicar no retirara la anterior— y viéndolo caer en rojo.
+
+**No se construyó nada de la fase siguiente.** Se repasó el alcance contratado del §24 Fase 9 contra lo construido en A–L: centro de notificaciones, correo, notificaciones web, preferencias, plantillas, campañas, eventos, registros y asistencia, constancias, capacitación, tableros por rol, indicadores territoriales, reportes institucionales, exportaciones, transparencia publicada y alertas de vencimientos —todo está—. Nada de la Fase 10 (integración, endurecimiento y producción) se adelantó.
+
+### Pruebas y resultados
+
+| Comprobación | Resultado |
+|---|---|
+| `npm run typecheck` | Sin errores |
+| `npm run lint` | Sin errores ni avisos |
+| `npm run phase:verify` | **84 aprobados, 0 fallidos**, 1 no aplicable; los nueve controles de la fase (`C-F9-01`…`C-F9-09`) en verde |
+| `npx vitest run` | Toda la suite en verde, con las pruebas nuevas de los bloques D y L (`fase9-criterios`, `notification-web-push`) |
+| `npm run build` | Compila; las rutas con sesión son dinámicas |
+| `npx playwright test` | Extremo a extremo y accesibilidad en verde en móvil y escritorio, claro y oscuro |
+| `npm run db:check` | La base configurada coincide con las migraciones del repositorio |
+| Integración continua | Verde en cada bloque, comprobada en GitHub Actions antes de dar por cerrado ninguno |
+
+### A la espera de autorización
+
+Construida la fase al 100 % y con la integración continua en verde, **el proyecto se detiene aquí a esperar autorización expresa de la persona usuaria** (PRD §23). Hasta que llegue, la Fase 10 no se inicia y el estado declarado sigue siendo `IN_PROGRESS`. Cuando llegue, se registra el estado `APPROVED` y el SHA del punto de control en el historial de abajo.
 
 ---
 
@@ -202,13 +232,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A a K están enteros. Solo queda el bloque L —el cierre de la fase—: la suite de criterios de aceptación que ejerce los seis criterios del PRD §24 Fase 9 ejecutando el sistema, los controles de cierre, la actualización de `docs/BACKLOG.md` y la documentación, y declarar la fase `APPROVED` a la espera de autorización expresa (PRD §23). Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los doce bloques (A–L) están enteros. **La fase está construida al 100 % y detenida a esperar autorización expresa** (PRD §23): no hay trabajo pendiente de la Fase 9, y no se adelanta nada de la Fase 10. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
-**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
+**Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify` (84/0/1), `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque L — criterios de aceptación, controles y cierre.** Lo que toca: una suite `fase9-criterios.test.ts` que compruebe los seis criterios ejecutando el sistema (no leyendo el código), los controles de cierre de fase, el repaso de `docs/BACKLOG.md` sin tareas huérfanas, y el informe de cierre. El contrato es `docs/PRD.md` §24 Fase 9 y §23.
+**Qué falta, y solo eso: la autorización.** Cuando la persona usuaria autorice expresamente el paso a la Fase 10, se registra el estado `APPROVED` y el SHA del punto de control en el historial de abajo, y se abre la fase siguiente. Hasta entonces, el estado declarado es `IN_PROGRESS` porque la autorización aún no ha llegado, no porque quede código por escribir.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque L: cada criterio de aceptación tiene una prueba que cae si el criterio deja de cumplirse.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. Los seis criterios tienen su prueba de aceptación en `tests/integration/fase9-criterios.test.ts` y su control estático en `phase:verify` (`C-F9-01`…`C-F9-09`).
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

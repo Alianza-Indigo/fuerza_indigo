@@ -36,7 +36,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | F | Cobro de eventos conectado al catálogo financiero | **Hecho** |
 | G | Asistencia, materiales, evaluación y constancias verificables y revocables | **Hecho** |
 | H | Tableros por rol con decisiones accionables | **Hecho** |
-| I | Indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
+| I | Indicadores territoriales con agregación y umbrales de privacidad | **Hecho** |
 | J | Reportes institucionales, exportaciones auditadas y transparencia publicada | Pendiente |
 | K | Alertas de vencimientos y obligaciones | Pendiente |
 | L | Pruebas, controles de fase, documentación y cierre | Pendiente |
@@ -51,10 +51,22 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 |---|---|---|
 | 1 | Comunicaciones obligatorias y promocionales se gestionan separadamente | Pendiente |
 | 2 | Las plantillas están versionadas | Pendiente |
-| 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | Pendiente |
+| 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | **Cumplido** (bloque I) |
 | 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
 | 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** (bloque H) |
+
+---
+
+## Lo que dejó el bloque I
+
+Los indicadores territoriales de formación, con umbral de privacidad de una sola definición (PRD §6.3, §24 Fase 9 criterio 3; ADR-0169).
+
+**El umbral de privacidad es uno solo.** Sube a la capa compartida (`@/platform/privacy/threshold`) y el módulo de casos lo re-exporta: la Fase 6 lo tenía dentro de casos, y dos definiciones serían dos privacidades. El control nuevo **C-F9-04** vigila que se defina exactamente una vez.
+
+**Las cuentas de personas por territorio pasan por el umbral.** El indicador cuenta, por unidad y su subárbol y en un periodo, los eventos realizados, las personas que asistieron y las constancias vigentes. Las cuentas de personas se suprimen enteras por debajo del umbral —tres asistentes en una sección pequeña señalan a quiénes—; el número de eventos, que no señala a nadie, se publica en crudo. Se muestra en el panel territorial.
+
+**Tres pruebas de integración con el método de romper:** la cuenta por debajo del umbral que se suprime (se le quitó el umbral y salió el tres, en rojo), la que se publica al alcanzarlo, y quien no puede leer unidades no ve los indicadores.
 
 ---
 
@@ -150,13 +162,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B, C, E, F, G y H están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de los indicadores. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B, C, E, F, G, H e I están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de los reportes y las alertas. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque I — indicadores territoriales con agregación y umbrales de privacidad.** Lo que toca (criterio 3): indicadores por territorio que agreguen y **no revelen a la persona detrás del número**; por debajo de un umbral, el dato se suprime en vez de exponer un caso individual. El contrato es `docs/PRD.md` §24 Fase 9 criterio 3.
+**Bloque J — reportes institucionales, exportaciones auditadas y transparencia publicada.** Lo que toca (criterio 4): reportes por nivel, exportaciones que **respetan permisos y quedan auditadas**, y la transparencia que se publica autorizada. El contrato es `docs/PRD.md` §24 Fase 9 criterio 4.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque I: un agregado por debajo del umbral que igual deja ver el caso individual.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque J: una exportación que sale sin dejar rastro en la bitácora, o que entrega lo que quien la pide no podría ver.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

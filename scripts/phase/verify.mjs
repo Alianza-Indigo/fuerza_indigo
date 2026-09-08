@@ -3429,6 +3429,49 @@ const CHECKS = [
       return ok(['Toda tarea del tablero lleva a donde se atiende, y una cola vacía no aparece.']);
     },
   },
+  {
+    id: 'C-F9-04',
+    title: 'Fase 9: los indicadores territoriales agregan con umbral de privacidad, de una sola definición',
+    phases: [9],
+    run() {
+      // El criterio 3 exige que los indicadores sensibles usen agregación y
+      // umbrales de privacidad. Dos cosas lo sostienen: que las cuentas de
+      // personas del indicador territorial pasen por el umbral —una cuenta de
+      // uno señala a esa persona—, y que el umbral sea uno solo en todo el
+      // sistema —dos definiciones serían dos privacidades, una de las cuales
+      // alguien bajaría sin querer—.
+      const primitiva = read('src/platform/privacy/threshold.ts');
+      if (primitiva === null || !/export const UMBRAL_DE_PRIVACIDAD\s*=/.test(primitiva)) {
+        return fail(['El umbral de privacidad no vive en la capa compartida.']);
+      }
+
+      // Una sola definición del umbral en todo el código.
+      let definiciones = 0;
+      for (const ruta of walk().filter((f) => /\.tsx?$/.test(f) && !f.startsWith('src/generated/'))) {
+        const contenido = read(ruta) ?? '';
+        definiciones += (contenido.match(/export const UMBRAL_DE_PRIVACIDAD\s*=/g) ?? []).length;
+      }
+      if (definiciones !== 1) {
+        return fail([
+          `El umbral de privacidad se define ${definiciones} veces: debe ser uno solo (dos privacidades es ninguna).`,
+        ]);
+      }
+
+      // El indicador territorial pasa sus cuentas de personas por el umbral.
+      const indicador = read('src/modules/dashboards/application/territorial-indicators.ts');
+      if (indicador === null) return fail(['No se encuentra el indicador territorial.']);
+      if (!indicador.includes("from '@/platform/privacy/threshold'")) {
+        return fail(['El indicador territorial no usa el umbral compartido.']);
+      }
+      for (const cuenta of ['aplicarUmbral(asistentes)', 'aplicarUmbral(constancias)']) {
+        if (!indicador.includes(cuenta)) {
+          return fail([`El indicador territorial no pasa por el umbral la cuenta de personas: falta ${cuenta}.`]);
+        }
+      }
+
+      return ok(['Los indicadores territoriales agregan las cuentas de personas con un umbral único y compartido.']);
+    },
+  },
 ];
 
 

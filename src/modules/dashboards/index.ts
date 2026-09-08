@@ -4,3 +4,10 @@ export {
   type PanelDeGestion,
   type TareaDeGestion,
 } from './application/management-panel';
+
+export {
+  territorialIndicators,
+  territorialIndicatorsSchema,
+  type IndicadoresTerritoriales,
+  type TerritorialIndicatorsInput,
+} from './application/territorial-indicators';

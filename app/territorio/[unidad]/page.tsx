@@ -13,6 +13,8 @@ import {
 import { currentActor } from '@/platform/http/request-context';
 import { isAuthenticated } from '@/platform/kernel/actor-context';
 import { territorialPanel } from '@/modules/governance';
+import { territorialIndicators } from '@/modules/dashboards';
+import { CIFRA_SUPRIMIDA, type Celda } from '@/platform/privacy/threshold';
 
 export const metadata = { title: 'Panel territorial', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -70,6 +72,17 @@ export default async function PanelTerritorialPage({ params }: { params: Promise
 
   const { unit, ancestors, enablingResolution, children, roster, applications, bodies, liveOffices, assemblies, indicators } =
     panel.data;
+
+  // Indicadores de formación del último año, con el umbral de privacidad: las
+  // cuentas de personas que quedan por debajo se suprimen enteras.
+  const hoy = new Date();
+  const haceUnAno = new Date(hoy.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const aFecha = (fecha: Date): string => fecha.toISOString().slice(0, 10);
+  const formacion = await territorialIndicators(actor, {
+    unitPublicId: publicId,
+    desde: aFecha(haceUnAno),
+    hasta: aFecha(hoy),
+  });
   const estado = ESTADO_UNIDAD[unit.status] ?? { label: unit.status, tone: 'neutral' as Tone };
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: actor.timeZone });
   const fechaHora = new Intl.DateTimeFormat('es-MX', {
@@ -109,6 +122,23 @@ export default async function PanelTerritorialPage({ params }: { params: Promise
           <Indicador titulo="Unidades dependientes" valor={indicators.childUnits} />
           <Indicador titulo="Asambleas del último año" valor={indicators.assembliesLastYear} />
         </section>
+
+        {formacion.ok && (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Formación en el territorio (último año)</h2>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Indicador titulo="Eventos realizados" valor={formacion.data.eventosRealizados} />
+              <IndicadorCelda titulo="Personas que asistieron" celda={formacion.data.asistentes} />
+              <IndicadorCelda titulo="Constancias vigentes" celda={formacion.data.constanciasEmitidas} />
+            </div>
+            {formacion.data.celdasSuprimidas > 0 && (
+              <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
+                Una cifra que aparece como «{CIFRA_SUPRIMIDA}» se oculta porque, con tan pocas personas,
+                el número señalaría a alguien. No es un error: es la privacidad del territorio.
+              </p>
+            )}
+          </section>
+        )}
 
         <section className="grid gap-6 lg:grid-cols-2">
           <Card>
@@ -261,6 +291,18 @@ function Indicador({ titulo, valor }: { titulo: string; valor: number }) {
     <Card>
       <p className="text-sm text-[var(--color-ink-soft)]">{titulo}</p>
       <p className="mt-1 text-3xl font-bold tabular-nums">{valor}</p>
+    </Card>
+  );
+}
+
+/** Un indicador que puede venir suprimido por el umbral de privacidad. */
+function IndicadorCelda({ titulo, celda }: { titulo: string; celda: Celda }) {
+  return (
+    <Card>
+      <p className="text-sm text-[var(--color-ink-soft)]">{titulo}</p>
+      <p className="mt-1 text-3xl font-bold tabular-nums">
+        {celda.publicable ? celda.valor : CIFRA_SUPRIMIDA}
+      </p>
     </Card>
   );
 }

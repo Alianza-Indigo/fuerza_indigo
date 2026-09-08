@@ -19,7 +19,10 @@ export const dynamic = 'force-dynamic';
  */
 export default async function InstitucionalLayout({ children }: { children: ReactNode }) {
   const actor = await currentActor();
-  if (!isAuthenticated(actor) || actor.userId === null) redirect('/acceso');
+  // La raíz (sin cuenta, `userId === null`) también entra: acceso total (ADR-0174).
+  if (!isAuthenticated(actor) || (actor.userId === null && actor.actorKind !== 'ROOT_SUPERADMIN')) {
+    redirect('/acceso');
+  }
 
   const sondeo = { ...actor, reason: 'acceso al panel institucional' };
   const visibles = SECCIONES.filter((seccion) => can(sondeo, seccion.permiso, { kind: 'Institucional' }).allowed);

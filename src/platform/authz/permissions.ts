@@ -833,6 +833,15 @@ export function permissionOrThrow(code: string): PermissionDefinition {
 }
 
 /**
+ * Todos los códigos del catálogo. Es la concesión del Superadmin raíz desde
+ * ADR-0174: la persona usuaria decidió que la raíz tenga acceso total, de modo
+ * que un permiso nuevo del sistema le queda disponible por figurar en el
+ * catálogo, no por recordarlo. Reemplaza a la lista cerrada `SUPERADMIN_GRANTED`
+ * como origen de sus permisos (que se conserva para referencia histórica).
+ */
+export const ALL_PERMISSION_CODES: ReadonlySet<string> = new Set(PERMISSIONS.map((permission) => permission.code));
+
+/**
  * Conjunto CERRADO de concesión del Superadmin raíz (docs/PERMISSIONS.md §5.1).
  *
  * Es una lista de lo que **sí** puede, no de lo que no. La diferencia importa:

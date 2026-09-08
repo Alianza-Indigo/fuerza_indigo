@@ -297,9 +297,20 @@ Contratados para cuando existan sus módulos: `system.webhook.replay` (Fase 3). 
 
 Todo lo demás le está **denegado por no figurar en la lista**: admisiones, resoluciones, votos, sanciones, autorización de pagos, expedientes de casos, padrones y directorios.
 
-**Compartimentos del actor raíz.** `ctx.compartments` es el **conjunto vacío**. En consecuencia, la comprobación 6 deniega cualquier recurso de los compartimentos `UNION`, `SOCIAL` o `DISCIPLINARY`, aunque un permiso concedido pareciera alcanzarlo. Esta es la salvaguarda que impide que una lectura de soporte se convierta en acceso a información social o disciplinaria.
+> **ADR-0174 (revierte ADR-0026): el actor raíz tiene acceso total.** Por
+> decisión de la persona usuaria, el Superadmin raíz recibe **todos** los
+> permisos del catálogo, **todos** los compartimentos y **todas** las entidades y
+> territorios, y queda eximido de las puertas de asignación viva, de motivo
+> escrito y de lectura masiva. Los párrafos siguientes describen las
+> restricciones anteriores y se conservan como contexto histórico: ya **no**
+> rigen. En el código, la raíz recibe `ALL_PERMISSION_CODES`, se le conceden los
+> tres compartimentos al resolver su contexto, y las comprobaciones 4 y 7 la
+> eximen explícitamente. La regla estructural (una sola concesión al final, sin
+> vía rápida) se conserva: la raíz recorre las siete comprobaciones y las pasa.
 
-**Lecturas sensibles del actor raíz.** `identity.person.read` está concedido, pero `identity.person.read_sensitive` no. Además, el motor aplica al actor raíz un límite de volumen: las consultas que devolverían más de un registro de datos personales se deniegan con `LECTURA_MASIVA_PROHIBIDA`. No existe exportación masiva para este actor.
+**Compartimentos del actor raíz.** ~~`ctx.compartments` es el **conjunto vacío**.~~ Desde ADR-0174, `ctx.compartments` contiene los tres compartimentos (`UNION`, `SOCIAL`, `DISCIPLINARY`), de modo que la comprobación 6 nunca lo deniega.
+
+**Lecturas sensibles del actor raíz.** Desde ADR-0174, `identity.person.read_sensitive` está concedido y no hay límite de volumen: la raíz lee datos personales de forma masiva. (Antes: `read_sensitive` denegado y lectura masiva bloqueada con `LECTURA_MASIVA_PROHIBIDA`.)
 
 **Trazabilidad.** Toda denegación produce un `SecurityEvent` con el motivo. Toda concesión sobre datos sensibles produce un `AuditEvent`. Cada acción del actor raíz produce además `SUPERADMIN_ACTION` con su motivo obligatorio. El `fieldMask` se aplica **en la consulta**, no en la vista: los campos no autorizados nunca salen de la base.
 

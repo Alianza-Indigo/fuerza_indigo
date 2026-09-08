@@ -1,6 +1,6 @@
 import type { Compartment } from '@prisma-client/enums';
 import type { ActorContext, RoleAssignmentSnapshot } from '@/platform/kernel/actor-context';
-import { JOB_GRANTS, permissionOrThrow, SUPERADMIN_GRANTED } from '@/platform/authz/permissions';
+import { ALL_PERMISSION_CODES, JOB_GRANTS, permissionOrThrow } from '@/platform/authz/permissions';
 
 /**
  * Motor de políticas por roles y atributos (docs/PERMISSIONS.md §5.1).
@@ -168,8 +168,12 @@ function resolveGrants(actor: ActorContext, now: Date): Grant[] {
       }));
 
     case 'ROOT_SUPERADMIN':
-      // Lista CERRADA de concesión, no lista de prohibiciones.
-      return [{ permissions: SUPERADMIN_GRANTED, legalEntities: 'ALL', territories: 'ALL', organizations: 'ALL' }];
+      // Acceso total por decisión de la persona usuaria (ADR-0174, que revierte
+      // ADR-0026): todos los permisos del catálogo, en todas las entidades,
+      // territorios y organizaciones. La raíz no salta la tubería —la recorre
+      // entera y la pasa—; las dos puertas que aún la frenarían (asignación viva
+      // y motivo escrito) la eximen explícitamente en `can`.
+      return [{ permissions: ALL_PERMISSION_CODES, legalEntities: 'ALL', territories: 'ALL', organizations: 'ALL' }];
 
     case 'SYSTEM':
       return [
@@ -233,8 +237,9 @@ export function can(
   if (!matchesTerritory(grants, resource)) return deny('FUERA_DE_TERRITORIO');
   if (!matchesOrganization(grants, resource)) return deny('FUERA_DE_ENTIDAD');
 
-  // 4. Asignación viva sobre el expediente.
-  if (definition.needsAssignment) {
+  // 4. Asignación viva sobre el expediente. La raíz, con acceso total
+  //    (ADR-0174), no necesita un nombramiento sobre el expediente concreto.
+  if (definition.needsAssignment && actor.actorKind !== 'ROOT_SUPERADMIN') {
     const hasAssignment = probes.hasLiveAssignment?.(actor, resource) ?? false;
     if (!hasAssignment) return deny('SIN_ASIGNACION');
   }
@@ -251,21 +256,19 @@ export function can(
     return deny('COMPARTIMENTO_AJENO');
   }
 
-  // 7. Motivo capturado por la persona.
-  if (definition.requiresReason && (actor.reason === null || actor.reason.trim() === '')) {
+  // 7. Motivo capturado por la persona. La raíz, con acceso total (ADR-0174),
+  //    queda eximida de escribir un motivo.
+  if (
+    definition.requiresReason &&
+    actor.actorKind !== 'ROOT_SUPERADMIN' &&
+    (actor.reason === null || actor.reason.trim() === '')
+  ) {
     return deny('MOTIVO_REQUERIDO');
   }
 
-  // Salvaguarda del actor raíz: sin lectura masiva de datos personales
-  // (docs/PERMISSIONS.md §8). Se evalúa tras las siete comprobaciones para no
-  // introducir una vía alterna de decisión.
-  if (
-    actor.actorKind === 'ROOT_SUPERADMIN' &&
-    resource.isBulk === true &&
-    resource.containsPersonalData === true
-  ) {
-    return deny('LECTURA_MASIVA_PROHIBIDA');
-  }
+  // La salvaguarda que negaba a la raíz la lectura masiva de datos personales
+  // (antes docs/PERMISSIONS.md §8) se retiró en ADR-0174: la persona usuaria
+  // decidió que la raíz vea y haga todo.
 
   return allow(fieldMaskFor(actor, resource));
 }
@@ -276,6 +279,9 @@ export function can(
  */
 export function fieldMaskFor(actor: ActorContext, resource: Resource): readonly string[] | undefined {
   if (resource.kind !== 'Person') return undefined;
+
+  // La raíz, con acceso total (ADR-0174), ve la persona completa, sin proyección.
+  if (actor.actorKind === 'ROOT_SUPERADMIN') return undefined;
 
   const canReadSensitive = actor.roles.some((assignment) =>
     assignment.permissions.has('identity.person.read_sensitive'),

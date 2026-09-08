@@ -70,8 +70,9 @@ export function root(overrides: Partial<ActorContext> = {}): ActorContext {
     userId: null,
     personId: null,
     sessionId: 'sesion-raiz',
-    // Vacío a propósito: es la salvaguarda de docs/PERMISSIONS.md §5.1.
-    compartments: new Set<Compartment>(),
+    // Acceso total (ADR-0174): la raíz tiene todos los compartimentos, igual que
+    // se los concede la resolución real del contexto en `actor-resolver.ts`.
+    compartments: new Set<Compartment>(['UNION', 'SOCIAL', 'DISCIPLINARY']),
     ...overrides,
   });
 }

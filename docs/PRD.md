@@ -362,11 +362,12 @@ El Superadmin raíz:
 
 - no dependerá de un registro editable en la base de datos;
 - no aparecerá en padrones ni directorios;
-- no podrá votar ni ejecutar actos sindicales por su calidad técnica;
+- **tendrá acceso total a la plataforma y a todas sus pantallas** —por decisión de
+  la persona usuaria (ADR-0174, que revierte ADR-0026)—: todos los permisos del
+  catálogo, todos los compartimentos, y sin freno de asignación, de motivo ni de
+  lectura masiva;
 - usará sesión firmada, segura, de duración limitada y revocable;
-- estará sujeto a límite de intentos, alertas y auditoría;
-- tendrá que indicar motivo para acciones críticas de soporte;
-- no podrá ver datos sensibles de forma masiva sin una acción explícita y auditada.
+- estará sujeto a límite de intentos, alertas y auditoría.
 
 El repositorio incluirá un comando local documentado, equivalente a `npm run auth:hash-password`, para generar de forma segura el valor de `SUPERADMIN_PASSWORD_HASH` sin almacenar la contraseña original.
 

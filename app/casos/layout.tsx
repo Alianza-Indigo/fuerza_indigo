@@ -25,7 +25,10 @@ export const dynamic = 'force-dynamic';
  */
 export default async function CasosLayout({ children }: { children: ReactNode }) {
   const actor = await currentActor();
-  if (!isAuthenticated(actor) || actor.userId === null) redirect('/acceso');
+  // La raíz (sin cuenta, `userId === null`) también entra: acceso total (ADR-0174).
+  if (!isAuthenticated(actor) || (actor.userId === null && actor.actorKind !== 'ROOT_SUPERADMIN')) {
+    redirect('/acceso');
+  }
 
   const puedeLlevarExpedientes = SECCIONES.some(
     (seccion) =>

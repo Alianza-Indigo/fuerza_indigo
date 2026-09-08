@@ -58,7 +58,10 @@ const ESTADO_ASAMBLEA: Record<string, string> = {
 export default async function PanelTerritorialPage({ params }: { params: Promise<{ unidad: string }> }) {
   const { unidad: publicId } = await params;
   const actor = await currentActor();
-  if (!isAuthenticated(actor) || actor.userId === null) redirect('/acceso');
+  // La raíz (sin cuenta, `userId === null`) también entra: acceso total (ADR-0174).
+  if (!isAuthenticated(actor) || (actor.userId === null && actor.actorKind !== 'ROOT_SUPERADMIN')) {
+    redirect('/acceso');
+  }
 
   const panel = await territorialPanel(actor, publicId);
   if (!panel.ok) {

@@ -24,9 +24,9 @@ export interface ResolveActorInput {
 /**
  * Compartimentos que concede cada rol.
  *
- * El actor raíz no aparece: su conjunto es vacío, y esa es la salvaguarda que
- * impide que una lectura de soporte alcance información social o disciplinaria
- * (docs/PERMISSIONS.md §5.1).
+ * El actor raíz no aparece aquí porque no obtiene sus compartimentos de un rol:
+ * desde ADR-0174 se le conceden todos, en la resolución de su contexto, junto
+ * con el acceso total que decidió la persona usuaria.
  */
 export const ROLE_COMPARTMENTS: Partial<Record<RoleCode, readonly Compartment[]>> = {
   EXECUTIVE_SECRETARY: ['UNION', 'SOCIAL', 'DISCIPLINARY'],
@@ -49,8 +49,10 @@ export async function resolveActor(input: ResolveActorInput): Promise<ActorConte
         actorId: await rootActorId(),
         actorKind: 'ROOT_SUPERADMIN',
         sessionId: rootSession.sessionId,
-        // Conjunto vacío a propósito.
-        compartments: new Set<Compartment>(),
+        // Acceso total (ADR-0174, que revierte ADR-0026): la raíz tiene todos
+        // los compartimentos, para que también las rutas que los consultan
+        // directamente —fuera de `can`— la dejen ver lo social y lo disciplinario.
+        compartments: new Set<Compartment>(['UNION', 'SOCIAL', 'DISCIPLINARY']),
         ipHash: input.ipHash,
         userAgentSummary: input.userAgentSummary,
       };

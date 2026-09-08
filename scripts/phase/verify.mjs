@@ -960,13 +960,16 @@ const CHECKS = [
         .map((file) => read(file) ?? '')
         .join('\n');
 
+      // Las pruebas negativas 9 (superadmin acotado) y 11 (superadmin sin
+      // lectura masiva) se retiraron con ADR-0174: la persona usuaria decidió
+      // que el actor raíz tenga acceso total, de modo que esas restricciones ya
+      // no forman parte del contrato. La negativa 10 (compartimentos) se conserva
+      // porque sigue rigiendo para los actores PERSONA.
       const obligatorias = [
         ['1', 'prueba negativa 1', /acceso horizontal|E2E-12|expediente ajeno|archivo ajeno/i],
         ['2', 'escalamiento vertical', /escalamiento vertical|elevación de privilegios|no posee/i],
         ['3', 'territorio ajeno', /FUERA_DE_TERRITORIO/],
-        ['9', 'superadmin acotado', /SUPERADMIN_GRANTED/],
-        ['10', 'superadmin sin compartimentos', /COMPARTIMENTO_AJENO/],
-        ['11', 'superadmin sin lectura masiva', /LECTURA_MASIVA_PROHIBIDA/],
+        ['10', 'compartimento ajeno (actores persona)', /COMPARTIMENTO_AJENO/],
         ['13', 'archivo privado', /pase.*(autorización|firma)|redeemDownload/i],
       ];
 

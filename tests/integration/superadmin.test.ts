@@ -150,8 +150,8 @@ describe('la sesión raíz es independiente y más corta', () => {
   }, 60_000);
 });
 
-describe('entrar no le da facultades sindicales', () => {
-  it('administra la plataforma pero no gobierna el sindicato', async () => {
+describe('la raíz tiene acceso total (ADR-0174)', () => {
+  it('puede administrar y también gobernar: rol, datos sensibles y consentimiento', async () => {
     const emitida = await transaction((tx) =>
       issueSession(tx, {
         userId: null,
@@ -169,15 +169,15 @@ describe('entrar no le da facultades sindicales', () => {
       userAgentSummary: null,
     });
 
-    const conMotivo = { ...actor, reason: 'revisión técnica solicitada' };
-    expect(can(conMotivo, 'system.health.read', { kind: 'System' }).allowed).toBe(true);
-    expect(can(conMotivo, 'audit.audit.read', { kind: 'AuditEvent' }).allowed).toBe(true);
-    expect(can(conMotivo, 'access.role.assign', { kind: 'RoleAssignment' }).reason).toBe('SIN_PERMISO');
-    expect(can(conMotivo, 'identity.person.read_sensitive', { kind: 'Person' }).reason).toBe('SIN_PERMISO');
-    expect(can(conMotivo, 'consent.grant', { kind: 'Consent' }).reason).toBe('SIN_PERMISO');
+    // Acceso total: incluso sin escribir un motivo, la raíz pasa todas las puertas.
+    expect(can(actor, 'system.health.read', { kind: 'System' }).allowed).toBe(true);
+    expect(can(actor, 'audit.audit.read', { kind: 'AuditEvent' }).allowed).toBe(true);
+    expect(can(actor, 'access.role.assign', { kind: 'RoleAssignment' }).allowed).toBe(true);
+    expect(can(actor, 'identity.person.read_sensitive', { kind: 'Person' }).allowed).toBe(true);
+    expect(can(actor, 'consent.grant', { kind: 'Consent' }).allowed).toBe(true);
   }, 60_000);
 
-  it('no puede nombrarse a sí mismo porque no existe cuenta que nombrar', async () => {
+  it('tiene el permiso de nombrar, pero el nombramiento exige un otorgante con cuenta', async () => {
     const { assignRole } = await import('@/modules/access');
     const persona = await crearPersonaConCuenta(base.prisma, { givenName: 'Cualquiera' });
 
@@ -199,16 +199,21 @@ describe('entrar no le da facultades sindicales', () => {
       userAgentSummary: null,
     });
 
+    // La raíz ya tiene el permiso `access.role.assign` (ADR-0174), pero el
+    // nombramiento guarda `grantedById` —una persona identificada— y la raíz no
+    // tiene fila en `User`: el otorgamiento en sí no puede atribuirse a ella.
+    expect(can(actor, 'access.role.assign', { kind: 'RoleAssignment' }).allowed).toBe(true);
+
     const resultado = await assignRole(actor, {
       userId: persona.userId,
       roleCode: 'EXECUTIVE_SECRETARY',
-      reason: 'intento del actor raíz de nombrar una secretaría',
+      reason: 'la raíz intenta nombrar una secretaría',
       territorialUnitIds: [],
       includesDescendants: true,
     });
 
     expect(resultado.ok).toBe(false);
-    expect(!resultado.ok && resultado.error.code).toBe('FORBIDDEN');
+    expect(!resultado.ok && resultado.error.code).toBe('RULE_VIOLATION');
   }, 60_000);
 });
 

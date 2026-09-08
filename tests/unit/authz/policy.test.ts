@@ -365,8 +365,8 @@ describe('effectiveGrantedPermissions', () => {
     expect([...effectiveGrantedPermissions(actor)].sort()).toEqual(['a.b.c', 'd.e.f']);
   });
 
-  it('para el actor raíz, es exactamente su lista cerrada', () => {
+  it('para el actor raíz, es el catálogo completo: acceso total (ADR-0174)', () => {
     expect(effectiveGrantedPermissions(root()).has('system.health.read')).toBe(true);
-    expect(effectiveGrantedPermissions(root()).has('access.role.assign')).toBe(false);
+    expect(effectiveGrantedPermissions(root()).has('access.role.assign')).toBe(true);
   });
 });

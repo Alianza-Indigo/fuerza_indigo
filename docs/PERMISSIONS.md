@@ -409,7 +409,7 @@ El motor niega un permiso con `requiresReason` cuando el actor llega sin motivo.
 
 | Regla | Materialización |
 |---|---|
-| No depende de un registro editable en base | Se define por `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD_HASH`; no existe fila en `User` |
+| No depende de un registro editable en base | Se define por `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD`; no existe fila en `User` |
 | No aparece en padrones ni directorios | Ninguna consulta de padrón, directorio o asamblea considera al actor raíz |
 | No vota ni ejecuta actos sindicales | Su conjunto de concesión `SUPERADMIN_GRANTED` (§5.1) es **cerrado** y no contiene admisiones, resoluciones, votos, sanciones, certificaciones ni autorización de pagos. Lo no listado queda denegado por omisión, incluidos los permisos que se agreguen en el futuro |
 | Sesión firmada, corta y revocable | Cookie propia, duración limitada, invalidación masiva vía `SUPERADMIN_SESSION_VERSION` |

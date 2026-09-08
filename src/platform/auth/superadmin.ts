@@ -1,14 +1,13 @@
 import { env } from '@/platform/config/env';
 import { db } from '@/platform/db/client';
-import { verifyPassword } from '@/platform/auth/password';
 import { safeEquals } from '@/platform/kernel/ids';
 
 /**
  * Superadmin raíz definido por variables de entorno (PRD §4.4, docs/SECURITY.md §3).
  *
- * No existe como registro editable: su correo y su hash viven en el entorno, de
- * modo que nadie puede crearlo, alterarlo ni escalar hacia él desde la
- * aplicación. La única fila que le corresponde en la base es su `Actor`, que
+ * No existe como registro editable: su correo y su contraseña viven en el
+ * entorno, de modo que nadie puede crearlo, alterarlo ni escalar hacia él desde
+ * la aplicación. La única fila que le corresponde en la base es su `Actor`, que
  * sirve para **atribuir** sus actos y que no concede ni retiene acceso alguno
  * (ADR-0026).
  */
@@ -24,14 +23,15 @@ export interface RootCredentialsCheck {
 /**
  * Comprueba las credenciales del actor raíz.
  *
- * Compara el correo en tiempo constante y **siempre** ejecuta la verificación
- * del hash, incluso cuando el correo no coincide: si se cortocircuitara, el
- * tiempo de respuesta revelaría si el correo es el correcto.
+ * Compara correo y contraseña en tiempo constante. La contraseña vive en texto
+ * plano en el entorno (ADR-0175): la comparación es directa, sin hash. Ambas
+ * comprobaciones se ejecutan siempre para no revelar por el tiempo de respuesta
+ * cuál de las dos falló.
  */
-export async function verifyRootCredentials(email: string, password: string): Promise<RootCredentialsCheck> {
+export function verifyRootCredentials(email: string, password: string): RootCredentialsCheck {
   const config = env();
   const emailMatches = safeEquals(email.trim().toLowerCase(), config.SUPERADMIN_EMAIL.trim().toLowerCase());
-  const passwordMatches = await verifyPassword(config.SUPERADMIN_PASSWORD_HASH, password);
+  const passwordMatches = safeEquals(password, config.SUPERADMIN_PASSWORD);
 
   return {
     ok: emailMatches && passwordMatches,

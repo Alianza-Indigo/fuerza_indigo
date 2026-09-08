@@ -48,7 +48,7 @@ function cargarEnProcesoNuevo(directorio: string, nombres: readonly string[]): R
   // El hijo hereda el entorno de la máquina **menos** las variables que esta
   // prueba está examinando. No es una comodidad: una variable ya puesta gana
   // sobre la del archivo, de modo que en una máquina que exporte
-  // `SUPERADMIN_PASSWORD_HASH` —la integración continua lo hace— la prueba
+  // `SUPERADMIN_PASSWORD` —la integración continua lo hace— la prueba
   // dejaba de leer lo que el archivo decía y pasaba a leer lo de la máquina.
   // Fallaba allí y pasaba aquí, que es la peor forma de fallar.
   const entorno = sinMarcaDeCargaPrevia({ ...process.env, NODE_ENV: 'production' as const });
@@ -98,8 +98,8 @@ const HASH_ARGON2ID =
 
 describe('envFileLine', () => {
   it('devuelve intacto un hash Argon2id tras pasar por el cargador de entorno', () => {
-    expect(idaYVuelta({ SUPERADMIN_PASSWORD_HASH: HASH_ARGON2ID })).toEqual({
-      SUPERADMIN_PASSWORD_HASH: HASH_ARGON2ID,
+    expect(idaYVuelta({ SUPERADMIN_PASSWORD: HASH_ARGON2ID })).toEqual({
+      SUPERADMIN_PASSWORD: HASH_ARGON2ID,
     });
   });
 
@@ -157,9 +157,9 @@ describe('envFileLine', () => {
     try {
       writeFileSync(
         path.join(directorio, '.env.local'),
-        `${envFileLine('SUPERADMIN_PASSWORD_HASH', HASH_ARGON2ID)}\n`,
+        `${envFileLine('SUPERADMIN_PASSWORD', HASH_ARGON2ID)}\n`,
       );
-      const leido = cargarConVariableDeEntorno(directorio, 'SUPERADMIN_PASSWORD_HASH', HASH_ARGON2ID);
+      const leido = cargarConVariableDeEntorno(directorio, 'SUPERADMIN_PASSWORD', HASH_ARGON2ID);
 
       expect(leido).not.toBe(HASH_ARGON2ID);
       expect(leido).toBe('=19=19456,t=2,p=1');
@@ -174,7 +174,7 @@ describe('envFileLine', () => {
     // sobrevive. Por eso el defecto de arriba no alcanza a producción.
     const directorio = mkdtempSync(path.join(tmpdir(), 'fi-env-'));
     try {
-      const leido = cargarConVariableDeEntorno(directorio, 'SUPERADMIN_PASSWORD_HASH', HASH_ARGON2ID);
+      const leido = cargarConVariableDeEntorno(directorio, 'SUPERADMIN_PASSWORD', HASH_ARGON2ID);
       expect(leido).toBe(HASH_ARGON2ID);
     } finally {
       rmSync(directorio, { recursive: true, force: true });

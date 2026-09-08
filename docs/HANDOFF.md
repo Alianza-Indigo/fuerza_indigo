@@ -43,9 +43,9 @@ npm run dev
 obligatorias. Si falta alguna, el arranque se detiene y **dice cuál**: no hay que
 adivinar. `src/platform/config/env.ts` declara desde qué fase se exige cada una.
 
-`npm run auth:hash-password` genera el hash Argon2id del Superadmin en las dos
-formas que hacen falta: la de archivo, con las contrabarras que el cargador
-necesita, y la cruda para pegar en el panel de Vercel.
+La contraseña del Superadmin va en texto plano en `SUPERADMIN_PASSWORD`
+(ADR-0175). En el panel de Vercel se pega tal cual; en `.env.local`, si lleva un
+`$`, entre comillas simples y con cada `$` escapado como `\$`.
 
 ### Un PostgreSQL local, si no hay ninguno a mano
 

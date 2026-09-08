@@ -55,7 +55,7 @@ export async function rootLoginAction(_previous: RootLoginState, formData: FormD
     };
   }
 
-  const check = await verifyRootCredentials(email, textField(formData, 'password'));
+  const check = verifyRootCredentials(email, textField(formData, 'password'));
 
   // El evento se registra en ambos casos: un acceso raíz correcto es tan digno
   // de alerta como uno fallido.

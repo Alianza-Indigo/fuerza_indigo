@@ -49,7 +49,7 @@ Ruta independiente `/superadmin/login`, con sesión, cookie y ciclo de vida prop
 
 | Regla | Control |
 |---|---|
-| Definido por entorno, no por base | `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD_HASH`; no existe fila editable que pueda alterarse desde la aplicación |
+| Definido por entorno, no por base | `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD`; no existe fila editable que pueda alterarse desde la aplicación |
 | Invalidación masiva | `SUPERADMIN_SESSION_VERSION`; incrementarlo cierra toda sesión raíz de inmediato |
 | Sesión limitada | Duración corta, sin renovación silenciosa indefinida, revocable |
 | Sin derechos sustantivos | Su conjunto de concesión `SUPERADMIN_GRANTED` es **cerrado**: solo contiene permisos de configuración técnica y operación. Admisiones, resoluciones, votos, sanciones, certificaciones y autorización de pagos quedan denegados por no figurar en él, igual que cualquier permiso futuro que nadie recuerde vetar (`PERMISSIONS.md` §5.1) |
@@ -60,13 +60,9 @@ Ruta independiente `/superadmin/login`, con sesión, cookie y ciclo de vida prop
 | Sin vía rápida en el motor | Recorre las siete comprobaciones de la tubería como cualquier actor. El tipo de actor determina el origen de sus permisos, nunca cuántas verificaciones atraviesa |
 | Alertas | Cada inicio de sesión raíz produce `SecurityEvent` `SUPERADMIN_LOGIN` y una alerta operativa |
 
-Generación del hash sin almacenar la contraseña original, mediante el comando documentado del repositorio (Fase 1):
-
-```bash
-npm run auth:hash-password
-# Solicita la contraseña por entrada oculta, imprime únicamente el hash Argon2id
-# y no la escribe en el historial del intérprete, en archivos ni en registros.
-```
+La contraseña del Superadmin raíz vive en texto plano en `SUPERADMIN_PASSWORD`
+(ADR-0175), en el entorno —como el resto de los secretos—, nunca en la base ni
+en el repositorio. Se compara en tiempo constante al iniciar sesión.
 
 Los administradores ordinarios **sí** existen como personas y reciben permisos mediante nombramientos; ninguno puede otorgarse permisos que no posee.
 

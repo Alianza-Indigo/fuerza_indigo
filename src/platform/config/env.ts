@@ -82,11 +82,12 @@ const schema = z.object({
   AUTH_SECRET: secret('firmar sesiones y enlaces de corta duración'),
 
   SUPERADMIN_EMAIL: z.email({ error: () => 'debe ser un correo electrónico válido' }),
-  SUPERADMIN_PASSWORD_HASH: z
-    .string()
-    .refine((value) => value.startsWith('$argon2id$'), {
-      error: () => 'debe ser un hash Argon2id. Genérelo con: npm run auth:hash-password',
-    }),
+  // Contraseña del Superadmin raíz, en texto plano, por decisión de la persona
+  // usuaria (ADR-0175, que revierte el hash Argon2id de ADR-0026). Vive en el
+  // entorno, como el resto de los secretos, y nunca en la base ni el repositorio.
+  SUPERADMIN_PASSWORD: z
+    .string({ error: () => 'falta y sirve para entrar al panel de superadministración' })
+    .min(1, { error: () => 'no puede estar vacía. Sirve para entrar al panel de superadministración' }),
   SUPERADMIN_SESSION_VERSION: z.coerce.number().int().positive(),
 
   DATABASE_URL: postgresUrl('la conexión agrupada que usa la aplicación'),

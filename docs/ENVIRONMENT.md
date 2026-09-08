@@ -19,7 +19,7 @@ El cargador de entorno **expande variables**. En un archivo, `$argon2id` se sust
 
 | Destino | Cómo se escribe |
 |---|---|
-| Archivo local (`.env.local`) | Entre comillas simples y con cada `$` escapado: `SUPERADMIN_PASSWORD_HASH='\$argon2id\$v=19\$m=19456,t=2,p=1\$...'` |
+| Archivo local (`.env.local`) | Entre comillas simples y con cada `$` escapado: `SUPERADMIN_PASSWORD='mi\$contrasena'` |
 | Panel de Vercel | El valor **crudo**, sin comillas ni contrabarras: ahí no hay archivo ni expansión |
 
 `npm run auth:hash-password` imprime las dos formas ya listas, cada una con su destino. La función que compone la línea es `envFileLine()` (`src/platform/config/env-file.ts`); se niega a escribir un valor que el formato no sepa representar sin pérdida —saltos de línea, comillas simples, contrabarra final— en lugar de escribirlo mal.
@@ -52,7 +52,7 @@ Rotarlo invalida todas las sesiones y todos los enlaces firmados en vuelo. Es la
 | Variable | Propósito | Formato | Desarrollo | Vista previa | Producción |
 |---|---|---|---|---|---|
 | `SUPERADMIN_EMAIL` | Identifica al Superadmin raíz, que **no** existe como registro editable en la base. | Correo electrónico | Obl. | Obl. | Obl. |
-| `SUPERADMIN_PASSWORD_HASH` | Hash Argon2id de su contraseña. La contraseña original nunca se almacena ni se transmite. | `$argon2id$v=19$m=...,t=...,p=...$...` | Obl. | Obl. | Obl. |
+| `SUPERADMIN_PASSWORD` | Contraseña del Superadmin raíz, en texto plano (ADR-0175). Vive en el entorno, nunca en la base ni el repositorio. | `una contraseña fuerte` | Obl. | Obl. | Obl. |
 | `SUPERADMIN_SESSION_VERSION` | Incrementarlo invalida de inmediato todas las sesiones raíz. | Entero positivo | Obl. | Obl. | Obl. |
 
 El hash se genera con el comando documentado del repositorio, disponible desde la Fase 1:
@@ -170,7 +170,7 @@ Sin el identificador de clave, una sola rotación invalidaría de golpe todas la
 | Variable | Frecuencia sugerida | Efecto inmediato de la rotación |
 |---|---|---|
 | `AUTH_SECRET` | Ante sospecha de compromiso | Anula los enlaces firmados en vuelo y reinicia los recuentos del límite de intentos. **No** cierra las sesiones abiertas: como no las firma, rotarlo no las invalida. Para cerrarlas hay que revocarlas, y para las del actor raíz, subir `SUPERADMIN_SESSION_VERSION` |
-| `SUPERADMIN_PASSWORD_HASH` | Al cambiar la persona responsable o ante sospecha | Invalida la contraseña anterior |
+| `SUPERADMIN_PASSWORD` | Al cambiar la persona responsable o ante sospecha | Junto con subir `SUPERADMIN_SESSION_VERSION`, corta el acceso anterior |
 | `SUPERADMIN_SESSION_VERSION` | Ante sospecha o al concluir una intervención de soporte | Cierra todas las sesiones raíz |
 | `DATABASE_URL` / `DIRECT_URL` | Según política del proveedor | Requiere redespliegue |
 | `BLOB_READ_WRITE_TOKEN` | Según política del proveedor | Requiere redespliegue |

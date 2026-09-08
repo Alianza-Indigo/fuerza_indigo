@@ -42,7 +42,7 @@ afterAll(async () => {
 
 describe('acceso del actor raíz', () => {
   it('entra con las credenciales del entorno, sin existir como persona', async () => {
-    const resultado = await verifyRootCredentials(env().SUPERADMIN_EMAIL, ROOT_TEST_PASSWORD);
+    const resultado = verifyRootCredentials(env().SUPERADMIN_EMAIL, ROOT_TEST_PASSWORD);
     expect(resultado.ok).toBe(true);
 
     // No hay ninguna persona ni cuenta que le corresponda: su acceso no depende
@@ -51,15 +51,15 @@ describe('acceso del actor raíz', () => {
     expect(await base.prisma.user.count()).toBe(0);
   });
 
-  it('rechaza la contraseña incorrecta y el correo incorrecto por igual', async () => {
-    expect((await verifyRootCredentials(env().SUPERADMIN_EMAIL, 'otra cosa')).ok).toBe(false);
-    expect((await verifyRootCredentials('otro@ejemplo.invalid', ROOT_TEST_PASSWORD)).ok).toBe(false);
-    expect((await verifyRootCredentials('otro@ejemplo.invalid', 'otra cosa')).ok).toBe(false);
+  it('rechaza la contraseña incorrecta y el correo incorrecto por igual', () => {
+    expect((verifyRootCredentials(env().SUPERADMIN_EMAIL, 'otra cosa')).ok).toBe(false);
+    expect((verifyRootCredentials('otro@ejemplo.invalid', ROOT_TEST_PASSWORD)).ok).toBe(false);
+    expect((verifyRootCredentials('otro@ejemplo.invalid', 'otra cosa')).ok).toBe(false);
   });
 
-  it('el correo se compara sin distinguir mayúsculas ni espacios sobrantes', async () => {
+  it('el correo se compara sin distinguir mayúsculas ni espacios sobrantes', () => {
     const variante = `  ${env().SUPERADMIN_EMAIL.toUpperCase()}  `;
-    expect((await verifyRootCredentials(variante, ROOT_TEST_PASSWORD)).ok).toBe(true);
+    expect((verifyRootCredentials(variante, ROOT_TEST_PASSWORD)).ok).toBe(true);
   });
 
   it('su actor de atribución se crea al primer uso y es siempre el mismo', async () => {

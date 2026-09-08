@@ -354,7 +354,7 @@ Los cargos sindicales y roles operativos tendrán fecha de inicio y fin. Al conc
 Existirá una ruta independiente `/superadmin/login`. El acceso raíz se definirá mediante:
 
 - `SUPERADMIN_EMAIL`;
-- `SUPERADMIN_PASSWORD_HASH`;
+- `SUPERADMIN_PASSWORD`;
 - `AUTH_SECRET`;
 - `SUPERADMIN_SESSION_VERSION` para invalidación de sesiones cuando sea necesario.
 
@@ -369,7 +369,7 @@ El Superadmin raíz:
 - usará sesión firmada, segura, de duración limitada y revocable;
 - estará sujeto a límite de intentos, alertas y auditoría.
 
-El repositorio incluirá un comando local documentado, equivalente a `npm run auth:hash-password`, para generar de forma segura el valor de `SUPERADMIN_PASSWORD_HASH` sin almacenar la contraseña original.
+La contraseña se define en texto plano en `SUPERADMIN_PASSWORD` (ADR-0175), en el entorno; no se guarda en la base ni en el repositorio.
 
 Los administradores ordinarios sí deberán existir como personas y recibir permisos mediante nombramientos.
 
@@ -1501,7 +1501,7 @@ Variables mínimas previstas:
 APP_URL=
 AUTH_SECRET=
 SUPERADMIN_EMAIL=
-SUPERADMIN_PASSWORD_HASH=
+SUPERADMIN_PASSWORD=
 SUPERADMIN_SESSION_VERSION=
 
 DATABASE_URL=

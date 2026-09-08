@@ -301,7 +301,7 @@ La verificación lee siempre el **estado vivo**: una revocación surte efecto de
 | `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` | Interno (VAPID) | Navegador | Valor público por diseño |
 | `CRON_SECRET` | Interno | Servidor | Manual |
 | `QR_SIGNING_SECRET` | Interno | Servidor | Manual; requiere reemisión planificada de credenciales |
-| `SUPERADMIN_PASSWORD_HASH` | Interno | Servidor | Manual, con `SUPERADMIN_SESSION_VERSION` |
+| `SUPERADMIN_PASSWORD` | Interno | Servidor | Manual, con `SUPERADMIN_SESSION_VERSION` |
 
 Ningún secreto lleva prefijo público. La ausencia de una variable obligatoria produce un error de arranque comprensible que **no** revela el valor esperado (PRD §21).
 

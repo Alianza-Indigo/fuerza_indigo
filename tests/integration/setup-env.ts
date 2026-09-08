@@ -1,4 +1,3 @@
-import { hashPassword } from '@/platform/auth/password';
 import { loadLocalEnv } from '@/platform/config/local-env';
 
 /**
@@ -41,22 +40,17 @@ for (const [nombre, valor] of Object.entries(CLAVES_DE_PRUEBA)) {
 }
 
 /**
- * Contraseña del Superadmin raíz durante las pruebas.
- *
- * El hash se calcula aquí y **no** se escribe en ningún archivo del
- * repositorio: un hash de contraseña versionado es un secreto versionado,
- * aunque sea de prueba, y acaba copiado a un despliegue real por alguien que
- * supone que estaba ahí por algo.
+ * Contraseña del Superadmin raíz durante las pruebas (texto plano, ADR-0175).
  */
 export const ROOT_TEST_PASSWORD = 'clave de prueba del superadmin raiz';
 
 /**
- * Se impone **siempre**, incluso si el entorno ya traía un hash.
+ * Se impone **siempre**, incluso si el entorno ya traía otro valor.
  *
  * Las pruebas comprueban que esta contraseña abre y que otras no. Respetar el
  * valor heredado haría que el resultado dependiera de la clave que cada quien
- * tenga en su máquina o de la que la CI haya generado por su lado: la misma
+ * tenga en su máquina o de la que la CI haya puesto por su lado: la misma
  * prueba pasaría aquí y fallaría allá sin que nada del código cambiara. Un
  * hecho que se comprueba tiene que estar puesto por quien lo comprueba.
  */
-process.env['SUPERADMIN_PASSWORD_HASH'] = (await hashPassword(ROOT_TEST_PASSWORD)).hash;
+process.env['SUPERADMIN_PASSWORD'] = ROOT_TEST_PASSWORD;

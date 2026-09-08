@@ -5,13 +5,115 @@
 ---
 ## Situación actual
 
+- **Fase activa:** 10 — Integración, endurecimiento y producción
+- **Estado:** `IN_PROGRESS`
+- **Autorizada por la persona usuaria:** 8 de septiembre de 2026
+- **Fecha de inicio:** 8 de septiembre de 2026
+- **Fase anterior:** 9 — `APPROVED`, cerrada en `b2730c0`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
+- **Fase siguiente:** ninguna — es la última fase del contrato (PRD §24).
+
+---
+
+## Alcance contratado
+
+El PRD §24 Fase 10 contrata la integración y el endurecimiento del sistema completo antes de producción: la prueba integral de los trece flujos E2E globales del §22.2; revisión de seguridad, de permisos y visual; accesibilidad manual y automatizada; rendimiento y carga; recuperación ante fallos y restauración de base y archivos; conciliación Stripe; revisión de costos y límites; SEO y PWA; revisión de logs y alertas; migración de datos existentes cuando los haya; manuales operativos y capacitación administrativa; checklist de Vercel; y el despliegue de producción con su verificación posterior.
+
+**Qué cierra esta fase.** Es la última del contrato. No añade funciones: demuestra que las de las fases 0 a 9 operan juntas en producción sin pendientes. La garantía que la gobierna es que **no queda nada simulado ni a medias, ningún defecto crítico, alto o medio abierto, y otro agente puede mantener el producto con lo que está escrito.**
+
+**Lo que depende de la persona usuaria.** El despliegue de producción real (credenciales de Vercel y de los proveedores), la capacitación administrativa presencial y la aprobación final por módulo requieren su intervención. Esta fase construye y verifica todo lo que se puede sin ellas, y deja cada uno de esos pasos listo y documentado para cuando los autorice.
+
+---
+
+## Bloques de trabajo
+
+| Bloque | Contenido | Estado |
+|---|---|---|
+| A | Los trece flujos E2E globales del §22.2 como suite integral, ejecutando el sistema | Pendiente |
+| B | Revisión de seguridad y de permisos: barrido positivo y negativo, aislamiento de entidades, expediente ajeno inaccesible; credenciales y certificados QR verificados | Pendiente |
+| C | Recuperación y restauración verificadas de base y archivos; conciliación Stripe; revisión de costos y límites | Pendiente |
+| D | Observabilidad: webhooks y trabajos programados observables; revisión de logs y alertas sin fuga de datos; SEO, PWA, rendimiento y carga | Pendiente |
+| E | Migración reproducible desde base vacía; manuales operativos, capacitación administrativa y checklist de Vercel | Pendiente |
+| F | Despliegue de producción, verificación posterior y aprobación final documentada por módulo | Pendiente |
+
+---
+
+## Criterios de aceptación
+
+Los nueve del PRD §24 Fase 10 se comprobarán **ejecutando el sistema** y con evidencia documentada, no leyendo el código. Se registran aquí al cerrarse cada uno.
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Cero defectos críticos, altos o medios abiertos | Pendiente |
+| 2 | Cero funciones simuladas o incompletas | Pendiente |
+| 3 | Migración reproducible desde repositorio | Pendiente |
+| 4 | Recuperación verificada mediante ejercicio real en ambiente controlado | Pendiente |
+| 5 | Separación de entidades validada | Pendiente |
+| 6 | Credenciales y certificados QR verificados | Pendiente |
+| 7 | Webhooks y trabajos programados observables | Pendiente |
+| 8 | Documentación suficiente para que otro agente mantenga el producto | Pendiente |
+| 9 | Aprobación final documentada por módulo | Pendiente |
+
+---
+
+## Cómo se retoma
+
+La Fase 10 se abrió el 8 de septiembre de 2026, tras la aprobación expresa de la Fase 9. El primer bloque es la suite integral de los trece flujos E2E globales del §22.2, que ejerce de extremo a extremo lo construido en las fases 0 a 9. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 10 y §22.2 son el contrato, y `docs/BACKLOG.md` reparte las tareas.
+
+**Estado comprobado.** La apertura de fase deja la puerta local en verde: `npm run phase:verify`, `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run build` y `npm run db:check`. La puerta de salida de verdad es la integración continua.
+
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo, como en todas las fases anteriores.
+
+**Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
+
+---
+
+## Defectos abiertos
+
+Ninguno registrado todavía.
+
+> **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
+> vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
+> defecto sin documentar, y con uno abierto de severidad bloqueante la fase no puede declararse aprobada.
+
+| Id | Severidad | Descripción | Estado y corrección |
+|---|---|---|---|
+
+---
+
+## Historial de fases
+
+| Fase | Inicio | Cierre | Estado | SHA del punto de control |
+|---|---|---|---|---|
+| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
+| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
+| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
+| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
+| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
+| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
+| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
+| 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
+| 8 | 2026-09-06 | 2026-09-07 | `APPROVED` | `58601f7` |
+| 9 | 2026-09-07 | 2026-09-08 | `APPROVED` | `b2730c0` |
+| 10 | 2026-09-08 | — | `IN_PROGRESS` | — |
+
+---
+
+# Archivo — registro completo de la Fase 9
+
+> Eventos, formación e indicadores. Cerrada el 8 de septiembre de 2026 en `b2730c0`, con los seis criterios del PRD §24 Fase 9 cumplidos y la integración continua en verde.
+
+---
+
+## Situación actual
+
 - **Fase activa:** 9 — Eventos, formación e indicadores
-- **Estado:** `IN_PROGRESS` — **construida al 100 %, a la espera de autorización expresa** (PRD §23); el estado pasa a `APPROVED` cuando la persona usuaria la autorice
+- **Estado:** `APPROVED`
 - **Autorizada por la persona usuaria:** 7 de septiembre de 2026
 - **Fecha de inicio:** 7 de septiembre de 2026
-- **Construcción terminada:** 8 de septiembre de 2026 (bloques A–L cerrados)
-- **Fase anterior:** 8 — `APPROVED`, cerrada en `58601f7`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
-- **Fase siguiente:** 10 — Integración, endurecimiento y producción, **no autorizada** hasta que la persona usuaria lo indique expresamente (PRD §23.3)
+- **Fecha de cierre:** 8 de septiembre de 2026
+- **SHA del punto de control:** `b2730c0`
+- **Fase anterior:** 8 — `APPROVED`, cerrada en `58601f7`.
+- **Fase siguiente:** 10 — Integración, endurecimiento y producción (autorizada el 8 de septiembre de 2026)
 
 ---
 
@@ -254,24 +356,6 @@ Ninguno registrado todavía.
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
-
----
-
-## Historial de fases
-
-| Fase | Inicio | Cierre | Estado | SHA del punto de control |
-|---|---|---|---|---|
-| 0 | 2026-09-03 | 2026-09-03 | `APPROVED` | `7fecd6f873c8068101478da2179d6d5a6bc17c29` |
-| 1 | 2026-09-03 | 2026-09-04 | `APPROVED` | `e8daa0e` (el cierre previo `ac23003` fue revocado) |
-| 2 | 2026-09-04 | 2026-09-04 | `APPROVED` | `0fedf6f` |
-| 3 | 2026-09-04 | 2026-09-04 | `APPROVED` | `85cf196` |
-| 4 | 2026-09-04 | 2026-09-05 | `APPROVED` | `cadebbd` (cerrada primero en `038297d`, reabierta el mismo día por la corrección de alcance de CIAN y CENI) |
-| 5 | 2026-09-05 | 2026-09-06 | `APPROVED` | `6c5b18c` |
-| 6 | 2026-09-06 | 2026-09-06 | `APPROVED` | `6f31d88` (cerrada primero en `a7e8031`, reabierta el mismo día por `D-F6-006`) |
-| 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
-| 8 | 2026-09-06 | 2026-09-07 | `APPROVED` | `58601f7` |
-| 9 | 2026-09-07 | — | `IN_PROGRESS` | — |
-| 10 | — | — | No iniciada | — |
 
 ---
 

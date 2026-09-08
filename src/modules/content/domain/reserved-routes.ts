@@ -39,6 +39,7 @@ export const RUTAS_DEL_CODIGO: readonly string[] = [
   'legales/accesibilidad',
   'sin-conexion',
   'solicitar-apoyo',
+  'transparencia',
   'verificar',
   'verificar/:param',
   'votar/:param',

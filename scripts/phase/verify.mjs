@@ -3472,6 +3472,72 @@ const CHECKS = [
       return ok(['Los indicadores territoriales agregan las cuentas de personas con un umbral único y compartido.']);
     },
   },
+  {
+    id: 'C-F9-05',
+    title: 'Fase 9: la transparencia pública publica agregados con umbral, nunca datos de personas',
+    phases: [9],
+    run() {
+      // El alcance de la fase incluye «transparencia publicada». Una página
+      // pública que dijera quién hizo qué no sería transparencia, sería una
+      // fuga. Este control vigila que la transparencia (a) solo cuente —nada de
+      // nombres, folios ni identificadores— y (b) pase las cuentas de personas
+      // por el umbral de privacidad.
+      const fuente = read('src/modules/dashboards/application/public-transparency.ts');
+      if (fuente === null) return fail(['No se encuentra la transparencia pública.']);
+
+      // Se mira el código, no los comentarios: la prosa que explica la regla
+      // nombra «folios» e «identificadores», y eso no es tocar el dato.
+      const codigo = fuente
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .filter((linea) => !linea.trim().startsWith('*') && !linea.trim().startsWith('//'))
+        .join('\n');
+
+      // Solo agregados: cuenta, no nombra. Ningún dato que señale a una persona.
+      for (const identificador of ['givenName', 'familyName', 'publicId', 'folio', 'select:']) {
+        if (codigo.includes(identificador)) {
+          return fail([`La transparencia pública toca un dato de persona («${identificador}»): debe publicar solo agregados.`]);
+        }
+      }
+
+      // Las cuentas de participación de personas pasan por el umbral compartido.
+      if (!fuente.includes("from '@/platform/privacy/threshold'")) {
+        return fail(['La transparencia pública no usa el umbral de privacidad compartido.']);
+      }
+      for (const cuenta of ['aplicarUmbral(personasFormadas)', 'aplicarUmbral(constanciasVigentes)']) {
+        if (!fuente.includes(cuenta)) {
+          return fail([`La transparencia pública no pasa por el umbral la cuenta de personas: falta ${cuenta}.`]);
+        }
+      }
+
+      return ok(['La transparencia pública publica solo agregados, y las cuentas de personas pasan por el umbral.']);
+    },
+  },
+  {
+    id: 'C-F9-06',
+    title: 'Fase 9: toda exportación queda auditada (criterio 4)',
+    phases: [9],
+    run() {
+      // El criterio 4 exige que las exportaciones respeten permisos y **queden
+      // auditadas**. Las exportaciones existen desde fases anteriores; este
+      // control las mantiene auditadas: cada acción de exportación tiene que
+      // registrarse en la bitácora desde su caso de uso, no salir sin rastro.
+      const modulos = walk().filter((f) => /^src\/modules\/.+\.ts$/.test(f));
+      const problemas = [];
+      for (const accion of ['ROSTER_EXPORTED', 'DIRECTORY_EXPORTED', 'FINANCIAL_REPORT_EXPORTED']) {
+        const auditada = modulos.some((ruta) => {
+          const contenido = read(ruta) ?? '';
+          return new RegExp(`action:\\s*AUDIT_ACTIONS\\.${accion}`).test(contenido);
+        });
+        if (!auditada) {
+          problemas.push(`La exportación ${accion} no se registra en la bitácora: una exportación sin rastro no cumple el criterio 4.`);
+        }
+      }
+      return problemas.length
+        ? fail(problemas)
+        : ok(['Las exportaciones de padrón, directorio y finanzas quedan registradas en la bitácora.']);
+    },
+  },
 ];
 
 

@@ -37,7 +37,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | G | Asistencia, materiales, evaluación y constancias verificables y revocables | **Hecho** |
 | H | Tableros por rol con decisiones accionables | **Hecho** |
 | I | Indicadores territoriales con agregación y umbrales de privacidad | **Hecho** |
-| J | Reportes institucionales, exportaciones auditadas y transparencia publicada | Pendiente |
+| J | Reportes institucionales, exportaciones auditadas y transparencia publicada | **Hecho** |
 | K | Alertas de vencimientos y obligaciones | Pendiente |
 | L | Pruebas, controles de fase, documentación y cierre | Pendiente |
 
@@ -52,9 +52,21 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 1 | Comunicaciones obligatorias y promocionales se gestionan separadamente | Pendiente |
 | 2 | Las plantillas están versionadas | Pendiente |
 | 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | **Cumplido** (bloque I) |
-| 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
+| 4 | Las exportaciones respetan permisos y quedan auditadas | **Cumplido** (bloque J) |
 | 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | **Cumplido** (bloque H) |
+
+---
+
+## Lo que dejó el bloque J
+
+Los reportes, las exportaciones auditadas y la transparencia pública (PRD §6.1, §6.4, §24 Fase 9 criterio 4; ADR-0170).
+
+**La transparencia pública, que faltaba.** El §6.1 nombra una página de transparencia pública y ninguna pantalla la servía (la navegación ya la enlazaba, sin destino). Ahora existe (`/transparencia`, sin sesión): publica cifras de la organización —agremiados, unidades, asambleas con quórum, eventos realizados—, en crudo, porque un número no señala a nadie; y las cuentas de participación de personas —personas formadas, constancias vigentes— pasan por el umbral de privacidad y se suprimen por debajo de él. No sale ningún identificador. Sin entidad nueva: se calcula en vivo. El control nuevo **C-F9-05** lo vigila.
+
+**Las exportaciones ya estaban auditadas.** Padrón, directorio y libro financiero se exportan respetando permisos y dejando rastro en la bitácora desde fases anteriores (criterio 4). El control nuevo **C-F9-06** lo mantiene: una exportación sin rastro no cumple el criterio.
+
+**Dos pruebas de integración con el método de romper:** la cuenta de participación por debajo del umbral que se suprime (se le quitó el umbral y salió, en rojo), y la que se publica al alcanzarlo.
 
 ---
 
@@ -162,13 +174,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B, C, E, F, G, H e I están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de los reportes y las alertas. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B, C, E, F, G, H, I y J están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de las alertas. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque J — reportes institucionales, exportaciones auditadas y transparencia publicada.** Lo que toca (criterio 4): reportes por nivel, exportaciones que **respetan permisos y quedan auditadas**, y la transparencia que se publica autorizada. El contrato es `docs/PRD.md` §24 Fase 9 criterio 4.
+**Bloque K — alertas de vencimientos y obligaciones.** Lo que toca: avisar de lo que vence —membresías, nombramientos, obligaciones de cumplimiento— antes de que sea tarde, por los canales de la fase, sin duplicar y respetando la preferencia. El contrato es `docs/PRD.md` §24 Fase 9.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque J: una exportación que sale sin dejar rastro en la bitácora, o que entrega lo que quien la pide no podría ver.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

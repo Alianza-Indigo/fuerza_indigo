@@ -11,3 +11,8 @@ export {
   type IndicadoresTerritoriales,
   type TerritorialIndicatorsInput,
 } from './application/territorial-indicators';
+
+export {
+  transparenciaPublica,
+  type TransparenciaPublica,
+} from './application/public-transparency';

@@ -38,9 +38,11 @@ const RUTAS = [
   // Fase 4: las dos puertas públicas que abre.
   '/directorio',
   '/verificar',
-  // Fase 9: el calendario público de eventos y la verificación de constancias.
+  // Fase 9: el calendario público de eventos, la verificación de constancias y
+  // la transparencia pública.
   '/eventos',
   '/constancias',
+  '/transparencia',
 ];
 
 async function violacionesGraves(page: Page) {

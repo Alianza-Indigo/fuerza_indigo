@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import type { EventKind, EventModality, EventVisibility } from '@prisma-client/enums';
 import { Checkbox, ErrorNotice, Field, Select, SubmitButton } from '@/design-system/primitives';
+import type { ConstancyTemplateOption } from '@/modules/events';
 import { CLASE_DE_EVENTO, MODALIDAD, VISIBILIDAD } from '../etiquetas';
 import { createEventAction, type EventoState } from '../actions';
 
@@ -11,7 +12,13 @@ const CLASES = Object.keys(CLASE_DE_EVENTO) as EventKind[];
 const MODALIDADES = Object.keys(MODALIDAD) as EventModality[];
 const VISIBILIDADES = Object.keys(VISIBILIDAD) as EventVisibility[];
 
-export function NewEventForm({ legalEntityId }: { legalEntityId: string }) {
+export function NewEventForm({
+  legalEntityId,
+  constancyTemplates,
+}: {
+  legalEntityId: string;
+  constancyTemplates: readonly ConstancyTemplateOption[];
+}) {
   const [estado, accion] = useActionState(createEventAction, INICIAL);
 
   return (
@@ -36,6 +43,24 @@ export function NewEventForm({ legalEntityId }: { legalEntityId: string }) {
       <Select name="visibility" label="Quién lo ve" required defaultValue={estado.values?.['visibility'] ?? 'MEMBERS'}
         options={VISIBILIDADES.map((v) => ({ value: v, label: VISIBILIDAD[v] }))} errors={estado.fieldErrors?.['visibility']} />
       <Checkbox name="membersOnly" label="Solo pueden inscribirse personas agremiadas con membresía activa" />
+
+      {constancyTemplates.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-[var(--color-line)] p-4">
+          <Checkbox
+            name="issuesConstancy"
+            label="Este evento emite constancia de participación"
+            help="Se emite al final, a quien asistió, y es verificable y revocable."
+          />
+          <Select
+            name="constancyTemplateId"
+            label="Plantilla de la constancia"
+            defaultValue={estado.values?.['constancyTemplateId']}
+            placeholder="Elige una plantilla publicada"
+            options={constancyTemplates.map((p) => ({ value: p.id, label: p.label }))}
+            errors={estado.fieldErrors?.['constancyTemplateId']}
+          />
+        </div>
+      )}
 
       <SubmitButton>Crear evento</SubmitButton>
     </form>

@@ -216,6 +216,34 @@ export async function eventDetailForStaff(actor: ActorContext, eventId: string):
   });
 }
 
+export interface ConstancyTemplateOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+/**
+ * Las plantillas de constancia publicadas, para configurar qué emite un evento.
+ *
+ * Lo guarda quien gestiona eventos, no quien emite documentos: elegir la
+ * plantilla de constancia de un curso es parte de organizarlo. La constancia se
+ * emite después con la versión vigente de ese código; aquí solo se nombra cuál.
+ * Son las plantillas de acto de constancia —asistencia o certificado—, las
+ * únicas que tiene sentido colgar de un evento.
+ */
+export async function constancyTemplateOptions(
+  actor: ActorContext,
+): Promise<UseCaseResult<readonly ConstancyTemplateOption[]>> {
+  const decision = can(actor, 'events.event.manage', { kind: 'Event', legalEntityId: null });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const filas = await db().documentTemplate.findMany({
+    where: { status: 'PUBLISHED', kind: { in: ['ATTENDANCE_CONSTANCY', 'CERTIFICATE'] } },
+    orderBy: { code: 'asc' },
+    select: { id: true, code: true, name: true, version: true },
+  });
+  return ok(filas.map((f) => ({ id: f.id, label: `${f.name} · ${f.code} v${f.version}` })));
+}
+
 /** Los eventos que la persona gestiona, con cuántos van inscritos. */
 export async function eventList(actor: ActorContext): Promise<UseCaseResult<readonly EventRow[]>> {
   const decision = can(actor, 'events.event.manage', { kind: 'Event', legalEntityId: null });

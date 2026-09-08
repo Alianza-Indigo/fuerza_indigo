@@ -3354,6 +3354,40 @@ const CHECKS = [
       return ok(['Solo el aviso obligatorio de gobierno es no silenciable, y una campaña no lo envía.']);
     },
   },
+  {
+    id: 'C-F9-02',
+    title: 'Fase 9: una constancia revocada se verifica como revocada, nunca como válida',
+    phases: [9],
+    run() {
+      // El criterio 5 exige constancias verificables y revocables. La trampa
+      // está en la revocación: si la verificación leyera un estado copiado en
+      // vez del vivo, una constancia revocada hace un minuto seguiría
+      // apareciendo válida —el peor fallo posible, porque parece funcionar—.
+      // Este control vigila que la verificación derive «revocada» del estado en
+      // vivo de la inscripción, y que revocar deje esa marca y cancele el
+      // documento.
+      const fuente = read('src/modules/events/application/attendance.ts');
+      if (fuente === null) return fail(['No se encuentra el caso de uso de constancias.']);
+
+      // La verificación deriva `revoked` de la revocación en vivo de la
+      // inscripción, no de una copia guardada al emitir.
+      if (!/revoked:\s*registro\.constancyRevokedAt\s*!==\s*null/.test(fuente)) {
+        return fail([
+          'La verificación de constancias no deriva su estado de la revocación en vivo: una revocada podría verificar como válida.',
+        ]);
+      }
+
+      // Revocar deja la marca en la inscripción y cancela el documento emitido.
+      if (!/constancyRevokedAt:\s*new Date\(\)/.test(fuente)) {
+        return fail(['Revocar una constancia no deja la marca de revocación en la inscripción.']);
+      }
+      if (!/status:\s*'CANCELLED'/.test(fuente)) {
+        return fail(['Revocar una constancia no cancela el documento emitido.']);
+      }
+
+      return ok(['La verificación de constancias lee la revocación en vivo; revocar la marca y cancela el documento.']);
+    },
+  },
 ];
 
 

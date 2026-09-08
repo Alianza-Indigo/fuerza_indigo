@@ -305,6 +305,12 @@ export async function authorizeDownload(
     return fail(errors.notFound('el archivo no existe o fue eliminado'));
   }
 
+  // El material de un evento no se decide con el catálogo de permisos, sino con
+  // la inscripción: tiene su propia puerta.
+  if (file.contextKind === 'EVENT') {
+    return autorizarMaterialDeEvento(actor, file);
+  }
+
   const isSensitive = SENSITIVE.has(file.classification);
 
   // La persona titular descarga lo suyo por la vía de su propio permiso, no por
@@ -400,6 +406,19 @@ export async function authorizeDownload(
     return fail(errors.notFound(explain((decision.reason ?? clinico.reason)!)));
   }
 
+  return emitirPaseFirmado(actor, file);
+}
+
+/**
+ * Emite el pase firmado de vigencia corta una vez que la política concedió el
+ * acceso. Lo comparten la descarga por facultad y la del material de evento por
+ * inscripción: el pase no cambia según por qué se autorizó, solo según la
+ * clasificación del archivo, y la ruta de canje lo reevalúa igual en ambos casos.
+ */
+async function emitirPaseFirmado(
+  actor: ActorContext,
+  file: { id: string; legalEntityId: string; classification: FileClassification },
+): Promise<UseCaseResult<DownloadTicket>> {
   const ttl = TICKET_TTL_SECONDS[file.classification];
   const expiresAt = new Date(Date.now() + ttl * 1000);
   const expiresAtSeconds = Math.floor(expiresAt.getTime() / 1000);
@@ -421,6 +440,69 @@ export async function authorizeDownload(
     path: `/api/v1/files/${file.id}?exp=${expiresAtSeconds}&sig=${signature}`,
     expiresAt,
   });
+}
+
+/**
+ * Autoriza la descarga del material de un evento (PRD §16.3, Fase 9).
+ *
+ * **Un material reservado no se sirve a quien no está inscrito.** La política
+ * general de archivos no sabe expresar «inscrito a este evento»: un agremiado
+ * inscrito a un curso no tiene `files.file.download`, y darle esa facultad le
+ * abriría todos los archivos de su entidad. Por eso el material de evento tiene
+ * su propia puerta, que mira el contexto del archivo y la inscripción, no el
+ * catálogo de permisos. Un material abierto lo alcanza cualquiera; uno reservado
+ * solo quien tiene inscripción viva —o quien gestiona el evento o lee sus
+ * inscripciones—. Como el resto del servicio, un archivo fuera de alcance
+ * responde lo mismo que uno inexistente.
+ */
+async function autorizarMaterialDeEvento(
+  actor: ActorContext,
+  file: { id: string; legalEntityId: string; classification: FileClassification },
+): Promise<UseCaseResult<DownloadTicket>> {
+  const material = await db().eventMaterial.findFirst({
+    where: { fileObjectId: file.id },
+    select: { membersOnly: true, eventId: true },
+  });
+  if (material === null) return fail(errors.notFound('el archivo no existe o fue eliminado'));
+
+  let permitido = !material.membersOnly;
+  if (!permitido && actor.personId !== null) {
+    const inscrito = await db().eventRegistration.findFirst({
+      where: { eventId: material.eventId, personId: actor.personId, status: { not: 'CANCELLED' } },
+      select: { id: true },
+    });
+    permitido = inscrito !== null;
+  }
+  if (!permitido) {
+    const gestor = can(actor, 'events.event.manage', { kind: 'Event', legalEntityId: file.legalEntityId });
+    const lector = can(actor, 'events.registration.read', { kind: 'EventRegistration', legalEntityId: file.legalEntityId });
+    permitido = gestor.allowed || lector.allowed;
+  }
+
+  if (!permitido) {
+    await transaction((tx) =>
+      Promise.all([
+        recordSecurity(tx, {
+          kind: 'FILE_ACCESS_DENIED',
+          severity: 'WARNING',
+          actorId: actor.actorId === '' ? null : actor.actorId,
+          detail: { fileObjectId: file.id, classification: file.classification, reason: 'material de evento reservado a inscritos' },
+          correlationId: actor.correlationId,
+        }),
+        recordAudit(tx, actor, {
+          action: AUDIT_ACTIONS.FILE_DOWNLOAD_AUTHORIZED,
+          objectKind: 'FileObject',
+          objectId: file.id,
+          outcome: 'DENIED',
+          legalEntityId: file.legalEntityId,
+          metadata: { reason: 'material de evento reservado a inscritos' },
+        }),
+      ]),
+    );
+    return fail(errors.notFound('el archivo no existe o fue eliminado'));
+  }
+
+  return emitirPaseFirmado(actor, file);
 }
 
 export interface RedeemedFile {

@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Badge, LinkButton, PageShell, Prose, Section } from '@/design-system/primitives';
+import { Badge, EmptyState, LinkButton, PageShell, Prose, Section } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { eventDetailBySlug } from '@/modules/events';
+import { eventDetailBySlug, eventMaterialsForViewer } from '@/modules/events';
 import { formatDateTime } from '@/platform/i18n/format';
 
 export const metadata: Metadata = { title: 'Evento', robots: { index: true, follow: true } };
@@ -30,6 +30,7 @@ export default async function EventoPublicoDetallePage({ params }: { params: Pro
   const detalle = await eventDetailBySlug(actor, slug);
   if (!detalle.ok) notFound();
   const e = detalle.data;
+  const materiales = await eventMaterialsForViewer(actor, e.eventId);
 
   return (
     <PageShell title={e.title} description={`${CLASE[e.kind] ?? e.kind} · ${formatDateTime(e.startsAt)}`}>
@@ -57,6 +58,27 @@ export default async function EventoPublicoDetallePage({ params }: { params: Pro
           </div>
         )}
       </Section>
+
+      {materiales.ok && materiales.data.length > 0 && (
+        <Section title="Materiales">
+          <ul className="space-y-2">
+            {materiales.data.map((m) => (
+              <li key={m.id} className="flex flex-wrap items-center gap-3">
+                <a href={`/api/v1/files/${m.fileObjectId}/pase`} className="underline underline-offset-4">
+                  {m.title}
+                </a>
+                {m.membersOnly && <Badge tone="warning">Reservado a inscritos</Badge>}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {materiales.ok && materiales.data.length === 0 && e.myStatus !== null && (
+        <Section title="Materiales">
+          <EmptyState title="Sin materiales todavía" description="Cuando la organización publique lecturas o presentaciones, aparecerán aquí." />
+        </Section>
+      )}
     </PageShell>
   );
 }

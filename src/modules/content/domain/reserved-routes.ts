@@ -27,6 +27,8 @@
 export const RUTAS_DEL_CODIGO: readonly string[] = [
   'accesibilidad',
   'buscar',
+  'constancias',
+  'constancias/:param',
   'contacto',
   'directorio',
   'directorio/:param',

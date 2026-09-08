@@ -5,7 +5,6 @@ import { db } from '@/platform/db/client';
 import { transaction } from '@/platform/db/unit-of-work';
 import { errors } from '@/platform/errors/app-error';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
-import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
@@ -177,37 +176,7 @@ export async function myEventRegistrations(actor: ActorContext): Promise<UseCase
   );
 }
 
-export interface RegistrationRow {
-  readonly personName: string;
-  readonly status: EventRegistrationStatus;
-  readonly registeredAt: Date;
-  readonly attended: boolean;
-}
-
-/** Las inscripciones de un evento, para quien lo gestiona. */
-export async function eventRegistrations(actor: ActorContext, eventId: string): Promise<UseCaseResult<readonly RegistrationRow[]>> {
-  const evento = await db().event.findUnique({ where: { id: eventId }, select: { legalEntityId: true } });
-  if (evento === null) return fail(errors.notFound('Ese evento no existe.'));
-
-  const decision = can(actor, 'events.registration.read', { kind: 'EventRegistration', legalEntityId: evento.legalEntityId });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
-
-  const filas = await db().eventRegistration.findMany({
-    where: { eventId },
-    orderBy: [{ status: 'asc' }, { registeredAt: 'asc' }],
-    select: {
-      status: true,
-      registeredAt: true,
-      attendanceAt: true,
-      person: { select: { givenName: true, familyName: true } },
-    },
-  });
-  return ok(
-    filas.map((f) => ({
-      personName: `${f.person.givenName} ${f.person.familyName}`,
-      status: f.status,
-      registeredAt: f.registeredAt,
-      attended: f.attendanceAt !== null,
-    })),
-  );
-}
+// El padrón de gestión —con asistencia, evaluación y estado de la constancia—
+// vive en `application/attendance.ts` (`eventRoster`), que es su superficie
+// natural: quien lee las inscripciones para gestionarlas lo hace para registrar
+// asistencia y emitir constancias, no solo para contarlas.

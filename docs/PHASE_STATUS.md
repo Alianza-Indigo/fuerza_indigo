@@ -34,7 +34,7 @@ El PRD §24 Fase 9 contrata: centro de notificaciones; correo; notificaciones we
 | D | Notificaciones web con autorización explícita de la persona | Pendiente |
 | E | Calendario de eventos, registro, capacidad, elegibilidad y lista de espera | **Hecho** |
 | F | Cobro de eventos conectado al catálogo financiero | **Hecho** |
-| G | Asistencia, materiales, evaluación y constancias verificables y revocables | Pendiente |
+| G | Asistencia, materiales, evaluación y constancias verificables y revocables | **Hecho** |
 | H | Tableros por rol con decisiones accionables | Pendiente |
 | I | Indicadores territoriales con agregación y umbrales de privacidad | Pendiente |
 | J | Reportes institucionales, exportaciones auditadas y transparencia publicada | Pendiente |
@@ -53,8 +53,22 @@ Los seis del PRD §24 Fase 9 se comprobarán **ejecutando el sistema**, no leyen
 | 2 | Las plantillas están versionadas | Pendiente |
 | 3 | Los indicadores sensibles usan agregación y umbrales de privacidad | Pendiente |
 | 4 | Las exportaciones respetan permisos y quedan auditadas | Pendiente |
-| 5 | Las constancias son verificables y revocables | Pendiente |
+| 5 | Las constancias son verificables y revocables | **Cumplido** (bloque G) |
 | 6 | Los paneles muestran decisiones accionables, no métricas decorativas | Pendiente |
+
+---
+
+## Lo que dejó el bloque G
+
+La asistencia, los materiales, la evaluación y las constancias **verificables y revocables** (PRD §16.3, §24 Fase 9 criterio 5; ADR-0166, ADR-0167).
+
+**La constancia es un documento emitido, no una consulta.** Se emite como un `GeneratedDocument` —folio bajo cerrojo, huella, archivo autocontenido e inmutable—, a quien asistió, con la versión publicada de la plantilla que el evento nombra. Para no clonar la emisión, `issueDocument` se partió: `emitirDocumento` es el núcleo sin permiso, e `issueDocument` le pone el suyo delante; la constancia va con `events.constancy.issue` sobre el mismo núcleo. Si la plantilla pide un dato que el evento no provee, no se emite: una constancia con un hueco no prueba nada.
+
+**Verificable y revocable, la garantía de la fase por este lado (criterio 5).** Una ruta pública (`/constancias/:codigo`) reconoce la constancia por su código impreso y responde qué evento certifica, a quién y si sigue vigente. Revocar exige motivo (`events.constancy.revoke`, crítico), deja la marca `constancyRevokedAt` —no borra la fila (ADR-0155)— y cancela el documento. La verificación lee la revocación **en vivo**: una revocada hace un minuto aparece revocada ahora. Lo vigila el control nuevo **C-F9-02**, probado rompiéndolo —haciendo que la verificación ignorara la revocación— y viéndolo caer en rojo.
+
+**El material reservado se sirve por la inscripción.** Un material cuelga de un contexto de archivo propio (`EVENT`, un valor de enumerado, no una tabla) y su descarga tiene su propia puerta: un material reservado solo se sirve a quien tiene inscripción viva —o a quien gestiona el evento—, no por el catálogo de permisos, que no sabe expresar «inscrito a este evento». La puerta reevalúa al canjear el pase, así que un enlace copiado deja de servir al cancelarse la inscripción.
+
+**Ocho pruebas de integración, cada garantía vista fallar:** la constancia que se emite a quien asistió y verifica como válida, la que no se emite a quien no asistió, **la revocada que verifica como revocada** (se rompió la lectura de la revocación y se vio en rojo), la que no se revoca porque no existe, la doble emisión rechazada, quien no puede emitir, y el material reservado que no se sirve a quien no está inscrito y sí a quien sí (se rompió la puerta y se vio en rojo).
 
 ---
 
@@ -124,13 +138,13 @@ El esquema de eventos, formación, constancias y preferencias de notificación, 
 
 ## Cómo se retoma
 
-Los bloques A, B, C y E están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de F, G y los tableros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
+Los bloques A, B, C, E, F y G están enteros. El bloque D (notificaciones web) se dejó para el final de la fase por tener más fricción (guardar la suscripción del navegador, claves VAPID); se construye después de los tableros. Quien continúe no necesita nada de esta sesión: `AGENTS.md` dice cómo se trabaja, `docs/HANDOFF.md` cómo se pone en marcha, `docs/PRD.md` §24 Fase 9 es el contrato, y `docs/BACKLOG.md` reparte las tareas.
 
 **Estado comprobado.** `npm run lint`, `npm run typecheck`, `npx vitest run`, `npm run phase:verify`, `npm run build` y `npm run db:check`, en verde en local; la puerta de salida de verdad es la integración continua.
 
-**Bloque G — asistencia, materiales, evaluación y constancias.** Lo que toca: registrar la asistencia y la evaluación de quien participó (`events.attendance.register`), los materiales del evento (reservados a inscritos), y emitir constancias **verificables y revocables** (`events.constancy.issue` y `events.constancy.revoke`, criterio 5) como `GeneratedDocument`, con una ruta pública de verificación que refleje la revocación en vivo. El esquema del bloque A ya tiene `attendanceAt`, `evaluationScore`, `constancyDocumentId` y `constancyRevokedAt`.
+**Bloque H — tableros por rol con decisiones accionables.** Lo que toca (criterio 6): tableros que muestren lo que hay que hacer —no métricas decorativas—, cada uno acotado a lo que su rol puede accionar. La medición hasta hoy vive dispersa en consultas sueltas; aquí se vuelve panel por nivel. El contrato es `docs/PRD.md` §24 Fase 9 criterio 6.
 
-**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo. La del bloque G: una constancia revocada que sigue verificando como válida.
+**Cómo se prueba cada garantía.** Rompiendo lo que la sostiene y viendo la prueba ponerse en rojo.
 
 **Base local.** El PostgreSQL de la máquina se para solo cada tanto; `docs/HANDOFF.md` trae el comando para levantarlo. La extensión `pgvector` de la Fase 8 tiene que seguir instalada para que las migraciones y las pruebas de integración corran.
 

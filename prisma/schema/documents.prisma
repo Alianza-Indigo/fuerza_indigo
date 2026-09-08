@@ -143,6 +143,7 @@ enum DocumentSubject {
   BARGAINING_FILE
   PAYMENT
   COMPLIANCE_OBLIGATION
+  EVENT_REGISTRATION
 }
 
 enum GeneratedDocumentStatus {

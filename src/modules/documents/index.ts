@@ -14,6 +14,7 @@ export {
 
 export {
   issueDocument,
+  emitirDocumento,
   documentsForSubject,
   issueDocumentSchema,
   type IssueDocumentInput,
@@ -28,3 +29,5 @@ export {
   type SignDocumentInput,
   type SignatureRow,
 } from './application/signatures';
+
+export { variablesDeclaradas } from './domain/templates';

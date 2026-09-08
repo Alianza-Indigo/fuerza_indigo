@@ -86,6 +86,7 @@ export async function memberEventCalendar(actor: ActorContext): Promise<UseCaseR
 }
 
 export interface EventDetailView extends CalendarRow {
+  readonly eventId: string;
   readonly publicId: string;
   readonly capacity: number | null;
   readonly membersOnly: boolean;
@@ -128,6 +129,7 @@ export async function eventDetailBySlug(actor: ActorContext, slug: string): Prom
 
   return ok({
     ...toRow(evento),
+    eventId: evento.id,
     publicId: evento.publicId,
     capacity: evento.capacity,
     membersOnly,

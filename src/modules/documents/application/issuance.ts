@@ -73,6 +73,7 @@ export const issueDocumentSchema = z.object({
     'BARGAINING_FILE',
     'PAYMENT',
     'COMPLIANCE_OBLIGATION',
+    'EVENT_REGISTRATION',
   ]),
   subjectId: z.uuid(),
   variables: z.record(z.string().min(1).max(40), z.string().max(20_000)),
@@ -95,8 +96,51 @@ export interface IssuedDocument {
  * acta con un hueco donde debería ir el nombre de quien preside. Y rechaza las
  * que sobran, porque una variable que la plantilla no usa es casi siempre un
  * nombre mal escrito, no un dato de más.
+ *
+ * El permiso `documents.document.issue` se comprueba aquí. El núcleo que compone
+ * y guarda el documento —`emitirDocumento`— no lo comprueba: otros actos
+ * institucionales emiten sobre su propia facultad (una constancia de evento va
+ * con `events.constancy.issue`), y clonar la emisión en cada módulo sería copiar
+ * el folio, la huella y la inmutabilidad, que es justo lo que no debe divergir.
  */
 export async function issueDocument(
+  actor: ActorContext,
+  input: IssueDocumentInput,
+): Promise<UseCaseResult<IssuedDocument>> {
+  const parsed = issueDocumentSchema.safeParse(input);
+  if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
+
+  const plantilla = await db().documentTemplate.findFirst({
+    where: { code: parsed.data.templateCode, status: 'PUBLISHED' },
+    select: { legalEntityId: true },
+  });
+  if (plantilla === null) {
+    return fail(
+      errors.notFound(
+        `No hay ninguna versión publicada de la plantilla ${parsed.data.templateCode}. Redáctala y publícala antes de emitir.`,
+      ),
+    );
+  }
+
+  const decision = can(actor, 'documents.document.issue', {
+    kind: 'GeneratedDocument',
+    legalEntityId: plantilla.legalEntityId,
+  });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  return emitirDocumento(actor, parsed.data);
+}
+
+/**
+ * Compone y guarda un documento a partir de la versión publicada de una
+ * plantilla, **sin comprobar `documents.document.issue`**. Lo llama
+ * `issueDocument` tras su propio permiso, y lo llaman los actos que emiten sobre
+ * otra facultad (una constancia de asistencia, que va con `events.constancy.issue`).
+ * El permiso del acto lo pone quien llama; aquí vive todo lo que no debe
+ * divergir: el folio bajo cerrojo, la huella, el archivo autocontenido y la
+ * bitácora.
+ */
+export async function emitirDocumento(
   actor: ActorContext,
   input: IssueDocumentInput,
 ): Promise<UseCaseResult<IssuedDocument>> {
@@ -128,11 +172,6 @@ export async function issueDocument(
     );
   }
 
-  const decision = can(actor, 'documents.document.issue', {
-    kind: 'GeneratedDocument',
-    legalEntityId: plantilla.legalEntityId,
-  });
-  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
   const emisor = actor.userId;
   if (emisor === null || emisor === undefined) {
     return fail(errors.forbidden('Un documento institucional lo emite una persona con cuenta, no un proceso anónimo.'));

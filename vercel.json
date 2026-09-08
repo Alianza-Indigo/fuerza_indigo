@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/api/v1/cron/billing-reconcile",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/v1/cron/clarification-due",
@@ -17,15 +17,15 @@
     },
     {
       "path": "/api/v1/cron/content-schedule",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/v1/cron/dispatch",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/v1/cron/health",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/v1/cron/membership-expiry",

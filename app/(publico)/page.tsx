@@ -217,10 +217,10 @@ export default async function InicioPage() {
       <section className="relative isolate border-b border-cyan-400/30">
         <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_18%_20%,rgba(102,51,255,.32),transparent_31%),radial-gradient(circle_at_82%_32%,rgba(0,196,255,.2),transparent_29%),linear-gradient(120deg,#07072d_0%,#071548_55%,#020b2d_100%)]" />
         <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-25 [background-image:linear-gradient(rgba(76,151,255,.15)_1px,transparent_1px),linear-gradient(90deg,rgba(76,151,255,.15)_1px,transparent_1px)] [background-size:56px_56px]" />
-        <div className="mx-auto grid min-h-[680px] w-full max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-24">
+        <div className="mx-auto grid min-h-[680px] w-full max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
           <div className="relative z-10">
             <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-300">Fuerza Índigo</p>
-            <h1 className="mt-4 max-w-[15ch] text-[clamp(2.55rem,5.3vw,5.7rem)] font-black uppercase leading-[.94] tracking-[-.035em] text-white">
+            <h1 className="mt-4 max-w-[17ch] text-[clamp(2.55rem,4.2vw,4rem)] font-black uppercase leading-[.94] tracking-[-.035em] text-white">
               Sindicato Unión de Inclusión y Derechos Neurodivergentes
             </h1>
             <p className="mt-7 max-w-[28ch] text-2xl font-black uppercase leading-tight text-white sm:text-3xl">
@@ -235,7 +235,7 @@ export default async function InicioPage() {
             </div>
           </div>
 
-          <div className="relative min-h-[360px] lg:min-h-[540px]">
+          <div className="relative aspect-[3/2] w-full">
             <div aria-hidden="true" className="absolute -inset-4 rounded-[3rem] bg-gradient-to-br from-violet-600/25 via-transparent to-cyan-400/20 blur-2xl" />
             <Image
               src="/landing/02-hero-comunidad-fuerza-indigo.png"
@@ -243,7 +243,7 @@ export default async function InicioPage() {
               fill
               preload
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="rounded-[2rem] border border-cyan-300/25 object-cover object-center shadow-2xl"
+              className="rounded-[2rem] border border-cyan-300/25 object-contain object-center shadow-2xl"
             />
           </div>
         </div>

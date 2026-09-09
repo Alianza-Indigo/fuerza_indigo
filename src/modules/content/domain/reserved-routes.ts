@@ -26,10 +26,12 @@
 /** Rutas que sirven **lo suyo**: el gestor no puede publicar en ellas. */
 export const RUTAS_DEL_CODIGO: readonly string[] = [
   'accesibilidad',
+  'afiliate/:param',
   'buscar',
   'constancias',
   'constancias/:param',
   'contacto',
+  'delegaciones',
   'directorio',
   'directorio/:param',
   'eventos',
@@ -37,8 +39,10 @@ export const RUTAS_DEL_CODIGO: readonly string[] = [
   'herramientas',
   'herramientas/logotipo/:param',
   'legales/accesibilidad',
+  'que-es-fuerza-indigo',
   'sin-conexion',
   'solicitar-apoyo',
+  'sindicato-y-derechos',
   'transparencia',
   'verificar',
   'verificar/:param',

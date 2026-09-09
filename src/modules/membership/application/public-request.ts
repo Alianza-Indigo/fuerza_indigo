@@ -17,6 +17,7 @@ import type { UseCaseResult } from '@/platform/kernel/result';
  */
 
 export const PUBLIC_MEMBERSHIP_MODALITIES = ['UNION_MEMBER', 'HONORARY_AFFILIATE'] as const;
+export const PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE = 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE';
 
 function optionalText<T extends z.ZodType<string, string>>(schema: T) {
   return z.preprocess(
@@ -171,5 +172,6 @@ export async function submitPublicMembershipRequest(
       acceptedPrivacyNotice: true,
     },
     context,
+    { privacyNoticeCode: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE },
   );
 }

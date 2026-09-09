@@ -328,6 +328,70 @@ async function seedPublicIntakePrivacyNotice(): Promise<void> {
       },
     });
   }
+
+  // La solicitud de afiliación recaba una CURP. No puede quedar amparada por
+  // el aviso de contacto general, que dice expresamente que no pide una
+  // identificación oficial. Este texto separado nombra los datos y la finalidad
+  // reales. Nace en borrador: publicarlo sigue siendo un acto de la organización.
+  const fuerza = entidades.find((entidad) => entidad.code === 'FUERZA_INDIGO');
+  if (fuerza === undefined) throw new Error('No existe Fuerza Índigo para crear el aviso de afiliación pública.');
+
+  const avisoDeAfiliacion = await prisma.consentVersion.findUnique({
+    where: { code_version: { code: 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE', version: 1 } },
+  });
+
+  if (avisoDeAfiliacion === null) {
+    await prisma.consentVersion.create({
+      data: {
+        code: 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE',
+        version: 1,
+        legalEntityId: fuerza.id,
+        title: 'Aviso de privacidad de la solicitud pública de afiliación — Fuerza Índigo',
+        requiredFor: [],
+        effectiveFrom: new Date(0),
+        status: 'DRAFT',
+        bodyMarkdown: [
+          '## Qué datos recabamos',
+          '',
+          'Cuando envías una solicitud inicial de afiliación guardamos:',
+          '',
+          '- tu nombre y apellidos;',
+          '- tu Clave Única de Registro de Población (CURP);',
+          '- tu correo electrónico y, si lo proporcionas, tu teléfono;',
+          '- el estado y municipio desde donde solicitas la afiliación;',
+          '- tu ocupación actual y la modalidad de afiliación elegida;',
+          '- para afiliación sindical, la forma en que trabajas, tu declaración de tener 15 años o más y cómo se relaciona tu actividad con personas neurodivergentes;',
+          '- para afiliación honoraria, el perfil desde el que te vinculas y el contexto opcional que decidas compartir;',
+          '- la fecha y hora del envío y una huella criptográfica del origen que sirve sólo para limitar envíos automatizados y no permite reconstruir tu dirección.',
+          '',
+          'No pedimos diagnóstico, historial clínico, domicilio completo ni documentos en esta etapa.',
+          '',
+          '## Para qué los usamos',
+          '',
+          'Para identificar tu solicitud, revisar si corresponde a la modalidad elegida, contactarte, preparar tu acceso al portal y continuar contigo el expediente formal de afiliación. No se usan con fines publicitarios.',
+          '',
+          '## Quién los ve',
+          '',
+          'Únicamente el personal de Fuerza Índigo con nombramiento vigente y facultad expresa para atender la bandeja institucional. Cada lectura queda registrada con la identidad de quien leyó y la fecha.',
+          '',
+          '## Cuánto tiempo los conservamos',
+          '',
+          'La solicitud inicial se conserva mientras se tramita y después conforme a la política de conservación aplicable. El texto original no se modifica.',
+          '',
+          '## Cómo ejerces tus derechos',
+          '',
+          'Puedes pedir acceso, rectificación, cancelación u oposición respecto de estos datos escribiendo al correo de contacto de Fuerza Índigo y citando el folio que recibiste.',
+        ].join('\n'),
+        plainLanguageSummary: [
+          'Guardamos tu nombre, CURP, medios de contacto, territorio, ocupación y las respuestas propias de la modalidad que elegiste.',
+          'Los usamos para identificar la solicitud, revisarla, contactarte y continuar el expediente formal de afiliación.',
+          'No pedimos diagnóstico, historial clínico, domicilio completo ni documentos en esta etapa.',
+          'Sólo los ve el personal autorizado de Fuerza Índigo y queda registrado quién leyó.',
+          'Puedes pedir acceso, corrección o cancelación de tus datos usando el folio de la solicitud.',
+        ].join('\n'),
+      },
+    });
+  }
 }
 
 /**

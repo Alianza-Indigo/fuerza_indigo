@@ -7,6 +7,7 @@ export {
   PUBLIC_INTAKE_NOTICE_CODE,
   type SubmitRequestInput,
   type IntakeContext,
+  type IntakeOptions,
 } from './application/intake';
 export {
   confirmRouting,

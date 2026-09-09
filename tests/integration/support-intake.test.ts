@@ -8,7 +8,10 @@ import {
   resolveRequest,
   submitRequest,
 } from '@/modules/support';
-import { submitPublicMembershipRequest } from '@/modules/membership';
+import {
+  PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE,
+  submitPublicMembershipRequest,
+} from '@/modules/membership';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { contextoDe, crearPersonaConCuenta, entidadPrincipal, nombrar, type PersonaDePrueba } from './helpers/fixtures';
 
@@ -49,9 +52,12 @@ function envio(overrides: Record<string, unknown> = {}) {
 const CONTEXTO = { correlationId: 'prueba-entrada', ipHash: 'huella-de-origen-1' };
 
 /** Publica el aviso de privacidad de una entidad, que es acto de la organización. */
-async function publicarAviso(legalEntityId: string): Promise<void> {
+async function publicarAviso(
+  legalEntityId: string,
+  code: string = PUBLIC_INTAKE_NOTICE_CODE,
+): Promise<void> {
   await base.prisma.consentVersion.updateMany({
-    where: { code: PUBLIC_INTAKE_NOTICE_CODE, legalEntityId },
+    where: { code, legalEntityId },
     data: { status: 'PUBLISHED' },
   });
 }
@@ -155,7 +161,9 @@ describe('con aviso publicado', () => {
     expect(JSON.stringify(acuse.payload)).toContain(guardado.contactEmail ?? '');
   });
 
-  it('recibe una solicitud inicial de afiliación con CURP y ocupación bajo el mismo aviso', async () => {
+  it('recibe una solicitud inicial de afiliación con CURP y ocupación bajo su aviso específico', async () => {
+    await publicarAviso(fuerzaId, PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE);
+
     const resultado = await submitPublicMembershipRequest(
       {
         modality: 'UNION_MEMBER',

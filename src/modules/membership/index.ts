@@ -183,5 +183,6 @@ export {
   submitPublicMembershipRequest,
   publicMembershipRequestSchema,
   PUBLIC_MEMBERSHIP_MODALITIES,
+  PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE,
   type PublicMembershipRequestInput,
 } from './application/public-request';

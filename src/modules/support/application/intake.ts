@@ -145,6 +145,14 @@ export interface IntakeContext {
   readonly ipHash: string | null;
 }
 
+export interface IntakeOptions {
+  /**
+   * Aviso que ampara esta entrada. Sólo lo fija otro caso de uso del servidor;
+   * nunca llega desde el formulario público.
+   */
+  readonly privacyNoticeCode?: string | undefined;
+}
+
 function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
   for (const issue of error.issues) (salida[issue.path.join('.') || 'form'] ??= []).push(issue.message);
@@ -179,6 +187,7 @@ async function envíosRecientes(originFingerprint: string): Promise<number> {
 export async function submitRequest(
   input: SubmitRequestInput,
   context: IntakeContext,
+  options: IntakeOptions = {},
 ): Promise<UseCaseResult<{ folio: string }>> {
   const parsed = submitRequestSchema.safeParse(input);
   if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
@@ -209,8 +218,9 @@ export async function submitRequest(
   });
   if (entidad === null) return fail(errors.notFound('entidad jurídica inexistente'));
 
+  const privacyNoticeCode = options.privacyNoticeCode ?? PUBLIC_INTAKE_NOTICE_CODE;
   const aviso = await db().consentVersion.findFirst({
-    where: { code: PUBLIC_INTAKE_NOTICE_CODE, legalEntityId: entidad.id, status: 'PUBLISHED' },
+    where: { code: privacyNoticeCode, legalEntityId: entidad.id, status: 'PUBLISHED' },
     orderBy: { version: 'desc' },
     select: { id: true, version: true },
   });
@@ -218,7 +228,7 @@ export async function submitRequest(
     return fail(
       errors.ruleViolation(
         'Ahora mismo no podemos recibir tu mensaje por este formulario. Escríbenos directamente y te atendemos igual.',
-        `no hay aviso de privacidad publicado (${PUBLIC_INTAKE_NOTICE_CODE}) para ${propuesta.entidad}: recabar datos personales sin él incumpliría la ley`,
+        `no hay aviso de privacidad publicado (${privacyNoticeCode}) para ${propuesta.entidad}: recabar datos personales sin él incumpliría la ley`,
       ),
     );
   }

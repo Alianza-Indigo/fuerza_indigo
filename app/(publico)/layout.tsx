@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { after } from 'next/server';
@@ -8,24 +9,16 @@ import { classifyUserAgent } from '@/platform/kernel/ids';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Marco del sitio público.
- *
- * La navegación funciona **sin JavaScript**: en móvil es un `<details>` nativo,
- * que abre, cierra, se anuncia solo a los lectores de pantalla y responde al
- * teclado sin una línea de guion. Un menú hecho con estado de React sería más
- * código para hacer peor lo que el navegador ya hace bien, y dejaría fuera a
- * quien navega con la red caída a media carga (PRD §5.4).
- *
- * Desde 360 px: el menú colapsa por debajo de `md` y se despliega en horizontal
- * por encima. No hay ningún punto intermedio en el que se corte.
- *
- * La medición agregada se registra aquí y no en cada pantalla: el marco es lo
- * único por lo que pasan todas las rutas públicas, y repartirla por las páginas
- * garantizaría que la siguiente que alguien escriba no mida nada. Va dentro de
- * `after()`, así que ocurre **después** de responder: quien lee la página no
- * espera a que se escriba un contador.
- */
+const PRIMARY_NAV = [
+  { href: '/', label: 'Inicio' },
+  { href: '/que-es-fuerza-indigo', label: 'El sindicato' },
+  { href: '/#formas-de-participar', label: 'Formas de participar' },
+  { href: '/sindicato-y-derechos', label: 'Defensa' },
+  { href: '/herramientas', label: 'Herramientas' },
+  { href: '/delegaciones', label: 'Delegaciones' },
+  { href: '/transparencia', label: 'Transparencia' },
+] as const;
+
 export default async function PublicoLayout({ children }: { children: ReactNode }) {
   const cabeceras = await headers();
   const ruta = cabeceras.get('x-pathname') ?? '/';
@@ -40,95 +33,53 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-b border-[var(--color-line)] bg-[var(--color-surface-raised)]">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex min-h-11 items-center gap-2 font-bold tracking-tight">
-            <span
-              aria-hidden="true"
-              className="inline-block size-6 rounded-md bg-[var(--color-accent)]"
-            />
-            <span>Fuerza Índigo</span>
+      <header className="fi-dark relative z-40 border-b border-cyan-300/25 bg-[#030923] text-white shadow-[0_10px_30px_rgba(0,0,0,.18)]">
+        <div className="mx-auto flex min-h-20 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex min-h-11 shrink-0 items-center gap-3 font-black uppercase leading-none tracking-tight">
+            <Image src="/landing/fuerza-indigo-mark.webp" alt="" width={43} height={40} sizes="43px" className="h-10 w-auto" />
+            <span className="text-[.92rem]">Fuerza<br />Índigo</span>
           </Link>
 
-          <nav aria-label="Principal" className="hidden md:block">
+          <nav aria-label="Principal" className="hidden xl:block">
             <ul className="flex items-center gap-1">
-              {SITE_NAV.map((seccion) => (
-                <li key={seccion.title} className="relative">
-                  <details className="group">
-                    <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-lg px-3 font-medium hover:bg-[var(--color-accent-soft)]">
-                      {seccion.title}
-                      <span aria-hidden="true" className="text-xs">
-                        ▾
-                      </span>
-                    </summary>
-                    <ul className="absolute left-0 z-20 mt-1 w-72 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-raised)] p-2 shadow-[var(--shadow-overlay)]">
-                      {seccion.items.map((item) => (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            className="block rounded-lg px-3 py-2 hover:bg-[var(--color-accent-soft)]"
-                          >
-                            <span className="block font-medium">{item.label}</span>
-                            <span className="block text-sm text-[var(--color-ink-soft)]">{item.description}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
+              {PRIMARY_NAV.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-blue-100/80 transition hover:bg-white/10 hover:text-white">
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/acceso"
-              className="hidden min-h-11 items-center rounded-lg border border-[var(--color-line-strong)] px-4 font-medium sm:inline-flex"
-            >
+            <Link href="/acceso" className="hidden min-h-11 items-center rounded-lg border border-cyan-300/45 px-4 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex">
               Entrar
             </Link>
-            <Link
-              href="/afiliate/agremiado"
-              className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-4 font-medium text-[var(--color-ink-inverse)]"
-            >
-              Afíliate
+            <Link href="/afiliate/agremiado" className="inline-flex min-h-11 items-center rounded-lg bg-gradient-to-r from-violet-600 to-cyan-400 px-4 text-sm font-bold text-white shadow-[0_0_24px_rgba(0,203,255,.2)] transition hover:brightness-110">
+              Afíliate sin costo
             </Link>
           </div>
         </div>
 
-        {/* Navegación en móvil: nativa, sin JavaScript. */}
-        <nav aria-label="Principal en móvil" className="border-t border-[var(--color-line)] md:hidden">
+        <nav aria-label="Principal en móvil" className="border-t border-cyan-300/20 xl:hidden">
           <details className="group">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 font-medium">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 text-sm font-semibold sm:px-6 lg:px-8">
               <span>Menú</span>
-              <span aria-hidden="true" className="group-open:hidden">
-                ▾
-              </span>
-              <span aria-hidden="true" className="hidden group-open:inline">
-                ▴
-              </span>
+              <span aria-hidden="true" className="group-open:hidden">▾</span>
+              <span aria-hidden="true" className="hidden group-open:inline">▴</span>
             </summary>
-            <div className="space-y-4 border-t border-[var(--color-line)] px-4 py-4">
-              {SITE_NAV.map((seccion) => (
-                <div key={seccion.title}>
-                  <p className="text-sm font-semibold text-[var(--color-ink-soft)]">{seccion.title}</p>
-                  <ul className="mt-1">
-                    {seccion.items.map((item) => (
-                      <li key={item.href}>
-                        <Link href={item.href} className="flex min-h-11 items-center rounded-lg px-2 font-medium">
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              <Link
-                href="/acceso"
-                className="inline-flex min-h-11 items-center rounded-lg border border-[var(--color-line-strong)] px-4 font-medium"
-              >
-                Entrar
-              </Link>
+            <div className="border-t border-cyan-300/20 bg-[#050d31] px-4 py-4 sm:px-6 lg:px-8">
+              <ul className="grid gap-1 sm:grid-cols-2">
+                {PRIMARY_NAV.map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} className="flex min-h-11 items-center rounded-lg px-3 font-medium text-blue-100/80 hover:bg-white/10 hover:text-white">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/acceso" className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-cyan-300/45 px-4 font-medium sm:hidden">Entrar</Link>
             </div>
           </details>
         </nav>
@@ -136,19 +87,24 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
 
       <div className="flex-1">{children}</div>
 
-      <footer className="mt-16 border-t border-[var(--color-line)] bg-[var(--color-surface-raised)]">
-        <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <footer className="fi-dark border-t border-cyan-300/25 bg-[#02071e] text-white">
+        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(4,1fr)]">
+            <div>
+              <Link href="/" className="inline-flex min-h-11 items-center gap-3 font-black uppercase leading-none tracking-tight">
+                <Image src="/landing/fuerza-indigo-mark.webp" alt="" width={43} height={40} sizes="43px" className="h-10 w-auto" />
+                <span>Fuerza<br />Índigo</span>
+              </Link>
+              <p className="mt-4 max-w-xs text-sm text-blue-100/65">Diversidad hoy. Derechos siempre.</p>
+            </div>
+
             {SITE_NAV.map((seccion) => (
               <div key={seccion.title}>
-                <h2 className="font-semibold">{seccion.title}</h2>
+                <h2 className="font-bold text-white">{seccion.title}</h2>
                 <ul className="mt-3 space-y-1">
                   {seccion.items.map((item) => (
                     <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className="inline-flex min-h-11 items-center text-[var(--color-ink-soft)] underline-offset-4 hover:underline"
-                      >
+                      <Link href={item.href} className="inline-flex min-h-11 items-center text-sm text-blue-100/65 underline-offset-4 hover:text-white hover:underline">
                         {item.label}
                       </Link>
                     </li>
@@ -158,28 +114,22 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
             ))}
           </div>
 
-          <div className="mt-10 border-t border-[var(--color-line)] pt-6">
+          <div className="mt-10 border-t border-cyan-300/20 pt-6">
             <ul className="flex flex-wrap gap-x-6">
               {LEGAL_NAV.map((item) => (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="inline-flex min-h-11 items-center text-sm text-[var(--color-ink-soft)] underline-offset-4 hover:underline"
-                  >
+                  <Link href={item.href} className="inline-flex min-h-11 items-center text-sm text-blue-100/65 underline-offset-4 hover:text-white hover:underline">
                     {item.label}
                   </Link>
                 </li>
               ))}
               <li>
-                <Link
-                  href="/accesibilidad"
-                  className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--color-accent-ink)] underline underline-offset-4"
-                >
+                <Link href="/accesibilidad" className="inline-flex min-h-11 items-center text-sm font-semibold text-cyan-300 underline underline-offset-4">
                   Ajustar cómo se ve este sitio
                 </Link>
               </li>
             </ul>
-            <p className="mt-4 max-w-[var(--width-prose)] text-sm text-[var(--color-ink-soft)]">
+            <p className="mt-4 max-w-[var(--width-prose)] text-sm text-blue-100/55">
               Sindicato Unión de Inclusión y Derechos Neurodivergentes «Fuerza Índigo» y Alianza Índigo A. C.
             </p>
           </div>

@@ -328,3 +328,13 @@
     }
   }
 }
+
+/* Las superficies institucionales oscuras conservan un foco cian visible,
+ * incluso cuando la preferencia general de la persona es el tema claro. */
+.fi-dark {
+  color-scheme: dark;
+}
+
+.fi-dark :focus-visible {
+  outline-color: var(--color-cian-500);
+}

@@ -60,7 +60,7 @@ export const SITE_NAV: readonly NavSection[] = [
       {
         href: '/afiliate/agremiado',
         label: 'Afíliate como agremiado',
-        description: 'Requisitos, derechos, cuota y cómo empezar.',
+        description: 'Requisitos, derechos y cómo empezar.',
         module: 'sindicato',
       },
       {

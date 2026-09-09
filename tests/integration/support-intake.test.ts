@@ -8,6 +8,7 @@ import {
   resolveRequest,
   submitRequest,
 } from '@/modules/support';
+import { submitPublicMembershipRequest } from '@/modules/membership';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { contextoDe, crearPersonaConCuenta, entidadPrincipal, nombrar, type PersonaDePrueba } from './helpers/fixtures';
 
@@ -152,6 +153,43 @@ describe('con aviso publicado', () => {
       select: { payload: true },
     });
     expect(JSON.stringify(acuse.payload)).toContain(guardado.contactEmail ?? '');
+  });
+
+  it('recibe una solicitud inicial de afiliación con CURP y ocupación bajo el mismo aviso', async () => {
+    const resultado = await submitPublicMembershipRequest(
+      {
+        modality: 'UNION_MEMBER',
+        givenName: 'María',
+        familyName: 'Gómez',
+        secondFamilyName: '',
+        curp: 'GODE561231MDFRRN09',
+        email: 'maria.afiliacion@ejemplo.mx',
+        phone: '',
+        territory: 'Ciudad de México, Coyoacán',
+        occupation: 'Docente',
+        workRelation: 'SUBORDINATE',
+        neurodivergentConnection: 'Acompaño a estudiantes neurodivergentes dentro del aula.',
+        honoraryProfile: '',
+        context: '',
+        ageConfirmed: true,
+        acceptedPrivacyNotice: true,
+      },
+      { correlationId: 'prueba-afiliacion-publica', ipHash: 'huella-afiliacion' },
+    );
+
+    expect(resultado.ok, resultado.ok ? '' : resultado.error.message).toBe(true);
+    if (!resultado.ok) return;
+
+    const guardada = await base.prisma.supportRequest.findUniqueOrThrow({
+      where: { folio: resultado.data.folio },
+      select: { legalEntityId: true, subject: true, narrative: true, territoryHint: true },
+    });
+
+    expect(guardada.legalEntityId).toBe(fuerzaId);
+    expect(guardada.subject).toBe('Solicitud inicial de afiliación sindical');
+    expect(guardada.narrative).toContain('CURP: GODE561231MDFRRN09');
+    expect(guardada.narrative).toContain('OCUPACIÓN: Docente');
+    expect(guardada.territoryHint).toBe('Ciudad de México, Coyoacán');
   });
 
   it('el folio no es correlativo: dos envíos seguidos no dejan adivinar el volumen', async () => {

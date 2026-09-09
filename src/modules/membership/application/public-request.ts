@@ -1,0 +1,175 @@
+import { z } from 'zod';
+
+import { submitRequest, type IntakeContext } from '@/modules/support';
+import { errors } from '@/platform/errors/app-error';
+import type { UseCaseResult } from '@/platform/kernel/result';
+
+/**
+ * Solicitud inicial de afiliación desde el sitio público.
+ *
+ * La afiliación formal sigue viviendo en `MembershipApplication`: requiere una
+ * cuenta, aceptación estatutaria y revisión humana. Esta entrada no pretende
+ * sustituir ese expediente. Abre un folio trazable para que la Secretaría
+ * verifique el contacto, invite a la persona y le permita continuar el trámite
+ * sin recabar aquí documentos clínicos. La CURP se solicita por instrucción
+ * institucional para identificar el expediente y queda bajo el aviso de
+ * privacidad de la entrada pública.
+ */
+
+export const PUBLIC_MEMBERSHIP_MODALITIES = ['UNION_MEMBER', 'HONORARY_AFFILIATE'] as const;
+
+function optionalText<T extends z.ZodType<string, string>>(schema: T) {
+  return z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    schema.optional(),
+  );
+}
+
+export const publicMembershipRequestSchema = z
+  .object({
+    modality: z.enum(PUBLIC_MEMBERSHIP_MODALITIES, {
+      error: () => 'Elige una modalidad de afiliación.',
+    }),
+    givenName: z.string().trim().min(1, { error: () => 'Escribe tu nombre.' }).max(80),
+    familyName: z.string().trim().min(1, { error: () => 'Escribe tu primer apellido.' }).max(80),
+    secondFamilyName: optionalText(z.string().trim().max(80)),
+    curp: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z][AEIOU][A-Z]{2}\d{2}(?:0[1-9]|1[0-2])(?:[0-2]\d|3[01])[HM](?:AS|BC|BS|CC|CL|CM|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z0-9]\d$/, {
+        error: () => 'Revisa la CURP: debe tener los 18 caracteres del documento oficial.',
+      }),
+    email: z.string().trim().toLowerCase().pipe(z.email({ error: () => 'Escribe un correo electrónico válido.' }).max(254)),
+    phone: optionalText(
+      z
+        .string()
+        .trim()
+        .max(30)
+        .regex(/^[0-9+()\s-]{7,30}$/, {
+          error: () => 'El teléfono sólo lleva números, espacios y los signos + ( ) -.',
+        }),
+    ),
+    territory: z.string().trim().min(2, { error: () => 'Escribe el estado o municipio desde donde te afilias.' }).max(160),
+    occupation: z.string().trim().min(2, { error: () => 'Escribe tu ocupación actual.' }).max(160),
+    workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT', 'AUTONOMOUS', 'SELF_EMPLOYED'])),
+    neurodivergentConnection: optionalText(
+      z
+        .string()
+        .trim()
+        .min(30, { error: () => 'Cuéntanos un poco más: con treinta caracteres basta para empezar.' })
+        .max(2000),
+    ),
+    honoraryProfile: optionalText(z.enum(['NEURODIVERGENT_PERSON', 'FAMILY_MEMBER', 'CAREGIVER'])),
+    context: optionalText(z.string().trim().max(2000)),
+    ageConfirmed: z.boolean(),
+    acceptedPrivacyNotice: z.literal(true, {
+      error: () => 'Necesitamos que aceptes el aviso de privacidad para recibir tu solicitud.',
+    }),
+  })
+  .superRefine((value, refinement) => {
+    if (value.modality === 'UNION_MEMBER') {
+      if (!value.ageConfirmed) {
+        refinement.addIssue({
+          code: 'custom',
+          path: ['ageConfirmed'],
+          message: 'Para solicitar afiliación sindical debes confirmar que tienes 15 años o más.',
+        });
+      }
+      if (value.workRelation === undefined) {
+        refinement.addIssue({ code: 'custom', path: ['workRelation'], message: 'Elige cómo realizas tu trabajo.' });
+      }
+      if (value.neurodivergentConnection === undefined) {
+        refinement.addIssue({
+          code: 'custom',
+          path: ['neurodivergentConnection'],
+          message: 'Cuéntanos cómo se relaciona tu actividad con personas neurodivergentes.',
+        });
+      }
+    }
+
+    if (value.modality === 'HONORARY_AFFILIATE' && value.honoraryProfile === undefined) {
+      refinement.addIssue({
+        code: 'custom',
+        path: ['honoraryProfile'],
+        message: 'Elige el perfil desde el que solicitas la afiliación honoraria.',
+      });
+    }
+  });
+
+export type PublicMembershipRequestInput = z.input<typeof publicMembershipRequestSchema>;
+
+const WORK_RELATION_LABELS = {
+  SUBORDINATE: 'Trabajo con una persona empleadora',
+  INDEPENDENT: 'Trabajo de forma independiente',
+  AUTONOMOUS: 'Trabajo de forma autónoma',
+  SELF_EMPLOYED: 'Trabajo por cuenta propia',
+} as const;
+
+const HONORARY_PROFILE_LABELS = {
+  NEURODIVERGENT_PERSON: 'Persona neurodivergente',
+  FAMILY_MEMBER: 'Familiar de una persona neurodivergente',
+  CAREGIVER: 'Persona cuidadora',
+} as const;
+
+function validationDetails(error: z.ZodError): Record<string, string[]> {
+  const details: Record<string, string[]> = {};
+  for (const issue of error.issues) (details[issue.path.join('.') || 'form'] ??= []).push(issue.message);
+  return details;
+}
+
+function requestNarrative(data: z.output<typeof publicMembershipRequestSchema>): string {
+  if (data.modality === 'UNION_MEMBER') {
+    return [
+      'MODALIDAD: PERSONA AGREMIADA',
+      `CURP: ${data.curp}`,
+      `OCUPACIÓN: ${data.occupation}`,
+      `FORMA DE TRABAJO: ${data.workRelation === undefined ? '' : WORK_RELATION_LABELS[data.workRelation]}`,
+      'VÍNCULO CON LA COMUNIDAD NEURODIVERGENTE:',
+      data.neurodivergentConnection ?? '',
+      'CONFIRMACIÓN DE EDAD: La persona declaró tener 15 años o más.',
+      'SIGUIENTE PASO: Verificar contacto, invitar como solicitante y continuar el expediente formal en el portal.',
+    ].join('\n\n');
+  }
+
+  return [
+    'MODALIDAD: AFILIACIÓN HONORARIA',
+    `CURP: ${data.curp}`,
+    `OCUPACIÓN: ${data.occupation}`,
+    `PERFIL: ${data.honoraryProfile === undefined ? '' : HONORARY_PROFILE_LABELS[data.honoraryProfile]}`,
+    ...(data.context === undefined ? [] : ['CONTEXTO OPCIONAL:', data.context]),
+    'SIGUIENTE PASO: Verificar contacto, invitar como solicitante y continuar el expediente formal en el portal.',
+  ].join('\n\n');
+}
+
+export async function submitPublicMembershipRequest(
+  input: PublicMembershipRequestInput,
+  context: IntakeContext,
+): Promise<UseCaseResult<{ folio: string }>> {
+  const parsed = publicMembershipRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: errors.validation(validationDetails(parsed.error)) };
+  }
+
+  const data = parsed.data;
+  const contactName = [data.givenName, data.familyName, data.secondFamilyName].filter(Boolean).join(' ');
+
+  return submitRequest(
+    {
+      requestType: 'GENERAL_CONTACT',
+      legalEntity: 'FUERZA_INDIGO',
+      contactName,
+      contactEmail: data.email,
+      ...(data.phone === undefined ? {} : { contactPhone: data.phone }),
+      preferredChannel: 'EMAIL',
+      subject:
+        data.modality === 'UNION_MEMBER'
+          ? 'Solicitud inicial de afiliación sindical'
+          : 'Solicitud inicial de afiliación honoraria',
+      narrative: requestNarrative(data),
+      territoryHint: data.territory,
+      acceptedPrivacyNotice: true,
+    },
+    context,
+  );
+}

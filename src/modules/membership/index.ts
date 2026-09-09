@@ -179,3 +179,9 @@ export {
   type Pendiente,
   type UrgenciaDePendiente,
 } from './application/personal-agenda';
+export {
+  submitPublicMembershipRequest,
+  publicMembershipRequestSchema,
+  PUBLIC_MEMBERSHIP_MODALITIES,
+  type PublicMembershipRequestInput,
+} from './application/public-request';

@@ -200,8 +200,8 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow?: string; title
   return (
     <header className="mx-auto max-w-3xl text-center">
       {eyebrow !== undefined && <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">{eyebrow}</p>}
-      <h2 className="mt-2 text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">{title}</h2>
-      {description !== undefined && <p className="mx-auto mt-3 max-w-2xl text-base text-blue-100/75 sm:text-lg">{description}</p>}
+      <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white sm:text-3xl">{title}</h2>
+      {description !== undefined && <p className="mx-auto mt-2 max-w-2xl text-base text-blue-100/75">{description}</p>}
     </header>
   );
 }
@@ -210,7 +210,7 @@ export default async function InicioPage() {
   const noticias = await publishedList('NEWS', { limit: 3 });
 
   return (
-    <main id="contenido" className="fi-dark overflow-hidden bg-[#030923] text-white">
+    <main id="contenido" className="fi-dark overflow-hidden bg-[linear-gradient(180deg,#030923_0%,#061132_48%,#030923_100%)] text-white">
       <StructuredData data={organizacion()} />
       <StructuredData data={sitioWeb()} />
 
@@ -235,15 +235,15 @@ export default async function InicioPage() {
             </div>
           </div>
 
-          <div className="relative aspect-[3/2] w-full">
-            <div aria-hidden="true" className="absolute -inset-4 rounded-[3rem] bg-gradient-to-br from-violet-600/25 via-transparent to-cyan-400/20 blur-2xl" />
+          <div className="relative aspect-[3/2] w-full lg:-ml-8 lg:w-[112%]">
+            <div aria-hidden="true" className="absolute inset-[14%] -z-10 rounded-full bg-indigo-500/20 blur-3xl" />
             <Image
               src="/landing/02-hero-comunidad-fuerza-indigo.png"
               alt="Grupo diverso de personas trabajadoras reunidas con confianza y solidaridad"
               fill
               preload
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="rounded-[2rem] border border-cyan-300/25 object-contain object-center shadow-2xl"
+              className="fi-hero-community object-contain object-center"
             />
           </div>
         </div>
@@ -264,73 +264,73 @@ export default async function InicioPage() {
         </div>
       </section>
 
-      <section id="formas-de-participar" className="border-b border-cyan-400/25 px-4 py-16 sm:px-6 lg:px-8">
+      <section id="formas-de-participar" className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
           <SectionTitle title="Tres formas de formar parte" description="Cada vínculo tiene derechos, alcance y participación propios." />
-          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+          <div className="mt-7 grid gap-4 lg:grid-cols-3">
             {participation.map((option) => (
-              <article key={option.title} className="flex flex-col rounded-2xl border border-indigo-400/45 bg-gradient-to-b from-indigo-950/65 to-[#050d35] p-6 shadow-[0_18px_50px_rgba(0,0,0,.18)]">
+              <article key={option.title} className="flex flex-col rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-5 shadow-[0_14px_38px_rgba(0,0,0,.16)]">
                 <div className="flex items-center gap-4">
                   <span className="grid size-14 shrink-0 place-items-center rounded-xl border border-cyan-300/45 bg-cyan-300/5"><LandingIcon name={option.asset} className="size-11" /></span>
                   <h3 className="text-xl font-black uppercase tracking-tight">{option.title}</h3>
                 </div>
-                <p className="mt-5 flex-1 text-blue-100/75">{option.description}</p>
-                <ul className="mt-5 flex flex-wrap gap-2">
+                <p className="mt-4 flex-1 text-sm leading-relaxed text-blue-100/75">{option.description}</p>
+                <ul className="mt-4 flex flex-wrap gap-2">
                   {option.tags.map((tag) => <li key={tag} className="rounded-full border border-cyan-300/30 bg-cyan-300/5 px-3 py-1 text-xs font-semibold text-cyan-100">{tag}</li>)}
                 </ul>
-                <div className="mt-6"><PrimaryLink href={option.href}>{option.cta}</PrimaryLink></div>
+                <div className="mt-5"><PrimaryLink href={option.href}>{option.cta}</PrimaryLink></div>
               </article>
             ))}
           </div>
-          <p className="mt-7 text-center text-xl font-bold text-cyan-300">La afiliación a Fuerza Índigo es gratuita.</p>
+          <p className="mt-5 text-center text-lg font-bold text-cyan-300">La afiliación a Fuerza Índigo es gratuita.</p>
         </div>
       </section>
 
-      <section className="border-b border-cyan-400/25 bg-[#061039] px-4 py-16 sm:px-6 lg:px-8">
+      <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
           <SectionTitle title="Tu afiliación crea respaldo real" description="No ofrecemos promesas vacías: construimos capacidad colectiva." />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((benefit) => (
-              <article key={benefit.title} className="rounded-2xl border border-cyan-300/35 bg-[#06133f] p-6 text-center">
-                <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-cyan-300/5"><LandingIcon name={benefit.asset} className="size-12" /></span>
-                <h3 className="mt-5 text-lg font-black uppercase leading-tight">{benefit.title}</h3>
-                <p className="mt-3 text-sm text-blue-100/70">{benefit.description}</p>
+              <article key={benefit.title} className="rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-5 text-center">
+                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-cyan-300/5"><LandingIcon name={benefit.asset} className="size-11" /></span>
+                <h3 className="mt-4 text-base font-black uppercase leading-tight">{benefit.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-blue-100/70">{benefit.description}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-cyan-400/25 px-4 py-16 sm:px-6 lg:px-8">
+      <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
           <SectionTitle title="Afiliarte es sencillo y gratuito" />
-          <ol className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, index) => (
-              <li key={step.title} className="relative rounded-2xl border border-indigo-400/35 bg-indigo-950/35 p-5">
-                <span className="grid size-12 place-items-center rounded-xl border border-fuchsia-400/40 bg-fuchsia-400/5"><LandingIcon name={step.asset} className="size-9" /></span>
-                <p className="mt-4 text-sm font-black text-cyan-300">{index + 1}.</p>
+              <li key={step.title} className="relative rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-4">
+                <span className="grid size-11 place-items-center rounded-xl border border-fuchsia-400/35 bg-fuchsia-400/5"><LandingIcon name={step.asset} className="size-8" /></span>
+                <p className="mt-3 text-sm font-black text-cyan-300">{index + 1}.</p>
                 <h3 className="mt-1 font-bold">{step.title}</h3>
                 <p className="mt-2 text-sm text-blue-100/65">{step.description}</p>
                 {index < steps.length - 1 && <span aria-hidden="true" className="absolute -right-3 top-1/2 z-10 hidden text-2xl text-cyan-300 lg:block">›</span>}
               </li>
             ))}
           </ol>
-          <p className="mt-6 text-center text-blue-100/70">Tu ingreso queda identificado, documentado y sujeto a una revisión humana.</p>
+          <p className="mt-5 text-center text-sm text-blue-100/70">Tu ingreso queda identificado, documentado y sujeto a una revisión humana.</p>
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-b border-cyan-400/25 bg-[#071344] px-4 py-16 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div aria-hidden="true" className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(94,72,255,.35),transparent_62%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[.8fr_1.2fr]">
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-8 lg:grid-cols-[.8fr_1.2fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Defensa y acompañamiento</p>
             <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Cuando tus derechos están en riesgo, actuamos contigo.</h2>
-            <ul className="mt-7 space-y-4 text-blue-100/80">
+            <ul className="mt-5 space-y-3 text-blue-100/80">
               <li className="flex items-center gap-3"><Icon name="message" className="size-6 text-cyan-300" /> Orientación inicial</li>
               <li className="flex items-center gap-3"><Icon name="file" className="size-6 text-cyan-300" /> Acompañamiento documentado</li>
               <li className="flex items-center gap-3"><Icon name="users" className="size-6 text-cyan-300" /> Canalización y seguimiento</li>
             </ul>
-            <div className="mt-8"><PrimaryLink href="/solicitar-apoyo">Solicitar apoyo ahora</PrimaryLink></div>
+            <div className="mt-6"><PrimaryLink href="/solicitar-apoyo">Solicitar apoyo ahora</PrimaryLink></div>
             <p className="mt-4 text-xs text-blue-100/55">Fuerza Índigo no sustituye los servicios de emergencia.</p>
           </div>
           <div>
@@ -343,31 +343,31 @@ export default async function InicioPage() {
                 className="object-cover"
               />
             </div>
-            <blockquote className="mt-5 rounded-2xl border border-fuchsia-300/25 bg-[#040a2c]/70 px-6 py-5 text-center">
+            <blockquote className="mt-3 rounded-2xl border border-fuchsia-300/20 bg-[#071133]/80 px-5 py-4 text-center">
               <p className="text-xl font-semibold italic text-white">“Una comunidad organizada siempre tiene más fuerza.”</p>
             </blockquote>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-cyan-400/25 px-4 py-16 sm:px-6 lg:px-8">
+      <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
           <SectionTitle title="Tecnología que fortalece a la comunidad" description="Plataformas y recursos de acceso para impulsar tu desarrollo." />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {ecosystem.map((tool, index) => (
-              <Link key={tool.title} href={tool.href} className="group flex min-h-56 flex-col rounded-2xl border border-indigo-400/40 bg-indigo-950/30 p-5 text-center transition hover:-translate-y-1 hover:border-cyan-300/70">
-                <span className={`mx-auto grid size-16 place-items-center rounded-full border ${index % 2 === 0 ? 'border-cyan-300/45' : 'border-fuchsia-300/45'}`}><LandingIcon name={tool.asset} className="size-12" /></span>
-                <h3 className="mt-4 text-xl font-black">{tool.title}</h3>
+              <Link key={tool.title} href={tool.href} className="group flex flex-col rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-4 text-center transition hover:-translate-y-1 hover:border-cyan-300/60">
+                <span className={`mx-auto grid size-14 place-items-center rounded-full border ${index % 2 === 0 ? 'border-cyan-300/40' : 'border-fuchsia-300/40'}`}><LandingIcon name={tool.asset} className="size-10" /></span>
+                <h3 className="mt-3 text-lg font-black">{tool.title}</h3>
                 <p className="mt-2 flex-1 text-sm text-blue-100/65">{tool.description}</p>
-                <p className="mt-4 text-sm font-bold text-cyan-300 group-hover:underline">Conocer {tool.title} <Arrow /></p>
+                <p className="mt-3 text-sm font-bold text-cyan-300 group-hover:underline">Conocer {tool.title} <Arrow /></p>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-cyan-400/25 bg-[#061039] px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-7xl items-center gap-10 lg:grid-cols-[.7fr_1.3fr]">
+      <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-8 lg:grid-cols-[.7fr_1.3fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Membresía verificable</p>
             <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Una credencial que acredita tu vínculo vigente.</h2>
@@ -377,8 +377,8 @@ export default async function InicioPage() {
               <SecondaryLink href="/directorio">Conocer el directorio</SecondaryLink>
             </div>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="relative min-h-64 overflow-hidden rounded-2xl border border-cyan-300/50 shadow-[0_0_42px_rgba(0,212,255,.16)]">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-cyan-300/35 shadow-[0_0_38px_rgba(0,212,255,.12)]">
               <Image
                 src="/landing/04-credencial-sindical-ejemplo.png"
                 alt="Ejemplo visual de una credencial sindical de Fuerza Índigo"
@@ -387,7 +387,7 @@ export default async function InicioPage() {
                 className="object-contain"
               />
             </div>
-            <div className="rounded-2xl border border-indigo-400/40 bg-[#030a2c] p-6">
+            <div className="rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-5">
               <h3 className="font-bold">Directorio de personas agremiadas</h3>
               <div className="mt-4 rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm text-blue-100/55">Busca por nombre, profesión o estado…</div>
               <ul className="mt-5 space-y-3 text-sm text-blue-100/75">
@@ -400,8 +400,8 @@ export default async function InicioPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-b border-cyan-400/25 px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-7xl items-center gap-10 lg:grid-cols-[.6fr_1.4fr]">
+      <section className="relative overflow-hidden border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-8 lg:grid-cols-[.6fr_1.4fr]">
           <div className="relative z-10">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Territorio</p>
             <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Una red cerca de ti</h2>
@@ -413,38 +413,38 @@ export default async function InicioPage() {
             </ul>
             <div className="mt-7"><PrimaryLink href="/delegaciones">Encontrar mi delegación</PrimaryLink></div>
           </div>
-          <div className="relative min-h-72 lg:min-h-[430px]">
+          <div className="relative aspect-[2/1] w-full">
             <Image src="/landing/05-mapa-red-territorial.png" alt="Mapa ilustrado de México y América Latina unidos por una red índigo" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-contain" />
           </div>
         </div>
       </section>
 
-      <section className="border-b border-cyan-400/25 bg-[#061039] px-4 py-16 sm:px-6 lg:px-8">
+      <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
           <SectionTitle title="Transparencia y vida democrática" description="La fuerza colectiva también se construye con reglas de desarrollo, información pública y participación." />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {transparency.map((item) => (
-              <article key={item.title} className="rounded-2xl border border-indigo-400/40 bg-[#040c31] p-5">
+              <article key={item.title} className="rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-4">
                 <Icon name={item.icon} className="size-8 text-cyan-300" />
                 <h3 className="mt-4 font-bold">{item.title}</h3>
                 <p className="mt-2 text-sm text-blue-100/65">{item.description}</p>
               </article>
             ))}
           </div>
-          <p className="mt-8 text-center"><SecondaryLink href="/transparencia">Consultar transparencia</SecondaryLink></p>
+          <p className="mt-6 text-center"><SecondaryLink href="/transparencia">Consultar transparencia</SecondaryLink></p>
         </div>
       </section>
 
       {noticias.length > 0 && (
-        <section className="border-b border-cyan-400/25 px-4 py-16 sm:px-6 lg:px-8">
+        <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
           <div className="mx-auto w-full max-w-7xl">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div><p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Al día</p><h2 className="mt-2 text-3xl font-black uppercase tracking-tight">Actualidad de Fuerza Índigo</h2></div>
               <SecondaryLink href="/noticias">Ver todas las noticias</SecondaryLink>
             </div>
-            <div className="mt-8 grid gap-5 md:grid-cols-3">
+            <div className="mt-7 grid gap-4 md:grid-cols-3">
               {noticias.map((nota) => (
-                <article key={nota.slug} className="rounded-2xl border border-indigo-400/35 bg-indigo-950/30 p-6">
+                <article key={nota.slug} className="rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-5">
                   {nota.publishedAt !== null && <time dateTime={nota.publishedAt.toISOString()} className="text-xs font-bold uppercase tracking-wider text-cyan-300">{formatDate(nota.publishedAt)}</time>}
                   <h3 className="mt-3 text-xl font-bold"><Link href={`/noticias/${nota.slug}`} className="hover:underline">{nota.title}</Link></h3>
                   <p className="mt-3 text-sm text-blue-100/65">{nota.summary}</p>

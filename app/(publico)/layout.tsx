@@ -35,9 +35,8 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
     <div className="flex min-h-dvh flex-col">
       <header className="fi-dark relative z-40 border-b border-cyan-300/25 bg-[#030923] text-white shadow-[0_10px_30px_rgba(0,0,0,.18)]">
         <div className="mx-auto flex min-h-20 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex min-h-11 shrink-0 items-center gap-3 font-black uppercase leading-none tracking-tight">
-            <Image src="/landing/fuerza-indigo-mark.webp" alt="" width={43} height={40} sizes="43px" className="h-10 w-auto" />
-            <span className="text-[.92rem]">Fuerza<br />Índigo</span>
+          <Link href="/" className="flex min-h-11 shrink-0 items-center" aria-label="Fuerza Índigo, inicio">
+            <Image src="/landing/01-logotipo-fuerza-indigo.png" alt="" width={1983} height={793} sizes="150px" className="h-12 w-auto" />
           </Link>
 
           <nav aria-label="Principal" className="hidden xl:block">
@@ -91,9 +90,8 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(4,1fr)]">
             <div>
-              <Link href="/" className="inline-flex min-h-11 items-center gap-3 font-black uppercase leading-none tracking-tight">
-                <Image src="/landing/fuerza-indigo-mark.webp" alt="" width={43} height={40} sizes="43px" className="h-10 w-auto" />
-                <span>Fuerza<br />Índigo</span>
+              <Link href="/" className="inline-flex min-h-11 items-center" aria-label="Fuerza Índigo, inicio">
+                <Image src="/landing/01-logotipo-fuerza-indigo.png" alt="" width={1983} height={793} sizes="170px" className="h-14 w-auto" />
               </Link>
               <p className="mt-4 max-w-xs text-sm text-blue-100/65">Diversidad hoy. Derechos siempre.</p>
             </div>

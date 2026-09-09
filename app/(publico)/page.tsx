@@ -235,7 +235,7 @@ export default async function InicioPage() {
             </div>
           </div>
 
-          <div className="relative aspect-[3/2] w-full lg:-ml-8 lg:w-[112%]">
+          <div className="relative aspect-[3/2] w-full lg:-ml-12 lg:w-[130%]">
             <div aria-hidden="true" className="absolute inset-[14%] -z-10 rounded-full bg-indigo-500/20 blur-3xl" />
             <Image
               src="/landing/02-hero-comunidad-fuerza-indigo.png"

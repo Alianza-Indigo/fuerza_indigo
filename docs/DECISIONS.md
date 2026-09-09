@@ -2077,3 +2077,11 @@ El control nuevo `C-F9-05` vigila que la transparencia solo cuente (nada de `sel
 **Decisión.** `SUPERADMIN_SESSION_TTL_MS` pasa a diez años: prácticamente sin límite. La sesión deja de caducar por tiempo; su corte inmediato sigue siendo la revocación subiendo `SUPERADMIN_SESSION_VERSION` (que invalida al instante toda sesión raíz abierta) y el cierre de sesión explícito. Se actualiza la prueba de `tests/integration/superadmin.test.ts` y el PRD §4.4.
 
 **Consecuencias.** Es una reducción deliberada de seguridad: una cookie de sesión raíz robada sirve por mucho más tiempo. Se acepta por decisión de la persona usuaria. Se conserva lo que la contiene: cookie `HttpOnly`, `Secure` y `SameSite=strict`, revocación inmediata por versión, y auditoría de cada acceso.
+
+## ADR-0177 · Se retira la integración continua (`.github/workflows/calidad.yml`)
+
+**Contexto.** El flujo `Calidad` corría la puerta completa (fase, lint, tipos, unidad, integración, build, extremo a extremo) en cada push. Era andamiaje del **desarrollo** de la plataforma. Terminado ese desarrollo, la persona usuaria pidió retirarlo.
+
+**Decisión.** Se elimina `.github/workflows/calidad.yml`. Los controles de `scripts/phase/verify.mjs` que cotejaban ese flujo (C-F1-06, el de perfiles de Playwright y C-COH-14) dejan de exigir su existencia: tratan su ausencia como una decisión legítima, no como un defecto. La puerta local (`npm run phase:verify`, `lint`, `typecheck`, pruebas, `build`) sigue disponible para quien quiera correrla a mano.
+
+**Consecuencias.** Ya no hay verificación automática en cada push: la calidad de un cambio depende de correr la puerta local antes de subir. Se acepta por decisión de la persona usuaria, con el desarrollo de la plataforma dado por concluido.

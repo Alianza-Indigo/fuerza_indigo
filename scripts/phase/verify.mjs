@@ -988,7 +988,11 @@ const CHECKS = [
     phases: [1],
     run() {
       const flujo = read('.github/workflows/calidad.yml');
-      if (flujo === null) return fail(['No existe .github/workflows/calidad.yml.']);
+      // La integración continua se retiró por decisión de la persona usuaria
+      // (ADR-0177): era andamiaje de desarrollo. Su ausencia no es un defecto.
+      if (flujo === null) {
+        return ok(['La integración continua se retiró (ADR-0177): no hay flujo que verificar.']);
+      }
 
       const orden = ['phase:verify', 'run lint', 'run typecheck', 'npm test', 'test:integration', 'run build'];
       const posiciones = orden.map((paso) => flujo.indexOf(paso));
@@ -1385,8 +1389,9 @@ const CHECKS = [
       if (!/name: 'movil'/.test(config)) problems.push('No hay perfil móvil declarado.');
       if (!/name: 'escritorio'/.test(config)) problems.push('No hay perfil de escritorio declarado.');
 
-      const flujo = read('.github/workflows/calidad.yml') ?? '';
-      if (!/test:e2e/.test(flujo)) {
+      // Si la integración continua se retiró (ADR-0177), no se le exige contenido.
+      const flujo = read('.github/workflows/calidad.yml');
+      if (flujo !== null && !/test:e2e/.test(flujo)) {
         problems.push('La integración continua no ejecuta las pruebas de extremo a extremo: un umbral que solo se comprueba a mano no es un umbral.');
       }
 
@@ -2712,9 +2717,12 @@ const CHECKS = [
       // La tabla existía; lo que faltaba era alguien que la cotejara con el
       // archivo de la integración continua.
       const entorno = read('src/platform/config/env.ts') ?? '';
-      const flujo = read('.github/workflows/calidad.yml') ?? '';
-      if (entorno === '' || flujo === '') {
-        return fail(['No se encuentra src/platform/config/env.ts o .github/workflows/calidad.yml.']);
+      if (entorno === '') return fail(['No se encuentra src/platform/config/env.ts.']);
+      // La integración continua se retiró (ADR-0177): sin flujo que cotejar, no
+      // hay desajuste que reportar.
+      const flujo = read('.github/workflows/calidad.yml');
+      if (flujo === null) {
+        return ok(['La integración continua se retiró (ADR-0177): no hay flujo que cotejar con la tabla de variables.']);
       }
 
       const tabla = /REQUIRED_BY_PHASE[^=]*=\s*\{([\s\S]*?)\n\};/.exec(entorno);

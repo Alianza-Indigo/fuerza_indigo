@@ -32,9 +32,23 @@ type IconName =
   | 'map'
   | 'chart';
 
+type LandingIconName =
+  | 'alianza'
+  | 'comunidad'
+  | 'conexion'
+  | 'defensa'
+  | 'familia-comunidad'
+  | 'formacion'
+  | 'neurodiversidad'
+  | 'oportunidades'
+  | 'participacion'
+  | 'persona'
+  | 'red-territorial'
+  | 'trabajo';
+
 const participation = [
   {
-    icon: 'users' as const,
+    asset: 'comunidad' as const,
     title: 'Agremiado',
     description:
       'Persona trabajadora mayor de 15 años, subordinada o independiente, cuya actividad tiene contacto con personas neurodivergentes.',
@@ -43,7 +57,7 @@ const participation = [
     cta: 'Solicitar afiliación',
   },
   {
-    icon: 'heart' as const,
+    asset: 'familia-comunidad' as const,
     title: 'Afiliación honoraria',
     description:
       'Personas neurodivergentes, familiares y cuidadores que desean integrarse sin adquirir derechos políticos sindicales.',
@@ -52,7 +66,7 @@ const participation = [
     cta: 'Unirme como honorario',
   },
   {
-    icon: 'hand' as const,
+    asset: 'alianza' as const,
     title: 'Beneficiario protegido',
     description:
       'Orientación, defensa o acompañamiento sin necesidad de afiliación y con una canalización responsable.',
@@ -64,44 +78,44 @@ const participation = [
 
 const benefits = [
   {
-    icon: 'shield' as const,
+    asset: 'defensa' as const,
     title: 'Defensa y representación',
     description: 'Acompañamiento laboral y administrativo ante vulneraciones de derechos.',
   },
   {
-    icon: 'vote' as const,
+    asset: 'participacion' as const,
     title: 'Participación democrática',
     description: 'Tu voz cuenta en la toma de decisiones del sindicato.',
   },
   {
-    icon: 'book' as const,
+    asset: 'formacion' as const,
     title: 'Formación y certificaciones',
     description: 'Capacitación, talleres y rutas para tu desarrollo profesional.',
   },
   {
-    icon: 'briefcase' as const,
+    asset: 'trabajo' as const,
     title: 'Herramientas y oportunidades',
     description: 'Recursos, vinculación y espacios para crecer en lo personal y profesional.',
   },
 ] as const;
 
 const steps = [
-  { icon: 'file' as const, title: 'Crea tu solicitud', description: 'Completa un formulario en línea.' },
-  { icon: 'id' as const, title: 'Acredita tu actividad', description: 'Comparte la documentación solicitada.' },
-  { icon: 'person' as const, title: 'Revisión humana', description: 'Nuestro equipo revisa tu información.' },
-  { icon: 'check' as const, title: 'Resolución y credencial', description: 'Recibe la confirmación y tu credencial.' },
+  { asset: 'persona' as const, title: 'Crea tu solicitud', description: 'Completa un formulario en línea.' },
+  { asset: 'oportunidades' as const, title: 'Acredita tu actividad', description: 'Comparte la documentación solicitada.' },
+  { asset: 'alianza' as const, title: 'Revisión humana', description: 'Nuestro equipo revisa tu información.' },
+  { asset: 'conexion' as const, title: 'Resolución y credencial', description: 'Recibe la confirmación y tu credencial.' },
 ] as const;
 
 const ecosystem = [
-  { title: 'ADIA', description: 'Planeaciones didácticas inclusivas', href: '/herramientas', icon: 'book' as const },
-  { title: 'NeuroPlan', description: 'Organización y autonomía', href: '/herramientas', icon: 'check' as const },
-  { title: 'NEXO', description: 'Red de acompañamiento', href: '/herramientas', icon: 'network' as const },
-  { title: 'CIAN', description: 'Atención integral', href: '/cian', icon: 'heart' as const },
+  { title: 'ADIA', description: 'Planeaciones didácticas inclusivas', href: '/herramientas', asset: 'formacion' as const },
+  { title: 'NeuroPlan', description: 'Organización y autonomía', href: '/herramientas', asset: 'persona' as const },
+  { title: 'NEXO', description: 'Red de acompañamiento', href: '/herramientas', asset: 'conexion' as const },
+  { title: 'CIAN', description: 'Atención integral', href: '/cian', asset: 'familia-comunidad' as const },
   {
     title: 'CENI',
     description: 'Certificación de entornos neuroinclusivos',
     href: '/ceni',
-    icon: 'book' as const,
+    asset: 'neurodiversidad' as const,
   },
 ] as const;
 
@@ -140,6 +154,20 @@ function Icon({ name, className = 'size-7' }: { name: IconName; className?: stri
   };
 
   return <svg aria-hidden="true" viewBox="0 0 24 24" className={className} {...common}>{paths[name]}</svg>;
+}
+
+function LandingIcon({ name, className = 'size-12' }: { name: LandingIconName; className?: string }) {
+  return (
+    <Image
+      src={`/landing/iconos/icono-${name}.png`}
+      alt=""
+      aria-hidden="true"
+      width={512}
+      height={512}
+      sizes="64px"
+      className={`object-contain ${className}`}
+    />
+  );
 }
 
 function Arrow() {
@@ -210,7 +238,7 @@ export default async function InicioPage() {
           <div className="relative min-h-[360px] lg:min-h-[540px]">
             <div aria-hidden="true" className="absolute -inset-4 rounded-[3rem] bg-gradient-to-br from-violet-600/25 via-transparent to-cyan-400/20 blur-2xl" />
             <Image
-              src="/landing/hero-community.webp"
+              src="/landing/02-hero-comunidad-fuerza-indigo.png"
               alt="Grupo diverso de personas trabajadoras reunidas con confianza y solidaridad"
               fill
               preload
@@ -222,9 +250,14 @@ export default async function InicioPage() {
 
         <div className="border-t border-cyan-400/25 bg-[#02071e]/75">
           <ul className="mx-auto grid w-full max-w-7xl grid-cols-2 px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-blue-100/75 sm:px-6 lg:grid-cols-4 lg:px-8">
-            {['Representación', 'Defensa', 'Comunidad', 'Innovación'].map((item) => (
-              <li key={item} className="flex min-h-11 items-center justify-center gap-2">
-                <Icon name="shield" className="size-4 text-cyan-300" /> {item}
+            {[
+              { label: 'Representación', asset: 'alianza' as const },
+              { label: 'Defensa', asset: 'defensa' as const },
+              { label: 'Comunidad', asset: 'comunidad' as const },
+              { label: 'Innovación', asset: 'neurodiversidad' as const },
+            ].map((item) => (
+              <li key={item.label} className="flex min-h-11 items-center justify-center gap-2">
+                <LandingIcon name={item.asset} className="size-5" /> {item.label}
               </li>
             ))}
           </ul>
@@ -238,7 +271,7 @@ export default async function InicioPage() {
             {participation.map((option) => (
               <article key={option.title} className="flex flex-col rounded-2xl border border-indigo-400/45 bg-gradient-to-b from-indigo-950/65 to-[#050d35] p-6 shadow-[0_18px_50px_rgba(0,0,0,.18)]">
                 <div className="flex items-center gap-4">
-                  <span className="grid size-12 shrink-0 place-items-center rounded-xl border border-cyan-300/45 bg-cyan-300/5 text-cyan-300"><Icon name={option.icon} /></span>
+                  <span className="grid size-14 shrink-0 place-items-center rounded-xl border border-cyan-300/45 bg-cyan-300/5"><LandingIcon name={option.asset} className="size-11" /></span>
                   <h3 className="text-xl font-black uppercase tracking-tight">{option.title}</h3>
                 </div>
                 <p className="mt-5 flex-1 text-blue-100/75">{option.description}</p>
@@ -259,7 +292,7 @@ export default async function InicioPage() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((benefit) => (
               <article key={benefit.title} className="rounded-2xl border border-cyan-300/35 bg-[#06133f] p-6 text-center">
-                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-cyan-300/5 text-cyan-300"><Icon name={benefit.icon} className="size-9" /></span>
+                <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-cyan-300/5"><LandingIcon name={benefit.asset} className="size-12" /></span>
                 <h3 className="mt-5 text-lg font-black uppercase leading-tight">{benefit.title}</h3>
                 <p className="mt-3 text-sm text-blue-100/70">{benefit.description}</p>
               </article>
@@ -274,7 +307,7 @@ export default async function InicioPage() {
           <ol className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, index) => (
               <li key={step.title} className="relative rounded-2xl border border-indigo-400/35 bg-indigo-950/35 p-5">
-                <span className="grid size-11 place-items-center rounded-xl border border-fuchsia-400/40 bg-fuchsia-400/5 text-fuchsia-300"><Icon name={step.icon} /></span>
+                <span className="grid size-12 place-items-center rounded-xl border border-fuchsia-400/40 bg-fuchsia-400/5"><LandingIcon name={step.asset} className="size-9" /></span>
                 <p className="mt-4 text-sm font-black text-cyan-300">{index + 1}.</p>
                 <h3 className="mt-1 font-bold">{step.title}</h3>
                 <p className="mt-2 text-sm text-blue-100/65">{step.description}</p>
@@ -300,16 +333,18 @@ export default async function InicioPage() {
             <div className="mt-8"><PrimaryLink href="/solicitar-apoyo">Solicitar apoyo ahora</PrimaryLink></div>
             <p className="mt-4 text-xs text-blue-100/55">Fuerza Índigo no sustituye los servicios de emergencia.</p>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="grid min-h-64 place-items-center rounded-[2rem] border border-cyan-300/35 bg-gradient-to-br from-indigo-600/50 to-cyan-400/10 p-8 text-center shadow-[0_0_55px_rgba(78,71,255,.25)]">
-              <div>
-                <Icon name="shield" className="mx-auto size-24 text-cyan-200" />
-                <p className="mt-5 text-2xl font-black uppercase">Tus derechos<br />nuestra fuerza</p>
-              </div>
+          <div>
+            <div className="relative aspect-[3/2] overflow-hidden rounded-[2rem] border border-cyan-300/35 shadow-[0_0_55px_rgba(78,71,255,.25)]">
+              <Image
+                src="/landing/03-defensa-acompanamiento-fuerza-indigo.png"
+                alt="Mujer neurodivergente frente a un escudo con el mensaje Tus derechos, nuestra fuerza"
+                fill
+                sizes="(max-width: 1024px) 100vw, 60vw"
+                className="object-cover"
+              />
             </div>
-            <blockquote className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-fuchsia-300/25 bg-[#040a2c]/70 p-8">
-              <p className="text-2xl font-semibold italic text-white">“Una comunidad organizada siempre tiene más fuerza.”</p>
-              <p className="mt-6 text-sm font-bold uppercase tracking-[.2em] text-fuchsia-300">Derechos · personas · oportunidades · comunidad</p>
+            <blockquote className="mt-5 rounded-2xl border border-fuchsia-300/25 bg-[#040a2c]/70 px-6 py-5 text-center">
+              <p className="text-xl font-semibold italic text-white">“Una comunidad organizada siempre tiene más fuerza.”</p>
             </blockquote>
           </div>
         </div>
@@ -321,7 +356,7 @@ export default async function InicioPage() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {ecosystem.map((tool, index) => (
               <Link key={tool.title} href={tool.href} className="group flex min-h-56 flex-col rounded-2xl border border-indigo-400/40 bg-indigo-950/30 p-5 text-center transition hover:-translate-y-1 hover:border-cyan-300/70">
-                <span className={`mx-auto grid size-14 place-items-center rounded-full border ${index % 2 === 0 ? 'border-cyan-300/45 text-cyan-300' : 'border-fuchsia-300/45 text-fuchsia-300'}`}><Icon name={tool.icon} className="size-8" /></span>
+                <span className={`mx-auto grid size-16 place-items-center rounded-full border ${index % 2 === 0 ? 'border-cyan-300/45' : 'border-fuchsia-300/45'}`}><LandingIcon name={tool.asset} className="size-12" /></span>
                 <h3 className="mt-4 text-xl font-black">{tool.title}</h3>
                 <p className="mt-2 flex-1 text-sm text-blue-100/65">{tool.description}</p>
                 <p className="mt-4 text-sm font-bold text-cyan-300 group-hover:underline">Conocer {tool.title} <Arrow /></p>
@@ -343,17 +378,14 @@ export default async function InicioPage() {
             </div>
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="relative overflow-hidden rounded-2xl border border-cyan-300/50 bg-gradient-to-br from-violet-700 via-indigo-700 to-cyan-500 p-6 shadow-[0_0_42px_rgba(0,212,255,.16)]">
-              <div aria-hidden="true" className="absolute -right-12 -top-12 size-40 rounded-full border-[24px] border-white/10" />
-              <p className="text-xs font-bold uppercase tracking-[.2em] text-cyan-100">Fuerza Índigo</p>
-              <h3 className="mt-8 text-2xl font-black uppercase">Credencial digital</h3>
-              <p className="mt-1 text-sm text-white/75">Vigencia verificable en línea</p>
-              <div className="mt-8 flex items-end justify-between gap-4">
-                <span className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-bold uppercase">Miembro activo</span>
-                <div aria-hidden="true" className="grid size-20 grid-cols-5 gap-1 rounded-lg bg-white p-2">
-                  {Array.from({ length: 25 }, (_, i) => <span key={i} className={(i * 7 + i * i) % 5 < 2 ? 'bg-[#071344]' : 'bg-white'} />)}
-                </div>
-              </div>
+            <div className="relative min-h-64 overflow-hidden rounded-2xl border border-cyan-300/50 shadow-[0_0_42px_rgba(0,212,255,.16)]">
+              <Image
+                src="/landing/04-credencial-sindical-ejemplo.png"
+                alt="Ejemplo visual de una credencial sindical de Fuerza Índigo"
+                fill
+                sizes="(max-width: 640px) 100vw, 40vw"
+                className="object-contain"
+              />
             </div>
             <div className="rounded-2xl border border-indigo-400/40 bg-[#030a2c] p-6">
               <h3 className="font-bold">Directorio de personas agremiadas</h3>
@@ -382,7 +414,7 @@ export default async function InicioPage() {
             <div className="mt-7"><PrimaryLink href="/delegaciones">Encontrar mi delegación</PrimaryLink></div>
           </div>
           <div className="relative min-h-72 lg:min-h-[430px]">
-            <Image src="/landing/red-territorial.webp" alt="Mapa ilustrado de México y América Latina unidos por una red índigo" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-contain" />
+            <Image src="/landing/05-mapa-red-territorial.png" alt="Mapa ilustrado de México y América Latina unidos por una red índigo" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-contain" />
           </div>
         </div>
       </section>

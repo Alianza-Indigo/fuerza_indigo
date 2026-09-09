@@ -320,6 +320,56 @@ export interface TerritorialNode {
   readonly hasEnablingResolution: boolean;
 }
 
+export interface PublicDelegation {
+  readonly publicId: string;
+  readonly name: string;
+  readonly type: TerritorialUnitType;
+  readonly countryCode: string;
+  readonly stateCode: string | null;
+  readonly contactEmail: string | null;
+  readonly parentName: string | null;
+}
+
+/**
+ * Directorio territorial público.
+ *
+ * Las entidades federativas que instala la semilla son solo el marco donde
+ * puede constituirse una delegación; no prueban que el sindicato ya opere
+ * allí. Por eso esta consulta exige acuerdo habilitante además de estado
+ * activo. También selecciona únicamente datos institucionales: nunca personas,
+ * cargos internos, membresías ni métricas.
+ */
+export async function publicDelegations(): Promise<readonly PublicDelegation[]> {
+  const filas = await db().territorialUnit.findMany({
+    where: {
+      status: 'ACTIVE',
+      dissolvedOn: null,
+      enablingResolutionId: { not: null },
+      type: { in: ['STATE', 'MUNICIPALITY', 'SECTION', 'DELEGATION'] },
+    },
+    orderBy: { path: 'asc' },
+    select: {
+      publicId: true,
+      name: true,
+      type: true,
+      countryCode: true,
+      stateCode: true,
+      contactEmail: true,
+      parent: { select: { name: true } },
+    },
+  });
+
+  return filas.map((fila) => ({
+    publicId: fila.publicId,
+    name: fila.name,
+    type: fila.type,
+    countryCode: fila.countryCode,
+    stateCode: fila.stateCode,
+    contactEmail: fila.contactEmail,
+    parentName: fila.parent?.name ?? null,
+  }));
+}
+
 /**
  * Jerarquía consultable (F5-TER-001).
  *

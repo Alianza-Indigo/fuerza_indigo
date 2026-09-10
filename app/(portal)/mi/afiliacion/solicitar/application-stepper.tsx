@@ -135,10 +135,8 @@ export function ApplicationStepper({
               onChange={(evento) => set('workRelationKind', evento.target.value)}
             >
               <option value="">Elige una opción</option>
-              <option value="SUBORDINATE">Por cuenta ajena, con patrón</option>
-              <option value="INDEPENDENT">De forma independiente</option>
-              <option value="AUTONOMOUS">De forma autónoma</option>
-              <option value="SELF_EMPLOYED">Por cuenta propia</option>
+              <option value="SUBORDINATE">Trabajo subordinado</option>
+              <option value="INDEPENDENT">Trabajo independiente</option>
             </select>
           </Campo>
         </>

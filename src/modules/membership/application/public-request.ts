@@ -53,7 +53,7 @@ export const publicMembershipRequestSchema = z
     ),
     territory: z.string().trim().min(2, { error: () => 'Escribe el estado o municipio desde donde te afilias.' }).max(160),
     occupation: z.string().trim().min(2, { error: () => 'Escribe tu ocupación actual.' }).max(160),
-    workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT', 'AUTONOMOUS', 'SELF_EMPLOYED'])),
+    workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT'])),
     neurodivergentConnection: optionalText(
       z
         .string()
@@ -101,10 +101,8 @@ export const publicMembershipRequestSchema = z
 export type PublicMembershipRequestInput = z.input<typeof publicMembershipRequestSchema>;
 
 const WORK_RELATION_LABELS = {
-  SUBORDINATE: 'Trabajo con una persona empleadora',
-  INDEPENDENT: 'Trabajo de forma independiente',
-  AUTONOMOUS: 'Trabajo de forma autónoma',
-  SELF_EMPLOYED: 'Trabajo por cuenta propia',
+  SUBORDINATE: 'Trabajo subordinado',
+  INDEPENDENT: 'Trabajo independiente',
 } as const;
 
 const HONORARY_PROFILE_LABELS = {

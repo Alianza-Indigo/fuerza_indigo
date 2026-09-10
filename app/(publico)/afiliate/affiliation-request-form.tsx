@@ -156,10 +156,8 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
             label="¿Cómo realizas tu trabajo?"
             required
             options={[
-              { value: 'SUBORDINATE', label: 'Trabajo con una persona empleadora' },
-              { value: 'INDEPENDENT', label: 'Trabajo de forma independiente' },
-              { value: 'AUTONOMOUS', label: 'Trabajo de forma autónoma' },
-              { value: 'SELF_EMPLOYED', label: 'Trabajo por cuenta propia' },
+              { value: 'SUBORDINATE', label: 'Trabajo subordinado' },
+              { value: 'INDEPENDENT', label: 'Trabajo independiente' },
             ]}
             {...(errors['workRelation'] === undefined ? {} : { errors: errors['workRelation'] })}
           />

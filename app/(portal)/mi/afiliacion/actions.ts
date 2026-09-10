@@ -59,11 +59,7 @@ export async function submitApplicationAction(
           ...comunes,
           category: 'UNION_MEMBER',
           occupationSpecialtyId: textField(formData, 'occupationSpecialtyId'),
-          workRelationKind: textField(formData, 'workRelationKind') as
-            | 'SUBORDINATE'
-            | 'INDEPENDENT'
-            | 'AUTONOMOUS'
-            | 'SELF_EMPLOYED',
+          workRelationKind: textField(formData, 'workRelationKind') as 'SUBORDINATE' | 'INDEPENDENT',
           neurodivergentContactStatement: textField(formData, 'neurodivergentContactStatement'),
           otherUnionMembership: textField(formData, 'otherUnionMembership') as
             | 'NONE'

@@ -29,6 +29,22 @@ describe('solicitud pública de afiliación', () => {
     expect(result.success).toBe(true);
   });
 
+  it('limita la forma de trabajo a subordinado o independiente', () => {
+    const result = publicMembershipRequestSchema.safeParse({
+      ...CONTACT,
+      modality: 'UNION_MEMBER',
+      workRelation: 'AUTONOMOUS',
+      neurodivergentConnection: 'Acompaño a estudiantes neurodivergentes dentro del aula.',
+      honoraryProfile: '',
+      context: '',
+      ageConfirmed: true,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.some((issue) => issue.path[0] === 'workRelation')).toBe(true);
+  });
+
   it('acepta la solicitud honoraria y no exige una relación laboral', () => {
     const result = publicMembershipRequestSchema.safeParse({
       ...CONTACT,

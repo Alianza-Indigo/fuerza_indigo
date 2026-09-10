@@ -16,10 +16,8 @@ import { saveOrSubmitAssistedAction, type AsistidaFormState } from '../actions';
 const INICIAL: AsistidaFormState = { status: 'idle' };
 
 const FORMAS: readonly Option[] = [
-  { value: 'SUBORDINATE', label: 'Por cuenta ajena, con patrón' },
-  { value: 'INDEPENDENT', label: 'De forma independiente' },
-  { value: 'AUTONOMOUS', label: 'De forma autónoma' },
-  { value: 'SELF_EMPLOYED', label: 'Por cuenta propia' },
+  { value: 'SUBORDINATE', label: 'Trabajo subordinado' },
+  { value: 'INDEPENDENT', label: 'Trabajo independiente' },
 ];
 
 const SINDICATOS: readonly Option[] = [

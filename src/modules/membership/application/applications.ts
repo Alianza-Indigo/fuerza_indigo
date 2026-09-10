@@ -49,8 +49,8 @@ const sindicales = {
   occupationSpecialtyId: z.uuid({
     error: () => 'Elige tu oficio, profesión o disciplina del catálogo.',
   }),
-  workRelationKind: z.enum(['SUBORDINATE', 'INDEPENDENT', 'AUTONOMOUS', 'SELF_EMPLOYED'], {
-    error: () => 'Di cómo trabajas: por cuenta ajena, de forma independiente, autónoma o por cuenta propia.',
+  workRelationKind: z.enum(['SUBORDINATE', 'INDEPENDENT'], {
+    error: () => 'Di cómo trabajas: de forma subordinada o independiente.',
   }),
   neurodivergentContactStatement: texto(
     30,

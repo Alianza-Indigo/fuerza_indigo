@@ -18,7 +18,7 @@ const CONTENT = {
     icon: 'comunidad',
     requirements: [
       'Tener 15 años o más.',
-      'Realizar una actividad laboral subordinada, independiente, autónoma o por cuenta propia.',
+      'Realizar una actividad laboral subordinada o independiente.',
       'Tener contacto con personas neurodivergentes a través de esa actividad.',
     ],
     benefits: ['Voz y voto conforme a los estatutos', 'Representación y defensa', 'Credencial sindical'],

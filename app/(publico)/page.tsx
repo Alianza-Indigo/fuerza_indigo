@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = socialMetadata({
   title: 'Sindicato Unión de Inclusión y Derechos Neurodivergentes',
   description:
-    'Fuerza Índigo representa, defiende y conecta a personas trabajadoras vinculadas con la comunidad neurodivergente.',
+    'Fuerza Índigo vigila la correcta aplicación de la NOM-035 con enfoque neuroinclusivo y defiende los derechos de la comunidad neurodivergente.',
   path: '/',
 });
 
@@ -226,8 +226,9 @@ export default async function InicioPage() {
             <p className="mt-7 max-w-[28ch] text-2xl font-black uppercase leading-tight text-white sm:text-3xl">
               No tienes que defender tus derechos en soledad.
             </p>
-            <p className="mt-5 max-w-xl text-lg text-blue-100/80">
-              Representación, defensa y herramientas reales para una comunidad con fuerza colectiva.
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-blue-100/85">
+              Vigilamos la correcta aplicación de la <strong className="font-bold text-white">NOM-035-STPS-2018</strong> con
+              enfoque neuroinclusivo y defendemos los derechos de la comunidad neurodivergente en todos los espacios.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <PrimaryLink href="/afiliate/agremiado">Afíliate</PrimaryLink>
@@ -251,16 +252,100 @@ export default async function InicioPage() {
         <div className="border-t border-cyan-400/25 bg-[#02071e]/75">
           <ul className="mx-auto grid w-full max-w-7xl grid-cols-2 px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-blue-100/75 sm:px-6 lg:grid-cols-4 lg:px-8">
             {[
-              { label: 'Representación', asset: 'alianza' as const },
+              { label: 'Vigilancia', asset: 'alianza' as const },
               { label: 'Defensa', asset: 'defensa' as const },
               { label: 'Comunidad', asset: 'comunidad' as const },
-              { label: 'Innovación', asset: 'neurodiversidad' as const },
+              { label: 'Acción', asset: 'neurodiversidad' as const },
             ].map((item) => (
               <li key={item.label} className="flex min-h-11 items-center justify-center gap-2">
                 <LandingIcon name={item.asset} className="size-5" /> {item.label}
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      <section id="razon-de-ser" aria-labelledby="razon-de-ser-title" className="relative border-b border-cyan-400/15 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(102,51,255,.18),transparent_32%),radial-gradient(circle_at_88%_72%,rgba(0,196,255,.12),transparent_30%)]" />
+        <div className="relative mx-auto w-full max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:gap-14">
+            <header>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Nuestra razón de ser</p>
+              <h2 id="razon-de-ser-title" className="mt-3 text-3xl font-black uppercase leading-tight tracking-tight text-white sm:text-4xl">
+                Donde haya una persona neurodivergente, sus derechos deben ser respetados.
+              </h2>
+            </header>
+
+            <div className="space-y-5 text-base leading-relaxed text-blue-100/80 sm:text-lg">
+              <p>
+                Fuerza Índigo nace para transformar la protección de la comunidad neurodivergente en una labor
+                organizada, permanente y con capacidad real de actuación.
+              </p>
+              <p>
+                Nuestra misión central es <strong className="font-bold text-white">vigilar la correcta aplicación, con enfoque
+                neuroinclusivo, de la NOM-035-STPS-2018, Factores de riesgo psicosocial en el trabajo — Identificación,
+                análisis y prevención.</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 border-y border-cyan-300/20 py-8">
+            <p className="text-xl font-black uppercase leading-snug text-white sm:text-2xl">
+              De una oficina, restaurante, escuela o pequeño comercio, hasta un hospital, una fábrica, un corporativo
+              o una dependencia de gobierno.
+            </p>
+            <p className="mt-4 max-w-5xl text-base leading-relaxed text-blue-100/75">
+              Esta vigilancia comprende todos los centros de trabajo, sin importar su actividad o tamaño. Donde exista
+              al menos una persona trabajadora, deben respetarse su dignidad, su salud psicosocial y su derecho a
+              desarrollarse en un entorno seguro, libre de violencia, discriminación y exclusión.
+            </p>
+          </div>
+
+          <div className="mt-9 grid gap-9 lg:grid-cols-2 lg:gap-14">
+            <article>
+              <div className="flex items-center gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-cyan-300/5">
+                  <LandingIcon name="comunidad" className="size-10" />
+                </span>
+                <h3 className="text-xl font-black uppercase tracking-tight text-white">Protección más allá del trabajo</h3>
+              </div>
+              <p className="mt-4 leading-relaxed text-blue-100/75">
+                La comunidad neurodivergente también puede enfrentar barreras al estudiar, solicitar atención médica,
+                comprar, realizar un trámite o recibir cualquier servicio. Por eso protegemos a personas neurodivergentes
+                cuando participan como trabajadoras, estudiantes, pacientes, clientes, consumidoras o usuarias, así como
+                a sus familiares, personas cuidadoras y demás beneficiarios protegidos.
+              </p>
+              <p className="mt-4 font-semibold leading-relaxed text-cyan-100">
+                Vigilamos que la inclusión no sea solamente un discurso y que sus derechos se respeten en la práctica.
+              </p>
+            </article>
+
+            <article>
+              <div className="flex items-center gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-fuchsia-300/5">
+                  <LandingIcon name="defensa" className="size-10" />
+                </span>
+                <h3 className="text-xl font-black uppercase tracking-tight text-white">Observamos, documentamos y actuamos</h3>
+              </div>
+              <p className="mt-4 leading-relaxed text-blue-100/75">
+                Recibimos reportes, escuchamos a las personas afectadas, reunimos evidencia, damos seguimiento y
+                acompañamos a la comunidad en la defensa de sus derechos. Ante posibles incumplimientos, discriminación,
+                violencia, exclusión, falta de ajustes razonables o trato indigno, promovemos medidas correctivas y, cuando
+                corresponde, la intervención de las autoridades e instancias competentes.
+              </p>
+              <p className="mt-4 font-semibold leading-relaxed text-cyan-100">
+                Nuestra fuerza nace de la comunidad organizada, la vigilancia permanente y la evidencia documentada.
+              </p>
+            </article>
+          </div>
+
+          <blockquote className="mx-auto mt-10 max-w-5xl border-l-4 border-cyan-300 bg-cyan-300/5 px-6 py-5 sm:px-8">
+            <p className="text-xl font-black leading-snug text-white sm:text-2xl">
+              Donde una persona neurodivergente trabaje, estudie, compre, solicite atención o reciba un servicio,
+              Fuerza Índigo estará para vigilar, acompañar y defender sus derechos.
+            </p>
+            <p className="mt-3 text-base font-semibold text-cyan-200">No tienes que defender tus derechos en soledad.</p>
+          </blockquote>
         </div>
       </section>
 

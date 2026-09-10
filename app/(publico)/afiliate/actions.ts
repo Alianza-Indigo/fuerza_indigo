@@ -30,7 +30,7 @@ export async function submitAffiliationRequestAction(
       occupation: textField(formData, 'occupation'),
       workRelation: textField(formData, 'workRelation'),
       neurodivergentConnection: textField(formData, 'neurodivergentConnection'),
-      honoraryProfile: textField(formData, 'honoraryProfile'),
+      protectedProfile: textField(formData, 'protectedProfile'),
       context: textField(formData, 'context'),
       ageConfirmed: checkboxField(formData, 'ageConfirmed'),
       acceptedPrivacyNotice: checkboxField(formData, 'acceptedPrivacyNotice') as never,

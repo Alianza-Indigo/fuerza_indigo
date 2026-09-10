@@ -56,7 +56,7 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
               Entrar
             </Link>
             <Link href="/afiliate/agremiado" className="inline-flex min-h-11 items-center rounded-lg bg-gradient-to-r from-violet-600 to-cyan-400 px-4 text-sm font-bold text-white shadow-[0_0_24px_rgba(0,203,255,.2)] transition hover:brightness-110">
-              Afíliate sin costo
+              Afíliate
             </Link>
           </div>
         </div>

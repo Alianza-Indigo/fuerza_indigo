@@ -177,7 +177,7 @@ describe('con aviso publicado', () => {
         occupation: 'Docente',
         workRelation: 'SUBORDINATE',
         neurodivergentConnection: 'Acompaño a estudiantes neurodivergentes dentro del aula.',
-        honoraryProfile: '',
+        protectedProfile: '',
         context: '',
         ageConfirmed: true,
         acceptedPrivacyNotice: true,
@@ -194,7 +194,7 @@ describe('con aviso publicado', () => {
     });
 
     expect(guardada.legalEntityId).toBe(fuerzaId);
-    expect(guardada.subject).toBe('Solicitud inicial de afiliación sindical');
+    expect(guardada.subject).toBe('Solicitud inicial de registro como agremiado');
     expect(guardada.narrative).toContain('CURP: GODE561231MDFRRN09');
     expect(guardada.narrative).toContain('OCUPACIÓN: Docente');
     expect(guardada.territoryHint).toBe('Ciudad de México, Coyoacán');

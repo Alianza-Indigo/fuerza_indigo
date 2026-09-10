@@ -54,25 +54,25 @@ const participation = [
       'Persona trabajadora mayor de 15 años, subordinada o independiente, cuya actividad tiene contacto con personas neurodivergentes.',
     tags: ['Voz y voto', 'Representación', 'Credencial sindical'],
     href: '/afiliate/agremiado',
-    cta: 'Solicitar afiliación',
+    cta: 'Afíliate',
   },
   {
-    asset: 'familia-comunidad' as const,
-    title: 'Afiliación honoraria',
+    asset: 'formacion' as const,
+    title: 'Agremiado honorario',
     description:
-      'Personas neurodivergentes, familiares y cuidadores que desean integrarse sin adquirir derechos políticos sindicales.',
-    tags: ['Comunidad', 'Programas', 'Herramientas'],
+      'Médicos, terapeutas, docentes y otros profesionales o colaboradores vinculados con la comunidad neurodivergente.',
+    tags: ['Voz', 'Sin voto', 'Colaboración'],
     href: '/afiliate/honoraria',
-    cta: 'Unirme como honorario',
+    cta: 'Afíliate',
   },
   {
     asset: 'alianza' as const,
     title: 'Beneficiario protegido',
     description:
-      'Orientación, defensa o acompañamiento sin necesidad de afiliación y con una canalización responsable.',
-    tags: ['Sin afiliación', 'Privacidad reforzada', 'Canalización'],
-    href: '/solicitar-apoyo',
-    cta: 'Solicitar apoyo',
+      'Personas neurodivergentes, familiares y personas cuidadoras con derecho a recibir ayuda y protección.',
+    tags: ['Sin voz ni voto', 'Ayuda y protección', 'Sin cuota'],
+    href: '/afiliate/beneficiario',
+    cta: 'Solicitar registro',
   },
 ] as const;
 
@@ -230,7 +230,7 @@ export default async function InicioPage() {
               Representación, defensa y herramientas reales para una comunidad con fuerza colectiva.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <PrimaryLink href="/afiliate/agremiado">Afíliate sin costo</PrimaryLink>
+              <PrimaryLink href="/afiliate/agremiado">Afíliate</PrimaryLink>
               <SecondaryLink href="/solicitar-apoyo">Necesito apoyo ahora</SecondaryLink>
             </div>
           </div>
@@ -282,13 +282,13 @@ export default async function InicioPage() {
               </article>
             ))}
           </div>
-          <p className="mt-5 text-center text-lg font-bold text-cyan-300">La afiliación a Fuerza Índigo es gratuita.</p>
+          <p className="mt-5 text-center text-lg font-bold text-cyan-300">Elige cómo quieres formar parte de Fuerza Índigo.</p>
         </div>
       </section>
 
       <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
-          <SectionTitle title="Tu afiliación crea respaldo real" description="No ofrecemos promesas vacías: construimos capacidad colectiva." />
+          <SectionTitle title="Formar parte crea respaldo real" description="No ofrecemos promesas vacías: construimos capacidad colectiva." />
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((benefit) => (
               <article key={benefit.title} className="rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-5 text-center">
@@ -303,7 +303,7 @@ export default async function InicioPage() {
 
       <section className="border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto w-full max-w-7xl">
-          <SectionTitle title="Afiliarte es sencillo y gratuito" />
+          <SectionTitle title="Registrarte es sencillo" />
           <ol className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, index) => (
               <li key={step.title} className="relative rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-4">
@@ -460,7 +460,7 @@ export default async function InicioPage() {
         <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-25 [background-image:linear-gradient(135deg,transparent_44%,white_45%,white_47%,transparent_48%)] [background-size:38px_38px]" />
         <h2 id="cta-final-title" className="text-3xl font-black uppercase tracking-tight sm:text-4xl">Tu voz cuenta. Tu trabajo cuenta. Tú cuentas.</h2>
         <p className="mx-auto mt-3 max-w-2xl text-blue-50/80">Únete a una comunidad organizada para transformar derechos en realidad.</p>
-        <div className="mt-7"><PrimaryLink href="/afiliate/agremiado">Afíliate sin costo</PrimaryLink></div>
+        <div className="mt-7"><PrimaryLink href="/afiliate/agremiado">Afíliate</PrimaryLink></div>
       </section>
     </main>
   );

@@ -5,7 +5,7 @@ import { errors } from '@/platform/errors/app-error';
 import type { UseCaseResult } from '@/platform/kernel/result';
 
 /**
- * Solicitud inicial de afiliación desde el sitio público.
+ * Solicitud inicial de registro desde el sitio público.
  *
  * La afiliación formal sigue viviendo en `MembershipApplication`: requiere una
  * cuenta, aceptación estatutaria y revisión humana. Esta entrada no pretende
@@ -16,7 +16,11 @@ import type { UseCaseResult } from '@/platform/kernel/result';
  * privacidad de la entrada pública.
  */
 
-export const PUBLIC_MEMBERSHIP_MODALITIES = ['UNION_MEMBER', 'HONORARY_AFFILIATE'] as const;
+export const PUBLIC_MEMBERSHIP_MODALITIES = [
+  'UNION_MEMBER',
+  'HONORARY_AFFILIATE',
+  'PROTECTED_BENEFICIARY',
+] as const;
 export const PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE = 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE';
 
 function optionalText<T extends z.ZodType<string, string>>(schema: T) {
@@ -29,7 +33,7 @@ function optionalText<T extends z.ZodType<string, string>>(schema: T) {
 export const publicMembershipRequestSchema = z
   .object({
     modality: z.enum(PUBLIC_MEMBERSHIP_MODALITIES, {
-      error: () => 'Elige una modalidad de afiliación.',
+      error: () => 'Elige una categoría de registro.',
     }),
     givenName: z.string().trim().min(1, { error: () => 'Escribe tu nombre.' }).max(80),
     familyName: z.string().trim().min(1, { error: () => 'Escribe tu primer apellido.' }).max(80),
@@ -51,7 +55,7 @@ export const publicMembershipRequestSchema = z
           error: () => 'El teléfono sólo lleva números, espacios y los signos + ( ) -.',
         }),
     ),
-    territory: z.string().trim().min(2, { error: () => 'Escribe el estado o municipio desde donde te afilias.' }).max(160),
+    territory: z.string().trim().min(2, { error: () => 'Escribe el estado o municipio desde donde haces tu solicitud.' }).max(160),
     occupation: z.string().trim().min(2, { error: () => 'Escribe tu ocupación actual.' }).max(160),
     workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT'])),
     neurodivergentConnection: optionalText(
@@ -61,7 +65,7 @@ export const publicMembershipRequestSchema = z
         .min(30, { error: () => 'Cuéntanos un poco más: con treinta caracteres basta para empezar.' })
         .max(2000),
     ),
-    honoraryProfile: optionalText(z.enum(['NEURODIVERGENT_PERSON', 'FAMILY_MEMBER', 'CAREGIVER'])),
+    protectedProfile: optionalText(z.enum(['NEURODIVERGENT_PERSON', 'FAMILY_MEMBER', 'CAREGIVER'])),
     context: optionalText(z.string().trim().max(2000)),
     ageConfirmed: z.boolean(),
     acceptedPrivacyNotice: z.literal(true, {
@@ -84,16 +88,24 @@ export const publicMembershipRequestSchema = z
         refinement.addIssue({
           code: 'custom',
           path: ['neurodivergentConnection'],
-          message: 'Cuéntanos cómo se relaciona tu actividad con personas neurodivergentes.',
+          message: 'Cuéntanos qué tipo de contacto tienes con personas neurodivergentes en tu trabajo.',
         });
       }
     }
 
-    if (value.modality === 'HONORARY_AFFILIATE' && value.honoraryProfile === undefined) {
+    if (value.modality === 'HONORARY_AFFILIATE' && value.neurodivergentConnection === undefined) {
       refinement.addIssue({
         code: 'custom',
-        path: ['honoraryProfile'],
-        message: 'Elige el perfil desde el que solicitas la afiliación honoraria.',
+        path: ['neurodivergentConnection'],
+        message: 'Cuéntanos qué tipo de contacto tienes con personas neurodivergentes.',
+      });
+    }
+
+    if (value.modality === 'PROTECTED_BENEFICIARY' && value.protectedProfile === undefined) {
+      refinement.addIssue({
+        code: 'custom',
+        path: ['protectedProfile'],
+        message: 'Elige el perfil desde el que solicitas tu registro como beneficiario protegido.',
       });
     }
   });
@@ -105,7 +117,7 @@ const WORK_RELATION_LABELS = {
   INDEPENDENT: 'Trabajo independiente',
 } as const;
 
-const HONORARY_PROFILE_LABELS = {
+const PROTECTED_PROFILE_LABELS = {
   NEURODIVERGENT_PERSON: 'Persona neurodivergente',
   FAMILY_MEMBER: 'Familiar de una persona neurodivergente',
   CAREGIVER: 'Persona cuidadora',
@@ -131,13 +143,26 @@ function requestNarrative(data: z.output<typeof publicMembershipRequestSchema>):
     ].join('\n\n');
   }
 
+  if (data.modality === 'HONORARY_AFFILIATE') {
+    return [
+      'CATEGORÍA: AGREMIADO HONORARIO',
+      `CURP: ${data.curp}`,
+      `OCUPACIÓN: ${data.occupation}`,
+      'CONTACTO CON PERSONAS NEURODIVERGENTES:',
+      data.neurodivergentConnection ?? '',
+      ...(data.context === undefined ? [] : ['FORMA DE COLABORACIÓN:', data.context]),
+      'SIGUIENTE PASO: Verificar el contacto y revisar manualmente la solicitud de registro.',
+    ].join('\n\n');
+  }
+
   return [
-    'MODALIDAD: AFILIACIÓN HONORARIA',
+    'CATEGORÍA: BENEFICIARIO PROTEGIDO',
     `CURP: ${data.curp}`,
     `OCUPACIÓN: ${data.occupation}`,
-    `PERFIL: ${data.honoraryProfile === undefined ? '' : HONORARY_PROFILE_LABELS[data.honoraryProfile]}`,
-    ...(data.context === undefined ? [] : ['CONTEXTO OPCIONAL:', data.context]),
-    'SIGUIENTE PASO: Verificar contacto, invitar como solicitante y continuar el expediente formal en el portal.',
+    `PERFIL: ${data.protectedProfile === undefined ? '' : PROTECTED_PROFILE_LABELS[data.protectedProfile]}`,
+    ...(data.context === undefined ? [] : ['AYUDA O PROTECCIÓN SOLICITADA:', data.context]),
+    'CONDICIONES: Sin voz, sin voto y sin pago de cuota.',
+    'SIGUIENTE PASO: Verificar el contacto y revisar manualmente la solicitud de registro.',
   ].join('\n\n');
 }
 
@@ -163,8 +188,10 @@ export async function submitPublicMembershipRequest(
       preferredChannel: 'EMAIL',
       subject:
         data.modality === 'UNION_MEMBER'
-          ? 'Solicitud inicial de afiliación sindical'
-          : 'Solicitud inicial de afiliación honoraria',
+          ? 'Solicitud inicial de registro como agremiado'
+          : data.modality === 'HONORARY_AFFILIATE'
+            ? 'Solicitud inicial de registro como agremiado honorario'
+            : 'Solicitud inicial de registro como beneficiario protegido',
       narrative: requestNarrative(data),
       territoryHint: data.territory,
       acceptedPrivacyNotice: true,

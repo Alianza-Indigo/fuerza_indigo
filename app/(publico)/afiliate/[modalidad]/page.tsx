@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { socialMetadata } from '@/platform/seo';
 import { AffiliationRequestForm } from '../affiliation-request-form';
 
-type Modality = 'agremiado' | 'honoraria';
+type Modality = 'agremiado' | 'honoraria' | 'beneficiario';
 
 const CONTENT = {
   agremiado: {
@@ -24,32 +24,47 @@ const CONTENT = {
     benefits: ['Voz y voto conforme a los estatutos', 'Representación y defensa', 'Credencial sindical'],
   },
   honoraria: {
-    eyebrow: 'Afiliación honoraria',
-    title: 'Solicitud de afiliación honoraria',
+    eyebrow: 'Agremiado honorario',
+    title: 'Solicitud para agremiado honorario',
     description:
-      'Para personas neurodivergentes, familiares y personas cuidadoras que desean integrarse a la comunidad sin adquirir derechos políticos sindicales.',
+      'Para médicos, terapeutas, docentes y otros profesionales o colaboradores que tienen contacto con personas neurodivergentes.',
     modality: 'HONORARY_AFFILIATE' as const,
-    icon: 'familia-comunidad',
+    icon: 'formacion',
     requirements: [
-      'Ser una persona neurodivergente, familiar o persona cuidadora.',
+      'Ser profesional o colaborar con la comunidad neurodivergente.',
+      'Tener contacto de cualquier índole con personas neurodivergentes.',
       'Compartir un correo donde podamos dar seguimiento al trámite.',
       'Aceptar el aviso de privacidad vigente.',
     ],
-    benefits: ['Participación en comunidad', 'Acceso a programas', 'Herramientas y actividades'],
+    benefits: ['Voz sin voto', 'Participación y colaboración', 'Programas y herramientas'],
+  },
+  beneficiario: {
+    eyebrow: 'Beneficiario protegido',
+    title: 'Solicitud de registro como beneficiario protegido',
+    description:
+      'Para personas neurodivergentes, familiares y personas cuidadoras con derecho a recibir ayuda y protección de Fuerza Índigo.',
+    modality: 'PROTECTED_BENEFICIARY' as const,
+    icon: 'familia-comunidad',
+    requirements: [
+      'Ser una persona neurodivergente, familiar o persona cuidadora.',
+      'Compartir un correo donde podamos dar seguimiento a tu solicitud.',
+      'Aceptar el aviso de privacidad vigente.',
+    ],
+    benefits: ['Ayuda y protección', 'Sin voz ni voto', 'Sin pago de cuota'],
   },
 } as const;
 
 function isModality(value: string): value is Modality {
-  return value === 'agremiado' || value === 'honoraria';
+  return value === 'agremiado' || value === 'honoraria' || value === 'beneficiario';
 }
 
 export function generateStaticParams() {
-  return [{ modalidad: 'agremiado' }, { modalidad: 'honoraria' }];
+  return [{ modalidad: 'agremiado' }, { modalidad: 'honoraria' }, { modalidad: 'beneficiario' }];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ modalidad: string }> }): Promise<Metadata> {
   const { modalidad } = await params;
-  if (!isModality(modalidad)) return { title: 'Solicitud de afiliación' };
+  if (!isModality(modalidad)) return { title: 'Solicitud de registro' };
   const content = CONTENT[modalidad];
   return socialMetadata({
     title: content.title,
@@ -86,7 +101,7 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-relaxed text-blue-100/75 sm:text-xl">{content.description}</p>
 
-            <nav aria-label="Modalidades de afiliación" className="mt-8 flex flex-wrap gap-3">
+            <nav aria-label="Categorías de registro" className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/afiliate/agremiado"
                 aria-current={modalidad === 'agremiado' ? 'page' : undefined}
@@ -107,7 +122,18 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
                     : 'border-cyan-300/35 bg-white/5 text-blue-100 hover:bg-white/10'
                 }`}
               >
-                Afiliación honoraria
+                Agremiado honorario
+              </Link>
+              <Link
+                href="/afiliate/beneficiario"
+                aria-current={modalidad === 'beneficiario' ? 'page' : undefined}
+                className={`inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-bold transition ${
+                  modalidad === 'beneficiario'
+                    ? 'border-cyan-300 bg-cyan-300 text-[#04102f]'
+                    : 'border-cyan-300/35 bg-white/5 text-blue-100 hover:bg-white/10'
+                }`}
+              >
+                Beneficiario protegido
               </Link>
             </nav>
           </div>
@@ -160,7 +186,7 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
 
             <div className="border-l-2 border-fuchsia-400 pl-4 text-sm leading-relaxed text-blue-100/65">
               <p className="font-bold text-white">No necesitas defender tus derechos en soledad.</p>
-              <p className="mt-1">La solicitud es gratuita y una persona revisa cada caso.</p>
+              <p className="mt-1">Una persona revisa cada solicitud y te contacta para continuar.</p>
             </div>
           </aside>
 

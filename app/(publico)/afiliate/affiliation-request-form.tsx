@@ -16,10 +16,13 @@ import { submitAffiliationRequestAction, type AffiliationRequestState } from './
 
 const INITIAL_STATE: AffiliationRequestState = { status: 'idle' };
 
-export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' | 'HONORARY_AFFILIATE' }) {
+type RegistrationCategory = 'UNION_MEMBER' | 'HONORARY_AFFILIATE' | 'PROTECTED_BENEFICIARY';
+
+export function AffiliationRequestForm({ modality }: { modality: RegistrationCategory }) {
   const [state, action, pending] = useActionState(submitAffiliationRequestAction, INITIAL_STATE);
   const errors = state.fieldErrors ?? {};
   const unionMember = modality === 'UNION_MEMBER';
+  const honoraryMember = modality === 'HONORARY_AFFILIATE';
 
   if (state.status === 'ok' && state.folio !== undefined) {
     return (
@@ -42,7 +45,7 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
         </div>
 
         <p className="text-sm text-[var(--color-ink-soft)]">
-          El folio confirma que recibimos la solicitud, pero todavía no acredita una afiliación. Si ya recibiste tu
+          El folio confirma que recibimos la solicitud, pero todavía no acredita un registro. Si ya recibiste tu
           acceso, puedes{' '}
           <Link href="/acceso" className="font-semibold text-[var(--color-accent-ink)] underline underline-offset-4">
             entrar al portal
@@ -124,7 +127,7 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             name="territory"
-            label="¿Desde dónde te afilias?"
+            label="¿Desde dónde haces tu solicitud?"
             hint="Estado y municipio; no tu domicilio completo."
             required
             autoComplete="address-level1"
@@ -164,8 +167,8 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
 
           <TextArea
             name="neurodivergentConnection"
-            label="¿Cómo se relaciona tu actividad con personas neurodivergentes?"
-            hint="Cuéntalo con tus palabras. No hay una respuesta correcta y no pedimos diagnósticos."
+            label="¿Qué tipo de contacto tienes con personas neurodivergentes en tu trabajo?"
+            hint="Puede ser contacto de cualquier índole. No pedimos diagnósticos."
             required
             rows={5}
             maxLength={2000}
@@ -181,13 +184,42 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
             {...(errors['ageConfirmed'] === undefined ? {} : { errors: errors['ageConfirmed'] })}
           />
         </fieldset>
+      ) : honoraryMember ? (
+        <fieldset className="space-y-5">
+          <legend className="text-lg font-bold">Tu contacto con la comunidad</legend>
+          <p className="text-sm text-[var(--color-ink-soft)]">
+            Esta categoría incluye médicos, terapeutas, docentes y otros profesionales o colaboradores. Tiene voz,
+            pero no voto.
+          </p>
+
+          <TextArea
+            name="neurodivergentConnection"
+            label="¿Qué tipo de contacto tienes con personas neurodivergentes?"
+            hint="Cuéntalo con tus palabras. Puede ser contacto de cualquier índole."
+            required
+            rows={5}
+            maxLength={2000}
+            {...(errors['neurodivergentConnection'] === undefined
+              ? {}
+              : { errors: errors['neurodivergentConnection'] })}
+          />
+
+          <TextArea
+            name="context"
+            label="¿Cómo te gustaría colaborar con Fuerza Índigo?"
+            hint="Opcional. Puedes contarnos qué te interesa aportar o en qué deseas participar."
+            rows={4}
+            maxLength={2000}
+            {...(errors['context'] === undefined ? {} : { errors: errors['context'] })}
+          />
+        </fieldset>
       ) : (
         <fieldset className="space-y-5">
-          <legend className="text-lg font-bold">Tu vínculo con la comunidad</legend>
+          <legend className="text-lg font-bold">Tu vínculo con la comunidad protegida</legend>
           <RadioGroup
-            name="honoraryProfile"
-            legend="¿Desde qué perfil solicitas la afiliación honoraria?"
-            help="Esta modalidad no concede voto sindical ni exige una relación laboral."
+            name="protectedProfile"
+            legend="¿Desde qué perfil solicitas tu registro?"
+            help="Los beneficiarios protegidos no tienen voz ni voto y nunca pagan cuota."
             options={[
               {
                 value: 'NEURODIVERGENT_PERSON',
@@ -197,13 +229,13 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
               { value: 'FAMILY_MEMBER', label: 'Soy familiar de una persona neurodivergente' },
               { value: 'CAREGIVER', label: 'Soy una persona cuidadora' },
             ]}
-            {...(errors['honoraryProfile'] === undefined ? {} : { errors: errors['honoraryProfile'] })}
+            {...(errors['protectedProfile'] === undefined ? {} : { errors: errors['protectedProfile'] })}
           />
 
           <TextArea
             name="context"
-            label="¿Hay algo que quieras contarnos?"
-            hint="Opcional. No tienes que justificar tu vínculo para enviar la solicitud."
+            label="¿Qué ayuda o protección te gustaría recibir?"
+            hint="Opcional. Puedes enviar tu registro aunque todavía no necesites atención."
             rows={4}
             maxLength={2000}
             {...(errors['context'] === undefined ? {} : { errors: errors['context'] })}
@@ -238,11 +270,13 @@ export function AffiliationRequestForm({ modality }: { modality: 'UNION_MEMBER' 
           {pending
             ? 'Enviando solicitud…'
             : unionMember
-              ? 'Enviar solicitud de afiliación'
-              : 'Enviar solicitud honoraria'}
+              ? 'Enviar solicitud como agremiado'
+              : honoraryMember
+                ? 'Enviar solicitud como agremiado honorario'
+                : 'Enviar solicitud como beneficiario protegido'}
         </button>
         <p className="mt-3 text-center text-xs text-[var(--color-ink-soft)]">
-          Enviar esta forma no activa automáticamente una membresía. Toda solicitud tiene revisión humana.
+          Enviar esta forma no completa automáticamente el registro. Toda solicitud tiene revisión humana.
         </p>
       </div>
     </form>

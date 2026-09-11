@@ -38,12 +38,18 @@ test.describe('manifiesto e iconos', () => {
   });
 
   test('los iconos existen y no están vacíos', async ({ request }) => {
-    for (const ruta of ['/icono.svg', '/icono-192.png', '/icono-512.png', '/apple-touch-icon.png']) {
+    for (const ruta of [
+      '/favicon.ico',
+      '/icon.png',
+      '/apple-icon.png',
+      '/icono-192.png',
+      '/icono-512.png',
+      '/apple-touch-icon.png',
+    ]) {
       const respuesta = await request.get(ruta);
       expect(respuesta.status(), `${ruta} no se sirve`).toBe(200);
       // Un umbral bajo a propósito: lo que se comprueba es que el archivo
-      // tenga contenido, no que pese algo en concreto. Una marca tipográfica en
-      // SVG son cuatrocientos bytes y está completa.
+      // tenga contenido, no que pese algo en concreto.
       expect((await respuesta.body()).byteLength, `${ruta} está vacío`).toBeGreaterThan(200);
     }
   });

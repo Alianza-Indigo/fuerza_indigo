@@ -45,13 +45,6 @@ export const metadata: Metadata = {
     description: DESCRIPCION,
     images: ['/og.png'],
   },
-  icons: {
-    icon: [
-      { url: '/icono.svg', type: 'image/svg+xml' },
-      { url: '/icono-192.png', sizes: '192x192', type: 'image/png' },
-    ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
-  },
 };
 
 export const viewport: Viewport = {

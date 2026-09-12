@@ -22,7 +22,7 @@ import {
   type MajorityRule,
   type QuorumRule,
 } from '@/modules/governance';
-import { DraftRuleSetForm, EditRuleDraftForm, PutInForceForm } from './rules-forms';
+import { DraftRuleSetForm, EditRuleDraftForm, InitialPutInForceForm, PutInForceForm } from './rules-forms';
 
 export const metadata = { title: 'Reglas estatutarias', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -156,12 +156,24 @@ export default async function ReglasEstatutariasPage() {
                     {version.status === 'DRAFT' && puedePonerEnVigor && (
                       <div className="mt-4">
                         <Disclosure summary="Poner en vigor">
-                          <PutInForceForm
-                            ruleSetId={version.id}
-                            version={version.version}
-                            acuerdos={opcionesAcuerdo}
-                            completa={version.complete}
-                          />
+                          {enVigor === undefined && actor.actorKind === 'ROOT_SUPERADMIN' ? (
+                            <InitialPutInForceForm
+                              ruleSetId={version.id}
+                              version={version.version}
+                              completa={version.complete}
+                            />
+                          ) : enVigor !== undefined ? (
+                            <PutInForceForm
+                              ruleSetId={version.id}
+                              version={version.version}
+                              acuerdos={opcionesAcuerdo}
+                              completa={version.complete}
+                            />
+                          ) : (
+                            <Notice tone="warning" title="La versión inicial la registra la cuenta raíz">
+                              <p>Usa la pantalla de puesta en marcha del Superadmin para acreditar el instrumento constitutivo.</p>
+                            </Notice>
+                          )}
                         </Disclosure>
                       </div>
                     )}

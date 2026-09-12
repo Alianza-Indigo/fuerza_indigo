@@ -43,6 +43,9 @@ export default async function ConsentimientosPage() {
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: actor.timeZone });
   const sinPublicar = textos.data.filter((texto) => texto.status === 'DRAFT');
   const publicados = textos.data.filter((texto) => texto.status === 'PUBLISHED');
+  const avisoAfiliacionPublicado = publicados.some(
+    (texto) => texto.code === 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE' && texto.legalEntity === 'Fuerza Índigo',
+  );
 
   return (
     <PageShell
@@ -55,6 +58,15 @@ export default async function ConsentimientosPage() {
             <p>
               Mientras no publiques el aviso de privacidad de la entrada pública, el formulario público de
               contacto se niega a recabar datos y nadie puede escribirte por ahí.
+            </p>
+          </Notice>
+        )}
+
+        {!avisoAfiliacionPublicado && (
+          <Notice tone="warning" title="La solicitud pública de afiliación sigue bloqueada">
+            <p>
+              Publica el texto <code>PRIVACY_NOTICE_MEMBERSHIP_INTAKE</code> de Fuerza Índigo. Un aviso general
+              publicado no sustituye al que informa específicamente sobre la CURP y los datos de afiliación.
             </p>
           </Notice>
         )}

@@ -1,7 +1,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { draftRuleSet, editRuleDraft, putRulesInForce, CLAVES_DE_REGLA, FORMA_DE_REGLA } from '@/modules/governance';
+import {
+  activateInitialRules,
+  draftRuleSet,
+  editRuleDraft,
+  putRulesInForce,
+  CLAVES_DE_REGLA,
+  FORMA_DE_REGLA,
+} from '@/modules/governance';
 import type { NormativeRules } from '@/modules/governance';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
@@ -132,4 +139,30 @@ export async function putRulesInForceAction(_previous: RulesFormState, formData:
         ? `La versión ${resultado.data.version} está en vigor.`
         : `La versión ${resultado.data.version} está en vigor y supera a la ${resultado.data.supersededVersion}.`,
   };
+}
+
+export async function activateInitialRulesAction(
+  _previous: RulesFormState,
+  formData: FormData,
+): Promise<RulesFormState> {
+  const actor = await currentActor();
+  const resultado = await activateInitialRules(actor, {
+    ruleSetId: textField(formData, 'ruleSetId'),
+    effectiveFrom: textField(formData, 'effectiveFrom'),
+    foundingInstrumentReference: textField(formData, 'foundingInstrumentReference'),
+    reason: textField(formData, 'reason'),
+  });
+
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/institucional/reglas');
+  revalidatePath('/superadmin');
+  revalidatePath('/superadmin/puesta-en-marcha');
+  return { status: 'ok', message: `La versión ${resultado.data.version} quedó en vigor como versión constitutiva inicial.` };
 }

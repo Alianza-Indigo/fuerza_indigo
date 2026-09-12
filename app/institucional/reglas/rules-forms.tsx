@@ -26,6 +26,7 @@ import {
   type NormativeRules,
 } from '@/modules/governance/domain';
 import {
+  activateInitialRulesAction,
   draftRuleSetAction,
   editRuleDraftAction,
   putRulesInForceAction,
@@ -270,6 +271,61 @@ export function PutInForceForm({
         errors={estado.fieldErrors?.['reason']}
       />
 
+      <SubmitButton>{pendiente ? 'Poniendo en vigor…' : `Poner en vigor la versión ${version}`}</SubmitButton>
+    </form>
+  );
+}
+
+/** Primera puesta en vigor: se acredita con el instrumento constitutivo. */
+export function InitialPutInForceForm({
+  ruleSetId,
+  version,
+  completa,
+}: {
+  ruleSetId: string;
+  version: string;
+  completa: boolean;
+}) {
+  const [estado, accion, pendiente] = useActionState(activateInitialRulesAction, INICIAL);
+
+  if (!completa) {
+    return (
+      <Notice tone="warning" title={`La versión ${version} todavía no puede entrar en vigor`}>
+        <p>Completa arriba todos los umbrales con lo que efectivamente dicen el acta constitutiva y los estatutos.</p>
+      </Notice>
+    );
+  }
+
+  return (
+    <form action={accion} className="space-y-4">
+      <input type="hidden" name="ruleSetId" value={ruleSetId} />
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo poner en vigor'} />}
+      {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Listo'} />}
+      <Notice tone="neutral" title="Únicamente para la versión inicial">
+        <p>Las reformas posteriores seguirán exigiendo una resolución aprobada de asamblea.</p>
+      </Notice>
+      <Field
+        name="effectiveFrom"
+        label="Vigente desde"
+        type="date"
+        required
+        errors={estado.fieldErrors?.['effectiveFrom']}
+      />
+      <Field
+        name="foundingInstrumentReference"
+        label="Acta constitutiva o estatuto que la aprobó"
+        required
+        hint="Escribe fecha, número o una referencia suficiente para localizar el documento fuente."
+        errors={estado.fieldErrors?.['foundingInstrumentReference']}
+      />
+      <TextArea
+        name="reason"
+        id="vigor-inicial-reason"
+        label="Motivo del registro inicial"
+        required
+        rows={2}
+        errors={estado.fieldErrors?.['reason']}
+      />
       <SubmitButton>{pendiente ? 'Poniendo en vigor…' : `Poner en vigor la versión ${version}`}</SubmitButton>
     </form>
   );

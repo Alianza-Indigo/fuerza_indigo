@@ -23,7 +23,9 @@ import { revokeExpiredOfficeAccess } from '@/modules/governance/application/offi
  * La segunda no es redundante: sin ella, alguien con `access.role.assign` podría
  * concentrar en su propia cuenta todos los roles cuyos permisos ya ostenta a
  * través de nombramientos distintos, saltándose el control institucional de
- * quién nombra a quién.
+ * quién nombra a quién. La única operación de arranque es distinta: la raíz
+ * puede designar a la primera Secretaría Ejecutiva cuando todavía no existe
+ * ninguna persona institucional capaz de otorgar ese nombramiento.
  */
 
 export const assignRoleSchema = z.object({
@@ -129,11 +131,8 @@ export async function assignRole(
   }
 
   // --- Control 2: nadie otorga lo que no posee ---------------------------
-  // Sin excepción por tipo de actor. La versión anterior eximía al Superadmin
-  // raíz; la exención era inalcanzable —`access.role.assign` no figura en su
-  // lista cerrada— pero habría abierto una vía de elevación en el instante en
-  // que alguien añadiera ese permiso a la lista, sin que ninguna prueba lo
-  // advirtiera. Una excepción que hoy no se ejecuta sigue siendo una excepción.
+  // La raíz también pasa por esta comprobación: su acceso total proviene del
+  // mismo resolvedor de permisos, no de saltarse el control.
   const mine = effectiveGrantedPermissions(actor);
   const granting = role.permissions.map((link) => link.permission.code);
   const excess = granting.filter((code) => !mine.has(code));
@@ -162,23 +161,81 @@ export async function assignRole(
     return fail(errors.ruleViolation('La cuenta está deshabilitada. Habilítala antes de otorgarle un rol.'));
   }
 
-  if (actor.userId === null) {
-    return fail(
-      errors.ruleViolation(
-        'El nombramiento debe registrarlo una persona identificada.',
-        'el Superadmin raíz no puede figurar como quien otorga un nombramiento (PRD §4.4)',
-      ),
-    );
+  let grantedById = actor.userId;
+  let initialBootstrap = false;
+  let bootstrapEntityId: string | null = null;
+  if (grantedById === null) {
+    // Una instalación nueva no tiene todavía a la persona que podría hacer el
+    // primer nombramiento. La raíz puede abrir esa única puerta y nada más: la
+    // primera Secretaría Ejecutiva de una entidad. Una vez que existe, todos
+    // los nombramientos vuelven a exigir una persona institucional identificada.
+    const isInitialSecretary =
+      actor.actorKind === 'ROOT_SUPERADMIN' &&
+      role.code === 'EXECUTIVE_SECRETARY' &&
+      data.legalEntityId !== undefined;
+
+    if (!isInitialSecretary) {
+      return fail(
+        errors.ruleViolation(
+          'El nombramiento debe registrarlo una persona identificada.',
+          'la raíz solo puede registrar la primera Secretaría Ejecutiva durante la puesta en marcha',
+        ),
+      );
+    }
+
+    const now = new Date();
+    const entityIdForBootstrap = data.legalEntityId;
+    if (entityIdForBootstrap === undefined) {
+      return fail(errors.validation({ legalEntityId: ['Elige la entidad jurídica del primer nombramiento.'] }));
+    }
+    bootstrapEntityId = entityIdForBootstrap;
+    const existingSecretary = await db().roleAssignment.findFirst({
+      where: {
+        legalEntityId: entityIdForBootstrap,
+        role: { code: 'EXECUTIVE_SECRETARY' },
+        revokedAt: null,
+        startsAt: { lte: now },
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      },
+      select: { id: true },
+    });
+    if (existingSecretary !== null) {
+      return fail(
+        errors.ruleViolation(
+          'La entidad ya tiene una Secretaría Ejecutiva vigente. Ese cargo debe realizar los nombramientos ordinarios.',
+        ),
+      );
+    }
+
+    // La columna histórica exige una cuenta otorgante. En este único acto
+    // constitutivo se usa la cuenta destinataria como ancla relacional; la
+    // bitácora conserva sin ambigüedad que el actor real fue ROOT_SUPERADMIN.
+    grantedById = data.userId;
+    initialBootstrap = true;
   }
 
-  const assignmentId = await transaction(async (tx) => {
+  const assignmentId = await transaction<string | null>(async (tx) => {
+    if (initialBootstrap) {
+      const now = new Date();
+      const alreadyExists = await tx.roleAssignment.count({
+        where: {
+          legalEntityId: bootstrapEntityId!,
+          role: { code: 'EXECUTIVE_SECRETARY' },
+          revokedAt: null,
+          startsAt: { lte: now },
+          OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+        },
+      });
+      if (alreadyExists > 0) return null;
+    }
+
     const created = await tx.roleAssignment.create({
       data: {
         userId: data.userId,
         roleId: role.id,
         legalEntityId: data.legalEntityId ?? null,
         organizationId: data.organizationId ?? null,
-        grantedById: actor.userId!,
+        grantedById,
         grantReason: data.reason,
         endsAt: data.endsAt === undefined ? null : new Date(data.endsAt),
         territorialScopes: {
@@ -198,19 +255,32 @@ export async function assignRole(
       outcome: 'SUCCESS',
       legalEntityId: data.legalEntityId ?? null,
       reason: data.reason,
-      metadata: { role: role.code, targetUserId: data.userId, endsAt: data.endsAt ?? null },
+      metadata: {
+        role: role.code,
+        targetUserId: data.userId,
+        endsAt: data.endsAt ?? null,
+        puestaEnMarchaInicial: initialBootstrap,
+      },
     });
 
     await recordSecurity(tx, {
       kind: 'PRIVILEGE_GRANTED',
       severity: 'WARNING',
       actorId: actor.actorId,
-      detail: { role: role.code, targetUserId: data.userId },
+      detail: { role: role.code, targetUserId: data.userId, puestaEnMarchaInicial: initialBootstrap },
       correlationId: actor.correlationId,
     });
 
     return created.id;
-  });
+  }, initialBootstrap ? { isolationLevel: 'Serializable' } : {});
+
+  if (assignmentId === null) {
+    return fail(
+      errors.ruleViolation(
+        'La entidad ya tiene una Secretaría Ejecutiva vigente. Ese cargo debe realizar los nombramientos ordinarios.',
+      ),
+    );
+  }
 
   return ok({ assignmentId });
 }

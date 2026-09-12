@@ -46,11 +46,13 @@ export {
 export {
   draftRuleSet,
   editRuleDraft,
+  activateInitialRules,
   putRulesInForce,
   ruleSetList,
   normativeRulesSchema,
   draftRuleSetSchema,
   editRuleDraftSchema,
+  activateInitialRulesSchema,
   putRulesInForceSchema,
   CLAVES_DE_REGLA,
   NOMBRE_DE_REGLA,
@@ -66,6 +68,7 @@ export {
   type FormaDeRegla,
   type DraftRuleSetInput,
   type EditRuleDraftInput,
+  type ActivateInitialRulesInput,
   type PutRulesInForceInput,
 } from './application/normative-rules';
 

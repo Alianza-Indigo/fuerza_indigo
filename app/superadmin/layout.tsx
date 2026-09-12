@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 const SECTIONS = [
   { href: '/superadmin', label: 'Estado general' },
+  { href: '/superadmin/puesta-en-marcha', label: 'Puesta en marcha' },
   { href: '/superadmin/personas', label: 'Personas y roles' },
   { href: '/superadmin/auditoria', label: 'Auditoría' },
   { href: '/superadmin/salud', label: 'Salud técnica' },

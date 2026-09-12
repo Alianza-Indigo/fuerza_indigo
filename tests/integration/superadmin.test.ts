@@ -13,6 +13,8 @@ import {
 } from '@/platform/auth/session';
 import { transaction } from '@/platform/db/unit-of-work';
 import { can } from '@/platform/authz/policy';
+import { updateLegalEntity } from '@/modules/admin';
+import { activateInitialRules } from '@/modules/governance';
 import { isAuthorizedCron } from '@/platform/http/cron-auth';
 import { env, resetEnvCache } from '@/platform/config/env';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
@@ -24,9 +26,8 @@ import { ROOT_TEST_PASSWORD } from './setup-env';
  *
  * Criterio de la fase: **un Superadmin puede iniciar sesión sin existir como
  * miembro**. Su correo y su hash viven en el entorno; en la base solo tiene un
- * `Actor` de atribución, que sirve para registrar lo que hace y no le concede
- * nada. Aquí se comprueban las dos mitades: que entra, y que entrar no le da
- * facultades sindicales.
+ * `Actor` de atribución. Ese actor recibe el acceso total decidido en ADR-0174
+ * y permite sacar a una instalación nueva del arranque circular.
  */
 
 let base: TestDatabase;
@@ -176,7 +177,7 @@ describe('la raíz tiene acceso total (ADR-0174)', () => {
     expect(can(actor, 'consent.grant', { kind: 'Consent' }).allowed).toBe(true);
   }, 60_000);
 
-  it('tiene el permiso de nombrar, pero el nombramiento exige un otorgante con cuenta', async () => {
+  it('puede nombrar a la primera Secretaría Ejecutiva para salir del arranque circular', async () => {
     const { assignRole } = await import('@/modules/access');
     const persona = await crearPersonaConCuenta(base.prisma, { givenName: 'Cualquiera' });
 
@@ -198,13 +199,8 @@ describe('la raíz tiene acceso total (ADR-0174)', () => {
       userAgentSummary: null,
     });
 
-    // La raíz ya tiene el permiso `access.role.assign` (ADR-0174), pero el
-    // nombramiento guarda `grantedById` —una persona identificada— y la raíz no
-    // tiene fila en `User`: el otorgamiento en sí no puede atribuirse a ella.
     expect(can(actor, 'access.role.assign', { kind: 'RoleAssignment' }).allowed).toBe(true);
 
-    // Con entidad válida y todos los permisos, el único freno que queda es el
-    // estructural: el nombramiento guarda quién lo otorgó, y la raíz no tiene cuenta.
     const entidadId = await entidadPrincipal(base.prisma);
     const resultado = await assignRole(actor, {
       userId: persona.userId,
@@ -215,9 +211,142 @@ describe('la raíz tiene acceso total (ADR-0174)', () => {
       includesDescendants: true,
     });
 
-    expect(resultado.ok).toBe(false);
-    expect(!resultado.ok && resultado.error.code).toBe('RULE_VIOLATION');
+    expect(resultado.ok, resultado.ok ? '' : resultado.error.message).toBe(true);
+    if (!resultado.ok) return;
+
+    const assignment = await base.prisma.roleAssignment.findUniqueOrThrow({
+      where: { id: resultado.data.assignmentId },
+      select: { grantedById: true, grantReason: true },
+    });
+    // La cuenta designada ocupa el campo relacional obligatorio; el acto real
+    // queda atribuido al actor raíz en la bitácora y marcado como arranque.
+    expect(assignment.grantedById).toBe(persona.userId);
+    expect(assignment.grantReason).toContain('raíz');
+
+    const segundo = await crearPersonaConCuenta(base.prisma, { givenName: 'Segunda' });
+    const duplicado = await assignRole(actor, {
+      userId: segundo.userId,
+      roleCode: 'EXECUTIVE_SECRETARY',
+      reason: 'intento de repetir la puesta en marcha inicial',
+      legalEntityId: entidadId,
+      territorialUnitIds: [],
+      includesDescendants: true,
+    });
+    expect(duplicado.ok).toBe(false);
+    expect(!duplicado.ok && duplicado.error.code).toBe('RULE_VIOLATION');
   }, 60_000);
+
+  it('completa la entidad jurídica con concurrencia y auditoría', async () => {
+    const actorId = await rootActorId();
+    const actor = {
+      actorId,
+      actorKind: 'ROOT_SUPERADMIN' as const,
+      userId: null,
+      personId: null,
+      jobType: null,
+      sessionId: null,
+      roles: [],
+      legalEntityScope: [],
+      compartments: new Set<'UNION' | 'SOCIAL' | 'DISCIPLINARY'>(['UNION', 'SOCIAL', 'DISCIPLINARY']),
+      reason: null,
+      correlationId: 'configuracion-entidad-raiz',
+      ipHash: null,
+      userAgentSummary: 'prueba',
+      locale: 'es-MX',
+      timeZone: 'America/Mexico_City',
+    };
+    const entity = await base.prisma.legalEntity.findUniqueOrThrow({
+      where: { code: 'FUERZA_INDIGO' },
+      select: { id: true, legalName: true, shortName: true, contactEmail: true, rowVersion: true },
+    });
+
+    const result = await updateLegalEntity(actor, {
+      legalEntityId: entity.id,
+      rowVersion: entity.rowVersion,
+      legalName: entity.legalName,
+      shortName: entity.shortName,
+      taxId: '',
+      registryNumber: 'REGISTRO-SINDICAL-DE-PRUEBA',
+      address: 'Domicilio institucional ficticio para la prueba',
+      contactEmail: entity.contactEmail,
+      privacyNoticeUrl: '',
+      reason: 'completar la ficha durante la puesta en marcha',
+    });
+    expect(result.ok, result.ok ? '' : result.error.message).toBe(true);
+
+    const updated = await base.prisma.legalEntity.findUniqueOrThrow({ where: { id: entity.id } });
+    expect(updated.registryNumber).toBe('REGISTRO-SINDICAL-DE-PRUEBA');
+    expect(updated.rowVersion).toBe(entity.rowVersion + 1);
+  });
+
+  it('registra la primera versión desde el instrumento constitutivo, pero nunca una reforma', async () => {
+    const actorId = await rootActorId();
+    const actor = {
+      actorId,
+      actorKind: 'ROOT_SUPERADMIN' as const,
+      userId: null,
+      personId: null,
+      jobType: null,
+      sessionId: null,
+      roles: [],
+      legalEntityScope: [],
+      compartments: new Set<'UNION' | 'SOCIAL' | 'DISCIPLINARY'>(['UNION', 'SOCIAL', 'DISCIPLINARY']),
+      reason: null,
+      correlationId: 'reglas-iniciales-raiz',
+      ipHash: null,
+      userAgentSummary: 'prueba',
+      locale: 'es-MX',
+      timeZone: 'America/Mexico_City',
+    };
+    const initial = await base.prisma.normativeRuleSet.findUniqueOrThrow({ where: { version: '2026.1' } });
+    const completeRules = {
+      executiveCommitteeTermMonths: 48,
+      oversightCommissionSeats: 3,
+      electoralCommissionSeats: 3,
+      firstCallQuorum: 'HALF_PLUS_ONE',
+      secondCallQuorum: 'THOSE_PRESENT',
+      ordinaryMajority: 'SIMPLE',
+      ordinaryAssemblyMinimumPerYear: 1,
+      assemblyNoticeDaysOrdinary: 15,
+      assemblyNoticeDaysExtraordinary: 8,
+      extraordinaryAssemblyPetitionPercent: 33,
+      reelectionAllowed: false,
+      statuteAmendmentMajority: 'TWO_THIRDS',
+      dissolutionMajority: 'THREE_FOURTHS',
+      electionCallNoticeDays: 30,
+      genderProportionalityMinPercent: 40,
+      disciplinaryAnswerDays: 10,
+      disciplinaryAppealDays: 15,
+      bargainingConsultationMajority: 'SIMPLE',
+    };
+    await base.prisma.normativeRuleSet.update({ where: { id: initial.id }, data: { rules: completeRules } });
+
+    const result = await activateInitialRules(actor, {
+      ruleSetId: initial.id,
+      effectiveFrom: '2026-01-01',
+      foundingInstrumentReference: 'Acta constitutiva ficticia número uno',
+      reason: 'registrar las reglas constitutivas de la prueba',
+    });
+    expect(result.ok, result.ok ? '' : result.error.message).toBe(true);
+
+    const second = await base.prisma.normativeRuleSet.create({
+      data: {
+        version: '2026.2',
+        status: 'DRAFT',
+        rules: completeRules,
+        createdByActorId: actorId,
+        updatedByActorId: actorId,
+      },
+    });
+    const repeated = await activateInitialRules(actor, {
+      ruleSetId: second.id,
+      effectiveFrom: '2026-02-01',
+      foundingInstrumentReference: 'Una referencia que ya no puede usarse',
+      reason: 'intento de omitir el acuerdo de asamblea posterior',
+    });
+    expect(repeated.ok).toBe(false);
+    expect(!repeated.ok && repeated.error.code).toBe('CONFLICT');
+  });
 });
 
 describe('la sesión raíz se puede revocar de verdad', () => {

@@ -66,6 +66,18 @@ export default async function SuperadminHomePage() {
         )}
 
         <section>
+          <h2 className="mb-3 text-lg font-semibold">Primeros pasos</h2>
+          <Card>
+            <p className="text-sm text-[var(--color-ink-soft)]">
+              Si esta es una instalación nueva, completa la entidad, los avisos, las reglas constitutivas y el primer nombramiento en un solo recorrido.
+            </p>
+            <Link href="/superadmin/puesta-en-marcha" className="mt-3 inline-block font-medium underline underline-offset-4">
+              Abrir puesta en marcha
+            </Link>
+          </Card>
+        </section>
+
+        <section>
           <h2 className="mb-3 text-lg font-semibold">Datos base</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Metric label="Entidades jurídicas" value={overview.legalEntities} />

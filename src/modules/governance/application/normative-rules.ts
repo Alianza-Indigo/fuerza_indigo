@@ -240,6 +240,97 @@ export const putRulesInForceSchema = z.object({
 
 export type PutRulesInForceInput = z.infer<typeof putRulesInForceSchema>;
 
+export const activateInitialRulesSchema = z.object({
+  ruleSetId: z.uuid(),
+  effectiveFrom: z.string().trim().regex(FECHA, { error: () => 'La fecha va como 2026-01-01.' }),
+  foundingInstrumentReference: z.string().trim().min(10, {
+    error: () => 'Identifica el acta constitutiva o estatuto que aprobó estas reglas.',
+  }).max(500),
+  reason: z.string().trim().min(10).max(2000),
+});
+
+export type ActivateInitialRulesInput = z.infer<typeof activateInitialRulesSchema>;
+
+/**
+ * Activa exclusivamente la primera versión normativa de una instalación.
+ *
+ * La primera versión no puede depender de una resolución creada dentro del
+ * sistema: para crear esa asamblea ya se necesita una versión en vigor. El
+ * instrumento constitutivo anterior a la plataforma es la fuente jurídica de
+ * este único acto de arranque. Las reformas posteriores siguen pasando, sin
+ * excepción, por `putRulesInForce` y una resolución aprobada.
+ */
+export async function activateInitialRules(
+  actor: ActorContext,
+  input: ActivateInitialRulesInput,
+): Promise<UseCaseResult<{ version: string }>> {
+  const parsed = activateInitialRulesSchema.safeParse(input);
+  if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
+
+  const data = parsed.data;
+  const contexto = { ...actor, reason: data.reason };
+  const decision = can(contexto, 'institution.normative_rules.manage', { kind: 'NormativeRuleSet' });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+  if (actor.actorKind !== 'ROOT_SUPERADMIN') {
+    return fail(errors.forbidden('solo la cuenta raíz puede registrar el instrumento constitutivo inicial'));
+  }
+
+  const version = await db().normativeRuleSet.findUnique({
+    where: { id: data.ruleSetId },
+    select: { id: true, version: true, status: true, rules: true },
+  });
+  if (version === null) return fail(errors.notFound('Esa versión de reglas no existe.'));
+  if (version.status !== 'DRAFT') return fail(errors.conflict(`La versión ${version.version} ya no es un borrador.`));
+
+  const faltantes = reglasFaltantes(version.rules);
+  if (faltantes.length > 0) {
+    return fail(errors.conflict(`Completa primero los umbrales pendientes: ${faltantes.join('; ')}.`));
+  }
+
+  const desde = new Date(`${data.effectiveFrom}T00:00:00.000Z`);
+
+  const resultado = await transaction(async (tx) => {
+    const algunaVersionActivada = await tx.normativeRuleSet.count({
+      where: { status: { in: ['IN_FORCE', 'SUPERSEDED'] } },
+    });
+    if (algunaVersionActivada > 0) return null;
+
+    const actualizada = await tx.normativeRuleSet.updateMany({
+      where: { id: version.id, status: 'DRAFT' },
+      data: {
+        status: 'IN_FORCE',
+        effectiveFrom: desde,
+        effectiveTo: null,
+        approvedByResolutionId: null,
+        updatedByActorId: actor.actorId,
+        rowVersion: { increment: 1 },
+      },
+    });
+    if (actualizada.count !== 1) return null;
+
+    await recordAudit(tx, contexto, {
+      action: AUDIT_ACTIONS.NORMATIVE_RULES_PUBLISHED,
+      objectKind: 'NormativeRuleSet',
+      objectId: version.id,
+      outcome: 'SUCCESS',
+      reason: data.reason,
+      metadata: {
+        version: version.version,
+        desde: data.effectiveFrom,
+        instrumentoConstitutivo: data.foundingInstrumentReference,
+        puestaEnMarchaInicial: true,
+      },
+    });
+
+    return version.version;
+  }, { isolationLevel: 'Serializable' });
+
+  if (resultado === null) {
+    return fail(errors.conflict('La puesta en marcha inicial ya fue realizada. Las reformas requieren acuerdo de asamblea.'));
+  }
+  return ok({ version: resultado });
+}
+
 /**
  * Poner una versión en vigor.
  *

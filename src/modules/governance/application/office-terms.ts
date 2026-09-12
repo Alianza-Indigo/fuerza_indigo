@@ -92,7 +92,7 @@ export async function appointOffice(
       termMonths: true,
       grantsRoleCode: true,
       isActive: true,
-      unionBody: { select: { id: true, legalEntityId: true, status: true } },
+      unionBody: { select: { id: true, legalEntityId: true, status: true, kind: true } },
     },
   });
   if (office === null) return fail(errors.notFound('No existe ese cargo.'));
@@ -129,6 +129,38 @@ export async function appointOffice(
         'Esa calidad no concede derechos políticos, así que no puede ocupar un cargo de gobierno sindical.',
       ),
     );
+  }
+
+  // La Comisión de Vigilancia es independiente del Comité Ejecutivo Nacional.
+  // Esta incompatibilidad nace de la clase de órgano y no depende de que una
+  // persona administradora recuerde declarar pares de cargos uno por uno.
+  if (
+    office.unionBody.kind === 'NATIONAL_EXECUTIVE_COMMITTEE' ||
+    office.unionBody.kind === 'OVERSIGHT_COMMISSION'
+  ) {
+    const incompatibleBodyKind =
+      office.unionBody.kind === 'NATIONAL_EXECUTIVE_COMMITTEE'
+        ? 'OVERSIGHT_COMMISSION'
+        : 'NATIONAL_EXECUTIVE_COMMITTEE';
+    const inicioSolicitado = new Date(`${data.startsOn}T00:00:00.000Z`);
+    const finSolicitado = sumarMeses(inicioSolicitado, office.termMonths);
+    const crossBodyTerm = await db().officeTerm.findFirst({
+      where: {
+        personId: membership.personId,
+        endedEarlyOn: null,
+        startsOn: { lt: finSolicitado },
+        endsOn: { gt: inicioSolicitado },
+        officeDefinition: { unionBody: { kind: incompatibleBodyKind } },
+      },
+      select: { officeDefinition: { select: { name: true } } },
+    });
+    if (crossBodyTerm !== null) {
+      return fail(
+        errors.conflict(
+          `Esta persona ocupa «${crossBodyTerm.officeDefinition.name}». Nadie puede integrar al mismo tiempo el Comité Ejecutivo Nacional y la Comisión de Vigilancia y Fiscalización.`,
+        ),
+      );
+    }
   }
 
   const inicio = new Date(`${data.startsOn}T00:00:00.000Z`);
@@ -179,9 +211,12 @@ export async function appointOffice(
     let roleAssignmentId: string | null = null;
 
     // Sin cuenta de usuario no hay acceso que conceder: el nombramiento consta
-    // igual, y la persona lo recibirá al activar su cuenta.
-    const otorgante = actor.userId;
-    if (userId !== null && otorgante !== null && otorgante !== undefined) {
+    // igual, y el acceso podrá vincularse cuando se le cree una cuenta.
+    // En la instalación inicial la raíz no tiene fila User. Como ancla de la
+    // relación obligatoria se usa la cuenta destinataria; la bitácora conserva
+    // que el acto real fue realizado por ROOT_SUPERADMIN.
+    const otorgante = actor.userId ?? (actor.actorKind === 'ROOT_SUPERADMIN' ? userId : null);
+    if (userId !== null && otorgante !== null) {
       const role = await tx.role.findUnique({ where: { code: office.grantsRoleCode }, select: { id: true } });
       if (role !== null) {
         const asignacion = await tx.roleAssignment.create({
@@ -211,7 +246,11 @@ export async function appointOffice(
           objectId: asignacion.id,
           outcome: 'SUCCESS',
           reason: data.reason,
-          metadata: { roleCode: office.grantsRoleCode, porCargo: office.name },
+          metadata: {
+            roleCode: office.grantsRoleCode,
+            porCargo: office.name,
+            puestaEnMarchaInicial: actor.actorKind === 'ROOT_SUPERADMIN' && actor.userId === null,
+          },
         });
       }
     }

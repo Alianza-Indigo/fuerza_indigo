@@ -38,11 +38,8 @@ export interface InviteResult {
   readonly userId: string;
   readonly personId: string;
   /**
-   * Enlace de activación, **solo** cuando el proveedor de correo es la consola,
-   * es decir en desarrollo. En cualquier otro entorno llega cadena vacía: el
-   * enlace es una credencial de un solo uso dirigida a otra persona, y
-   * devolverlo a quien invita lo dejaría en su pantalla, en su historial y en
-   * cualquier captura que hiciera.
+   * Enlace para establecer la contraseña. Se devuelve cuando la entrega está
+   * configurada para el panel; en modo `email` llega cadena vacía.
    */
   readonly invitationUrl: string;
 }
@@ -102,7 +99,10 @@ export async function inviteUser(actor: ActorContext, input: InviteInput): Promi
       data: {
         personId: person.id,
         email,
-        status: 'INVITED',
+        // La activación por correo está temporalmente deshabilitada. La cuenta
+        // nace habilitada, aunque no podrá entrar hasta elegir una contraseña
+        // mediante el testigo de un solo uso.
+        status: 'ACTIVE',
         mustChangePassword: true,
         createdByActorId: actor.actorId,
         updatedByActorId: actor.actorId,
@@ -144,39 +144,109 @@ export async function inviteUser(actor: ActorContext, input: InviteInput): Promi
 
   const invitationUrl = `${env().APP_URL}/activar/${token}`;
 
-  try {
-    const sent = await sendTemplatedMail({
-      to: email,
-      templateCode: 'USER_INVITATION',
-      variables: { givenName, activationUrl: invitationUrl, expiresInHours: '168' },
-      correlationId: actor.correlationId,
-    });
-    await transaction((tx) =>
-      recordNotification(tx, {
-        personId: result.personId,
+  if (env().ACCOUNT_ACTIVATION_DELIVERY === 'email') {
+    try {
+      const sent = await sendTemplatedMail({
+        to: email,
         templateCode: 'USER_INVITATION',
-        category: 'SECURITY',
-        title: sent.rendered.subject,
-        body: 'Se envió una invitación para activar la cuenta.',
-        providerMessageId: sent.providerMessageId,
-        delivered: true,
-      }),
-    );
-  } catch {
-    await transaction((tx) =>
-      recordNotification(tx, {
-        personId: result.personId,
-        templateCode: 'USER_INVITATION',
-        category: 'SECURITY',
-        title: 'Invitación para activar la cuenta',
-        body: 'No fue posible enviar el correo de invitación. Vuelve a enviarla desde el panel.',
-        providerMessageId: null,
-        delivered: false,
-      }),
-    );
+        variables: { givenName, activationUrl: invitationUrl, expiresInHours: '168' },
+        correlationId: actor.correlationId,
+      });
+      await transaction((tx) =>
+        recordNotification(tx, {
+          personId: result.personId,
+          templateCode: 'USER_INVITATION',
+          category: 'SECURITY',
+          title: sent.rendered.subject,
+          body: 'Se envió un enlace para establecer la contraseña de la cuenta.',
+          providerMessageId: sent.providerMessageId,
+          delivered: true,
+        }),
+      );
+    } catch {
+      await transaction((tx) =>
+        recordNotification(tx, {
+          personId: result.personId,
+          templateCode: 'USER_INVITATION',
+          category: 'SECURITY',
+          title: 'Enlace para establecer contraseña',
+          body: 'No fue posible enviar el enlace. Genere uno nuevo desde el panel.',
+          providerMessageId: null,
+          delivered: false,
+        }),
+      );
+    }
   }
 
-  return ok({ ...result, invitationUrl: env().EMAIL_PROVIDER === 'console' ? invitationUrl : '' });
+  return ok({ ...result, invitationUrl: env().ACCOUNT_ACTIVATION_DELIVERY === 'panel' ? invitationUrl : '' });
+}
+
+export const createAccountSetupLinkSchema = z.object({ userId: z.uuid() });
+
+/**
+ * Genera un nuevo testigo para una cuenta que todavía no tiene contraseña.
+ * Permite recuperar las invitaciones existentes al retirar temporalmente la
+ * dependencia del correo; solo se devuelve a quien puede invitar cuentas.
+ */
+export async function createAccountSetupLink(
+  actor: ActorContext,
+  input: z.infer<typeof createAccountSetupLinkSchema>,
+): Promise<UseCaseResult<{ setupUrl: string }>> {
+  const parsed = createAccountSetupLinkSchema.safeParse(input);
+  if (!parsed.success) return fail(errors.validation({ userId: ['La cuenta no es válida.'] }));
+
+  const decision = can(actor, 'identity.user.invite', { kind: 'User', id: parsed.data.userId });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const account = await db().user.findUnique({
+    where: { id: parsed.data.userId },
+    select: {
+      id: true,
+      email: true,
+      status: true,
+      credentials: { where: { type: 'PASSWORD', revokedAt: null }, take: 1, select: { id: true } },
+    },
+  });
+  if (account === null) return fail(errors.notFound('la cuenta no existe'));
+  if (account.status === 'DISABLED') return fail(errors.conflict('La cuenta está deshabilitada. Reábrela primero.'));
+  if (account.credentials.length > 0) {
+    return fail(errors.conflict('La cuenta ya tiene contraseña. Si la olvidó, utilice la recuperación de acceso.'));
+  }
+
+  const token = newOpaqueToken();
+  await transaction(async (tx) => {
+    await tx.passwordReset.updateMany({
+      where: { userId: account.id, consumedAt: null, invalidatedAt: null },
+      data: { invalidatedAt: new Date() },
+    });
+    await tx.passwordReset.create({
+      data: {
+        userId: account.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
+      },
+    });
+    await tx.user.update({
+      where: { id: account.id },
+      data: {
+        status: 'ACTIVE',
+        mustChangePassword: true,
+        failedAttempts: 0,
+        lockedUntil: null,
+        updatedByActorId: actor.actorId,
+        rowVersion: { increment: 1 },
+      },
+    });
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.ACCOUNT_SETUP_LINK_CREATED,
+      objectKind: 'User',
+      objectId: account.id,
+      outcome: 'SUCCESS',
+      metadata: { subject: maskEmail(account.email), delivery: 'panel' },
+    });
+  });
+
+  return ok({ setupUrl: `${env().APP_URL}/activar/${token}` });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -256,7 +326,6 @@ export async function activateAccount(
       where: { id: invitation.userId },
       data: {
         status: 'ACTIVE',
-        emailVerifiedAt: new Date(),
         mustChangePassword: false,
         failedAttempts: 0,
         lockedUntil: null,

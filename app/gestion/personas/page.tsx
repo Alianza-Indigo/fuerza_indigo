@@ -5,6 +5,7 @@ import { listAdministrablePeople } from '@/modules/admin';
 import { can } from '@/platform/authz/policy';
 import { AccountForm } from './account-form';
 import { InviteForm } from './invite-form';
+import { SetupLinkForm } from './setup-link-form';
 
 export const metadata = { title: 'Invitar personas', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -12,9 +13,8 @@ export const dynamic = 'force-dynamic';
 /**
  * Alta de personas administradoras por invitación (PRD §24 Fase 1).
  *
- * La cuenta nace en estado `INVITED` y sin contraseña. Hasta que su titular
- * active el enlace no puede entrar, de modo que una invitación equivocada no
- * concede acceso a nadie.
+ * La cuenta nace habilitada y el titular establece su contraseña con un enlace
+ * de un solo uso que, temporalmente, se entrega desde esta misma pantalla.
  */
 export default async function PeopleManagementPage() {
   const actor = await currentActor();
@@ -71,7 +71,10 @@ export default async function PeopleManagementPage() {
                     <td className="p-3 font-medium">{persona.displayName}</td>
                     <td className="p-3">{persona.maskedEmail}</td>
                     <td className="p-3">
-                      {persona.status === 'ACTIVE' ? 'Activa' : persona.status === 'INVITED' ? 'Sin activar' : 'Deshabilitada'}
+                      {persona.status === 'ACTIVE' ? 'Activa' : persona.status === 'INVITED' ? 'Pendiente heredada' : 'Deshabilitada'}
+                      {!persona.hasPassword && persona.status !== 'DISABLED' && (
+                        <span className="block text-xs">falta establecer contraseña</span>
+                      )}
                       {persona.isLocked && <span className="block text-xs">bloqueada temporalmente</span>}
                     </td>
                     <td className="p-3 tabular-nums">
@@ -84,7 +87,9 @@ export default async function PeopleManagementPage() {
                     </td>
                     {puedeCerrar && (
                       <td className="p-3">
-                        {persona.userId === actor.userId ? (
+                        {!persona.hasPassword && persona.status !== 'DISABLED' ? (
+                          <SetupLinkForm userId={persona.userId} />
+                        ) : persona.userId === actor.userId ? (
                           <span className="text-xs text-[var(--color-ink-soft)]">
                             Es tu cuenta: no puedes cerrarla tú
                           </span>
@@ -105,7 +110,7 @@ export default async function PeopleManagementPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Invitar a una persona</h2>
+          <h2 className="mb-3 text-lg font-semibold">Crear una cuenta</h2>
           {!puedeInvitar ? (
             <ErrorNotice title="No tienes facultades para invitar personas">
               <p>Consultar quién tiene cuenta y crear cuentas nuevas son cosas distintas.</p>

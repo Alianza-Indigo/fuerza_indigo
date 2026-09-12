@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { disableAccount, inviteUser, reenableAccount } from '@/modules/identity';
+import { createAccountSetupLink, disableAccount, inviteUser, reenableAccount } from '@/modules/identity';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -10,12 +10,9 @@ export interface InviteFormState {
   readonly message?: string;
   readonly fieldErrors?: Record<string, string[]>;
   /**
-   * Enlace de activación.
-   *
-   * Solo se devuelve cuando el proveedor de correo es la consola, es decir en
-   * desarrollo. En cualquier otro caso la invitación llega por correo y este
-   * campo queda vacío: mostrar el enlace en pantalla lo dejaría en el historial
-   * del navegador de quien invita, que no es su destinataria.
+   * Enlace para establecer contraseña. Durante la puesta en marcha se devuelve
+   * al panel; cuando `ACCOUNT_ACTIVATION_DELIVERY=email`, llega vacío porque se
+   * entrega por correo a la persona destinataria.
    */
   readonly invitationUrl?: string;
 }
@@ -47,8 +44,30 @@ export async function inviteUserAction(
   revalidatePath('/gestion/personas');
   return {
     status: 'ok',
-    message: 'Invitación enviada. La persona elige su contraseña con un enlace de un solo uso, válido siete días.',
+    message: 'Cuenta activa. Comparte el enlace de un solo uso para que la persona establezca su contraseña; es válido siete días.',
     ...(resultado.data.invitationUrl === '' ? {} : { invitationUrl: resultado.data.invitationUrl }),
+  };
+}
+
+export interface SetupLinkFormState {
+  readonly status: 'idle' | 'error' | 'ok';
+  readonly message?: string;
+  readonly setupUrl?: string;
+}
+
+export async function createAccountSetupLinkAction(
+  _previous: SetupLinkFormState,
+  formData: FormData,
+): Promise<SetupLinkFormState> {
+  const actor = await currentActor();
+  const resultado = await createAccountSetupLink(actor, { userId: textField(formData, 'userId') });
+  if (!resultado.ok) return { status: 'error', message: resultado.error.message };
+
+  revalidatePath('/gestion/personas');
+  return {
+    status: 'ok',
+    message: 'Enlace generado. Caduca en siete días y solo puede utilizarse una vez.',
+    setupUrl: resultado.data.setupUrl,
   };
 }
 

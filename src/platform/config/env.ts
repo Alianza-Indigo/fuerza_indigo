@@ -99,6 +99,12 @@ const schema = z.object({
   EMAIL_PROVIDER: z.enum(['resend', 'smtp', 'console']),
   EMAIL_FROM: z.string().min(1, { error: () => 'falta y sirve para identificar al remitente institucional' }),
   EMAIL_API_KEY: optionalSecret(),
+  /**
+   * Durante la puesta en marcha, el enlace para establecer contraseña puede
+   * entregarse desde el panel en vez de depender del correo. Cambiarlo a
+   * `email` restablece el envío sin requerir otro cambio de código.
+   */
+  ACCOUNT_ACTIVATION_DELIVERY: z.enum(['panel', 'email']).default('panel'),
 
   CRON_SECRET: secret('autenticar las invocaciones de los trabajos programados'),
   QR_SIGNING_SECRET: signingKeyring,

@@ -44,6 +44,7 @@ export async function appointOfficeAction(_previous: TermFormState, formData: Fo
   }
 
   revalidatePath('/institucional/nombramientos');
+  revalidatePath('/superadmin/puesta-en-marcha');
   const hasta = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeZone: 'America/Mexico_City' }).format(
     resultado.data.endsOn,
   );

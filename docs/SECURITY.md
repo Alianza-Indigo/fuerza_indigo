@@ -30,7 +30,7 @@ Activos y su clasificación:
 |---|---|
 | Contraseña segura | Mínimo 12 caracteres, comparación contra listas de contraseñas comprometidas, sin reglas de composición que empeoren la usabilidad; medidor de fortaleza con lenguaje claro |
 | Hash resistente | **Argon2id** con parámetros documentados en `DECISIONS.md` (ADR-0003) y almacenados junto al hash para permitir su elevación futura sin invalidar credenciales |
-| Activación de cuenta | Por invitación o verificación de correo; nunca por autoservicio silencioso con privilegios |
+| Alta de cuenta | Por invitación administrativa. Temporalmente nace habilitada y el enlace de contraseña se entrega en el panel; no puede iniciar sesión hasta establecer una contraseña. `ACCOUNT_ACTIVATION_DELIVERY=email` restablece la entrega por correo |
 | Recuperación segura | Token de un solo uso, con vigencia corta, invalidado al usarse o al cambiar la contraseña; la respuesta al solicitante es **idéntica** exista o no la cuenta |
 | Rotación de sesión | Identificador de sesión nuevo tras autenticarse, tras cambiar la contraseña y tras elevar privilegios |
 | Cookies | `HttpOnly`, `Secure`, `SameSite=Lax` para la sesión ordinaria y `SameSite=Strict` para la sesión de Superadmin; sin datos en el valor, solo un identificador opaco cuyo hash vive en la base |

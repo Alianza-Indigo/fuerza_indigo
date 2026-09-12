@@ -14,8 +14,10 @@ export {
 export {
   inviteUser,
   activateAccount,
+  createAccountSetupLink,
   inviteSchema,
   activateSchema,
+  createAccountSetupLinkSchema,
   type InviteInput,
   type InviteResult,
 } from './application/invitations';

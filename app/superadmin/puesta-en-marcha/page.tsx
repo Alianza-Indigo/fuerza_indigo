@@ -43,6 +43,13 @@ const steps = [
     href: '/gestion/personas',
     action: 'Invitar primera cuenta',
   },
+  {
+    key: 'initialBodiesReady' as const,
+    title: '6. Integrar los órganos nacionales iniciales',
+    description: 'Registra los periodos del Comité Ejecutivo Nacional y de la Comisión de Vigilancia y Fiscalización conforme al acta constitutiva.',
+    href: '/institucional/nombramientos#nombramientos-iniciales',
+    action: 'Registrar integración inicial',
+  },
 ] as const;
 
 export default async function StartupPage() {

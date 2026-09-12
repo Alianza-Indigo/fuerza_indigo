@@ -10,6 +10,7 @@ export interface StartupStatus {
   readonly publicNoticeReady: boolean;
   readonly rulesReady: boolean;
   readonly executiveSecretaryReady: boolean;
+  readonly initialBodiesReady: boolean;
   readonly people: number;
   readonly applications: number;
   readonly memberships: number;
@@ -27,7 +28,7 @@ export async function startupStatus(actor: ActorContext): Promise<UseCaseResult<
   });
   if (fuerza === null) return fail(errors.notFound('Falta la entidad jurídica Fuerza Índigo. Ejecute la semilla.'));
 
-  const [membershipNotice, publicNotice, rules, secretary, people, applications, memberships] = await Promise.all([
+  const [membershipNotice, publicNotice, rules, secretary, initialBodies, people, applications, memberships] = await Promise.all([
     db().consentVersion.count({
       where: { legalEntityId: fuerza.id, code: 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE', status: 'PUBLISHED' },
     }),
@@ -44,10 +45,35 @@ export async function startupStatus(actor: ActorContext): Promise<UseCaseResult<
         OR: [{ endsAt: null }, { endsAt: { gt: now } }],
       },
     }),
+    db().unionBody.findMany({
+      where: {
+        legalEntityId: fuerza.id,
+        kind: { in: ['NATIONAL_EXECUTIVE_COMMITTEE', 'OVERSIGHT_COMMISSION'] },
+        status: 'ACTIVE',
+      },
+      select: {
+        kind: true,
+        offices: {
+          where: { isActive: true },
+          select: {
+            seats: true,
+            terms: {
+              where: { startsOn: { lte: now }, endsOn: { gte: now }, endedEarlyOn: null },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    }),
     db().person.count({ where: { archivedAt: null } }),
     db().membershipApplication.count({ where: { legalEntityId: fuerza.id } }),
     db().membership.count({ where: { legalEntityId: fuerza.id, status: { in: ['ACTIVE', 'SUSPENDED'] } } }),
   ]);
+
+  const bodyComplete = (kind: 'NATIONAL_EXECUTIVE_COMMITTEE' | 'OVERSIGHT_COMMISSION') => {
+    const body = initialBodies.find((item) => item.kind === kind);
+    return body !== undefined && body.offices.length > 0 && body.offices.every((office) => office.terms.length >= office.seats);
+  };
 
   return ok({
     legalEntityReady:
@@ -57,6 +83,7 @@ export async function startupStatus(actor: ActorContext): Promise<UseCaseResult<
     publicNoticeReady: publicNotice > 0,
     rulesReady: rules > 0,
     executiveSecretaryReady: secretary > 0,
+    initialBodiesReady: bodyComplete('NATIONAL_EXECUTIVE_COMMITTEE') && bodyComplete('OVERSIGHT_COMMISSION'),
     people,
     applications,
     memberships,

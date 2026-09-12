@@ -4,6 +4,7 @@ import {
   closeOtherSessions,
   closeOwnSession,
   completePasswordReset,
+  createAccountSetupLink,
   disableAccount,
   inviteUser,
   login,
@@ -62,7 +63,7 @@ function testigoDe(url: string): string {
 }
 
 describe('invitación y activación', () => {
-  it('la cuenta nace sin contraseña y no puede entrar hasta activarse', async () => {
+  it('la cuenta nace habilitada, pero no puede entrar hasta establecer su contraseña', async () => {
     const actor = await contextoDe(base.prisma, secretaria);
     const invitacion = await inviteUser(actor, {
       email: 'invitada@ejemplo.invalid',
@@ -71,6 +72,10 @@ describe('invitación y activación', () => {
     });
     expect(invitacion.ok, invitacion.ok ? '' : invitacion.error.message).toBe(true);
     if (!invitacion.ok) return;
+
+    const cuenta = await base.prisma.user.findUniqueOrThrow({ where: { id: invitacion.data.userId } });
+    expect(cuenta.status).toBe('ACTIVE');
+    expect(cuenta.emailVerifiedAt).toBeNull();
 
     const antes = await login({ email: 'invitada@ejemplo.invalid', password: CLAVE_NUEVA }, contextoLogin);
     expect(antes.ok).toBe(false);
@@ -87,6 +92,37 @@ describe('invitación y activación', () => {
 
     const despues = await login({ email: 'invitada@ejemplo.invalid', password: CLAVE_NUEVA }, contextoLogin);
     expect(despues.ok).toBe(true);
+  }, 60_000);
+
+  it('regenera desde el panel el enlace perdido de una cuenta existente', async () => {
+    const actor = await contextoDe(base.prisma, secretaria);
+    const invitacion = await inviteUser(actor, {
+      email: 'enlace-perdido@ejemplo.invalid',
+      givenName: 'Enlace',
+      familyName: 'Perdido',
+    });
+    if (!invitacion.ok) throw invitacion.error;
+    const anterior = testigoDe(invitacion.data.invitationUrl);
+
+    const nuevo = await createAccountSetupLink(actor, { userId: invitacion.data.userId });
+    expect(nuevo.ok, nuevo.ok ? '' : nuevo.error.message).toBe(true);
+    if (!nuevo.ok) return;
+
+    const enlaceAnterior = await activateAccount(
+      { token: anterior, password: CLAVE_NUEVA, passwordConfirmation: CLAVE_NUEVA },
+      contexto,
+    );
+    expect(enlaceAnterior.ok).toBe(false);
+
+    const activacion = await activateAccount(
+      {
+        token: testigoDe(nuevo.data.setupUrl),
+        password: CLAVE_NUEVA,
+        passwordConfirmation: CLAVE_NUEVA,
+      },
+      contexto,
+    );
+    expect(activacion.ok, activacion.ok ? '' : activacion.error.message).toBe(true);
   }, 60_000);
 
   it('el enlace de activación sirve una sola vez', async () => {

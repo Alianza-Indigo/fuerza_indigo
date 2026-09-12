@@ -362,7 +362,9 @@ export interface OfficeRow {
   readonly code: string;
   readonly name: string;
   readonly kind: OfficeKind;
+  readonly bodyId: string;
   readonly bodyName: string;
+  readonly bodyKind: UnionBodyKind;
   readonly termMonths: number;
   readonly seats: number;
   readonly occupiedSeats: number;
@@ -390,7 +392,7 @@ export async function officeList(
       termMonths: true,
       seats: true,
       reelectionAllowed: true,
-      unionBody: { select: { name: true } },
+      unionBody: { select: { id: true, name: true, kind: true } },
       permissions: { select: { permission: { select: { code: true } } } },
       terms: { where: { endsOn: { gte: ahora }, endedEarlyOn: null }, select: { id: true } },
       incompatibleWith: { select: { right: { select: { name: true } } } },
@@ -404,7 +406,9 @@ export async function officeList(
       code: fila.code,
       name: fila.name,
       kind: fila.kind,
+      bodyId: fila.unionBody.id,
       bodyName: fila.unionBody.name,
+      bodyKind: fila.unionBody.kind,
       termMonths: fila.termMonths,
       seats: fila.seats,
       occupiedSeats: fila.terms.length,

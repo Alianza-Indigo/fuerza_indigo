@@ -9,9 +9,8 @@ const INICIAL: InviteFormState = { status: 'idle' };
 /**
  * Invitación de una persona administradora.
  *
- * No hay autoservicio con privilegios: alguien con facultades invita, y la
- * persona invitada elige su propia contraseña mediante un enlace de un solo uso
- * (PRD §20.1). Quien invita nunca conoce esa contraseña.
+ * La cuenta nace activa, pero sin contraseña no puede iniciar sesión. Durante
+ * la puesta en marcha el enlace de un solo uso se entrega desde el panel.
  */
 export function InviteForm({ territorios }: { territorios: readonly { value: string; label: string }[] }) {
   const [estado, accion, pendiente] = useActionState(inviteUserAction, INICIAL);
@@ -20,10 +19,10 @@ export function InviteForm({ territorios }: { territorios: readonly { value: str
     <form action={accion} className="space-y-5">
       {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo invitar'} />}
       {estado.status === 'ok' && (
-        <SuccessNotice title={estado.message ?? 'Invitación enviada'}>
+        <SuccessNotice title={estado.message ?? 'Cuenta creada'}>
           {estado.invitationUrl !== undefined && (
             <p className="mt-2 break-all text-xs">
-              Entorno de desarrollo: el correo no sale de esta máquina, de modo que el enlace se muestra aquí.
+              Copia y entrega este enlace únicamente a la persona titular de la cuenta.
               <br />
               <code>{estado.invitationUrl}</code>
             </p>
@@ -58,7 +57,7 @@ export function InviteForm({ territorios }: { territorios: readonly { value: str
         type="email"
         required
         autoComplete="off"
-        hint="Ahí llegará el enlace para elegir su contraseña."
+        hint="Identifica la cuenta. Por ahora el enlace para establecer la contraseña se mostrará en este panel."
         errors={estado.fieldErrors?.['email']}
       />
 
@@ -85,9 +84,9 @@ export function InviteForm({ territorios }: { territorios: readonly { value: str
         </select>
       </div>
 
-      <SubmitButton>{pendiente ? 'Enviando…' : 'Enviar invitación'}</SubmitButton>
+      <SubmitButton>{pendiente ? 'Creando…' : 'Crear cuenta activa'}</SubmitButton>
       <p aria-live="polite" className="sr-only">
-        {pendiente ? 'Enviando la invitación' : ''}
+        {pendiente ? 'Creando la cuenta' : ''}
       </p>
     </form>
   );

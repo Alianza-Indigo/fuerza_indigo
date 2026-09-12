@@ -8,6 +8,7 @@ import { can, explain } from '@/platform/authz/policy';
 import { withReason, type ActorContext } from '@/platform/kernel/actor-context';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { env } from '@/platform/config/env';
 
 /**
  * Cierre y reapertura de una cuenta de acceso (PRD §4.3, defecto `D-F4-003`).
@@ -179,9 +180,13 @@ export async function reenableAccount(
     await tx.user.update({
       where: { id: userId },
       data: {
-        // Quien nunca activó su invitación vuelve a estar invitada, no activa:
-        // reabrir no es lo mismo que dar por buena una contraseña que nadie eligió.
-        status: cuenta.emailVerifiedAt === null ? 'INVITED' : 'ACTIVE',
+        // En el modo transitorio del panel la cuenta queda habilitada sin
+        // afirmar que el buzón fue verificado. Al restablecer la entrega por
+        // correo, una cuenta sin verificación vuelve al flujo normal.
+        status:
+          env().ACCOUNT_ACTIVATION_DELIVERY === 'panel' || cuenta.emailVerifiedAt !== null
+            ? 'ACTIVE'
+            : 'INVITED',
         updatedByActorId: actor.actorId,
         rowVersion: { increment: 1 },
       },
@@ -200,7 +205,10 @@ export async function reenableAccount(
     ok: true,
     data: {
       userId,
-      status: cuenta.emailVerifiedAt === null ? 'INVITED' : 'ACTIVE',
+      status:
+        env().ACCOUNT_ACTIVATION_DELIVERY === 'panel' || cuenta.emailVerifiedAt !== null
+          ? 'ACTIVE'
+          : 'INVITED',
       revokedSessions: 0,
       revokedAssignments: 0,
     },

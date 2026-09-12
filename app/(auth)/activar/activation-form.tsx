@@ -12,7 +12,7 @@ export function ActivationForm({ token }: { token: string }) {
 
   if (state.status === 'done') {
     return (
-      <SuccessNotice title="Tu cuenta quedó activa">
+      <SuccessNotice title="Contraseña establecida">
         <p>Ya puedes entrar con tu correo y la contraseña que acabas de elegir.</p>
         <p className="mt-2">
           <Link href="/acceso" className="underline underline-offset-4">
@@ -27,8 +27,8 @@ export function ActivationForm({ token }: { token: string }) {
     <form action={formAction} className="space-y-5" noValidate>
       <input type="hidden" name="token" value={token} />
       {state.status === 'error' && (
-        <ErrorNotice title={state.message ?? 'No se pudo activar la cuenta.'}>
-          <p>Si la invitación caducó, pide a quien te invitó que te la envíe de nuevo.</p>
+        <ErrorNotice title={state.message ?? 'No se pudo establecer la contraseña.'}>
+          <p>Si el enlace caducó, pide a quien administra las cuentas que genere uno nuevo desde el panel.</p>
         </ErrorNotice>
       )}
       <Field
@@ -48,7 +48,7 @@ export function ActivationForm({ token }: { token: string }) {
         autoComplete="new-password"
         errors={state.fieldErrors?.['passwordConfirmation']}
       />
-      <SubmitButton>{pending ? 'Activando…' : 'Activar mi cuenta'}</SubmitButton>
+      <SubmitButton>{pending ? 'Guardando…' : 'Establecer contraseña'}</SubmitButton>
     </form>
   );
 }

@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import {
   Badge,
   Card,
   Disclosure,
   EmptyState,
   ErrorNotice,
+  Notice,
   PageShell,
   ScrollableTable,
   type Option,
@@ -15,6 +17,8 @@ import {
   officeList,
   officeTermList,
   powerGrantList,
+  unionBodyList,
+  type OfficeRow,
 } from '@/modules/governance';
 import { publishedTemplateOptions } from '@/modules/documents';
 import { grantablePeople } from '@/modules/governance';
@@ -49,7 +53,7 @@ const PODER: Record<string, string> = {
 export default async function NombramientosPage() {
   const actor = await currentActor();
 
-  const [periodos, cargos, personas, apoderables, territorios, poderes, plantillas] = await Promise.all([
+  const [periodos, cargos, personas, apoderables, territorios, poderes, plantillas, organos] = await Promise.all([
     officeTermList(actor),
     officeList(actor),
     appointableMemberships(actor),
@@ -57,6 +61,7 @@ export default async function NombramientosPage() {
     territoryOptions(actor),
     powerGrantList(actor),
     publishedTemplateOptions(actor, 'POWER_GRANT'),
+    unionBodyList(actor),
   ]);
 
   const puedeNombrar = can({ ...actor, reason: 'designación en un cargo' }, 'governance.office.appoint', {
@@ -74,14 +79,20 @@ export default async function NombramientosPage() {
 
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: actor.timeZone });
 
-  const opcionesCargo: readonly Option[] = cargos.ok
-    ? cargos.data
-        .filter((cargo) => cargo.occupiedSeats < cargo.seats)
-        .map((cargo) => ({
+  const opcionesDeCargo = (predicate: (cargo: OfficeRow) => boolean): readonly Option[] =>
+    cargos.ok
+      ? cargos.data
+          .filter((cargo) => cargo.occupiedSeats < cargo.seats && predicate(cargo))
+          .map((cargo) => ({
           value: cargo.id,
           label: `${cargo.name} · ${cargo.bodyName} · ${cargo.seats - cargo.occupiedSeats} plaza(s) libre(s)`,
-        }))
-    : [];
+          }))
+      : [];
+  const opcionesCargoCen = opcionesDeCargo((cargo) => cargo.bodyKind === 'NATIONAL_EXECUTIVE_COMMITTEE');
+  const opcionesCargoVigilancia = opcionesDeCargo((cargo) => cargo.bodyKind === 'OVERSIGHT_COMMISSION');
+  const opcionesCargoOtros = opcionesDeCargo(
+    (cargo) => cargo.bodyKind !== 'NATIONAL_EXECUTIVE_COMMITTEE' && cargo.bodyKind !== 'OVERSIGHT_COMMISSION',
+  );
   const opcionesPersona: readonly Option[] = personas.ok ? personas.data.map((p) => ({ value: p.value, label: p.label })) : [];
   const opcionesApoderable: readonly Option[] = apoderables.ok
     ? apoderables.data.map((p) => ({ value: p.value, label: p.label }))
@@ -100,6 +111,12 @@ export default async function NombramientosPage() {
   const opcionesPlantilla: readonly Option[] = plantillas.ok
     ? plantillas.data.map((plantilla) => ({ value: plantilla.value, label: plantilla.label }))
     : [];
+  const cen = organos.ok
+    ? organos.data.find((organo) => organo.kind === 'NATIONAL_EXECUTIVE_COMMITTEE' && organo.status === 'ACTIVE')
+    : undefined;
+  const vigilancia = organos.ok
+    ? organos.data.find((organo) => organo.kind === 'OVERSIGHT_COMMISSION' && organo.status === 'ACTIVE')
+    : undefined;
 
   return (
     <PageShell
@@ -174,17 +191,105 @@ export default async function NombramientosPage() {
         </section>
 
         {puedeNombrar && (
-          <section>
-            <h2 className="mb-3 text-lg font-semibold">Nombrar</h2>
-            <Card>
-              <AppointForm
-                cargos={opcionesCargo}
-                personas={opcionesPersona}
-                territorios={opcionesTerritorio}
-                periodos={opcionesPeriodo}
-              />
-            </Card>
-          </section>
+          <>
+            <section id="nombramientos-iniciales" className="scroll-mt-6">
+              <h2 className="mb-2 text-lg font-semibold">Nombramiento de los órganos nacionales iniciales</h2>
+              <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
+                Registra aquí la integración consignada en el acta constitutiva. Solo aparecen agremiados activos con
+                voz y voto; una misma persona no puede integrar simultáneamente el Comité Ejecutivo y la Comisión de
+                Vigilancia.
+              </p>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card>
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-semibold">Comité Ejecutivo Nacional</h3>
+                    {cen !== undefined && (
+                      <Badge tone={opcionesCargoCen.length === 0 && cen.officeCount > 0 ? 'success' : 'warning'}>
+                        {cen.filledSeats} nombramiento(s)
+                      </Badge>
+                    )}
+                  </div>
+                  {cen === undefined ? (
+                    <Notice tone="warning" title="El Comité Ejecutivo Nacional no está instalado">
+                      <p>Primero instala el órgano y define sus secretarías conforme al acta.</p>
+                      <Link href="/institucional/organos" className="mt-2 inline-block underline underline-offset-4">
+                        Ir a Órganos y cargos
+                      </Link>
+                    </Notice>
+                  ) : cen.officeCount === 0 ? (
+                    <Notice tone="warning" title="Faltan las secretarías del Comité">
+                      <p>El órgano existe, pero todavía no tiene cargos definidos.</p>
+                      <Link href="/institucional/organos" className="mt-2 inline-block underline underline-offset-4">
+                        Definir secretarías
+                      </Link>
+                    </Notice>
+                  ) : opcionesCargoCen.length === 0 ? (
+                    <Notice tone="success" title="Comité Ejecutivo Nacional integrado">
+                      <p>Todas las plazas definidas tienen un periodo registrado.</p>
+                    </Notice>
+                  ) : (
+                    <AppointForm
+                      cargos={opcionesCargoCen}
+                      personas={opcionesPersona}
+                      territorios={opcionesTerritorio}
+                      periodos={opcionesPeriodo}
+                    />
+                  )}
+                </Card>
+
+                <Card>
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-semibold">Comisión de Vigilancia y Fiscalización</h3>
+                    {vigilancia !== undefined && (
+                      <Badge tone={opcionesCargoVigilancia.length === 0 && vigilancia.officeCount > 0 ? 'success' : 'warning'}>
+                        {vigilancia.filledSeats} nombramiento(s)
+                      </Badge>
+                    )}
+                  </div>
+                  {vigilancia === undefined ? (
+                    <Notice tone="warning" title="La Comisión de Vigilancia no está instalada">
+                      <p>Primero instala la Comisión y define sus tres plazas conforme a las reglas vigentes.</p>
+                      <Link href="/institucional/organos" className="mt-2 inline-block underline underline-offset-4">
+                        Ir a Órganos y cargos
+                      </Link>
+                    </Notice>
+                  ) : vigilancia.officeCount === 0 ? (
+                    <Notice tone="warning" title="Faltan las plazas de Vigilancia">
+                      <p>La Comisión existe, pero todavía no tiene el cargo y sus tres plazas definidos.</p>
+                      <Link href="/institucional/organos" className="mt-2 inline-block underline underline-offset-4">
+                        Definir las plazas
+                      </Link>
+                    </Notice>
+                  ) : opcionesCargoVigilancia.length === 0 ? (
+                    <Notice tone="success" title="Comisión de Vigilancia integrada">
+                      <p>Todas sus plazas tienen un periodo registrado.</p>
+                    </Notice>
+                  ) : (
+                    <AppointForm
+                      cargos={opcionesCargoVigilancia}
+                      personas={opcionesPersona}
+                      territorios={opcionesTerritorio}
+                      periodos={opcionesPeriodo}
+                    />
+                  )}
+                </Card>
+              </div>
+            </section>
+
+            {opcionesCargoOtros.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-lg font-semibold">Nombrar en otros órganos</h2>
+                <Card>
+                  <AppointForm
+                    cargos={opcionesCargoOtros}
+                    personas={opcionesPersona}
+                    territorios={opcionesTerritorio}
+                    periodos={opcionesPeriodo}
+                  />
+                </Card>
+              </section>
+            )}
+          </>
         )}
 
         <section>

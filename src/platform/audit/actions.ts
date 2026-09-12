@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = {
   PERSON_MERGED: 'identity.person.merged',
   USER_INVITED: 'identity.user.invited',
   USER_ACTIVATED: 'identity.user.activated',
+  ACCOUNT_SETUP_LINK_CREATED: 'identity.user.setup_link_created',
   USER_DISABLED: 'identity.user.disabled',
   USER_REENABLED: 'identity.user.reenabled',
   PASSWORD_CHANGED: 'identity.user.password_changed',

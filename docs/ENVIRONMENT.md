@@ -137,6 +137,7 @@ Sin estas variables, el servicio de IA queda deshabilitado y la aplicación **co
 | `EMAIL_PROVIDER` | Adaptador activo del puerto de correo. | `resend` · `smtp` · `console` | Obl. | Obl. | Obl. |
 | `EMAIL_FROM` | Remitente verificado de los mensajes institucionales. | `Nombre <correo@dominio>` | Obl. | Obl. | Obl. |
 | `EMAIL_API_KEY` | Credencial del proveedor. | Clave del proveedor | — con `console` | Obl. salvo `console` | Obl. |
+| `ACCOUNT_ACTIVATION_DELIVERY` | Entrega del enlace para establecer contraseña. `panel` evita temporalmente depender del correo; `email` restablece el envío. | `panel` · `email` | Opc. (`panel`) | Opc. (`panel`) | Opc. (`panel`) |
 
 En desarrollo se usa `console`: los mensajes se registran sin enviarse y sin exponer datos personales. En pruebas automatizadas se usa un adaptador de captura que permite verificar el contenido sin salida real.
 

@@ -22,6 +22,7 @@ export interface AdminPersonView {
   readonly status: string;
   readonly lastLoginAt: Date | null;
   readonly isLocked: boolean;
+  readonly hasPassword: boolean;
   readonly assignments: readonly {
     readonly id: string;
     readonly role: string;
@@ -56,6 +57,7 @@ export async function listAdministrablePeople(
       lockedUntil: true,
       personId: true,
       person: { select: { givenName: true, familyName: true, secondFamilyName: true } },
+      credentials: { where: { type: 'PASSWORD', revokedAt: null }, take: 1, select: { id: true } },
       roleAssignments: {
         where: { revokedAt: null, startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
         select: {
@@ -80,6 +82,7 @@ export async function listAdministrablePeople(
       status: row.status,
       lastLoginAt: row.lastLoginAt,
       isLocked: row.lockedUntil !== null && row.lockedUntil > now,
+      hasPassword: row.credentials.length > 0,
       assignments: row.roleAssignments.map((assignment) => ({
         id: assignment.id,
         role: assignment.role.code,

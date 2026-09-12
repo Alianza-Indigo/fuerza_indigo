@@ -2085,3 +2085,11 @@ El control nuevo `C-F9-05` vigila que la transparencia solo cuente (nada de `sel
 **Decisión.** Se elimina `.github/workflows/calidad.yml`. Los controles de `scripts/phase/verify.mjs` que cotejaban ese flujo (C-F1-06, el de perfiles de Playwright y C-COH-14) dejan de exigir su existencia: tratan su ausencia como una decisión legítima, no como un defecto. La puerta local (`npm run phase:verify`, `lint`, `typecheck`, pruebas, `build`) sigue disponible para quien quiera correrla a mano.
 
 **Consecuencias.** Ya no hay verificación automática en cada push: la calidad de un cambio depende de correr la puerta local antes de subir. Se acepta por decisión de la persona usuaria, con el desarrollo de la plataforma dado por concluido.
+
+## ADR-0178 · La activación por correo se suspende temporalmente y el enlace de contraseña se entrega en el panel
+
+**Contexto.** Durante la puesta en marcha, la dependencia del correo impedía utilizar las cuentas ya creadas y bloqueaba la integración de los primeros órganos del sindicato. Marcar una cuenta como activa no basta si nunca pudo establecer una contraseña; inventarle una contraseña desde administración revelaría una credencial que solo debe conocer su titular.
+
+**Decisión.** Las cuentas nuevas nacen en estado `ACTIVE`, sin afirmar falsamente que el buzón haya sido verificado (`emailVerifiedAt` permanece vacío), pero siguen sin poder iniciar sesión mientras no tengan una credencial `PASSWORD`. El testigo de un solo uso para establecerla se muestra a quien administra las cuentas y puede regenerarse desde `/gestion/personas`; al regenerarlo se invalidan todos los anteriores. La migración `20260912170000_activar_cuentas_sin_correo` habilita las cuentas `INVITED` existentes, limpia bloqueos accidentales y conserva la misma exigencia: sin contraseña no hay sesión. `ACCOUNT_ACTIVATION_DELIVERY=panel` gobierna este periodo transitorio; cambiarla a `email` restablece el envío sin modificar el código.
+
+**Consecuencias.** Se elimina temporalmente la comprobación de posesión del buzón de correo. Se conserva la contraseña Argon2id, el testigo opaco de un solo uso, su vigencia de siete días, la invalidación de enlaces anteriores, el límite de intentos y la auditoría. El enlace mostrado en el panel debe entregarse únicamente a su titular.

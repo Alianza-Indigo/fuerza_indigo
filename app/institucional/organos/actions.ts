@@ -38,6 +38,7 @@ export async function createUnionBodyAction(
   }
 
   revalidatePath('/institucional/organos');
+  revalidatePath('/institucional/nombramientos');
   return { status: 'ok', message: 'Órgano instalado conforme a las reglas estatutarias en vigor.' };
 }
 
@@ -72,6 +73,7 @@ export async function defineOfficeAction(
   }
 
   revalidatePath('/institucional/organos');
+  revalidatePath('/institucional/nombramientos');
   return { status: 'ok', message: 'Cargo definido con sus facultades.' };
 }
 

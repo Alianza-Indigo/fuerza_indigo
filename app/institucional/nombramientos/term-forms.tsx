@@ -42,11 +42,13 @@ export function AppointForm({
   personas,
   territorios,
   periodos,
+  territorioFijo,
 }: {
   cargos: readonly Option[];
   personas: readonly Option[];
   territorios: readonly Option[];
   periodos: readonly Option[];
+  territorioFijo?: Option;
 }) {
   const [estado, accion, pendiente] = useActionState(appointOfficeAction, INICIAL);
 
@@ -95,14 +97,24 @@ export function AppointForm({
         options={METODOS}
         errors={estado.fieldErrors?.['designationMethod']}
       />
-      <Select
-        name="territorialUnitId"
-        label="Unidad territorial"
-        options={territorios}
-        placeholder="Sin acotar a una unidad"
-        hint="Para delegaciones y secciones."
-        errors={estado.fieldErrors?.['territorialUnitId']}
-      />
+      {territorioFijo === undefined ? (
+        <Select
+          name="territorialUnitId"
+          label="Unidad territorial"
+          options={territorios}
+          placeholder="Sin acotar a una unidad"
+          hint="Para delegaciones y secciones."
+          errors={estado.fieldErrors?.['territorialUnitId']}
+        />
+      ) : (
+        <div>
+          <input type="hidden" name="territorialUnitId" value={territorioFijo.value} />
+          <p className="text-sm font-medium">Alcance territorial</p>
+          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+            {territorioFijo.label} y sus unidades descendientes. Este alcance no puede cambiarse desde el nombramiento.
+          </p>
+        </div>
+      )}
       <Select
         name="substitutedTermId"
         label="Periodo al que suple"

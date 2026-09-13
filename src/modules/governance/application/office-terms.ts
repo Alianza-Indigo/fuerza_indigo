@@ -90,14 +90,42 @@ export async function appointOffice(
       name: true,
       seats: true,
       termMonths: true,
+      kind: true,
       grantsRoleCode: true,
       isActive: true,
-      unionBody: { select: { id: true, legalEntityId: true, status: true, kind: true } },
+      unionBody: {
+        select: {
+          id: true,
+          legalEntityId: true,
+          status: true,
+          kind: true,
+          territorialUnit: { select: { id: true, name: true, type: true, status: true, dissolvedOn: true } },
+        },
+      },
     },
   });
   if (office === null) return fail(errors.notFound('No existe ese cargo.'));
   if (!office.isActive || office.unionBody.status !== 'ACTIVE') {
     return fail(errors.conflict('Ese cargo no está activo.'));
+  }
+
+  let territorialUnitId = data.territorialUnitId;
+  if (office.unionBody.kind === 'SECTION_DELEGATION') {
+    const territorio = office.unionBody.territorialUnit;
+    if (territorio.type !== 'DELEGATION' && territorio.type !== 'SECTION') {
+      return fail(errors.conflict('El cargo territorial no pertenece a una delegación o sección.'));
+    }
+    if (territorio.status !== 'ACTIVE' || territorio.dissolvedOn !== null) {
+      return fail(errors.conflict(`«${territorio.name}» no está activa y no puede recibir un nombramiento.`));
+    }
+    if (territorialUnitId !== null && territorialUnitId !== territorio.id) {
+      return fail(
+        errors.conflict(
+          `El nombramiento pertenece a «${territorio.name}» y no puede conceder acceso sobre otra unidad.`,
+        ),
+      );
+    }
+    territorialUnitId = territorio.id;
   }
 
   const membership = await db().membership.findUnique({
@@ -228,11 +256,11 @@ export async function appointOffice(
             grantReason: data.reason,
             startsAt: inicio,
             endsAt: fin,
-            ...(data.territorialUnitId === null
+            ...(territorialUnitId === null
               ? {}
               : {
                   territorialScopes: {
-                    create: [{ territorialUnitId: data.territorialUnitId, includesDescendants: true }],
+                    create: [{ territorialUnitId, includesDescendants: true }],
                   },
                 }),
           },
@@ -260,7 +288,7 @@ export async function appointOffice(
         officeDefinitionId: office.id,
         personId: membership.personId,
         membershipId: membership.id,
-        territorialUnitId: data.territorialUnitId,
+        territorialUnitId,
         designationMethod: data.designationMethod,
         electionId: data.electionId,
         substitutedTermId: data.substitutedTermId,

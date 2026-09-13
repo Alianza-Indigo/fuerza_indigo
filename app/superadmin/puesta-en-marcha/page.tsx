@@ -106,6 +106,28 @@ export default async function StartupPage() {
         </ol>
 
         <section>
+          <h2 className="mb-3 text-lg font-semibold">Despliegue territorial</h2>
+          <Card>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-3xl">
+                <h3 className="font-semibold">Implementar delegaciones y secciones</h3>
+                <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                  Después de la integración nacional puedes constituir cada unidad mediante acuerdo, instalar su
+                  autoridad y nombrar a la persona responsable con acceso limitado a su territorio.
+                </p>
+                <Link
+                  href="/institucional/territorio#delegaciones-secciones"
+                  className="mt-3 inline-block underline underline-offset-4"
+                >
+                  Abrir despliegue territorial
+                </Link>
+              </div>
+              <Badge tone="accent">Delegaciones y secciones</Badge>
+            </div>
+          </Card>
+        </section>
+
+        <section>
           <h2 className="mb-3 text-lg font-semibold">Alta de miembros</h2>
           <Card>
             <p className="text-sm">

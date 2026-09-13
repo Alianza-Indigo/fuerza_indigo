@@ -144,6 +144,8 @@ export interface TerritoryOption {
   readonly name: string;
   readonly path: string;
   readonly depth: number;
+  readonly type: string;
+  readonly status: string;
 }
 
 /** Unidades territoriales para acotar un nombramiento. */
@@ -154,7 +156,7 @@ export async function territoryOptions(actor: ActorContext): Promise<UseCaseResu
   const filas = await db().territorialUnit.findMany({
     where: { dissolvedOn: null },
     orderBy: { path: 'asc' },
-    select: { id: true, name: true, path: true, depth: true },
+    select: { id: true, name: true, path: true, depth: true, type: true, status: true },
   });
   return ok(filas);
 }

@@ -57,6 +57,7 @@ export async function createTerritorialUnitAction(
   }
 
   revalidatePath('/institucional/territorio');
+  revalidatePath('/institucional/organos');
   return {
     status: 'ok',
     message: `Unidad constituida en ${resultado.data.path}. Nace planeada: actívala cuando quede instalada.`,
@@ -85,6 +86,7 @@ export async function updateTerritorialUnitAction(
   }
 
   revalidatePath('/institucional/territorio');
+  revalidatePath('/institucional/organos');
   return { status: 'ok', message: 'Unidad actualizada.' };
 }
 
@@ -109,5 +111,6 @@ export async function dissolveTerritorialUnitAction(
   }
 
   revalidatePath('/institucional/territorio');
+  revalidatePath('/institucional/organos');
   return { status: 'ok', message: 'Unidad disuelta. Su registro y su historia se conservan.' };
 }

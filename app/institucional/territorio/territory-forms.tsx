@@ -15,8 +15,8 @@ const TIPOS: readonly Option[] = [
   { value: 'STATE', label: 'Entidad federativa o región equivalente' },
   { value: 'FOREIGN_COUNTRY', label: 'País extranjero' },
   { value: 'MUNICIPALITY', label: 'Municipio, alcaldía o localidad' },
-  { value: 'SECTION', label: 'Sección' },
-  { value: 'DELEGATION', label: 'Delegación' },
+  { value: 'SECTION', label: 'Sección o seccional' },
+  { value: 'DELEGATION', label: 'Delegación estatal, municipal o territorial' },
   { value: 'OFFICE', label: 'Representación u oficina' },
   { value: 'VIRTUAL_THEMATIC', label: 'Ámbito virtual o temático' },
 ];

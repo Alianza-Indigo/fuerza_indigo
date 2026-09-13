@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import {
   Badge,
   Card,
   Disclosure,
   EmptyState,
   ErrorNotice,
+  Notice,
   PageShell,
   ScrollableTable,
   type Option,
@@ -14,7 +16,12 @@ import { can } from '@/platform/authz/policy';
 import { officeList, permissionOptions, unionBodyList } from '@/modules/governance';
 import { territoryOptions } from '@/modules/access';
 import { listLegalEntities } from '@/modules/admin';
-import { CreateBodyForm, DefineOfficeForm, IncompatibilityForm } from './governance-forms';
+import {
+  CreateBodyForm,
+  DefineOfficeForm,
+  DefineTerritorialOfficeForm,
+  IncompatibilityForm,
+} from './governance-forms';
 
 export const metadata = { title: 'Órganos y cargos', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -24,6 +31,18 @@ const ESTADO_ORGANO: Record<string, { label: string; tone: Tone }> = {
   INACTIVE: { label: 'Inactivo', tone: 'warning' },
   DISSOLVED: { label: 'Disuelto', tone: 'neutral' },
 };
+
+const TIPO_AUTORIDAD_TERRITORIAL: readonly Option[] = [
+  { value: 'SECTION_DELEGATION', label: 'Autoridad de delegación o sección' },
+];
+
+const TIPOS_ORGANO_NACIONAL: readonly Option[] = [
+  { value: 'GENERAL_ASSEMBLY', label: 'Asamblea General' },
+  { value: 'NATIONAL_EXECUTIVE_COMMITTEE', label: 'Comité Ejecutivo Nacional' },
+  { value: 'OVERSIGHT_COMMISSION', label: 'Comisión de Vigilancia y Fiscalización' },
+  { value: 'ELECTORAL_COMMISSION', label: 'Comisión Electoral' },
+  { value: 'TEMPORARY_COMMISSION', label: 'Comisión temporal' },
+];
 
 /**
  * Órganos de gobierno y cargos (PRD §9.2, §9.3; F5-GOB-001, F5-GOB-004).
@@ -56,11 +75,29 @@ export default async function OrganosPage() {
         label: `${'· '.repeat(Math.max(0, unidad.depth))}${unidad.name}`,
       }))
     : [];
+  const opcionesTerritorioDesplegable: readonly Option[] = territorios.ok
+    ? territorios.data
+        .filter(
+          (unidad) =>
+            (unidad.type === 'DELEGATION' || unidad.type === 'SECTION') && unidad.status === 'ACTIVE',
+        )
+        .map((unidad) => ({
+          value: unidad.id,
+          label: `${'· '.repeat(Math.max(0, unidad.depth))}${unidad.name}`,
+        }))
+    : [];
   const opcionesEntidad: readonly Option[] = entidades.ok
     ? entidades.data.map((entidad) => ({ value: entidad.id, label: entidad.shortName }))
     : [];
   const opcionesOrgano: readonly Option[] = organos.ok
-    ? organos.data.filter((organo) => organo.status === 'ACTIVE').map((organo) => ({ value: organo.id, label: organo.name }))
+    ? organos.data
+        .filter((organo) => organo.status === 'ACTIVE' && organo.kind !== 'SECTION_DELEGATION')
+        .map((organo) => ({ value: organo.id, label: organo.name }))
+    : [];
+  const opcionesOrganoTerritorial: readonly Option[] = organos.ok
+    ? organos.data
+        .filter((organo) => organo.status === 'ACTIVE' && organo.kind === 'SECTION_DELEGATION')
+        .map((organo) => ({ value: organo.id, label: `${organo.name} · ${organo.territory}` }))
     : [];
   const opcionesCargo: readonly Option[] = cargos.ok
     ? cargos.data.map((cargo) => ({ value: cargo.id, label: `${cargo.name} · ${cargo.bodyName}` }))
@@ -121,6 +158,61 @@ export default async function OrganosPage() {
           )}
         </section>
 
+        {puedeAdministrar && (
+          <section id="organos-territoriales" className="scroll-mt-6">
+            <h2 className="mb-2 text-lg font-semibold">Implementar una delegación o sección</h2>
+            <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
+              Cada unidad territorial activa recibe su propia autoridad, un cargo responsable y un nombramiento con
+              acceso limitado a ese territorio. No es una etiqueta sobre la cuenta: queda como periodo histórico.
+            </p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <h3 className="mb-3 font-semibold">1. Instalar la autoridad territorial</h3>
+                {opcionesTerritorioDesplegable.length === 0 ? (
+                  <Notice tone="warning" title="Primero constituye y activa una unidad">
+                    <p>Hace falta una delegación o sección activa antes de instalar a su autoridad.</p>
+                    <Link
+                      href="/institucional/territorio#delegaciones-secciones"
+                      className="mt-2 inline-block underline underline-offset-4"
+                    >
+                      Constituir delegación o sección
+                    </Link>
+                  </Notice>
+                ) : (
+                  <CreateBodyForm
+                    territorios={opcionesTerritorioDesplegable}
+                    entidades={opcionesEntidad}
+                    tipos={TIPO_AUTORIDAD_TERRITORIAL}
+                    territoryHint="Solo aparecen delegaciones y secciones activas que pueden recibir autoridad."
+                    submitLabel="Instalar autoridad territorial"
+                  />
+                )}
+              </Card>
+
+              <Card>
+                <h3 className="mb-3 font-semibold">2. Definir el cargo responsable</h3>
+                {opcionesOrganoTerritorial.length === 0 ? (
+                  <Notice tone="warning" title="Primero instala la autoridad territorial">
+                    <p>Después de instalarla, aquí podrás definir la titularidad y la duración de su periodo.</p>
+                  </Notice>
+                ) : (
+                  <DefineTerritorialOfficeForm organos={opcionesOrganoTerritorial} />
+                )}
+              </Card>
+            </div>
+            <p className="mt-4 text-sm">
+              Cuando el cargo esté definido, continúa en{' '}
+              <Link
+                href="/institucional/nombramientos#nombramientos-territoriales"
+                className="underline underline-offset-4"
+              >
+                nombramientos territoriales
+              </Link>
+              .
+            </p>
+          </section>
+        )}
+
         <section>
           <h2 className="mb-3 text-lg font-semibold">Cargos y facultades</h2>
           {!cargos.ok ? (
@@ -171,9 +263,13 @@ export default async function OrganosPage() {
         {puedeAdministrar && (
           <>
             <section>
-              <h2 className="mb-3 text-lg font-semibold">Instalar un órgano</h2>
+              <h2 className="mb-3 text-lg font-semibold">Instalar otro órgano</h2>
               <Card>
-                <CreateBodyForm territorios={opcionesTerritorio} entidades={opcionesEntidad} />
+                <CreateBodyForm
+                  territorios={opcionesTerritorio}
+                  entidades={opcionesEntidad}
+                  tipos={TIPOS_ORGANO_NACIONAL}
+                />
               </Card>
             </section>
 

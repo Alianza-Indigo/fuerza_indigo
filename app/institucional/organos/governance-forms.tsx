@@ -41,7 +41,7 @@ const CARGOS: readonly Option[] = [
   { value: 'ADDITIONAL_SECRETARY', label: 'Secretaría adicional' },
   { value: 'OVERSIGHT_MEMBER', label: 'Integrante de la Comisión de Vigilancia' },
   { value: 'ELECTORAL_MEMBER', label: 'Integrante de la Comisión Electoral' },
-  { value: 'SECTION_DELEGATE', label: 'Delegación seccional' },
+  { value: 'SECTION_DELEGATE', label: 'Persona delegada de sección o territorio' },
   { value: 'COMMISSION_MEMBER', label: 'Integrante de comisión temporal' },
 ];
 
@@ -56,9 +56,15 @@ const ROLES: readonly Option[] = [
 export function CreateBodyForm({
   territorios,
   entidades,
+  tipos = ORGANOS,
+  territoryHint,
+  submitLabel = 'Instalar el órgano',
 }: {
   territorios: readonly Option[];
   entidades: readonly Option[];
+  tipos?: readonly Option[];
+  territoryHint?: string;
+  submitLabel?: string;
 }) {
   const [estado, accion, pendiente] = useActionState(createUnionBodyAction, INICIAL);
 
@@ -75,12 +81,13 @@ export function CreateBodyForm({
         hint="Mayúsculas, números y guiones bajos. Por ejemplo: CEN_NACIONAL."
         errors={estado.fieldErrors?.['code']}
       />
-      <Select name="kind" label="Tipo de órgano" required options={ORGANOS} errors={estado.fieldErrors?.['kind']} />
+      <Select name="kind" label="Tipo de órgano" required options={tipos} errors={estado.fieldErrors?.['kind']} />
       <Select
         name="territorialUnitId"
         label="Unidad territorial"
         required
         options={territorios}
+        hint={territoryHint}
         errors={estado.fieldErrors?.['territorialUnitId']}
       />
       <Select
@@ -98,7 +105,65 @@ export function CreateBodyForm({
         errors={estado.fieldErrors?.['installedOn']}
       />
 
-      <SubmitButton>{pendiente ? 'Instalando…' : 'Instalar el órgano'}</SubmitButton>
+      <SubmitButton>{pendiente ? 'Instalando…' : submitLabel}</SubmitButton>
+    </form>
+  );
+}
+
+/** Cargo responsable de una delegación o sección, con alcance territorial obligatorio. */
+export function DefineTerritorialOfficeForm({ organos }: { organos: readonly Option[] }) {
+  const [estado, accion, pendiente] = useActionState(defineOfficeAction, INICIAL);
+
+  return (
+    <form action={accion} className="space-y-5">
+      <input type="hidden" name="kind" value="SECTION_DELEGATE" />
+      <input type="hidden" name="grantsRoleCode" value="TERRITORIAL_DELEGATE" />
+      <input type="hidden" name="seats" value="1" />
+      <input type="hidden" name="permissionCodes" value="territory.unit.read" />
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo definir'} />}
+      {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Listo'} />}
+
+      <Select
+        name="unionBodyId"
+        label="Delegación o sección"
+        required
+        options={organos}
+        errors={estado.fieldErrors?.['unionBodyId']}
+      />
+      <Field
+        name="name"
+        label="Nombre del cargo"
+        required
+        hint="Por ejemplo: Persona titular de la Delegación Estatal de Chihuahua."
+        errors={estado.fieldErrors?.['name']}
+      />
+      <Field
+        name="code"
+        label="Código del cargo"
+        required
+        hint="Mayúsculas, números y guiones bajos. Por ejemplo: DELEGADO_CHIHUAHUA."
+        errors={estado.fieldErrors?.['code']}
+      />
+      <Field
+        name="termMonths"
+        label="Duración del periodo (meses)"
+        type="number"
+        inputMode="numeric"
+        required
+        errors={estado.fieldErrors?.['termMonths']}
+      />
+      <Checkbox
+        name="reelectionAllowed"
+        label="Se admite la reelección en este cargo"
+        help="Conforme a las reglas estatutarias vigentes."
+        errors={estado.fieldErrors?.['reelectionAllowed']}
+      />
+
+      <p className="text-sm text-[var(--color-ink-soft)]">
+        El cargo concede el rol de delegación territorial. Su acceso quedará limitado a la unidad correspondiente y
+        a todas las unidades que dependan de ella.
+      </p>
+      <SubmitButton>{pendiente ? 'Definiendo…' : 'Definir cargo territorial'}</SubmitButton>
     </form>
   );
 }

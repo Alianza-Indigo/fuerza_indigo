@@ -91,7 +91,10 @@ export default async function NombramientosPage() {
   const opcionesCargoCen = opcionesDeCargo((cargo) => cargo.bodyKind === 'NATIONAL_EXECUTIVE_COMMITTEE');
   const opcionesCargoVigilancia = opcionesDeCargo((cargo) => cargo.bodyKind === 'OVERSIGHT_COMMISSION');
   const opcionesCargoOtros = opcionesDeCargo(
-    (cargo) => cargo.bodyKind !== 'NATIONAL_EXECUTIVE_COMMITTEE' && cargo.bodyKind !== 'OVERSIGHT_COMMISSION',
+    (cargo) =>
+      cargo.bodyKind !== 'NATIONAL_EXECUTIVE_COMMITTEE' &&
+      cargo.bodyKind !== 'OVERSIGHT_COMMISSION' &&
+      cargo.bodyKind !== 'SECTION_DELEGATION',
   );
   const opcionesPersona: readonly Option[] = personas.ok ? personas.data.map((p) => ({ value: p.value, label: p.label })) : [];
   const opcionesApoderable: readonly Option[] = apoderables.ok
@@ -117,6 +120,9 @@ export default async function NombramientosPage() {
   const vigilancia = organos.ok
     ? organos.data.find((organo) => organo.kind === 'OVERSIGHT_COMMISSION' && organo.status === 'ACTIVE')
     : undefined;
+  const organosTerritoriales = organos.ok
+    ? organos.data.filter((organo) => organo.kind === 'SECTION_DELEGATION' && organo.status === 'ACTIVE')
+    : [];
 
   return (
     <PageShell
@@ -274,6 +280,66 @@ export default async function NombramientosPage() {
                   )}
                 </Card>
               </div>
+            </section>
+
+            <section id="nombramientos-territoriales" className="scroll-mt-6">
+              <h2 className="mb-2 text-lg font-semibold">Nombramientos de delegaciones y secciones</h2>
+              <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
+                Cada nombramiento concede acceso únicamente sobre la delegación o sección correspondiente y sus
+                unidades descendientes. Solo aparecen personas agremiadas activas con voz y voto.
+              </p>
+              {organosTerritoriales.length === 0 ? (
+                <Notice tone="warning" title="Todavía no hay autoridades territoriales instaladas">
+                  <p>Constituye la unidad e instala su autoridad antes de nombrar a la persona responsable.</p>
+                  <Link
+                    href="/institucional/territorio#delegaciones-secciones"
+                    className="mt-2 inline-block underline underline-offset-4"
+                  >
+                    Iniciar despliegue territorial
+                  </Link>
+                </Notice>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {organosTerritoriales.map((organo) => {
+                    const cargosDelOrgano = opcionesDeCargo((cargo) => cargo.bodyId === organo.id);
+                    return (
+                      <Card key={organo.id}>
+                        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h3 className="font-semibold">{organo.name}</h3>
+                            <p className="text-sm text-[var(--color-ink-soft)]">{organo.territory}</p>
+                          </div>
+                          <Badge tone={cargosDelOrgano.length === 0 && organo.officeCount > 0 ? 'success' : 'warning'}>
+                            {organo.filledSeats} nombramiento(s)
+                          </Badge>
+                        </div>
+                        {organo.officeCount === 0 ? (
+                          <Notice tone="warning" title="Falta definir el cargo responsable">
+                            <Link
+                              href="/institucional/organos#organos-territoriales"
+                              className="underline underline-offset-4"
+                            >
+                              Definir el cargo territorial
+                            </Link>
+                          </Notice>
+                        ) : cargosDelOrgano.length === 0 ? (
+                          <Notice tone="success" title="Autoridad territorial integrada">
+                            <p>Todos los cargos definidos tienen un periodo vigente.</p>
+                          </Notice>
+                        ) : (
+                          <AppointForm
+                            cargos={cargosDelOrgano}
+                            personas={opcionesPersona}
+                            territorios={[]}
+                            territorioFijo={{ value: organo.territorialUnitId, label: organo.territory }}
+                            periodos={opcionesPeriodo}
+                          />
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
             {opcionesCargoOtros.length > 0 && (

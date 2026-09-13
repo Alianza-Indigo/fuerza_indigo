@@ -8,6 +8,7 @@ import {
   crearPersonaConCuenta,
   entidadPrincipal,
 } from './helpers/fixtures';
+import { newPublicId } from '@/platform/kernel/ids';
 
 let base: TestDatabase;
 let entidadId: string;
@@ -143,5 +144,127 @@ describe('integración inicial de los órganos nacionales', () => {
     });
     expect(incompatible.ok).toBe(false);
     expect(!incompatible.ok && incompatible.error.code).toBe('CONFLICT');
+  }, 90_000);
+
+  it('instala una autoridad territorial y ata el nombramiento a su delegación', async () => {
+    const raiz = await contextoRaiz();
+
+    const fueraDeTerritorio = await createUnionBody(raiz, {
+      code: 'AUTORIDAD_TERRITORIAL_INVALIDA',
+      name: 'Autoridad territorial inválida',
+      kind: 'SECTION_DELEGATION',
+      territorialUnitId: territorioId,
+      legalEntityId: entidadId,
+      installedOn: '2026-09-13',
+    });
+    expect(fueraDeTerritorio.ok).toBe(false);
+    expect(!fueraDeTerritorio.ok && fueraDeTerritorio.error.code).toBe('CONFLICT');
+
+    const actorId = await actorDeMigracion(base.prisma);
+    const delegacion = await base.prisma.territorialUnit.create({
+      data: {
+        publicId: newPublicId(),
+        code: 'DELEGACION_CHIHUAHUA_INICIAL',
+        name: 'Delegación Estatal de Chihuahua',
+        type: 'DELEGATION',
+        parentId: territorioId,
+        path: '/mx/delegacion-chihuahua-inicial',
+        depth: 1,
+        countryCode: 'MX',
+        stateCode: 'CHH',
+        status: 'ACTIVE',
+        createdOn: new Date('2026-09-13'),
+        createdByActorId: actorId,
+        updatedByActorId: actorId,
+      },
+      select: { id: true },
+    });
+
+    const autoridad = await createUnionBody(raiz, {
+      code: 'AUTORIDAD_DELEGACION_CHIHUAHUA',
+      name: 'Autoridad de la Delegación Estatal de Chihuahua',
+      kind: 'SECTION_DELEGATION',
+      territorialUnitId: delegacion.id,
+      legalEntityId: entidadId,
+      installedOn: '2026-09-13',
+    });
+    expect(autoridad.ok, autoridad.ok ? '' : autoridad.error.message).toBe(true);
+    if (!autoridad.ok) return;
+
+    const cargoInvalido = await defineOffice(raiz, {
+      code: 'CARGO_TERRITORIAL_INVALIDO',
+      name: 'Cargo territorial inválido',
+      unionBodyId: autoridad.data.unionBodyId,
+      kind: 'SECRETARY_GENERAL',
+      termMonths: 48,
+      reelectionAllowed: false,
+      seats: 1,
+      grantsRoleCode: 'EXECUTIVE_SECRETARY',
+      permissionCodes: ['territory.unit.read'],
+    });
+    expect(cargoInvalido.ok).toBe(false);
+    expect(!cargoInvalido.ok && cargoInvalido.error.code).toBe('CONFLICT');
+
+    const cargo = await defineOffice(raiz, {
+      code: 'DELEGADO_CHIHUAHUA_INICIAL',
+      name: 'Persona titular de la Delegación Estatal de Chihuahua',
+      unionBodyId: autoridad.data.unionBodyId,
+      kind: 'SECTION_DELEGATE',
+      termMonths: 48,
+      reelectionAllowed: false,
+      seats: 1,
+      grantsRoleCode: 'TERRITORIAL_DELEGATE',
+      permissionCodes: ['territory.unit.read'],
+    });
+    expect(cargo.ok, cargo.ok ? '' : cargo.error.message).toBe(true);
+    if (!cargo.ok) return;
+
+    const persona = await crearPersonaConCuenta(base.prisma, { givenName: 'Delegada', familyName: 'Inicial' });
+    const membresia = await crearMembresia(base.prisma, {
+      personId: persona.personId,
+      legalEntityId: entidadId,
+      typeCode: 'AGREMIADO',
+      territorialUnitId: delegacion.id,
+    });
+
+    const territorioAjeno = await appointOffice(raiz, {
+      officeDefinitionId: cargo.data.officeDefinitionId,
+      membershipId: membresia.id,
+      territorialUnitId: territorioId,
+      designationMethod: 'ASSEMBLY_APPOINTMENT',
+      electionId: null,
+      substitutedTermId: null,
+      startsOn: '2026-09-13',
+      reason: 'intento de conceder un alcance territorial distinto',
+    });
+    expect(territorioAjeno.ok).toBe(false);
+    expect(!territorioAjeno.ok && territorioAjeno.error.code).toBe('CONFLICT');
+
+    const nombramiento = await appointOffice(raiz, {
+      officeDefinitionId: cargo.data.officeDefinitionId,
+      membershipId: membresia.id,
+      territorialUnitId: null,
+      designationMethod: 'ASSEMBLY_APPOINTMENT',
+      electionId: null,
+      substitutedTermId: null,
+      startsOn: '2026-09-13',
+      reason: 'integración inicial de la delegación estatal',
+    });
+    expect(nombramiento.ok, nombramiento.ok ? '' : nombramiento.error.message).toBe(true);
+    if (!nombramiento.ok) return;
+
+    const periodo = await base.prisma.officeTerm.findUniqueOrThrow({
+      where: { id: nombramiento.data.officeTermId },
+      select: {
+        territorialUnitId: true,
+        roleAssignment: {
+          select: { territorialScopes: { select: { territorialUnitId: true, includesDescendants: true } } },
+        },
+      },
+    });
+    expect(periodo.territorialUnitId).toBe(delegacion.id);
+    expect(periodo.roleAssignment?.territorialScopes).toEqual([
+      { territorialUnitId: delegacion.id, includesDescendants: true },
+    ]);
   }, 90_000);
 });

@@ -82,13 +82,46 @@ export async function createUnionBody(
 
   const data = parsed.data;
 
-  const reglas = await reglasVigentes();
+  const [reglas, territorio] = await Promise.all([
+    reglasVigentes(),
+    db().territorialUnit.findUnique({
+      where: { id: data.territorialUnitId },
+      select: { name: true, type: true, status: true, dissolvedOn: true },
+    }),
+  ]);
   if (reglas === null) {
     return fail(
       errors.conflict(
         'No hay una versión de reglas estatutarias en vigor. Un órgano se instala conforme a un estatuto, no en el aire.',
       ),
     );
+  }
+  if (territorio === null) return fail(errors.notFound('La unidad territorial no existe.'));
+  if (data.kind === 'SECTION_DELEGATION') {
+    if (territorio.type !== 'DELEGATION' && territorio.type !== 'SECTION') {
+      return fail(
+        errors.conflict(
+          'Una autoridad territorial solo puede instalarse dentro de una delegación o sección constituida.',
+        ),
+      );
+    }
+    if (territorio.status !== 'ACTIVE' || territorio.dissolvedOn !== null) {
+      return fail(
+        errors.conflict(`«${territorio.name}» debe estar activa antes de instalar su autoridad territorial.`),
+      );
+    }
+
+    const existente = await db().unionBody.findFirst({
+      where: {
+        territorialUnitId: data.territorialUnitId,
+        kind: 'SECTION_DELEGATION',
+        status: { not: 'DISSOLVED' },
+      },
+      select: { name: true },
+    });
+    if (existente !== null) {
+      return fail(errors.conflict(`«${territorio.name}» ya tiene la autoridad territorial «${existente.name}».`));
+    }
   }
 
   const duplicado = await db().unionBody.findUnique({ where: { code: data.code }, select: { id: true } });
@@ -180,10 +213,20 @@ export async function defineOffice(
 
   const body = await db().unionBody.findUnique({
     where: { id: data.unionBodyId },
-    select: { id: true, normativeRuleSetId: true, status: true },
+    select: { id: true, kind: true, normativeRuleSetId: true, status: true },
   });
   if (body === null) return fail(errors.notFound('No existe ese órgano.'));
   if (body.status !== 'ACTIVE') return fail(errors.conflict('Ese órgano no está activo.'));
+  if (
+    body.kind === 'SECTION_DELEGATION' &&
+    (data.kind !== 'SECTION_DELEGATE' || data.grantsRoleCode !== 'TERRITORIAL_DELEGATE')
+  ) {
+    return fail(
+      errors.conflict(
+        'El cargo de una delegación o sección debe ser una delegación seccional y conceder el rol territorial.',
+      ),
+    );
+  }
 
   const permisos = await db().permission.findMany({
     where: { code: { in: data.permissionCodes } },
@@ -311,7 +354,10 @@ export interface UnionBodyRow {
   readonly name: string;
   readonly kind: UnionBodyKind;
   readonly status: UnionBodyStatus;
+  readonly territorialUnitId: string;
   readonly territory: string;
+  readonly territoryType: string;
+  readonly territoryStatus: string;
   readonly legalEntity: string;
   readonly officeCount: number;
   readonly filledSeats: number;
@@ -330,7 +376,7 @@ export async function unionBodyList(actor: ActorContext): Promise<UseCaseResult<
       name: true,
       kind: true,
       status: true,
-      territorialUnit: { select: { name: true } },
+      territorialUnit: { select: { id: true, name: true, type: true, status: true } },
       legalEntity: { select: { shortName: true } },
       offices: {
         select: {
@@ -349,7 +395,10 @@ export async function unionBodyList(actor: ActorContext): Promise<UseCaseResult<
       name: fila.name,
       kind: fila.kind,
       status: fila.status,
+      territorialUnitId: fila.territorialUnit.id,
       territory: fila.territorialUnit.name,
+      territoryType: fila.territorialUnit.type,
+      territoryStatus: fila.territorialUnit.status,
       legalEntity: fila.legalEntity.shortName,
       officeCount: fila.offices.length,
       filledSeats: fila.offices.reduce((suma, oficina) => suma + oficina.terms.length, 0),

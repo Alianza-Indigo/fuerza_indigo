@@ -47,6 +47,14 @@ La contraseña del Superadmin va en texto plano en `SUPERADMIN_PASSWORD`
 (ADR-0175). En el panel de Vercel se pega tal cual; en `.env.local`, si lleva un
 `$`, entre comillas simples y con cada `$` escapado como `\$`.
 
+La red territorial se despliega desde **Puesta en marcha → Despliegue territorial**. El orden operativo es: registrar la resolución aprobada; constituir y activar la delegación o sección; instalar su autoridad y definir el cargo responsable; y registrar el nombramiento. El alcance del cargo se deriva de la unidad del órgano y no se puede ampliar desde el formulario.
+
+La red territorial se despliega desde **Puesta en marcha → Despliegue
+territorial**. El orden operativo es: registrar la resolución aprobada;
+constituir y activar la delegación o sección; instalar su autoridad y definir el
+cargo responsable; y registrar el nombramiento. El alcance del cargo se deriva
+de la unidad del órgano y no se puede ampliar desde el formulario.
+
 ### Un PostgreSQL local, si no hay ninguno a mano
 
 Cualquier PostgreSQL 16 sirve. Un servidor propio del proyecto, sin tocar el

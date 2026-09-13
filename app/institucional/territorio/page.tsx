@@ -59,6 +59,15 @@ export default async function EstructuraTerritorialPage() {
   }).allowed;
 
   const formatter = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: actor.timeZone });
+  const unidadesDesplegadas = arbol.ok
+    ? arbol.data.filter((unidad) => unidad.type === 'DELEGATION' || unidad.type === 'SECTION')
+    : [];
+  const delegacionesActivas = unidadesDesplegadas.filter(
+    (unidad) => unidad.type === 'DELEGATION' && unidad.status === 'ACTIVE',
+  ).length;
+  const seccionesActivas = unidadesDesplegadas.filter(
+    (unidad) => unidad.type === 'SECTION' && unidad.status === 'ACTIVE',
+  ).length;
 
   const opcionesPadre: readonly Option[] = arbol.ok
     ? arbol.data
@@ -80,6 +89,64 @@ export default async function EstructuraTerritorialPage() {
       width="ancha"
     >
       <div className="space-y-8">
+        <section id="delegaciones-secciones" className="scroll-mt-6">
+          <h2 className="mb-2 text-lg font-semibold">Despliegue de delegaciones y secciones</h2>
+          <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
+            La plataforma ya permite constituir la unidad, instalar su autoridad y nombrar a la persona responsable.
+            Cada nombramiento queda limitado a su territorio y a sus unidades descendientes.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <Badge tone={delegacionesActivas > 0 ? 'success' : 'neutral'}>
+                {delegacionesActivas} activa(s)
+              </Badge>
+              <h3 className="mt-3 font-semibold">1. Delegaciones</h3>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Constitúyelas bajo la entidad, municipio o unidad que corresponda según el acuerdo aprobado.
+              </p>
+              <Link href="#constituir-unidad" className="mt-3 inline-block underline underline-offset-4">
+                Constituir delegación
+              </Link>
+            </Card>
+            <Card>
+              <Badge tone={seccionesActivas > 0 ? 'success' : 'neutral'}>{seccionesActivas} activa(s)</Badge>
+              <h3 className="mt-3 font-semibold">2. Secciones</h3>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Crea cada sección dentro de la estructura territorial a la que pertenezca.
+              </p>
+              <Link href="#constituir-unidad" className="mt-3 inline-block underline underline-offset-4">
+                Constituir sección
+              </Link>
+            </Card>
+            <Card>
+              <Badge tone="accent">Autoridad</Badge>
+              <h3 className="mt-3 font-semibold">3. Órgano y cargo</h3>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Instala su autoridad territorial y define el cargo responsable con el periodo estatutario.
+              </p>
+              <Link
+                href="/institucional/organos#organos-territoriales"
+                className="mt-3 inline-block underline underline-offset-4"
+              >
+                Instalar autoridad
+              </Link>
+            </Card>
+            <Card>
+              <Badge tone="accent">Responsable</Badge>
+              <h3 className="mt-3 font-semibold">4. Nombramiento</h3>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Nombra a una persona agremiada activa; su acceso nace y termina con el cargo.
+              </p>
+              <Link
+                href="/institucional/nombramientos#nombramientos-territoriales"
+                className="mt-3 inline-block underline underline-offset-4"
+              >
+                Nombrar responsable
+              </Link>
+            </Card>
+          </div>
+        </section>
+
         <section>
           <h2 className="mb-3 text-lg font-semibold">Unidades</h2>
           {!arbol.ok ? (
@@ -146,7 +213,7 @@ export default async function EstructuraTerritorialPage() {
         </section>
 
         {puedeCrear && (
-          <section>
+          <section id="constituir-unidad" className="scroll-mt-6">
             <h2 className="mb-3 text-lg font-semibold">Constituir una unidad</h2>
             <Card>
               <CreateUnitForm padres={opcionesPadre} acuerdos={opcionesAcuerdo} />

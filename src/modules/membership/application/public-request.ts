@@ -57,6 +57,13 @@ export const publicMembershipRequestSchema = z
     ),
     territory: z.string().trim().min(2, { error: () => 'Escribe el estado o municipio desde donde haces tu solicitud.' }).max(160),
     occupation: z.string().trim().min(2, { error: () => 'Escribe tu ocupación actual.' }).max(160),
+    promoterReference: optionalText(
+      z
+        .string()
+        .trim()
+        .min(2, { error: () => 'Escribe el número de agremiado o el nombre del promotor.' })
+        .max(160),
+    ),
     workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT'])),
     neurodivergentConnection: optionalText(
       z
@@ -130,11 +137,17 @@ function validationDetails(error: z.ZodError): Record<string, string[]> {
 }
 
 function requestNarrative(data: z.output<typeof publicMembershipRequestSchema>): string {
+  const promoter =
+    data.promoterReference === undefined
+      ? ['PROMOTOR: No declarado']
+      : [`PROMOTOR (NÚMERO DE AGREMIADO O NOMBRE): ${data.promoterReference}`];
+
   if (data.modality === 'UNION_MEMBER') {
     return [
       'MODALIDAD: PERSONA AGREMIADA',
       `CURP: ${data.curp}`,
       `OCUPACIÓN: ${data.occupation}`,
+      ...promoter,
       `FORMA DE TRABAJO: ${data.workRelation === undefined ? '' : WORK_RELATION_LABELS[data.workRelation]}`,
       'VÍNCULO CON LA COMUNIDAD NEURODIVERGENTE:',
       data.neurodivergentConnection ?? '',
@@ -148,6 +161,7 @@ function requestNarrative(data: z.output<typeof publicMembershipRequestSchema>):
       'CATEGORÍA: AGREMIADO HONORARIO',
       `CURP: ${data.curp}`,
       `OCUPACIÓN: ${data.occupation}`,
+      ...promoter,
       'CONTACTO CON PERSONAS NEURODIVERGENTES:',
       data.neurodivergentConnection ?? '',
       ...(data.context === undefined ? [] : ['FORMA DE COLABORACIÓN:', data.context]),
@@ -159,6 +173,7 @@ function requestNarrative(data: z.output<typeof publicMembershipRequestSchema>):
     'CATEGORÍA: BENEFICIARIO PROTEGIDO',
     `CURP: ${data.curp}`,
     `OCUPACIÓN: ${data.occupation}`,
+    ...promoter,
     `PERFIL: ${data.protectedProfile === undefined ? '' : PROTECTED_PROFILE_LABELS[data.protectedProfile]}`,
     ...(data.context === undefined ? [] : ['AYUDA O PROTECCIÓN SOLICITADA:', data.context]),
     'CONDICIONES: Sin voz, sin voto y sin pago de cuota.',

@@ -142,6 +142,14 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
             {...(errors['occupation'] === undefined ? {} : { errors: errors['occupation'] })}
           />
         </div>
+
+        <Field
+          name="promoterReference"
+          label="Promotor que te afilió"
+          hint="Opcional. Escribe su número de agremiado o nombre completo. Déjalo vacío si llegaste por tu cuenta."
+          autoComplete="off"
+          {...(errors['promoterReference'] === undefined ? {} : { errors: errors['promoterReference'] })}
+        />
       </fieldset>
 
       <div className="h-px bg-[var(--color-line)]" />

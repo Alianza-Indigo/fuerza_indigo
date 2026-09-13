@@ -11,6 +11,7 @@ const CONTACT = {
   phone: '',
   territory: 'Ciudad de México, Coyoacán',
   occupation: 'Docente',
+  promoterReference: '',
   acceptedPrivacyNotice: true as const,
 };
 
@@ -105,5 +106,22 @@ describe('solicitud pública de registro', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.error.issues.some((issue) => issue.path[0] === 'occupation')).toBe(true);
+  });
+
+  it('acepta el número de agremiado o nombre del promotor como dato opcional', () => {
+    const result = publicMembershipRequestSchema.safeParse({
+      ...CONTACT,
+      promoterReference: 'FI-2026-0015 · Ana Pérez',
+      modality: 'UNION_MEMBER',
+      workRelation: 'INDEPENDENT',
+      neurodivergentConnection: 'Trabajo cotidianamente con personas neurodivergentes en mi comunidad.',
+      protectedProfile: '',
+      context: '',
+      ageConfirmed: true,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.promoterReference).toBe('FI-2026-0015 · Ana Pérez');
   });
 });

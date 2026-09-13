@@ -28,6 +28,7 @@ export async function submitAffiliationRequestAction(
       phone: textField(formData, 'phone'),
       territory: textField(formData, 'territory'),
       occupation: textField(formData, 'occupation'),
+      promoterReference: textField(formData, 'promoterReference'),
       workRelation: textField(formData, 'workRelation'),
       neurodivergentConnection: textField(formData, 'neurodivergentConnection'),
       protectedProfile: textField(formData, 'protectedProfile'),

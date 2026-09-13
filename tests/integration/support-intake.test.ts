@@ -175,6 +175,7 @@ describe('con aviso publicado', () => {
         phone: '',
         territory: 'Ciudad de México, Coyoacán',
         occupation: 'Docente',
+        promoterReference: 'FI-2026-0015 · Ana Pérez',
         workRelation: 'SUBORDINATE',
         neurodivergentConnection: 'Acompaño a estudiantes neurodivergentes dentro del aula.',
         protectedProfile: '',
@@ -197,6 +198,7 @@ describe('con aviso publicado', () => {
     expect(guardada.subject).toBe('Solicitud inicial de registro como agremiado');
     expect(guardada.narrative).toContain('CURP: GODE561231MDFRRN09');
     expect(guardada.narrative).toContain('OCUPACIÓN: Docente');
+    expect(guardada.narrative).toContain('PROMOTOR (NÚMERO DE AGREMIADO O NOMBRE): FI-2026-0015 · Ana Pérez');
     expect(guardada.territoryHint).toBe('Ciudad de México, Coyoacán');
   });
 

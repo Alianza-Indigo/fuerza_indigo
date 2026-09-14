@@ -569,9 +569,9 @@ export async function issueProtectedBeneficiaryCredential(
  * Guarda o reemplaza la fotografía que se imprime en una credencial.
  *
  * La fotografía es un dato personal sensible: vive en el almacén privado y
- * solo puede asociarla quien ya tiene la facultad crítica de emitir la
- * credencial. La persona titular no recibe desde su portal una puerta para
- * cambiar la imagen de un documento institucional.
+ * solo puede asociarla la propia persona titular desde su portal. El personal
+ * que imprime la credencial puede comprobar que exista, pero no sustituir la
+ * imagen que entregó la persona.
  */
 export async function setCredentialPhoto(
   actor: ActorContext,
@@ -619,12 +619,16 @@ export async function setCredentialPhoto(
     return fail(errors.conflict('La credencial no tiene una entidad emisora identificable.'));
   }
 
-  const decision = can(actor, 'credentialing.credential.issue', {
+  const propia = actor.personId !== null && credential.personId === actor.personId;
+  if (!propia) {
+    return fail(errors.forbidden('Solo la persona titular puede subir la fotografía de su credencial.'));
+  }
+  const decision = can(actor, 'credentialing.credential.read_own', {
     kind: 'MemberCredential',
     id: credential.id,
     legalEntityId,
     containsPersonalData: true,
-  });
+  }, { hasLiveAssignment: () => propia });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
   if (estadoVigente(credential) !== 'ACTIVE') {
     return fail(errors.conflict('Solo se puede cargar fotografía a una credencial vigente.'));

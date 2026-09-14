@@ -137,8 +137,8 @@ async function agremiadaConCredencial(nombre: string, opciones: { expiresAt?: Da
 
 const FOTO_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 
-async function cargarFoto(credentialId: string) {
-  const resultado = await setCredentialPhoto(secretaria, {
+async function cargarFoto(credentialId: string, titular: ActorContext) {
+  const resultado = await setCredentialPhoto(titular, {
     credentialId,
     originalFileName: 'retrato-prueba.png',
     mimeType: 'image/png',
@@ -531,9 +531,29 @@ describe('credenciales de cargo y profesionales (F4-CRE-001)', () => {
 });
 
 describe('descargar la credencial (F4-CRE-002)', () => {
+  it('solo la persona titular sube la fotografía de su credencial', async () => {
+    const { suyo, credencial } = await agremiadaConCredencial('FotoPropia');
+
+    const ajena = await setCredentialPhoto(secretaria, {
+      credentialId: credencial.id,
+      originalFileName: 'retrato-ajeno.png',
+      mimeType: 'image/png',
+      content: FOTO_PNG,
+    });
+    expect(ajena.ok).toBe(false);
+    if (!ajena.ok) expect(ajena.error.code).toBe('FORBIDDEN');
+
+    await cargarFoto(credencial.id, suyo);
+    const guardada = await base.prisma.memberCredential.findUniqueOrThrow({
+      where: { id: credencial.id },
+      select: { photoFileId: true },
+    });
+    expect(guardada.photoFileId).not.toBeNull();
+  });
+
   it('el personal autorizado la descarga, y queda asiento de la entrega', async () => {
-    const { persona, credencial } = await agremiadaConCredencial('Descarga');
-    await cargarFoto(credencial.id);
+    const { persona, suyo, credencial } = await agremiadaConCredencial('Descarga');
+    await cargarFoto(credencial.id, suyo);
 
     const resultado = await credentialForDownload(secretaria, credencial.id);
     expect(resultado.ok, resultado.ok ? '' : JSON.stringify(resultado.error)).toBe(true);
@@ -551,8 +571,8 @@ describe('descargar la credencial (F4-CRE-002)', () => {
   });
 
   it('el documento lleva el QR, el código legible y el diseño de su tipo', async () => {
-    const { credencial } = await agremiadaConCredencial('Dibuja');
-    await cargarFoto(credencial.id);
+    const { suyo, credencial } = await agremiadaConCredencial('Dibuja');
+    await cargarFoto(credencial.id, suyo);
     const datos = await credentialForDownload(secretaria, credencial.id);
     if (!datos.ok) throw datos.error;
 

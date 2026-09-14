@@ -8,6 +8,7 @@ import { svgQr } from '@/platform/credentials/qr';
 import { colorToken } from '@/design-system/tokens';
 import { env } from '@/platform/config/env';
 import { ETIQUETA_DE_ESTADO, ETIQUETA_DE_TIPO } from '../../../(publico)/verificar/etiquetas';
+import { OwnCredentialPhotoForm } from './photo-form';
 
 export const metadata = { title: 'Mi credencial', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export default async function MiCredencialPage() {
   return (
     <PageShell
       title="Mi credencial"
-      description="Tu credencial digital, con su código para verificarla. Puedes enseñarla desde el teléfono; la impresión corresponde únicamente al personal autorizado."
+      description="Aquí subes tu fotografía y consultas tu credencial digital. Puedes enseñarla desde el teléfono; la impresión corresponde únicamente al personal autorizado."
     >
       <div className="space-y-8">
         {credenciales.data.length === 0 && (
@@ -129,6 +130,11 @@ export default async function MiCredencialPage() {
                         Ver lo que verá quien la escanee
                       </Link>
                     </div>
+
+                    <OwnCredentialPhotoForm
+                      credentialId={credencial.id}
+                      hasPhoto={credencial.photoFileId !== null}
+                    />
                   </div>
                 </div>
               </Card>

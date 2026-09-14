@@ -21,7 +21,6 @@ import { codigoLegible } from '@/platform/credentials/design';
 import { ETIQUETA_DE_ESTADO, ETIQUETA_DE_TIPO } from '../../(publico)/verificar/etiquetas';
 import { ESTADOS } from './etiquetas';
 import {
-  CredentialPhotoForm,
   IssueForm,
   ProtectedBeneficiaryIssueForm,
   ReplaceForm,
@@ -201,10 +200,11 @@ export default async function CredencialesPage({
                           <td className="p-3">
                             {credencial.status === 'ACTIVE' ? (
                               <div className="space-y-4">
-                                <CredentialPhotoForm
-                                  credentialId={credencial.id}
-                                  hasPhoto={credencial.photoFileId !== null}
-                                />
+                                <p className="text-sm text-[var(--color-ink-soft)]">
+                                  {credencial.photoFileId === null
+                                    ? 'La persona titular todavía no ha subido su fotografía.'
+                                    : 'Fotografía proporcionada por la persona titular.'}
+                                </p>
                                 {credencial.photoFileId !== null && credencial.hasCurp ? (
                                   <a
                                     href={`/gestion/credenciales/${credencial.id}/imprimir`}
@@ -216,7 +216,7 @@ export default async function CredencialesPage({
                                 ) : (
                                   <p className="text-sm text-[var(--color-ink-soft)]">
                                     {credencial.photoFileId === null
-                                      ? 'La impresión se habilita al guardar la fotografía.'
+                                      ? 'La impresión se habilita cuando la persona titular suba su fotografía.'
                                       : 'Falta registrar la CURP de la persona para poder imprimir.'}
                                   </p>
                                 )}

@@ -13,6 +13,7 @@ import {
   internalDirectory,
   myDirectoryState,
   publicDirectory,
+  publicHonoraryDirectory,
   publicEntry,
   publishDirectoryEntry,
   registerBeneficiary,
@@ -203,6 +204,49 @@ describe('el directorio público se deriva de autorizaciones expresas (F4-DIR-00
     const intento = await publishDirectoryEntry(secretaria, { personId: persona.personId });
     expect(intento.ok).toBe(false);
     if (!intento.ok) expect(intento.error.code).toBe('RULE_VIOLATION');
+  });
+
+  it('la sección honoraria solo muestra membresías honorarias activas con autorización', async () => {
+    const { persona: agremiadaPersona, suyo: agremiadaContexto } = await agremiada('SoloSindical');
+    const preferenciaAgremiada = await setDirectoryPreference(agremiadaContexto, {
+      personId: agremiadaPersona.personId,
+      visibility: 'NAME_AND_TERRITORY',
+    });
+    if (!preferenciaAgremiada.ok) throw preferenciaAgremiada.error;
+    const publicadaAgremiada = await publishDirectoryEntry(agremiadaContexto, {
+      personId: agremiadaPersona.personId,
+    });
+    if (!publicadaAgremiada.ok) throw publicadaAgremiada.error;
+
+    const honoraria = await crearPersonaConCuenta(base.prisma, {
+      givenName: 'HonorariaVisible',
+      familyName: 'Del Directorio',
+    });
+    await nombrar(base.prisma, {
+      userId: honoraria.userId,
+      roleCode: 'HONORARY_AFFILIATE',
+      grantedById: secretariaPersona.userId,
+      legalEntityId: entidadId,
+    });
+    await crearMembresia(base.prisma, {
+      personId: honoraria.personId,
+      legalEntityId: entidadId,
+      typeCode: 'AFILIADO_HONORARIO',
+    });
+    const contextoHonorario = await contextoDe(base.prisma, honoraria);
+    const preferenciaHonoraria = await setDirectoryPreference(contextoHonorario, {
+      personId: honoraria.personId,
+      visibility: 'PROFESSIONAL_PROFILE',
+    });
+    if (!preferenciaHonoraria.ok) throw preferenciaHonoraria.error;
+    const publicadaHonoraria = await publishDirectoryEntry(contextoHonorario, {
+      personId: honoraria.personId,
+    });
+    if (!publicadaHonoraria.ok) throw publicadaHonoraria.error;
+
+    const publicas = await publicHonoraryDirectory();
+    expect(publicas.some((entry) => entry.slug === publicadaHonoraria.data.slug)).toBe(true);
+    expect(publicas.some((entry) => entry.slug === publicadaAgremiada.data.slug)).toBe(false);
   });
 
   it('la persona elige cuánto se ve, y solo eso se publica', async () => {

@@ -39,6 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ruta.href === '/solicitar-apoyo' ||
       // El directorio existe desde la Fase 4 y lo sirve el código, no el gestor.
       ruta.href === '/directorio' ||
+      ruta.href === '/agremiados-honorarios' ||
       conContenido.has(ruta.href),
   ).map((ruta): MetadataRoute.Sitemap[number] => ({
     url: `${base}${ruta.href}`,

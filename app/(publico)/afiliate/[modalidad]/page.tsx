@@ -196,6 +196,14 @@ export default async function AffiliationPage({
                   <li key={benefit}>• {benefit}</li>
                 ))}
               </ul>
+              {modalidad === 'honoraria' && (
+                <Link
+                  href="/agremiados-honorarios"
+                  className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-cyan-300 underline underline-offset-4"
+                >
+                  Conoce la red de agremiados honorarios →
+                </Link>
+              )}
             </div>
 
             <div className="border-l-2 border-fuchsia-400 pl-4 text-sm leading-relaxed text-blue-100/65">

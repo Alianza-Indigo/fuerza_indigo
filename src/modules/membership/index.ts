@@ -140,6 +140,7 @@ export {
   publishDirectoryEntry,
   withdrawDirectoryConsent,
   publicDirectory,
+  publicHonoraryDirectory,
   publicEntry,
   myDirectoryState,
   exportDirectorySchema,

@@ -47,6 +47,12 @@ export const SITE_NAV: readonly NavSection[] = [
         module: 'sindicato',
       },
       {
+        href: '/agremiados-honorarios',
+        label: 'Agremiados honorarios',
+        description: 'Conoce a profesionales y colaboradores que fortalecen nuestra comunidad.',
+        module: 'sindicato',
+      },
+      {
         href: '/transparencia',
         label: 'Transparencia',
         description: 'Cuentas, acuerdos y documentos de acceso público.',

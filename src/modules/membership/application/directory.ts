@@ -767,6 +767,40 @@ export async function publicDirectory(): Promise<PublicEntry[]> {
   }));
 }
 
+/**
+ * Red pública de agremiados honorarios.
+ *
+ * Una ficha entra únicamente cuando coinciden dos hechos vigentes: la persona
+ * autorizó su publicación y conserva una membresía honoraria activa. La cuota
+ * o la pertenencia por sí solas nunca sustituyen el consentimiento.
+ */
+export async function publicHonoraryDirectory(): Promise<PublicEntry[]> {
+  const now = new Date();
+  const rows = await db().directoryPublication.findMany({
+    where: {
+      withdrawnAt: null,
+      person: {
+        memberships: {
+          some: {
+            category: 'HONORARY_AFFILIATE',
+            status: 'ACTIVE',
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+        },
+      },
+    },
+    orderBy: { publishedAt: 'desc' },
+    take: 500,
+    select: { slug: true, publishedFields: true, indexable: true, publishedAt: true },
+  });
+  return rows.map((row) => ({
+    slug: row.slug,
+    fields: (row.publishedFields ?? {}) as Record<string, unknown>,
+    indexable: row.indexable,
+    publishedAt: row.publishedAt,
+  }));
+}
+
 /** Una ficha pública por su dirección. Devuelve `null` si se retiró. */
 export async function publicEntry(slug: string): Promise<PublicEntry | null> {
   const fila = await db().directoryPublication.findFirst({

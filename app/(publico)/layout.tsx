@@ -16,6 +16,7 @@ const PRIMARY_NAV = [
   { href: '/sindicato-y-derechos', label: 'Defensa' },
   { href: '/herramientas', label: 'Herramientas' },
   { href: '/delegaciones', label: 'Delegaciones' },
+  { href: '/agremiados-honorarios', label: 'Honorarios' },
   { href: '/transparencia', label: 'Transparencia' },
 ] as const;
 

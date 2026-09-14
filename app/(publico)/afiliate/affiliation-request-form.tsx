@@ -18,11 +18,18 @@ const INITIAL_STATE: AffiliationRequestState = { status: 'idle' };
 
 type RegistrationCategory = 'UNION_MEMBER' | 'HONORARY_AFFILIATE' | 'PROTECTED_BENEFICIARY';
 
-export function AffiliationRequestForm({ modality }: { modality: RegistrationCategory }) {
+export function AffiliationRequestForm({
+  modality,
+  ambassador,
+}: {
+  readonly modality: RegistrationCategory;
+  readonly ambassador?: { readonly code: string; readonly displayName: string };
+}) {
   const [state, action, pending] = useActionState(submitAffiliationRequestAction, INITIAL_STATE);
   const errors = state.fieldErrors ?? {};
   const unionMember = modality === 'UNION_MEMBER';
   const honoraryMember = modality === 'HONORARY_AFFILIATE';
+  const assisted = ambassador !== undefined;
 
   if (state.status === 'ok' && state.folio !== undefined) {
     const formalApplication = state.destination === 'APPLICATION';
@@ -97,11 +104,21 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
   return (
     <form action={action} className="space-y-7">
       <input type="hidden" name="modality" value={modality} />
+      {ambassador !== undefined && <input type="hidden" name="promoterReference" value={ambassador.code} />}
 
       {state.status === 'error' && state.message !== undefined && <ErrorNotice title={state.message} />}
 
+      {ambassador !== undefined && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950">
+          <p className="font-semibold">Registro acompañado por {ambassador.displayName}</p>
+          <p className="mt-1">Código de Embajador Índigo: <span className="font-mono">{ambassador.code}</span></p>
+        </div>
+      )}
+
       <fieldset className="space-y-4">
-        <legend className="text-lg font-bold">Tus datos de identificación</legend>
+        <legend className="text-lg font-bold">
+          {assisted ? 'Datos de la persona que se registra' : 'Tus datos de identificación'}
+        </legend>
         <p className="text-sm text-[var(--color-ink-soft)]">
           Los usamos para identificar tu solicitud y continuar el trámite contigo.
         </p>
@@ -181,13 +198,15 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
           />
         </div>
 
-        <Field
-          name="promoterReference"
-          label="Promotor que te afilió"
-          hint="Opcional. Escribe su número de agremiado o nombre completo. Déjalo vacío si llegaste por tu cuenta."
-          autoComplete="off"
-          {...(errors['promoterReference'] === undefined ? {} : { errors: errors['promoterReference'] })}
-        />
+        {ambassador === undefined && (
+          <Field
+            name="promoterReference"
+            label="Código de Embajador Índigo"
+            hint="Opcional. Déjalo vacío si llegaste por tu cuenta."
+            autoComplete="off"
+            {...(errors['promoterReference'] === undefined ? {} : { errors: errors['promoterReference'] })}
+          />
+        )}
       </fieldset>
 
       <div className="h-px bg-[var(--color-line)]" />
@@ -250,7 +269,7 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
 
           <Checkbox
             name="ageConfirmed"
-            label="Confirmo que tengo 15 años o más."
+            label={assisted ? 'La persona solicitante confirma que tiene 15 años o más.' : 'Confirmo que tengo 15 años o más.'}
             required
             {...(errors['ageConfirmed'] === undefined ? {} : { errors: errors['ageConfirmed'] })}
           />
@@ -316,11 +335,35 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
 
       <div className="h-px bg-[var(--color-line)]" />
 
+      {honoraryMember ? (
+        <>
+          <input type="hidden" name="physicalCredentialRequested" value="on" />
+          <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-sunken)] p-4 text-sm">
+            <p className="font-semibold">La afiliación honoraria incluye credencial física.</p>
+            <p className="mt-1 text-[var(--color-ink-soft)]">
+              Después de la aprobación y el pago de la cuota, la persona subirá su fotografía para que el personal autorizado pueda imprimirla.
+            </p>
+          </div>
+        </>
+      ) : (
+        <Checkbox
+          name="physicalCredentialRequested"
+          label="Deseo solicitar la credencial física opcional."
+          help="La afiliación, el registro protegido, el QR y la credencial digital no dependen de esta compra. El costo se informará antes de pagar."
+        />
+      )}
+
+      <div className="h-px bg-[var(--color-line)]" />
+
       {(unionMember || honoraryMember) && (
         <Checkbox
           name="acceptsStatutes"
           required
-          label="Acepto los estatutos vigentes y declaro que la información proporcionada es verdadera."
+          label={
+            assisted
+              ? 'La persona solicitante acepta los estatutos vigentes y declara que la información proporcionada es verdadera.'
+              : 'Acepto los estatutos vigentes y declaro que la información proporcionada es verdadera.'
+          }
           help="La versión vigente aceptada quedará registrada en tu expediente."
           {...(errors['acceptsStatutes'] === undefined ? {} : { errors: errors['acceptsStatutes'] })}
         />
@@ -331,7 +374,7 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
         required
         label={
           <>
-            Leí y acepto el{' '}
+            {assisted ? 'La persona solicitante leyó y aceptó el ' : 'Leí y acepto el '}
             <Link href="/legales/privacidad" target="_blank" className="font-semibold underline underline-offset-4">
               aviso de privacidad
             </Link>

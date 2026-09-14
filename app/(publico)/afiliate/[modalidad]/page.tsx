@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { socialMetadata } from '@/platform/seo';
+import { publicIndigoAmbassador } from '@/modules/admin';
 import { AffiliationRequestForm } from '../affiliation-request-form';
 
 type Modality = 'agremiado' | 'honoraria' | 'beneficiario';
@@ -35,8 +36,9 @@ const CONTENT = {
       'Tener contacto de cualquier índole con personas neurodivergentes.',
       'Compartir un correo donde podamos dar seguimiento al trámite.',
       'Aceptar el aviso de privacidad vigente.',
+      'Cubrir la cuota sindical de afiliación después de la aprobación.',
     ],
-    benefits: ['Voz sin voto', 'Participación y colaboración', 'Programas y herramientas'],
+    benefits: ['Voz sin voto', 'Participación y colaboración', 'Credencial física incluida'],
   },
   beneficiario: {
     eyebrow: 'Beneficiario protegido',
@@ -50,7 +52,7 @@ const CONTENT = {
       'Compartir un correo donde podamos dar seguimiento a tu solicitud.',
       'Aceptar el aviso de privacidad vigente.',
     ],
-    benefits: ['Ayuda y protección', 'Sin voz ni voto', 'Sin pago de cuota'],
+    benefits: ['Ayuda y protección', 'QR y credencial digital', 'Sin pago de cuota'],
   },
 } as const;
 
@@ -73,10 +75,22 @@ export async function generateMetadata({ params }: { params: Promise<{ modalidad
   });
 }
 
-export default async function AffiliationPage({ params }: { params: Promise<{ modalidad: string }> }) {
-  const { modalidad } = await params;
+export default async function AffiliationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ modalidad: string }>;
+  searchParams: Promise<{ promotor?: string | string[] }>;
+}) {
+  const [{ modalidad }, query] = await Promise.all([params, searchParams]);
   if (!isModality(modalidad)) notFound();
   const content = CONTENT[modalidad];
+  const promoterCode = typeof query.promotor === 'string' ? query.promotor : '';
+  const ambassador = promoterCode === '' ? null : await publicIndigoAmbassador(promoterCode);
+  const categoryHref = (category: Modality) =>
+    ambassador === null
+      ? `/afiliate/${category}`
+      : { pathname: `/afiliate/${category}`, query: { promotor: ambassador.code } };
 
   return (
     <main
@@ -103,7 +117,7 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
 
             <nav aria-label="Categorías de registro" className="mt-8 flex flex-wrap gap-3">
               <Link
-                href="/afiliate/agremiado"
+                href={categoryHref('agremiado')}
                 aria-current={modalidad === 'agremiado' ? 'page' : undefined}
                 className={`inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-bold transition ${
                   modalidad === 'agremiado'
@@ -114,7 +128,7 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
                 Persona agremiada
               </Link>
               <Link
-                href="/afiliate/honoraria"
+                href={categoryHref('honoraria')}
                 aria-current={modalidad === 'honoraria' ? 'page' : undefined}
                 className={`inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-bold transition ${
                   modalidad === 'honoraria'
@@ -125,7 +139,7 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
                 Agremiado honorario
               </Link>
               <Link
-                href="/afiliate/beneficiario"
+                href={categoryHref('beneficiario')}
                 aria-current={modalidad === 'beneficiario' ? 'page' : undefined}
                 className={`inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-bold transition ${
                   modalidad === 'beneficiario'
@@ -205,7 +219,10 @@ export default async function AffiliationPage({ params }: { params: Promise<{ mo
               </p>
             </header>
 
-            <AffiliationRequestForm modality={content.modality} />
+            <AffiliationRequestForm
+              modality={content.modality}
+              {...(ambassador === null ? {} : { ambassador })}
+            />
           </section>
         </div>
       </section>

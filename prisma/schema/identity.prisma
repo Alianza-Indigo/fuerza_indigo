@@ -84,6 +84,8 @@ model Actor {
   createdDirectoryPreferences DirectoryPreference[]   @relation("DirectoryPreferenceCreatedBy")
   createdCredentials          MemberCredential[]      @relation("CredentialCreatedBy")
   updatedCredentials          MemberCredential[]      @relation("CredentialUpdatedBy")
+  createdIndigoAmbassadors    IndigoAmbassador[]      @relation("IndigoAmbassadorCreatedBy")
+  updatedIndigoAmbassadors    IndigoAmbassador[]      @relation("IndigoAmbassadorUpdatedBy")
 
 
   // Vida institucional (Fase 5).

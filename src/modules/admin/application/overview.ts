@@ -14,13 +14,14 @@ export interface SystemOverview {
   readonly permissions: number;
   readonly activeUsers: number;
   readonly invitedUsers: number;
+  readonly activeAmbassadors: number;
   readonly liveRoleAssignments: number;
   readonly auditEvents: number;
 }
 
 export async function systemOverview(): Promise<SystemOverview> {
   const now = new Date();
-  const [legalEntities, territorialUnits, roles, permissions, activeUsers, invitedUsers, liveRoleAssignments, auditEvents] =
+  const [legalEntities, territorialUnits, roles, permissions, activeUsers, invitedUsers, activeAmbassadors, liveRoleAssignments, auditEvents] =
     await Promise.all([
       db().legalEntity.count(),
       db().territorialUnit.count(),
@@ -28,6 +29,7 @@ export async function systemOverview(): Promise<SystemOverview> {
       db().permission.count(),
       db().user.count({ where: { status: 'ACTIVE' } }),
       db().user.count({ where: { status: 'INVITED' } }),
+      db().indigoAmbassador.count({ where: { status: 'ACTIVE' } }),
       db().roleAssignment.count({
         where: { revokedAt: null, startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
       }),
@@ -41,6 +43,7 @@ export async function systemOverview(): Promise<SystemOverview> {
     permissions,
     activeUsers,
     invitedUsers,
+    activeAmbassadors,
     liveRoleAssignments,
     auditEvents,
   };

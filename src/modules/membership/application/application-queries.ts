@@ -159,6 +159,7 @@ export interface ApplicationDetail extends ApplicationRow {
   readonly occupation: string | null;
   readonly occupationText: string | null;
   readonly promoterReference: string | null;
+  readonly physicalCredentialRequested: boolean;
   readonly workRelationKind: string | null;
   readonly neurodivergentContactStatement: string | null;
   readonly otherUnionMembership: string | null;
@@ -232,6 +233,7 @@ export async function applicationDetail(
       honoraryProfile: true,
       occupationText: true,
       promoterReference: true,
+      physicalCredentialRequested: true,
       resolutionAt: true,
       resolutionReason: true,
       occupation: { select: { name: true } },
@@ -299,6 +301,7 @@ export async function applicationDetail(
     occupation: solicitud.occupation?.name ?? null,
     occupationText: solicitud.occupationText,
     promoterReference: solicitud.promoterReference,
+    physicalCredentialRequested: solicitud.physicalCredentialRequested,
     workRelationKind: solicitud.workRelationKind,
     neurodivergentContactStatement: solicitud.neurodivergentContactStatement,
     otherUnionMembership: solicitud.otherUnionMembership,

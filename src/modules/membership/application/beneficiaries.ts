@@ -395,6 +395,8 @@ export interface BeneficiaryRow {
   readonly privacyLevel: 'STANDARD' | 'REINFORCED';
   readonly territory: string | null;
   readonly hasDigitalAccount: boolean;
+  readonly promoterReference: string | null;
+  readonly physicalCredentialRequested: boolean;
   readonly responsiblePersonName: string | null;
   readonly registeredAt: Date;
   /**
@@ -441,6 +443,8 @@ export async function beneficiaryDetail(
       status: true,
       privacyLevel: true,
       hasDigitalAccount: true,
+      promoterReference: true,
+      physicalCredentialRequested: true,
       initialNeed: true,
       createdAt: true,
       territorialUnitId: true,
@@ -490,6 +494,8 @@ export async function beneficiaryDetail(
     privacyLevel: fila.privacyLevel,
     territory: fila.territorialUnit?.name ?? null,
     hasDigitalAccount: fila.hasDigitalAccount,
+    promoterReference: fila.promoterReference,
+    physicalCredentialRequested: fila.physicalCredentialRequested,
     responsiblePersonName: fila.responsiblePerson === null ? null : nombreCompleto(fila.responsiblePerson),
     registeredAt: fila.createdAt,
     initialNeed: fila.initialNeed,
@@ -533,6 +539,8 @@ export async function beneficiaryRegistry(
       status: true,
       privacyLevel: true,
       hasDigitalAccount: true,
+      promoterReference: true,
+      physicalCredentialRequested: true,
       initialNeed: true,
       createdAt: true,
       legalEntity: { select: { shortName: true } },
@@ -557,6 +565,8 @@ export async function beneficiaryRegistry(
       privacyLevel: fila.privacyLevel,
       territory: fila.territorialUnit?.name ?? null,
       hasDigitalAccount: fila.hasDigitalAccount,
+      promoterReference: fila.promoterReference,
+      physicalCredentialRequested: fila.physicalCredentialRequested,
       responsiblePersonName: fila.responsiblePerson === null ? null : nombreCompleto(fila.responsiblePerson),
       registeredAt: fila.createdAt,
       initialNeed: fila.privacyLevel === 'REINFORCED' ? null : fila.initialNeed,

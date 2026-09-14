@@ -182,6 +182,8 @@ export const AUDIT_ACTIONS = {
   CREDENTIAL_REVOKED: 'credentialing.credential.revoked',
   CREDENTIAL_REPLACED: 'credentialing.credential.replaced',
   CREDENTIAL_DOWNLOADED: 'credentialing.credential.downloaded',
+  INDIGO_AMBASSADOR_CREATED: 'membership.ambassador.created',
+  INDIGO_AMBASSADOR_UPDATED: 'membership.ambassador.updated',
   CONSENT_VERSION_DRAFTED: 'consent.version.drafted',
   CONSENT_VERSION_PUBLISHED: 'consent.version.published',
   CONSENT_VERSION_RETIRED: 'consent.version.retired',

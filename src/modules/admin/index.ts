@@ -9,3 +9,16 @@ export {
   type LegalEntityView,
   type UpdateLegalEntityInput,
 } from './application/legal-entities';
+export {
+  createIndigoAmbassador,
+  createIndigoAmbassadorSchema,
+  getIndigoAmbassador,
+  listIndigoAmbassadors,
+  publicIndigoAmbassador,
+  updateIndigoAmbassador,
+  updateIndigoAmbassadorSchema,
+  type CreateIndigoAmbassadorInput,
+  type IndigoAmbassadorView,
+  type PublicIndigoAmbassador,
+  type UpdateIndigoAmbassadorInput,
+} from './application/ambassadors';

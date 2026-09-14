@@ -252,6 +252,12 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
                   {solicitud.promoterReference ?? 'No declarado'}
                 </dd>
               </div>
+              <div className="p-4">
+                <dt className="font-medium">Credencial física</dt>
+                <dd className="mt-1 text-[var(--color-ink-soft)]">
+                  {solicitud.physicalCredentialRequested ? 'Solicitada' : 'No solicitada'}
+                </dd>
+              </div>
             </dl>
           </Section>
         )}

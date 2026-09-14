@@ -32,6 +32,7 @@ export async function submitAffiliationRequestAction(
       territory: textField(formData, 'territory'),
       occupation: textField(formData, 'occupation'),
       promoterReference: textField(formData, 'promoterReference'),
+      physicalCredentialRequested: checkboxField(formData, 'physicalCredentialRequested'),
       workRelation: textField(formData, 'workRelation'),
       otherUnionMembership: textField(formData, 'otherUnionMembership'),
       otherUnionClarification: textField(formData, 'otherUnionClarification'),

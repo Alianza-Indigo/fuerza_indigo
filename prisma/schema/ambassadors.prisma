@@ -1,0 +1,39 @@
+/// Red externa de afiliadores autorizados de Fuerza Índigo.
+///
+/// Un embajador no es una calidad sindical ni un beneficiario protegido. Su
+/// código únicamente atribuye los registros que acompaña; nunca concede acceso
+/// a expedientes, voz, voto, representación o facultades de resolución.
+model IndigoAmbassador {
+  id               String                 @id @default(uuid(7)) @db.Uuid
+  code             String                 @unique @db.VarChar(20)
+  givenName        String                 @db.VarChar(80)
+  familyName       String                 @db.VarChar(80)
+  secondFamilyName String?                @db.VarChar(80)
+  email            String                 @unique @db.VarChar(320)
+  phone            String?                @db.VarChar(40)
+  territory        String?                @db.VarChar(160)
+  status           IndigoAmbassadorStatus @default(ACTIVE)
+  notes            String?                @db.Text
+
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  createdByActorId String   @db.Uuid
+  updatedByActorId String   @db.Uuid
+  rowVersion       Int      @default(0)
+
+  createdByActor Actor @relation("IndigoAmbassadorCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
+  updatedByActor Actor @relation("IndigoAmbassadorUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  applications  MembershipApplication[]
+  beneficiaries ProtectedBeneficiary[]
+
+  @@index([status])
+  @@index([familyName, givenName])
+  @@map("indigo_ambassador")
+}
+
+enum IndigoAmbassadorStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}

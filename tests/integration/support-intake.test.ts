@@ -166,6 +166,22 @@ describe('con aviso publicado', () => {
     await base.prisma.normativeRuleSet.updateMany({
       data: { status: 'IN_FORCE', effectiveFrom: new Date('2026-01-01T00:00:00.000Z') },
     });
+    const rootActor = await base.prisma.actor.findFirstOrThrow({
+      where: { kind: 'ROOT_SUPERADMIN' },
+      select: { id: true },
+    });
+    const ambassador = await base.prisma.indigoAmbassador.create({
+      data: {
+        code: 'FI-EMB-00001',
+        givenName: 'Ana',
+        familyName: 'Pérez',
+        email: 'ana.embajadora@ejemplo.mx',
+        territory: 'Ciudad de México',
+        createdByActorId: rootActor.id,
+        updatedByActorId: rootActor.id,
+      },
+      select: { id: true, code: true },
+    });
 
     const resultado = await submitPublicMembershipRequest(
       {
@@ -178,7 +194,8 @@ describe('con aviso publicado', () => {
         phone: '',
         territory: 'Ciudad de México, Coyoacán',
         occupation: 'Docente',
-        promoterReference: 'FI-2026-0015 · Ana Pérez',
+        promoterReference: ambassador.code,
+        physicalCredentialRequested: true,
         workRelation: 'SUBORDINATE',
         otherUnionMembership: 'NONE',
         otherUnionClarification: '',
@@ -204,6 +221,8 @@ describe('con aviso publicado', () => {
         status: true,
         occupationText: true,
         promoterReference: true,
+        ambassadorId: true,
+        physicalCredentialRequested: true,
         territoryHint: true,
         person: {
           select: {
@@ -238,7 +257,9 @@ describe('con aviso publicado', () => {
     expect(resultado.data.accountAccess).toBe('SETUP_LINK');
     expect(resultado.data.accountSetupUrl).toContain('/activar/');
     expect(guardada.occupationText).toBe('Docente');
-    expect(guardada.promoterReference).toBe('FI-2026-0015 · Ana Pérez');
+    expect(guardada.promoterReference).toBe(ambassador.code);
+    expect(guardada.ambassadorId).toBe(ambassador.id);
+    expect(guardada.physicalCredentialRequested).toBe(true);
     expect(guardada.territoryHint).toBe('Ciudad de México, Coyoacán');
     expect(await base.prisma.supportRequest.count({ where: { contactEmail: 'maria.afiliacion@ejemplo.mx' } })).toBe(0);
   });

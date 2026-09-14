@@ -87,6 +87,8 @@ model MembershipApplication {
   occupationText       String?             @db.VarChar(160)
   territoryHint        String?             @db.VarChar(160)
   promoterReference    String?             @db.VarChar(160)
+  ambassadorId         String?             @db.Uuid
+  physicalCredentialRequested Boolean      @default(false)
   originFingerprint    String?             @db.VarChar(64)
 
   // Campos de la vía sindical. Obligatorios para `UNION_MEMBER`, nulos para la
@@ -132,6 +134,7 @@ model MembershipApplication {
   payment         Payment?          @relation("ApplicationPayment", fields: [paymentId], references: [id], onDelete: Restrict)
   createdByActor  Actor             @relation("ApplicationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor  Actor             @relation("ApplicationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+  ambassador      IndigoAmbassador?  @relation(fields: [ambassadorId], references: [id], onDelete: Restrict)
 
   documents      ApplicationDocument[]
   reviews        ApplicationReview[]
@@ -144,6 +147,7 @@ model MembershipApplication {
   @@index([territorialUnitId])
   @@index([legalEntityId, status])
   @@index([originFingerprint, createdAt])
+  @@index([ambassadorId, createdAt])
   @@map("membership_application")
 }
 
@@ -531,6 +535,8 @@ model ProtectedBeneficiary {
   occupationText      String?            @db.VarChar(160)
   territoryHint       String?            @db.VarChar(160)
   promoterReference   String?            @db.VarChar(160)
+  ambassadorId        String?            @db.Uuid
+  physicalCredentialRequested Boolean    @default(false)
   originFingerprint   String?            @db.VarChar(64)
   responsiblePersonId String?            @db.Uuid
   hasDigitalAccount   Boolean            @default(false)
@@ -554,6 +560,7 @@ model ProtectedBeneficiary {
   responsiblePerson Person?          @relation("BeneficiaryResponsible", fields: [responsiblePersonId], references: [id], onDelete: Restrict)
   createdByActor    Actor            @relation("BeneficiaryCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor    Actor            @relation("BeneficiaryUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+  ambassador        IndigoAmbassador? @relation(fields: [ambassadorId], references: [id], onDelete: Restrict)
   credentials       MemberCredential[]
 
   @@index([personId])
@@ -561,6 +568,7 @@ model ProtectedBeneficiary {
   @@index([territorialUnitId])
   @@index([privacyLevel])
   @@index([originFingerprint, createdAt])
+  @@index([ambassadorId, createdAt])
   @@map("protected_beneficiary")
 }
 

@@ -12,6 +12,7 @@ const SECTIONS = [
   { href: '/superadmin', label: 'Estado general' },
   { href: '/superadmin/puesta-en-marcha', label: 'Puesta en marcha' },
   { href: '/superadmin/personas', label: 'Personas y roles' },
+  { href: '/superadmin/embajadores', label: 'Embajadores Índigo' },
   { href: '/superadmin/auditoria', label: 'Auditoría' },
   { href: '/superadmin/salud', label: 'Salud técnica' },
   // Acceso total (ADR-0174): desde el panel se entra a todas las áreas de

@@ -103,6 +103,18 @@ export default async function AtencionPage({ params }: { params: Promise<{ id: s
               </dd>
             </div>
             <div className="p-4">
+              <dt className="font-medium">Embajador Índigo</dt>
+              <dd className="mt-1 text-[var(--color-ink-soft)]">
+                {fila.promoterReference ?? 'Registro sin embajador'}
+              </dd>
+            </div>
+            <div className="p-4">
+              <dt className="font-medium">Credencial física</dt>
+              <dd className="mt-1 text-[var(--color-ink-soft)]">
+                {fila.physicalCredentialRequested ? 'Solicitada' : 'No solicitada'}
+              </dd>
+            </div>
+            <div className="p-4">
               <dt className="font-medium">Registrada</dt>
               <dd className="mt-1 text-[var(--color-ink-soft)]">{fecha.format(fila.registeredAt)}</dd>
             </div>

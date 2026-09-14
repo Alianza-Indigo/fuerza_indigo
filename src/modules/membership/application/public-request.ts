@@ -32,6 +32,7 @@ export const PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE = 'PRIVACY_NOTICE_MEMBERSHIP_I
 
 const PUBLIC_REGISTRATION_ACTOR_LABEL = 'Registro público de afiliación';
 const PUBLIC_REGISTRATION_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxSubmissions: 5 } as const;
+const AMBASSADOR_REGISTRATION_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxSubmissions: 60 } as const;
 const ACCOUNT_SETUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function optionalText<T extends z.ZodType<string, string>>(schema: T) {
@@ -72,9 +73,10 @@ export const publicMembershipRequestSchema = z
       z
         .string()
         .trim()
-        .min(2, { error: () => 'Escribe el número de agremiado o el nombre del promotor.' })
-        .max(160),
+        .toUpperCase()
+        .regex(/^FI-EMB-\d{5}$/, { error: () => 'Escribe un código de Embajador Índigo válido.' }),
     ),
+    physicalCredentialRequested: z.boolean().default(false),
     workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT'])),
     otherUnionMembership: optionalText(z.enum(['NONE', 'SAME_TRADE', 'DIFFERENT_TRADE'])),
     otherUnionClarification: optionalText(z.string().trim().max(2000)),
@@ -273,23 +275,52 @@ export async function submitPublicMembershipRequest(
   const data = parsed.data;
   const now = new Date();
   const originFingerprint = fingerprint(context.ipHash ?? 'origen-desconocido', env().AUTH_SECRET);
+  const ambassador =
+    data.promoterReference === undefined
+      ? null
+      : await db().indigoAmbassador.findFirst({
+          where: { code: data.promoterReference, status: 'ACTIVE' },
+          select: { id: true, code: true },
+        });
+  if (data.promoterReference !== undefined && ambassador === null) {
+    return fail(
+      errors.validation({
+        promoterReference: ['Ese código no corresponde a un Embajador Índigo activo.'],
+      }),
+    );
+  }
 
   const [recentApplications, recentBeneficiaries] = await Promise.all([
     db().membershipApplication.count({
       where: {
-        originFingerprint,
-        createdAt: { gte: new Date(now.getTime() - PUBLIC_REGISTRATION_RATE_LIMIT.windowMs) },
+        ...(ambassador === null ? { originFingerprint } : { ambassadorId: ambassador.id }),
+        createdAt: {
+          gte: new Date(
+            now.getTime() -
+              (ambassador === null
+                ? PUBLIC_REGISTRATION_RATE_LIMIT.windowMs
+                : AMBASSADOR_REGISTRATION_RATE_LIMIT.windowMs),
+          ),
+        },
       },
     }),
     db().protectedBeneficiary.count({
       where: {
-        originFingerprint,
-        createdAt: { gte: new Date(now.getTime() - PUBLIC_REGISTRATION_RATE_LIMIT.windowMs) },
+        ...(ambassador === null ? { originFingerprint } : { ambassadorId: ambassador.id }),
+        createdAt: {
+          gte: new Date(
+            now.getTime() -
+              (ambassador === null
+                ? PUBLIC_REGISTRATION_RATE_LIMIT.windowMs
+                : AMBASSADOR_REGISTRATION_RATE_LIMIT.windowMs),
+          ),
+        },
       },
     }),
   ]);
-  if (recentApplications + recentBeneficiaries >= PUBLIC_REGISTRATION_RATE_LIMIT.maxSubmissions) {
-    return fail(errors.rateLimited(Math.ceil(PUBLIC_REGISTRATION_RATE_LIMIT.windowMs / 1000)));
+  const limit = ambassador === null ? PUBLIC_REGISTRATION_RATE_LIMIT : AMBASSADOR_REGISTRATION_RATE_LIMIT;
+  if (recentApplications + recentBeneficiaries >= limit.maxSubmissions) {
+    return fail(errors.rateLimited(Math.ceil(limit.windowMs / 1000)));
   }
 
   const entity = await db().legalEntity.findUnique({
@@ -573,6 +604,8 @@ export async function submitPublicMembershipRequest(
             occupationText: data.occupation,
             territoryHint: data.territory,
             promoterReference: data.promoterReference ?? null,
+            ambassadorId: ambassador?.id ?? null,
+            physicalCredentialRequested: data.physicalCredentialRequested,
             originFingerprint,
             hasDigitalAccount: true,
             privacyLevel: 'REINFORCED',
@@ -598,7 +631,11 @@ export async function submitPublicMembershipRequest(
           outcome: 'SUCCESS',
           legalEntityId: entity.id,
           onBehalfOfPersonId: person.id,
-          metadata: { publicId: beneficiary.publicId, origin: 'public-registration' },
+          metadata: {
+            publicId: beneficiary.publicId,
+            origin: 'public-registration',
+            ambassadorCode: ambassador?.code ?? null,
+          },
         });
         return {
           folio: beneficiary.publicId,
@@ -640,6 +677,9 @@ export async function submitPublicMembershipRequest(
           occupationText: data.occupation,
           territoryHint: data.territory,
           promoterReference: data.promoterReference ?? null,
+          ambassadorId: ambassador?.id ?? null,
+          physicalCredentialRequested:
+            category === 'HONORARY_AFFILIATE' ? true : data.physicalCredentialRequested,
           originFingerprint,
           acceptedRuleSetId: statute!.id,
           originalSummary: {
@@ -654,7 +694,9 @@ export async function submitPublicMembershipRequest(
             categoria: category,
             ocupacionDeclarada: data.occupation,
             territorioDeclarado: data.territory,
-            promotor: data.promoterReference ?? null,
+            promotor: ambassador === null ? null : { codigo: ambassador.code },
+            credencialFisicaSolicitada:
+              category === 'HONORARY_AFFILIATE' ? true : data.physicalCredentialRequested,
             estatutoAceptado: statute!.version,
             avisoPrivacidad: { codigo: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE, version: notice.version },
             formaDeTrabajo: data.workRelation ?? null,
@@ -678,7 +720,12 @@ export async function submitPublicMembershipRequest(
         outcome: 'SUCCESS',
         legalEntityId: entity.id,
         onBehalfOfPersonId: person.id,
-        metadata: { folio: application.folio, category, origin: 'public-registration' },
+        metadata: {
+          folio: application.folio,
+          category,
+          origin: 'public-registration',
+          ambassadorCode: ambassador?.code ?? null,
+        },
       });
 
       return {

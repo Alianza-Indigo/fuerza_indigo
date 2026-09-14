@@ -86,6 +86,7 @@ export default async function SuperadminHomePage() {
             <Metric label="Permisos" value={overview.permissions} />
             <Metric label="Cuentas activas" value={overview.activeUsers} />
             <Metric label="Cuentas invitadas" value={overview.invitedUsers} />
+            <Metric label="Embajadores activos" value={overview.activeAmbassadors} />
             <Metric label="Nombramientos vigentes" value={overview.liveRoleAssignments} />
             <Metric label="Eventos de auditoría" value={overview.auditEvents} />
           </div>

@@ -24,10 +24,13 @@ export function OwnCredentialPhotoForm({
       {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Fotografía guardada'} />}
       <div>
         <label htmlFor={inputId} className="block font-medium">
-          {hasPhoto ? 'Actualizar mi fotografía' : 'Subir mi fotografía'}
+          {hasPhoto ? 'Actualizar mi fotografía' : 'Fotografía opcional'}
         </label>
         <p id={`${inputId}-ayuda`} className="text-sm text-[var(--color-ink-soft)]">
-          Usa una fotografía frontal, reciente y con el rostro visible. JPG, PNG o WebP, máximo 5 MB.
+          {hasPhoto
+            ? 'La nueva imagen aparecerá en tu credencial digital y en futuras impresiones.'
+            : 'Tu QR ya funciona sin fotografía. Súbela únicamente si deseas que aparezca en tu credencial digital o solicitar la credencial física.'}{' '}
+          Usa una imagen frontal y reciente. JPG, PNG o WebP, máximo 5 MB.
         </p>
       </div>
       <input

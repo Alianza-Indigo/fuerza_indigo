@@ -16,9 +16,10 @@ export const dynamic = 'force-dynamic';
 /**
  * La credencial de la persona (PRD §7.4, F4-CRE-002).
  *
- * Enseña el QR **en pantalla** además de dejar descargarla: en una puerta, lo
- * que se usa es el teléfono, no un archivo impreso. Y enseña el código en
- * letra grande y separado en bloques, porque no siempre hay cámara enfrente.
+ * Enseña el QR **en pantalla** desde la activación: en una puerta, lo que se
+ * usa es el teléfono, no necesariamente una credencial impresa. Y enseña el
+ * código en letra grande y separado en bloques, porque no siempre hay cámara
+ * enfrente.
  *
  * Las credenciales que ya no valen no desaparecen de aquí: se ven, con su
  * estado y con la fecha en que dejaron de valer. Borrarlas dejaría a la persona
@@ -50,7 +51,7 @@ export default async function MiCredencialPage() {
   return (
     <PageShell
       title="Mi credencial"
-      description="Aquí subes tu fotografía y consultas tu credencial digital. Puedes enseñarla desde el teléfono; la impresión corresponde únicamente al personal autorizado."
+      description="Tu QR y tu credencial digital están disponibles desde la activación, aun sin fotografía. La credencial física es opcional."
     >
       <div className="space-y-8">
         {credenciales.data.length === 0 && (
@@ -174,9 +175,8 @@ export default async function MiCredencialPage() {
             número de miembro.
           </p>
           <p>
-            La impresión y reposición corresponden al personal autorizado. Si pierdes una credencial
-            impresa, avisa a la organización: se repone con un código nuevo y el anterior deja de valer
-            en el acto.
+            La fotografía es opcional para la credencial digital. Solo es necesaria si quieres solicitar
+            la credencial física. La impresión y reposición corresponden al personal autorizado.
           </p>
         </Prose>
       </div>

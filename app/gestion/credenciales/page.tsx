@@ -202,7 +202,7 @@ export default async function CredencialesPage({
                               <div className="space-y-4">
                                 <p className="text-sm text-[var(--color-ink-soft)]">
                                   {credencial.photoFileId === null
-                                    ? 'La persona titular todavía no ha subido su fotografía.'
+                                    ? 'Credencial digital activa sin fotografía. La impresión física no está habilitada.'
                                     : 'Fotografía proporcionada por la persona titular.'}
                                 </p>
                                 {credencial.photoFileId !== null && credencial.hasCurp ? (
@@ -216,7 +216,7 @@ export default async function CredencialesPage({
                                 ) : (
                                   <p className="text-sm text-[var(--color-ink-soft)]">
                                     {credencial.photoFileId === null
-                                      ? 'La impresión se habilita cuando la persona titular suba su fotografía.'
+                                      ? 'La impresión física se habilita cuando la persona titular suba su fotografía.'
                                       : 'Falta registrar la CURP de la persona para poder imprimir.'}
                                   </p>
                                 )}

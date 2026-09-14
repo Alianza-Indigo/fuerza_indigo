@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { Card, Notice, PageShell, Prose, Section } from '@/design-system/primitives';
@@ -67,7 +68,18 @@ export default async function VerificarTokenPage({ params }: { params: Promise<{
 
         <Section title="Lo que acredita">
           <Card>
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+              {resultado.photoFileId !== null && (
+                <Image
+                  src={`/verificar/${encodeURIComponent(token)}/foto`}
+                  alt={`Fotografía de ${resultado.displayName ?? 'la persona titular'}`}
+                  width={224}
+                  height={292}
+                  unoptimized
+                  className="mx-auto aspect-[224/292] w-44 shrink-0 rounded-xl border border-[var(--color-line)] object-cover sm:mx-0"
+                />
+              )}
+              <dl className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
               <div>
                 <dt className="text-sm text-[var(--color-ink-soft)]">Nombre</dt>
                 <dd className="text-lg font-semibold">{resultado.displayName}</dd>
@@ -98,7 +110,8 @@ export default async function VerificarTokenPage({ params }: { params: Promise<{
                 <dt className="text-sm text-[var(--color-ink-soft)]">Número de verificación</dt>
                 <dd className="font-mono">{codigoLegible(resultado.publicCode!)}</dd>
               </div>
-            </dl>
+              </dl>
+            </div>
           </Card>
         </Section>
 

@@ -16,6 +16,7 @@ import {
   personCredentials,
   replaceCredential,
   revokeCredential,
+  setCredentialPhoto,
   suspendMembership,
   verifyCredential,
   verificationSummary,
@@ -82,6 +83,10 @@ async function agremiadaConCredencial(nombre: string, opciones: { expiresAt?: Da
     givenName: `${nombre}${contador}`,
     familyName: 'De Credencial',
   });
+  await base.prisma.person.update({
+    where: { id: persona.personId },
+    data: { curp: `TSTX900101HCHXXX${String(contador).padStart(2, '0')}` },
+  });
   await nombrar(base.prisma, {
     userId: persona.userId,
     roleCode: 'UNION_MEMBER',
@@ -128,6 +133,18 @@ async function agremiadaConCredencial(nombre: string, opciones: { expiresAt?: Da
     credencial,
     token: tokenDe(credencial),
   };
+}
+
+const FOTO_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+
+async function cargarFoto(credentialId: string) {
+  const resultado = await setCredentialPhoto(secretaria, {
+    credentialId,
+    originalFileName: 'retrato-prueba.png',
+    mimeType: 'image/png',
+    content: FOTO_PNG,
+  });
+  expect(resultado.ok, resultado.ok ? '' : JSON.stringify(resultado.error)).toBe(true);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -516,6 +533,7 @@ describe('credenciales de cargo y profesionales (F4-CRE-001)', () => {
 describe('descargar la credencial (F4-CRE-002)', () => {
   it('el personal autorizado la descarga, y queda asiento de la entrega', async () => {
     const { persona, credencial } = await agremiadaConCredencial('Descarga');
+    await cargarFoto(credencial.id);
 
     const resultado = await credentialForDownload(secretaria, credencial.id);
     expect(resultado.ok, resultado.ok ? '' : JSON.stringify(resultado.error)).toBe(true);
@@ -534,12 +552,16 @@ describe('descargar la credencial (F4-CRE-002)', () => {
 
   it('el documento lleva el QR, el código legible y el diseño de su tipo', async () => {
     const { credencial } = await agremiadaConCredencial('Dibuja');
+    await cargarFoto(credencial.id);
     const datos = await credentialForDownload(secretaria, credencial.id);
     if (!datos.ok) throw datos.error;
 
     const svg = svgCredencial({
       kind: datos.data.kind,
       displayName: datos.data.displayName,
+      curp: datos.data.curp,
+      folio: datos.data.folio,
+      photoDataUrl: datos.data.photoDataUrl,
       publicCode: datos.data.publicCode,
       token: datos.data.token,
       verificationUrl: 'https://ejemplo.invalid/verificar',
@@ -549,15 +571,24 @@ describe('descargar la credencial (F4-CRE-002)', () => {
       issuer: 'Fuerza Índigo',
     });
 
-    // Tamaño de tarjeta: se imprime y entra en una cartera.
+    // Las dos caras conservan el ancho ID-1 y se entregan juntas.
     expect(svg).toContain('width="85.6mm"');
-    expect(svg).toContain('height="54mm"');
+    expect(svg).toContain('height="110.4mm"');
     // El tipo, escrito: no se distingue solo por el color.
     expect(svg).toContain('AGREMIADO');
     // El código, en bloques de cinco para poder dictarlo.
     expect(svg).toContain(datos.data.publicCode.slice(0, 5));
     // Y el QR dentro.
     expect(svg).toContain('shape-rendering="crispEdges"');
+    expect(svg).toContain(datos.data.curp);
+    expect(svg).toContain(datos.data.photoDataUrl);
+  });
+
+  it('no permite imprimir hasta que la fotografía esté cargada', async () => {
+    const { credencial } = await agremiadaConCredencial('SinFoto');
+    const resultado = await credentialForDownload(secretaria, credencial.id);
+    expect(resultado.ok).toBe(false);
+    if (!resultado.ok) expect(resultado.error.message).toContain('fotografía');
   });
 
   it('no se descarga una credencial que ya no vale', async () => {

@@ -178,6 +178,7 @@ export const AUDIT_ACTIONS = {
   DIRECTORY_PUBLISHED: 'directory.publication.published',
   DIRECTORY_WITHDRAWN: 'directory.publication.withdrawn',
   CREDENTIAL_ISSUED: 'credentialing.credential.issued',
+  CREDENTIAL_PHOTO_UPDATED: 'credentialing.credential.photo_updated',
   CREDENTIAL_REVOKED: 'credentialing.credential.revoked',
   CREDENTIAL_REPLACED: 'credentialing.credential.replaced',
   CREDENTIAL_DOWNLOADED: 'credentialing.credential.downloaded',

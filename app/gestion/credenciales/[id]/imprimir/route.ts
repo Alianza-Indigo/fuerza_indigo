@@ -28,6 +28,9 @@ export async function GET(
   const svg = svgCredencial({
     kind: credencial.kind,
     displayName: credencial.displayName,
+    curp: credencial.curp,
+    folio: credencial.folio,
+    photoDataUrl: credencial.photoDataUrl,
     publicCode: credencial.publicCode,
     token: credencial.token,
     verificationUrl: `${env().APP_URL}/verificar`,

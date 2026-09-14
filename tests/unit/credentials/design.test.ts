@@ -78,6 +78,9 @@ describe('el contraste de la credencial se mide, no se afirma', () => {
 describe('la tarjeta que se imprime', () => {
   const datos = {
     displayName: 'Persona De Prueba Apellido',
+    curp: 'PEPA900101MCHRRR09',
+    folio: 'FI-PRUEBA-0001',
+    photoDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
     publicCode: 'A1B2C3D4E5F6G7H8J9K0',
     token: 'A1B2C3D4E5F6G7H8J9K0.k1.firmadeprueba0000',
     verificationUrl: 'https://ejemplo.invalid/verificar',
@@ -87,11 +90,12 @@ describe('la tarjeta que se imprime', () => {
     issuer: 'Fuerza Índigo',
   };
 
-  it('mide lo que mide una tarjeta bancaria', () => {
+  it('reúne dos caras del tamaño de una tarjeta bancaria', () => {
     const svg = svgCredencial({ ...datos, kind: 'UNION_MEMBER' });
     expect(svg).toContain('width="85.6mm"');
-    expect(svg).toContain('height="54mm"');
-    expect(svg).toContain('viewBox="0 0 856 540"');
+    expect(svg).toContain('height="110.4mm"');
+    expect(svg).toContain('viewBox="0 0 856 1104"');
+    expect(svg).toContain('height="540"');
   });
 
   it('no usa variables CSS: fuera del navegador no existen', () => {
@@ -170,23 +174,28 @@ describe('la tarjeta que se imprime', () => {
     }
   });
 
-  it('la dirección de verificación cabe en la columna de texto', () => {
+  it('la dirección pública aparece bajo el QR del reverso', () => {
     const svg = svgCredencial({ ...datos, kind: 'UNION_MEMBER' });
-    // Centrada bajo el QR se salía por el borde: ahora va a la izquierda.
-    expect(svg).toContain('Verifica en https://ejemplo.invalid/verificar');
-    const linea = /<text x="(\d+)"[^>]*>Verifica en/.exec(svg);
-    expect(linea).not.toBeNull();
-    expect(Number(linea![1])).toBeLessThan(856 - 232);
+    expect(svg).toContain('ejemplo.invalid');
+    expect(svg).toContain('VERIFICACIÓN DE CREDENCIAL');
   });
 
-  it('una credencial sin fecha de término lo dice, en vez de callarlo', () => {
+  it('una credencial sin fecha de término vincula la vigencia al registro', () => {
     const svg = svgCredencial({ ...datos, kind: 'AUTHORIZED_PROFESSIONAL', expiresAt: null });
-    expect(svg).toContain('Sin fecha de término');
+    expect(svg).toContain('Mientras el registro esté activo');
   });
 
-  it('la credencial protegida declara que no concede voz, voto ni cuota', () => {
+  it('la credencial protegida no imprime leyendas sobre voz, voto o cuota', () => {
     const svg = svgCredencial({ ...datos, kind: 'PROTECTED_BENEFICIARY' });
     expect(svg).toContain('BENEFICIARIO PROTEGIDO');
-    expect(svg).toContain('Sin voz, voto ni cuota');
+    expect(svg).not.toMatch(/sin (voz|voto|cuota)/i);
+  });
+
+  it('el anverso incorpora fotografía, CURP y folio', () => {
+    const svg = svgCredencial({ ...datos, kind: 'PROTECTED_BENEFICIARY' });
+    expect(svg).toContain(`<image href="${datos.photoDataUrl}"`);
+    expect(svg).toContain(datos.curp);
+    expect(svg).toContain(datos.folio);
+    expect(svg).toContain('FOLIO FUERZA ÍNDIGO');
   });
 });

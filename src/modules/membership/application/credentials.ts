@@ -11,6 +11,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { logger } from '@/platform/observability/logger';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import { leerToken, nuevoCodigoFirmado, tokenDe } from '@/platform/credentials/signing';
+import { blobStore, uploadFile } from '@/platform/files';
 import type {
   BeneficiaryStatus,
   CredentialKind,
@@ -349,6 +350,21 @@ export type IssueProtectedBeneficiaryCredentialInput = z.infer<
   typeof issueProtectedBeneficiaryCredentialSchema
 >;
 
+const TIPOS_DE_FOTO = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const MAX_FOTO_BYTES = 5 * 1024 * 1024;
+
+export const setCredentialPhotoSchema = z.object({
+  credentialId: z.uuid({ error: () => 'La credencial no es válida.' }),
+  originalFileName: z.string().trim().min(1).max(255),
+  mimeType: z.enum(TIPOS_DE_FOTO, {
+    error: () => 'La fotografía debe ser JPG, PNG o WebP.',
+  }),
+});
+
+export type SetCredentialPhotoInput = z.infer<typeof setCredentialPhotoSchema> & {
+  readonly content: Uint8Array;
+};
+
 function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
   for (const issue of error.issues) {
@@ -547,6 +563,106 @@ export async function issueProtectedBeneficiaryCredential(
     );
   }
   return ok(created.credential);
+}
+
+/**
+ * Guarda o reemplaza la fotografía que se imprime en una credencial.
+ *
+ * La fotografía es un dato personal sensible: vive en el almacén privado y
+ * solo puede asociarla quien ya tiene la facultad crítica de emitir la
+ * credencial. La persona titular no recibe desde su portal una puerta para
+ * cambiar la imagen de un documento institucional.
+ */
+export async function setCredentialPhoto(
+  actor: ActorContext,
+  input: SetCredentialPhotoInput,
+): Promise<UseCaseResult<{ credentialId: string; photoFileId: string }>> {
+  const parsed = setCredentialPhotoSchema.safeParse(input);
+  if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
+  if (input.content.byteLength === 0) {
+    return fail(errors.validation({ photo: ['Selecciona una fotografía.'] }));
+  }
+  if (input.content.byteLength > MAX_FOTO_BYTES) {
+    return fail(errors.validation({ photo: ['La fotografía no puede superar 5 MB.'] }));
+  }
+
+  const credential = await db().memberCredential.findUnique({
+    where: { id: parsed.data.credentialId },
+    select: {
+      id: true,
+      personId: true,
+      status: true,
+      revokedAt: true,
+      expiresAt: true,
+      photoFileId: true,
+      membership: { select: { legalEntityId: true, status: true } },
+      protectedBeneficiary: { select: { legalEntityId: true, status: true } },
+    },
+  });
+  if (credential === null) return fail(errors.notFound('credencial inexistente'));
+
+  let legalEntityId =
+    credential.membership?.legalEntityId ?? credential.protectedBeneficiary?.legalEntityId ?? null;
+  if (legalEntityId === null) {
+    const issuance = await db().auditEvent.findFirst({
+      where: {
+        action: AUDIT_ACTIONS.CREDENTIAL_ISSUED,
+        objectKind: 'MemberCredential',
+        objectId: credential.id,
+      },
+      orderBy: { occurredAt: 'asc' },
+      select: { legalEntityId: true },
+    });
+    legalEntityId = issuance?.legalEntityId ?? null;
+  }
+  if (legalEntityId === null) {
+    return fail(errors.conflict('La credencial no tiene una entidad emisora identificable.'));
+  }
+
+  const decision = can(actor, 'credentialing.credential.issue', {
+    kind: 'MemberCredential',
+    id: credential.id,
+    legalEntityId,
+    containsPersonalData: true,
+  });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+  if (estadoVigente(credential) !== 'ACTIVE') {
+    return fail(errors.conflict('Solo se puede cargar fotografía a una credencial vigente.'));
+  }
+
+  const uploaded = await uploadFile(actor, {
+    legalEntityId,
+    classification: 'SENSITIVE_PERSONAL',
+    contextKind: 'CREDENTIAL',
+    contextId: credential.id,
+    originalFileName: parsed.data.originalFileName,
+    mimeType: parsed.data.mimeType,
+    content: input.content,
+    ownerPersonId: credential.personId,
+  });
+  if (!uploaded.ok) return fail(uploaded.error);
+
+  await transaction(async (tx) => {
+    await tx.memberCredential.update({
+      where: { id: credential.id },
+      data: {
+        photoFileId: uploaded.data.fileObjectId,
+        updatedByActorId: actor.actorId,
+        rowVersion: { increment: 1 },
+      },
+    });
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.CREDENTIAL_PHOTO_UPDATED,
+      objectKind: 'MemberCredential',
+      objectId: credential.id,
+      outcome: 'SUCCESS',
+      legalEntityId,
+      onBehalfOfPersonId: credential.personId,
+      metadata: { reemplazo: credential.photoFileId !== null },
+    });
+  });
+
+  return ok({ credentialId: credential.id, photoFileId: uploaded.data.fileObjectId });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -941,6 +1057,53 @@ export async function verifyCredential(
   };
 }
 
+export interface CredentialPhoto {
+  readonly content: Uint8Array;
+  readonly mimeType: string;
+}
+
+/**
+ * Fotografía que acompaña una verificación pública válida.
+ *
+ * Conocer el id interno del archivo no abre nada: esta salida solo existe al
+ * presentar un código real y mientras la credencial siga vigente. La CURP y
+ * el resto del expediente nunca viajan por esta ruta.
+ */
+export async function credentialPhotoForVerification(entrada: string): Promise<CredentialPhoto | null> {
+  const lectura = leerToken(entrada);
+  if (lectura.clase === 'INVALIDO') return null;
+
+  const credential = await db().memberCredential.findUnique({
+    where: { publicCode: lectura.publicCode },
+    select: {
+      status: true,
+      revokedAt: true,
+      expiresAt: true,
+      membership: { select: { status: true } },
+      protectedBeneficiary: { select: { status: true } },
+      photoFile: {
+        select: {
+          mimeType: true,
+          deletedAt: true,
+          currentVersion: { select: { blobPathname: true } },
+        },
+      },
+    },
+  });
+  if (
+    credential === null ||
+    estadoVigente(credential) !== 'ACTIVE' ||
+    credential.photoFile === null ||
+    credential.photoFile.deletedAt !== null ||
+    credential.photoFile.currentVersion === null
+  ) {
+    return null;
+  }
+
+  const content = await blobStore().get(credential.photoFile.currentVersion.blobPathname);
+  return content === null ? null : { content, mimeType: credential.photoFile.mimeType };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Lectura: la propia y la de gestión (F4-CRE-002)                            */
 /* -------------------------------------------------------------------------- */
@@ -959,6 +1122,8 @@ export interface CredentialRow {
   readonly revokedAt: Date | null;
   readonly revokeReason: string | null;
   readonly territoryLabel: string | null;
+  readonly photoFileId: string | null;
+  readonly hasCurp: boolean;
   readonly memberNumber: string | null;
   readonly beneficiaryPublicId: string | null;
   readonly legalEntityId: string | null;
@@ -978,6 +1143,14 @@ const SELECCION = {
   revokedAt: true,
   revokeReason: true,
   territoryLabel: true,
+  photoFileId: true,
+  person: { select: { curp: true } },
+  photoFile: {
+    select: {
+      mimeType: true,
+      currentVersion: { select: { blobPathname: true } },
+    },
+  },
   membership: { select: { status: true, memberNumber: true, legalEntityId: true } },
   protectedBeneficiary: { select: { status: true, publicId: true, legalEntityId: true } },
 } as const;
@@ -996,6 +1169,9 @@ type FilaCruda = {
   revokedAt: Date | null;
   revokeReason: string | null;
   territoryLabel: string | null;
+  photoFileId: string | null;
+  person: { curp: string | null };
+  photoFile: { mimeType: string; currentVersion: { blobPathname: string } | null } | null;
   membership: { status: MembershipStatus; memberNumber: string; legalEntityId: string } | null;
   protectedBeneficiary: { status: BeneficiaryStatus; publicId: string; legalEntityId: string } | null;
 };
@@ -1015,6 +1191,8 @@ function aFila(fila: FilaCruda): CredentialRow {
     revokedAt: fila.revokedAt,
     revokeReason: fila.revokeReason,
     territoryLabel: fila.territoryLabel,
+    photoFileId: fila.photoFileId,
+    hasCurp: fila.person.curp !== null,
     memberNumber: fila.membership?.memberNumber ?? null,
     beneficiaryPublicId: fila.protectedBeneficiary?.publicId ?? null,
     legalEntityId: fila.membership?.legalEntityId ?? fila.protectedBeneficiary?.legalEntityId ?? null,
@@ -1055,7 +1233,7 @@ export async function personCredentials(
 export async function credentialForDownload(
   actor: ActorContext,
   credentialId: string,
-): Promise<UseCaseResult<CredentialRow>> {
+): Promise<UseCaseResult<CredentialRow & { curp: string; photoDataUrl: string; folio: string }>> {
   const fila = await db().memberCredential.findUnique({
     where: { id: credentialId },
     select: SELECCION,
@@ -1084,6 +1262,28 @@ export async function credentialForDownload(
     );
   }
 
+  if (fila.person.curp === null) {
+    return fail(
+      errors.conflict(
+        'La credencial no se puede imprimir hasta registrar la CURP de la persona.',
+        'CURP faltante',
+      ),
+    );
+  }
+  if (fila.photoFile === null || fila.photoFile.currentVersion === null) {
+    return fail(
+      errors.conflict(
+        'La credencial no se puede imprimir hasta cargar la fotografía de la persona.',
+        'fotografía faltante',
+      ),
+    );
+  }
+
+  const photo = await blobStore().get(fila.photoFile.currentVersion.blobPathname);
+  if (photo === null) return fail(errors.dependencyUnavailable('fotografía de la credencial'));
+  const photoDataUrl = `data:${fila.photoFile.mimeType};base64,${Buffer.from(photo).toString('base64')}`;
+  const folio = datos.beneficiaryPublicId ?? datos.memberNumber ?? datos.publicCode;
+
   await transaction(async (tx) => {
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.CREDENTIAL_DOWNLOADED,
@@ -1096,7 +1296,7 @@ export async function credentialForDownload(
     });
   });
 
-  return ok(datos);
+  return ok({ ...datos, curp: fila.person.curp, photoDataUrl, folio });
 }
 
 export interface CredentialFilters {

@@ -21,6 +21,7 @@ import { codigoLegible } from '@/platform/credentials/design';
 import { ETIQUETA_DE_ESTADO, ETIQUETA_DE_TIPO } from '../../(publico)/verificar/etiquetas';
 import { ESTADOS } from './etiquetas';
 import {
+  CredentialPhotoForm,
   IssueForm,
   ProtectedBeneficiaryIssueForm,
   ReplaceForm,
@@ -200,13 +201,25 @@ export default async function CredencialesPage({
                           <td className="p-3">
                             {credencial.status === 'ACTIVE' ? (
                               <div className="space-y-4">
-                                <a
-                                  href={`/gestion/credenciales/${credencial.id}/imprimir`}
-                                  className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-4 font-medium text-[var(--color-ink-inverse)]"
-                                  download
-                                >
-                                  Descargar para imprimir
-                                </a>
+                                <CredentialPhotoForm
+                                  credentialId={credencial.id}
+                                  hasPhoto={credencial.photoFileId !== null}
+                                />
+                                {credencial.photoFileId !== null && credencial.hasCurp ? (
+                                  <a
+                                    href={`/gestion/credenciales/${credencial.id}/imprimir`}
+                                    className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-4 font-medium text-[var(--color-ink-inverse)]"
+                                    download
+                                  >
+                                    Descargar frente y reverso
+                                  </a>
+                                ) : (
+                                  <p className="text-sm text-[var(--color-ink-soft)]">
+                                    {credencial.photoFileId === null
+                                      ? 'La impresión se habilita al guardar la fotografía.'
+                                      : 'Falta registrar la CURP de la persona para poder imprimir.'}
+                                  </p>
+                                )}
                                 <RevokeForm credentialId={credencial.id} />
                                 <ReplaceForm credentialId={credencial.id} />
                               </div>

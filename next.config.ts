@@ -30,6 +30,13 @@ const nextConfig: NextConfig = {
   // y en la integración continua (PRD §23.2).
   typescript: { ignoreBuildErrors: false },
 
+  // La fotografía de credencial admite hasta 5 MB. Se deja un margen pequeño
+  // para los demás campos del multipart; la validación de dominio mantiene el
+  // límite real del archivo en 5 MB.
+  experimental: {
+    serverActions: { bodySizeLimit: '6mb' },
+  },
+
   // `@node-rs/argon2` y `pg` son binarios nativos: deben quedar fuera del empaquetado
   // del servidor para que Vercel los resuelva en tiempo de ejecución.
   serverExternalPackages: ['@node-rs/argon2', 'pg', '@prisma/adapter-pg'],

@@ -554,6 +554,7 @@ model ProtectedBeneficiary {
   responsiblePerson Person?          @relation("BeneficiaryResponsible", fields: [responsiblePersonId], references: [id], onDelete: Restrict)
   createdByActor    Actor            @relation("BeneficiaryCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor    Actor            @relation("BeneficiaryUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+  credentials       MemberCredential[]
 
   @@index([personId])
   @@index([legalEntityId, status])
@@ -783,6 +784,7 @@ model MemberCredential {
   signingKeyId           String                 @db.VarChar(40)
   signature              String                 @db.VarChar(120)
   membershipId           String?                @db.Uuid
+  protectedBeneficiaryId String?                @db.Uuid
   personId               String                 @db.Uuid
   credentialKind         CredentialKind
   displayName            String                 @db.VarChar(200)
@@ -803,6 +805,7 @@ model MemberCredential {
   rowVersion       Int      @default(0)
 
   membership     Membership?       @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  protectedBeneficiary ProtectedBeneficiary? @relation(fields: [protectedBeneficiaryId], references: [id], onDelete: Restrict)
   person         Person            @relation(fields: [personId], references: [id], onDelete: Restrict)
   photoFile      FileObject?       @relation("CredentialPhoto", fields: [photoFileId], references: [id], onDelete: Restrict)
   renderedFile   FileObject?       @relation("CredentialRendered", fields: [renderedFileId], references: [id], onDelete: Restrict)
@@ -815,6 +818,7 @@ model MemberCredential {
 
   @@index([personId])
   @@index([membershipId])
+  @@index([protectedBeneficiaryId])
   @@index([status])
   @@index([expiresAt])
   @@index([signingKeyId])
@@ -828,6 +832,7 @@ model MemberCredential {
 enum CredentialKind {
   UNION_MEMBER
   HONORARY_AFFILIATE
+  PROTECTED_BENEFICIARY
   OFFICE_OR_REPRESENTATION
   AUTHORIZED_PROFESSIONAL
 }

@@ -6,7 +6,7 @@ import { codigoLegible, DISENOS, svgCredencial } from '@/platform/credentials/de
 import type { CredentialKind } from '@prisma-client/enums';
 
 /**
- * Los cuatro diseños de credencial (PRD §7.4).
+ * Los cinco diseños de credencial (PRD §7.4).
  *
  * El PRD pide diseños «claramente diferenciados». Aquí se comprueba que la
  * diferencia **no depende del color**: cada tipo lleva su nombre escrito, una
@@ -28,7 +28,7 @@ function token(nombre: string): Oklch {
 
 const TIPOS = Object.keys(DISENOS) as CredentialKind[];
 
-describe('los cuatro diseños se distinguen sin usar el color', () => {
+describe('los cinco diseños se distinguen sin usar el color', () => {
   it('cada uno lleva una etiqueta escrita distinta', () => {
     const etiquetas = TIPOS.map((tipo) => DISENOS[tipo].etiqueta);
     expect(new Set(etiquetas).size).toBe(TIPOS.length);
@@ -52,7 +52,7 @@ describe('los cuatro diseños se distinguen sin usar el color', () => {
 });
 
 describe('el contraste de la credencial se mide, no se afirma', () => {
-  it('el texto blanco sobre la franja alcanza AA en los cuatro diseños', () => {
+  it('el texto blanco sobre la franja alcanza AA en los cinco diseños', () => {
     // Es el nombre del tipo, que es la información principal de la tarjeta.
     for (const tipo of TIPOS) {
       const razon = contrastRatio(BLANCO, token(DISENOS[tipo].acento));
@@ -182,5 +182,11 @@ describe('la tarjeta que se imprime', () => {
   it('una credencial sin fecha de término lo dice, en vez de callarlo', () => {
     const svg = svgCredencial({ ...datos, kind: 'AUTHORIZED_PROFESSIONAL', expiresAt: null });
     expect(svg).toContain('Sin fecha de término');
+  });
+
+  it('la credencial protegida declara que no concede voz, voto ni cuota', () => {
+    const svg = svgCredencial({ ...datos, kind: 'PROTECTED_BENEFICIARY' });
+    expect(svg).toContain('BENEFICIARIO PROTEGIDO');
+    expect(svg).toContain('Sin voz, voto ni cuota');
   });
 });

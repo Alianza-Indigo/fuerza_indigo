@@ -586,7 +586,8 @@ El consentimiento será granular, versionado y revocable. Los beneficiarios prot
 Habrá diseños claramente diferenciados para:
 
 - agremiado;
-- afiliado honorario;
+- agremiado honorario;
+- beneficiario protegido;
 - cargo o representación;
 - profesional autorizado.
 

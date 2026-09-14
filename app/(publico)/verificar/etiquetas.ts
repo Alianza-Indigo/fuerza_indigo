@@ -11,7 +11,8 @@ import type { CredentialKind, MemberCredentialStatus } from '@prisma-client/enum
 
 export const ETIQUETA_DE_TIPO: Record<CredentialKind, string> = {
   UNION_MEMBER: 'Agremiado',
-  HONORARY_AFFILIATE: 'Afiliación honoraria',
+  HONORARY_AFFILIATE: 'Agremiado honorario',
+  PROTECTED_BENEFICIARY: 'Beneficiario protegido',
   OFFICE_OR_REPRESENTATION: 'Cargo o representación',
   AUTHORIZED_PROFESSIONAL: 'Profesional autorizada',
 };

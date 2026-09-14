@@ -509,7 +509,7 @@ describe('credenciales de cargo y profesionales (F4-CRE-001)', () => {
           updatedByActorId: actor.id,
         },
       }),
-    ).rejects.toThrow(/membresia_segun_el_tipo/);
+    ).rejects.toThrow(/respaldo_segun_el_tipo/);
   });
 });
 

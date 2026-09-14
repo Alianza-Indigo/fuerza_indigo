@@ -40,7 +40,7 @@ Tres reglas absolutas:
 | `PUBLIC` | Público | Contenido público, directorio autorizado y verificación QR mínima | Implícito, sin sesión | Permanente |
 | `APPLICANT` | Solicitante | Sus propias solicitudes | Automático al iniciar una solicitud | Mientras exista la solicitud |
 | `PROTECTED_BENEFICIARY` | Beneficiario protegido | Sus servicios, solicitudes y expedientes autorizados | Automático al registrar la calidad | Mientras la calidad esté vigente |
-| `HONORARY_AFFILIATE` | Afiliado honorario | Membresía, beneficios y comunidad **sin derechos electorales** | Automático al activar la membresía | Vigencia de la membresía |
+| `HONORARY_AFFILIATE` | Agremiado honorario | Membresía, beneficios y comunidad, con voz y **sin voto** | Automático al activar la membresía | Vigencia de la membresía |
 | `UNION_MEMBER` | Agremiado | Derechos sindicales, votación, directorio interno, cuotas y representación | Automático al activar la membresía sindical | Vigencia y pleno goce de derechos |
 | `TERRITORIAL_DELEGATE` | Delegado o representante territorial | Su territorio y funciones delegadas | `OfficeTerm` + `RoleAssignment` con `TerritorialScope` | Periodo del nombramiento |
 | `EXECUTIVE_SECRETARY` | Secretaría del Comité Ejecutivo | Facultades de su cartera | `OfficeTerm` de la cartera correspondiente | Periodo del nombramiento |
@@ -365,7 +365,7 @@ El rol se retira cuando ya no queda ninguna membresía viva de esa calidad. Una 
 
 ### 7.2 Las facultades sobre lo propio no son de un rango
 
-Toda persona con cuenta que pueda llegar a una pantalla del portal personal tiene la facultad que esa pantalla exige sobre **lo suyo**. `APPLICANT` incluye `consent.grant_own`, `consent.revoke_own` y `credentialing.credential.read_own` aunque todavía no tenga membresía: quien solicita merece leer «todavía no tienes credencial, se emite al activarse tu membresía» y no «no tienes autorización», que describe una decisión de la organización sobre esa persona en vez de un hecho del trámite (ADR-0094).
+Toda persona con cuenta que pueda llegar a una pantalla del portal personal tiene la facultad que esa pantalla exige sobre **lo suyo**. `APPLICANT` y `PROTECTED_BENEFICIARY` incluyen `credentialing.credential.read_own`: quien solicita merece leer «todavía no tienes credencial» y quien está bajo protección debe poder ver la que nace con su registro, nunca «no tienes autorización». `APPLICANT` conserva además `consent.grant_own` y `consent.revoke_own` aunque todavía no tenga membresía (ADR-0094).
 
 Y el portal **filtra sus secciones por la facultad que las abre**, igual que el área de gestión: una pestaña que lleva a una denegación hace perder el tiempo y anuncia algo que no corresponde. La lista vive en `app/(portal)/mi/secciones.ts`, con `permiso: null` para lo que se tiene por tener cuenta —mirar y cerrar las sesiones propias—.
 

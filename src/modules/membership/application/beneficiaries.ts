@@ -11,6 +11,7 @@ import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import type { BeneficiaryOrigin, BeneficiaryStatus, BeneficiaryUrgency } from '@prisma-client/enums';
 import { nombreCompleto } from '@/platform/i18n/person-name';
+import { emitirCredencialDeBeneficiario, revocarCredencialesDeBeneficiario } from './credentials';
 
 /**
  * Beneficiario protegido (PRD §3.4, §8.3; F4-AFI-004).
@@ -204,8 +205,10 @@ export async function registerBeneficiary(
         createdByActorId: actor.actorId,
         updatedByActorId: actor.actorId,
       },
-      select: { id: true, publicId: true },
+      select: { id: true, publicId: true, personId: true, legalEntityId: true, territorialUnitId: true },
     });
+
+    await emitirCredencialDeBeneficiario(tx, actor, registro);
 
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.BENEFICIARY_REGISTERED,
@@ -357,6 +360,13 @@ export async function closeBeneficiary(
         rowVersion: { increment: 1 },
       },
     });
+
+    await revocarCredencialesDeBeneficiario(
+      tx,
+      actor,
+      registro,
+      `Terminó el registro protegido: ${parsed.data.closeReason}`,
+    );
 
     await recordAudit(tx, actor, {
       action: AUDIT_ACTIONS.BENEFICIARY_CLOSED,

@@ -154,6 +154,8 @@ export {
 } from './application/directory';
 export {
   issueCredential,
+  issueProtectedBeneficiaryCredential,
+  beneficiaryCredentialCandidates,
   revokeCredential,
   replaceCredential,
   verifyCredential,
@@ -164,9 +166,12 @@ export {
   credentialRegistry,
   verificationSummary,
   issueCredentialSchema,
+  issueProtectedBeneficiaryCredentialSchema,
   revokeCredentialSchema,
   replaceCredentialSchema,
   type IssueCredentialInput,
+  type IssueProtectedBeneficiaryCredentialInput,
+  type BeneficiaryCredentialCandidate,
   type RevokeCredentialInput,
   type ReplaceCredentialInput,
   type CredentialRow,

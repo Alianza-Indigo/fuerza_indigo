@@ -12,6 +12,7 @@ import { logger } from '@/platform/observability/logger';
 import { nombreCompleto } from '@/platform/i18n/person-name';
 import { leerToken, nuevoCodigoFirmado, tokenDe } from '@/platform/credentials/signing';
 import type {
+  BeneficiaryStatus,
   CredentialKind,
   CredentialVerificationResult,
   MemberCredentialStatus,
@@ -52,12 +53,14 @@ const MEMBRESIA_VIVA: MembershipStatus[] = ['ACTIVE', 'SUSPENDED', 'DISCIPLINARY
 
 /** Estados de membresía que suspenden lo que la credencial acredita. */
 const MEMBRESIA_EN_PAUSA: MembershipStatus[] = ['SUSPENDED', 'DISCIPLINARY_PROCESS'];
+const BENEFICIARIO_VIGENTE: BeneficiaryStatus[] = ['REGISTERED', 'IN_ATTENTION', 'REFERRED'];
 
 export interface CredencialParaEstado {
   readonly status: MemberCredentialStatus;
   readonly revokedAt: Date | null;
   readonly expiresAt: Date | null;
   readonly membership: { readonly status: MembershipStatus } | null;
+  readonly protectedBeneficiary?: { readonly status: BeneficiaryStatus } | null;
 }
 
 /**
@@ -79,6 +82,11 @@ export function estadoVigente(credencial: CredencialParaEstado, ahora: Date = ne
     // credencial acreditaba. Se anuncia como vencida y no como revocada: nadie
     // revocó este documento, dejó de acreditar algo que ya no existe.
     if (!MEMBRESIA_VIVA.includes(membresia.status)) return 'EXPIRED';
+  }
+
+  const beneficiario = credencial.protectedBeneficiary;
+  if (beneficiario !== undefined && beneficiario !== null && !BENEFICIARIO_VIGENTE.includes(beneficiario.status)) {
+    return 'EXPIRED';
   }
 
   return 'ACTIVE';
@@ -155,6 +163,110 @@ export async function emitirCredencialDeMembresia(
 }
 
 /**
+ * Emite la credencial que acredita un registro de beneficiario protegido.
+ *
+ * No crea una membresía ni un número sindical. La credencial queda enlazada a
+ * la ficha protegida y su vigencia se deriva de esa ficha en cada consulta.
+ */
+export async function emitirCredencialDeBeneficiario(
+  tx: Tx,
+  actor: ActorContext,
+  beneficiario: {
+    id: string;
+    personId: string;
+    legalEntityId: string;
+    territorialUnitId: string | null;
+    territoryHint?: string | null;
+  },
+  motivo?: string,
+): Promise<{ credentialId: string; publicCode: string }> {
+  const persona = await tx.person.findUniqueOrThrow({
+    where: { id: beneficiario.personId },
+    select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true },
+  });
+  const territorio =
+    beneficiario.territorialUnitId === null
+      ? null
+      : await tx.territorialUnit.findUnique({
+          where: { id: beneficiario.territorialUnitId },
+          select: { name: true },
+        });
+
+  const codigo = nuevoCodigoFirmado();
+  const creada = await tx.memberCredential.create({
+    data: {
+      publicCode: codigo.publicCode,
+      signingKeyId: codigo.signingKeyId,
+      signature: codigo.signature,
+      protectedBeneficiaryId: beneficiario.id,
+      personId: beneficiario.personId,
+      credentialKind: 'PROTECTED_BENEFICIARY',
+      displayName: nombreCompleto(persona),
+      territoryLabel: territorio?.name ?? beneficiario.territoryHint ?? null,
+      createdByActorId: actor.actorId,
+      updatedByActorId: actor.actorId,
+    },
+    select: { id: true, publicCode: true },
+  });
+
+  await recordAudit(tx, actor, {
+    action: AUDIT_ACTIONS.CREDENTIAL_ISSUED,
+    objectKind: 'MemberCredential',
+    objectId: creada.id,
+    outcome: 'SUCCESS',
+    legalEntityId: beneficiario.legalEntityId,
+    onBehalfOfPersonId: beneficiario.personId,
+    ...(motivo === undefined ? {} : { reason: motivo }),
+    metadata: { tipo: 'PROTECTED_BENEFICIARY', origen: 'registro protegido' },
+  });
+
+  return { credentialId: creada.id, publicCode: creada.publicCode };
+}
+
+/** Revoca las credenciales vivas cuando termina el registro protegido. */
+export async function revocarCredencialesDeBeneficiario(
+  tx: Tx,
+  actor: ActorContext,
+  beneficiario: { id: string; personId: string; legalEntityId: string },
+  motivo: string,
+): Promise<number> {
+  const vivas = await tx.memberCredential.findMany({
+    where: {
+      protectedBeneficiaryId: beneficiario.id,
+      revokedAt: null,
+      status: { not: 'REPLACED' },
+    },
+    select: { id: true },
+  });
+  if (vivas.length === 0) return 0;
+
+  const ahora = new Date();
+  for (const una of vivas) {
+    await tx.memberCredential.update({
+      where: { id: una.id },
+      data: {
+        status: 'REVOKED',
+        revokedAt: ahora,
+        revokeReason: motivo,
+        updatedByActorId: actor.actorId,
+        rowVersion: { increment: 1 },
+      },
+    });
+    await recordAudit(tx, actor, {
+      action: AUDIT_ACTIONS.CREDENTIAL_REVOKED,
+      objectKind: 'MemberCredential',
+      objectId: una.id,
+      outcome: 'SUCCESS',
+      legalEntityId: beneficiario.legalEntityId,
+      onBehalfOfPersonId: beneficiario.personId,
+      reason: motivo,
+      metadata: { origen: 'cierre de registro protegido' },
+    });
+  }
+  return vivas.length;
+}
+
+/**
  * Revoca las credenciales vivas de una membresía que termina.
  *
  * También se llama desde dentro de la transacción que da de baja o vence la
@@ -228,6 +340,14 @@ export const issueCredentialSchema = z.object({
   reason: motivo,
 });
 export type IssueCredentialInput = z.infer<typeof issueCredentialSchema>;
+
+export const issueProtectedBeneficiaryCredentialSchema = z.object({
+  beneficiaryId: z.uuid({ error: () => 'Elige el registro protegido.' }),
+  reason: motivo,
+});
+export type IssueProtectedBeneficiaryCredentialInput = z.infer<
+  typeof issueProtectedBeneficiaryCredentialSchema
+>;
 
 function detalles(error: z.ZodError): Record<string, string[]> {
   const salida: Record<string, string[]> = {};
@@ -306,6 +426,129 @@ export async function issueCredential(
   return ok({ credentialId: creada.id, publicCode: creada.publicCode });
 }
 
+export interface BeneficiaryCredentialCandidate {
+  readonly beneficiaryId: string;
+  readonly label: string;
+}
+
+/** Registros protegidos vigentes, anteriores a la automatización, sin ninguna credencial. */
+export async function beneficiaryCredentialCandidates(
+  actor: ActorContext,
+): Promise<UseCaseResult<BeneficiaryCredentialCandidate[]>> {
+  const decision = can(
+    { ...actor, reason: 'consultar beneficiarios sin credencial' },
+    'credentialing.credential.issue',
+    { kind: 'MemberCredential', isBulk: true, containsPersonalData: true },
+  );
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const entidades = actor.actorKind === 'ROOT_SUPERADMIN' ? undefined : [...actor.legalEntityScope];
+  if (entidades !== undefined && entidades.length === 0) return ok([]);
+
+  const rows = await db().protectedBeneficiary.findMany({
+    where: {
+      ...(entidades === undefined ? {} : { legalEntityId: { in: entidades } }),
+      status: { in: BENEFICIARIO_VIGENTE },
+      credentials: { none: {} },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 300,
+    select: {
+      id: true,
+      publicId: true,
+      person: { select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true } },
+      legalEntity: { select: { shortName: true } },
+    },
+  });
+
+  return ok(
+    rows.map((row) => ({
+      beneficiaryId: row.id,
+      label: `${nombreCompleto(row.person)} · ${row.publicId} · ${row.legalEntity.shortName}`,
+    })),
+  );
+}
+
+/**
+ * Emisión administrativa para registros anteriores a la credencial automática.
+ */
+export async function issueProtectedBeneficiaryCredential(
+  actor: ActorContext,
+  input: IssueProtectedBeneficiaryCredentialInput,
+): Promise<UseCaseResult<{ credentialId: string; publicCode: string }>> {
+  const parsed = issueProtectedBeneficiaryCredentialSchema.safeParse(input);
+  if (!parsed.success) return fail(errors.validation(detalles(parsed.error)));
+
+  const beneficiary = await db().protectedBeneficiary.findUnique({
+    where: { id: parsed.data.beneficiaryId },
+    select: {
+      id: true,
+      personId: true,
+      legalEntityId: true,
+      territorialUnitId: true,
+      territoryHint: true,
+      status: true,
+    },
+  });
+  if (beneficiary === null) return fail(errors.notFound('registro protegido inexistente'));
+
+  const decision = can({ ...actor, reason: parsed.data.reason }, 'credentialing.credential.issue', {
+    kind: 'MemberCredential',
+    legalEntityId: beneficiary.legalEntityId,
+  });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+  if (!BENEFICIARIO_VIGENTE.includes(beneficiary.status)) {
+    return fail(errors.conflict('Ese registro protegido ya terminó.', `estado ${beneficiary.status}`));
+  }
+
+  const created = await transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`credencial-beneficiario:${beneficiary.id}`}))`;
+    // Bloquea la misma ficha que actualiza el cierre. Así, emitir y cerrar no
+    // pueden cruzarse dejando una credencial viva detrás de una ficha cerrada.
+    await tx.$executeRaw`SELECT 1 FROM protected_beneficiary WHERE id = ${beneficiary.id}::uuid FOR UPDATE`;
+    const current = await tx.protectedBeneficiary.findUniqueOrThrow({
+      where: { id: beneficiary.id },
+      select: {
+        id: true,
+        personId: true,
+        legalEntityId: true,
+        territorialUnitId: true,
+        territoryHint: true,
+        status: true,
+      },
+    });
+    if (!BENEFICIARIO_VIGENTE.includes(current.status)) {
+      return { ended: current.status } as const;
+    }
+    const existing = await tx.memberCredential.findFirst({
+      where: { protectedBeneficiaryId: beneficiary.id },
+      select: { publicCode: true },
+    });
+    if (existing !== null) return { duplicate: existing.publicCode } as const;
+
+    const credential = await emitirCredencialDeBeneficiario(
+      tx,
+      actor,
+      current,
+      parsed.data.reason,
+    );
+    return { credential } as const;
+  });
+
+  if ('ended' in created) {
+    return fail(errors.conflict('Ese registro protegido ya terminó.', `estado ${created.ended}`));
+  }
+  if ('duplicate' in created) {
+    return fail(
+      errors.conflict(
+        `Ese registro ya tiene una credencial: ${created.duplicate}.`,
+        'credencial protegida duplicada',
+      ),
+    );
+  }
+  return ok(created.credential);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Revocación y reposición (F4-CRE-004)                                       */
 /* -------------------------------------------------------------------------- */
@@ -340,6 +583,7 @@ export async function revokeCredential(
       personId: true,
       publicCode: true,
       membership: { select: { legalEntityId: true } },
+      protectedBeneficiary: { select: { legalEntityId: true } },
     },
   });
   if (fila === null) return fail(errors.notFound('credencial inexistente'));
@@ -347,7 +591,11 @@ export async function revokeCredential(
   const decision = can({ ...actor, reason: parsed.data.reason }, 'credentialing.credential.revoke', {
     kind: 'MemberCredential',
     id: fila.id,
-    ...(fila.membership === null ? {} : { legalEntityId: fila.membership.legalEntityId }),
+    ...(fila.membership !== null
+      ? { legalEntityId: fila.membership.legalEntityId }
+      : fila.protectedBeneficiary !== null
+        ? { legalEntityId: fila.protectedBeneficiary.legalEntityId }
+        : {}),
   });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
@@ -376,7 +624,11 @@ export async function revokeCredential(
       objectKind: 'MemberCredential',
       objectId: fila.id,
       outcome: 'SUCCESS',
-      ...(fila.membership === null ? {} : { legalEntityId: fila.membership.legalEntityId }),
+      ...(fila.membership !== null
+        ? { legalEntityId: fila.membership.legalEntityId }
+        : fila.protectedBeneficiary !== null
+          ? { legalEntityId: fila.protectedBeneficiary.legalEntityId }
+          : {}),
       onBehalfOfPersonId: fila.personId,
       reason: parsed.data.reason,
       metadata: { codigo: fila.publicCode },
@@ -422,6 +674,8 @@ export async function replaceCredential(
       photoFileId: true,
       membershipId: true,
       membership: { select: { legalEntityId: true, status: true } },
+      protectedBeneficiaryId: true,
+      protectedBeneficiary: { select: { legalEntityId: true, status: true } },
     },
   });
   if (fila === null) return fail(errors.notFound('credencial inexistente'));
@@ -429,7 +683,11 @@ export async function replaceCredential(
   const decision = can({ ...actor, reason: parsed.data.reason }, 'credentialing.credential.issue', {
     kind: 'MemberCredential',
     id: fila.id,
-    ...(fila.membership === null ? {} : { legalEntityId: fila.membership.legalEntityId }),
+    ...(fila.membership !== null
+      ? { legalEntityId: fila.membership.legalEntityId }
+      : fila.protectedBeneficiary !== null
+        ? { legalEntityId: fila.protectedBeneficiary.legalEntityId }
+        : {}),
   });
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
@@ -446,6 +704,17 @@ export async function replaceCredential(
       ),
     );
   }
+  if (
+    fila.protectedBeneficiary !== null &&
+    !BENEFICIARIO_VIGENTE.includes(fila.protectedBeneficiary.status)
+  ) {
+    return fail(
+      errors.conflict(
+        'El registro protegido que acreditaba ya terminó: no hay nada que reponer.',
+        `beneficiario ${fila.protectedBeneficiary.status}`,
+      ),
+    );
+  }
 
   const codigo = nuevoCodigoFirmado();
   const nueva = await transaction(async (tx) => {
@@ -456,6 +725,7 @@ export async function replaceCredential(
         signature: codigo.signature,
         personId: fila.personId,
         membershipId: fila.membershipId,
+        protectedBeneficiaryId: fila.protectedBeneficiaryId,
         credentialKind: fila.credentialKind,
         displayName: fila.displayName,
         territoryLabel: fila.territoryLabel,
@@ -482,7 +752,11 @@ export async function replaceCredential(
       objectKind: 'MemberCredential',
       objectId: fila.id,
       outcome: 'SUCCESS',
-      ...(fila.membership === null ? {} : { legalEntityId: fila.membership.legalEntityId }),
+      ...(fila.membership !== null
+        ? { legalEntityId: fila.membership.legalEntityId }
+        : fila.protectedBeneficiary !== null
+          ? { legalEntityId: fila.protectedBeneficiary.legalEntityId }
+          : {}),
       onBehalfOfPersonId: fila.personId,
       reason: parsed.data.reason,
       metadata: { repuestaPor: creada.publicCode },
@@ -492,7 +766,11 @@ export async function replaceCredential(
       objectKind: 'MemberCredential',
       objectId: creada.id,
       outcome: 'SUCCESS',
-      ...(fila.membership === null ? {} : { legalEntityId: fila.membership.legalEntityId }),
+      ...(fila.membership !== null
+        ? { legalEntityId: fila.membership.legalEntityId }
+        : fila.protectedBeneficiary !== null
+          ? { legalEntityId: fila.protectedBeneficiary.legalEntityId }
+          : {}),
       onBehalfOfPersonId: fila.personId,
       reason: parsed.data.reason,
       metadata: { tipo: fila.credentialKind, origen: 'reposición' },
@@ -635,6 +913,7 @@ export async function verifyCredential(
       expiresAt: true,
       territoryLabel: true,
       membership: { select: { status: true } },
+      protectedBeneficiary: { select: { status: true } },
     },
   });
 
@@ -681,6 +960,7 @@ export interface CredentialRow {
   readonly revokeReason: string | null;
   readonly territoryLabel: string | null;
   readonly memberNumber: string | null;
+  readonly beneficiaryPublicId: string | null;
   readonly legalEntityId: string | null;
 }
 
@@ -699,6 +979,7 @@ const SELECCION = {
   revokeReason: true,
   territoryLabel: true,
   membership: { select: { status: true, memberNumber: true, legalEntityId: true } },
+  protectedBeneficiary: { select: { status: true, publicId: true, legalEntityId: true } },
 } as const;
 
 type FilaCruda = {
@@ -716,6 +997,7 @@ type FilaCruda = {
   revokeReason: string | null;
   territoryLabel: string | null;
   membership: { status: MembershipStatus; memberNumber: string; legalEntityId: string } | null;
+  protectedBeneficiary: { status: BeneficiaryStatus; publicId: string; legalEntityId: string } | null;
 };
 
 function aFila(fila: FilaCruda): CredentialRow {
@@ -734,7 +1016,8 @@ function aFila(fila: FilaCruda): CredentialRow {
     revokeReason: fila.revokeReason,
     territoryLabel: fila.territoryLabel,
     memberNumber: fila.membership?.memberNumber ?? null,
-    legalEntityId: fila.membership?.legalEntityId ?? null,
+    beneficiaryPublicId: fila.protectedBeneficiary?.publicId ?? null,
+    legalEntityId: fila.membership?.legalEntityId ?? fila.protectedBeneficiary?.legalEntityId ?? null,
   };
 }
 
@@ -841,6 +1124,7 @@ export async function credentialRegistry(
               { publicCode: { contains: texto.toUpperCase() } },
               { displayName: { contains: texto, mode: 'insensitive' as const } },
               { membership: { memberNumber: { contains: texto, mode: 'insensitive' as const } } },
+              { protectedBeneficiary: { publicId: { contains: texto, mode: 'insensitive' as const } } },
             ],
           }),
     },

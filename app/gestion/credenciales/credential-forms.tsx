@@ -12,6 +12,7 @@ import {
 } from '@/design-system/primitives';
 import {
   issueCredentialAction,
+  issueProtectedBeneficiaryCredentialAction,
   replaceCredentialAction,
   revokeCredentialAction,
   type CredencialState,
@@ -19,6 +20,49 @@ import {
 import { TIPOS_QUE_SE_EMITEN } from './etiquetas';
 
 const INICIAL: CredencialState = { status: 'idle' };
+
+/** Emisión excepcional para registros protegidos anteriores a la automatización. */
+export function ProtectedBeneficiaryIssueForm({
+  beneficiarios,
+}: {
+  beneficiarios: readonly { readonly value: string; readonly label: string }[];
+}) {
+  const [estado, accion, pendiente] = useActionState(
+    issueProtectedBeneficiaryCredentialAction,
+    INICIAL,
+  );
+
+  if (estado.status === 'ok') return <SuccessNotice title={estado.message ?? 'Credencial emitida'} />;
+
+  return (
+    <form action={accion} className="space-y-4">
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo emitir'} />}
+
+      <Select
+        name="beneficiaryId"
+        label="Beneficiario protegido"
+        required
+        options={beneficiarios}
+        placeholder="Elige un registro sin credencial"
+        defaultValue={estado.values?.['beneficiaryId']}
+        errors={estado.fieldErrors?.['beneficiaryId']}
+      />
+
+      <TextArea
+        name="reason"
+        label="Por qué se emite manualmente"
+        required
+        rows={3}
+        hint="Úsalo para registros anteriores a la emisión automática. El motivo queda en la bitácora."
+        defaultValue={estado.values?.['reason']}
+        errors={estado.fieldErrors?.['reason']}
+      />
+
+      <SubmitButton>{pendiente ? 'Emitiendo…' : 'Emitir credencial protegida'}</SubmitButton>
+      <p aria-live="polite" className="sr-only">{pendiente ? 'Emitiendo' : ''}</p>
+    </form>
+  );
+}
 
 /**
  * Emitir una credencial de cargo o de autorización profesional.

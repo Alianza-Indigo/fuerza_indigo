@@ -12,6 +12,7 @@ import { fingerprint, hashToken, newOpaqueToken, newPublicId } from '@/platform/
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 import { sendTemplatedMail } from '@/platform/mail/mailer';
 import { logger } from '@/platform/observability/logger';
+import { emitirCredencialDeBeneficiario } from './credentials';
 
 /**
  * Alta pública de afiliación.
@@ -578,8 +579,17 @@ export async function submitPublicMembershipRequest(
             createdByActorId: systemActor.id,
             updatedByActorId: systemActor.id,
           },
-          select: { id: true, publicId: true },
+          select: {
+            id: true,
+            publicId: true,
+            personId: true,
+            legalEntityId: true,
+            territorialUnitId: true,
+            territoryHint: true,
+          },
         });
+
+        await emitirCredencialDeBeneficiario(tx, actor, beneficiary);
 
         await recordAudit(tx, actor, {
           action: AUDIT_ACTIONS.BENEFICIARY_REGISTERED,

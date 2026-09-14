@@ -4,7 +4,7 @@ import { colorToken } from '@/design-system/tokens';
 import { escaparXml, svgQr } from './qr';
 
 /**
- * Los cuatro diseños de credencial (PRD §7.4).
+ * Los cinco diseños de credencial (PRD §7.4).
  *
  * **Se distinguen claramente**, y no solo por el color: cada tipo lleva su
  * nombre escrito en grande, una franja de anchura propia y un símbolo distinto.
@@ -34,10 +34,10 @@ export interface DisenoDeCredencial {
   /** Alto de la franja superior. Distingue los tipos sin depender del color. */
   readonly franja: number;
   /**
-   * Símbolo del tipo, trazado en la franja. Cuatro formas inconfundibles al
-   * tacto de la vista: círculo, cuadrado, rombo y triángulo.
+   * Símbolo del tipo, trazado en la franja. Cinco formas inconfundibles sin
+   * depender del color.
    */
-  readonly simbolo: 'CIRCULO' | 'CUADRADO' | 'ROMBO' | 'TRIANGULO';
+  readonly simbolo: 'CIRCULO' | 'CUADRADO' | 'HEXAGONO' | 'ROMBO' | 'TRIANGULO';
   /** Qué acredita, en una línea, para quien la lee sin conocer la organización. */
   readonly acredita: string;
 }
@@ -52,12 +52,20 @@ export const DISENOS: Record<CredentialKind, DisenoDeCredencial> = {
     acredita: 'Persona agremiada al sindicato, con derechos plenos.',
   },
   HONORARY_AFFILIATE: {
-    etiqueta: 'Afiliación honoraria',
+    etiqueta: 'Agremiado honorario',
     acento: '--color-alianza-600',
     acentoSuave: '--color-alianza-50',
     franja: 72,
     simbolo: 'CUADRADO',
-    acredita: 'Afiliación honoraria. Sin derechos electorales.',
+    acredita: 'Agremiado honorario con voz y sin voto.',
+  },
+  PROTECTED_BENEFICIARY: {
+    etiqueta: 'Beneficiario protegido',
+    acento: '--color-indigo-700',
+    acentoSuave: '--color-indigo-100',
+    franja: 112,
+    simbolo: 'HEXAGONO',
+    acredita: 'Persona protegida por Fuerza Índigo. Sin voz, voto ni cuota.',
   },
   OFFICE_OR_REPRESENTATION: {
     etiqueta: 'Cargo o representación',
@@ -84,6 +92,8 @@ function simbolo(forma: DisenoDeCredencial['simbolo'], cx: number, cy: number, r
       return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ffffff" stroke-width="8"/>`;
     case 'CUADRADO':
       return `<rect x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" fill="none" stroke="#ffffff" stroke-width="8"/>`;
+    case 'HEXAGONO':
+      return `<path d="M${cx} ${cy - r}L${cx + r} ${cy - r / 2}L${cx + r} ${cy + r / 2}L${cx} ${cy + r}L${cx - r} ${cy + r / 2}L${cx - r} ${cy - r / 2}Z" fill="none" stroke="#ffffff" stroke-width="8"/>`;
     case 'ROMBO':
       return `<path d="M${cx} ${cy - r}L${cx + r} ${cy}L${cx} ${cy + r}L${cx - r} ${cy}Z" fill="none" stroke="#ffffff" stroke-width="8"/>`;
     case 'TRIANGULO':
@@ -193,7 +203,7 @@ export function svgCredencial(datos: DatosDeCredencial): string {
     `<rect width="${ANCHO}" height="${ALTO}" rx="28" fill="#ffffff"/>`,
     `<rect width="${ANCHO}" height="${ALTO}" rx="28" fill="none" stroke="${linea}" stroke-width="2"/>`,
 
-    // Franja del tipo. Su alto distingue los cuatro diseños sin usar el color.
+    // Franja del tipo. Su alto distingue los cinco diseños sin usar el color.
     `<path d="M0 28a28 28 0 0 1 28-28h800a28 28 0 0 1 28 28v${diseno.franja - 28}H0Z" fill="${acento}"/>`,
     simbolo(diseno.simbolo, 64, diseno.franja / 2, Math.min(24, diseno.franja / 2 - 12)),
     `<text x="112" y="${diseno.franja / 2 + 11}" font-family="system-ui, sans-serif" font-size="32" font-weight="700" fill="#ffffff">${escaparXml(diseno.etiqueta.toUpperCase())}</text>`,

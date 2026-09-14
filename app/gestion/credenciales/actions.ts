@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { issueCredential, replaceCredential, revokeCredential } from '@/modules/membership';
+import {
+  issueCredential,
+  issueProtectedBeneficiaryCredential,
+  replaceCredential,
+  revokeCredential,
+} from '@/modules/membership';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -55,6 +60,34 @@ export async function issueCredentialAction(
 
   revalidatePath('/gestion/credenciales');
   return { status: 'ok', message: `Credencial emitida con el código ${resultado.data.publicCode}.` };
+}
+
+export async function issueProtectedBeneficiaryCredentialAction(
+  _previous: CredencialState,
+  formData: FormData,
+): Promise<CredencialState> {
+  const actor = await currentActor();
+  const values = {
+    beneficiaryId: textField(formData, 'beneficiaryId'),
+    reason: textField(formData, 'reason'),
+  };
+
+  const resultado = await issueProtectedBeneficiaryCredential(actor, values);
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      values,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+
+  revalidatePath('/gestion/credenciales');
+  revalidatePath('/mi/credencial');
+  return {
+    status: 'ok',
+    message: `Credencial de beneficiario protegido emitida con el código ${resultado.data.publicCode}.`,
+  };
 }
 
 export async function revokeCredentialAction(

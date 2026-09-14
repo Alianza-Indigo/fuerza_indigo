@@ -55,7 +55,7 @@ export default async function MiCredencialPage() {
         {credenciales.data.length === 0 && (
           <EmptyState
             title="Todavía no tienes credencial"
-            description="La credencial se emite cuando se activa tu membresía. Si acabas de afiliarte y aún no aparece, revisa el estado de tu solicitud."
+            description="La credencial se emite al activarse una membresía o al registrarte como beneficiario protegido. Si acabas de solicitar el registro y aún no aparece, revisa el estado de tu solicitud."
             action={
               <Link href="/mi/afiliacion" className="underline underline-offset-4">
                 Ver mi afiliación
@@ -107,6 +107,12 @@ export default async function MiCredencialPage() {
                         <div>
                           <dt className="text-sm text-[var(--color-ink-soft)]">Número de miembro</dt>
                           <dd className="font-mono">{credencial.memberNumber}</dd>
+                        </div>
+                      )}
+                      {credencial.beneficiaryPublicId !== null && (
+                        <div>
+                          <dt className="text-sm text-[var(--color-ink-soft)]">Registro protegido</dt>
+                          <dd className="font-mono">{credencial.beneficiaryPublicId}</dd>
                         </div>
                       )}
                       <div>

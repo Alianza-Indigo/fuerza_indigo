@@ -526,7 +526,7 @@ describe('la credencial acredita lo que acreditaba cuando se imprimió', () => {
           updatedByActorId: actorId,
         },
       }),
-    ).rejects.toThrow(/membresia_segun_el_tipo/);
+    ).rejects.toThrow(/respaldo_segun_el_tipo/);
   });
 });
 

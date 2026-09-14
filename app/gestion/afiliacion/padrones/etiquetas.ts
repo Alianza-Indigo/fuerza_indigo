@@ -7,7 +7,7 @@
  */
 export const CALIDAD_EXACTA: Record<string, string> = {
   UNION_MEMBER: 'Agremiado',
-  HONORARY_AFFILIATE: 'Afiliado honorario',
+  HONORARY_AFFILIATE: 'Agremiado honorario',
 };
 
 export const ESTADO_DE_TRAMITE: Record<string, string> = {

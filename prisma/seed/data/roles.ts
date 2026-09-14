@@ -81,6 +81,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.relationship.read_own',
       'membership.relationship.manage_own',
       'membership.beneficiary.read_own',
+      'credentialing.credential.read_own',
       // Sin `billing.checkout.start`, y no por olvido: un beneficiario
       // protegido recibe apoyo sin pagar ni afiliarse (PRD §14). Ponerle
       // delante un botón de cobro sería lo contrario de lo que ese estatuto
@@ -97,8 +98,8 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
   },
   {
     code: 'HONORARY_AFFILIATE',
-    name: 'Afiliado honorario',
-    description: 'Membresía, beneficios y comunidad. Sin derechos electorales.',
+    name: 'Agremiado honorario',
+    description: 'Membresía, beneficios y comunidad. Con voz y sin voto.',
     scopeKind: 'LEGAL_ENTITY',
     requiresOfficeTerm: false,
     permissions: [

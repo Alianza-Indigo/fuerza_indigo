@@ -5,10 +5,13 @@ import {
   beneficiaryDetail,
   beneficiaryRegistry,
   closeBeneficiary,
+  membershipByCredential,
   registerBeneficiary,
   updateBeneficiary,
+  verifyCredential,
 } from '@/modules/membership';
 import type { ActorContext } from '@/platform/kernel/actor-context';
+import { tokenDe } from '@/platform/credentials/signing';
 
 /**
  * Beneficiario protegido (PRD §3.4, §8.3; F4-AFI-004).
@@ -78,12 +81,47 @@ describe('alta de una atención protegida', () => {
 
     const fila = await base.prisma.protectedBeneficiary.findUniqueOrThrow({
       where: { id: alta.data.beneficiaryId },
-      select: { privacyLevel: true, status: true, urgencyLevel: true, hasDigitalAccount: true },
+      select: {
+        privacyLevel: true,
+        status: true,
+        urgencyLevel: true,
+        hasDigitalAccount: true,
+        credentials: {
+          select: {
+            id: true,
+            publicCode: true,
+            signingKeyId: true,
+            signature: true,
+            credentialKind: true,
+            membershipId: true,
+            protectedBeneficiaryId: true,
+          },
+        },
+      },
     });
     // Reforzada por omisión: la protección no espera a que alguien la pida.
     expect(fila.privacyLevel).toBe('REINFORCED');
     expect(fila.status).toBe('REGISTERED');
     expect(fila.urgencyLevel).toBe('ROUTINE');
+
+    // La calidad protegida ya tiene su propio documento. Está enlazado a esta
+    // atención, no a una membresía que conceda voz o voto.
+    expect(fila.credentials).toHaveLength(1);
+    const credencial = fila.credentials[0]!;
+    expect(credencial.credentialKind).toBe('PROTECTED_BENEFICIARY');
+    expect(credencial.membershipId).toBeNull();
+    expect(credencial.protectedBeneficiaryId).toBe(alta.data.beneficiaryId);
+
+    const token = tokenDe(credencial);
+    const verificada = await verifyCredential(token);
+    expect(verificada.status).toBe('ACTIVE');
+    expect(verificada.kind).toBe('PROTECTED_BENEFICIARY');
+
+    // Ni siquiera una lectura interna puede convertirla en pase para una
+    // asamblea: no resuelve a ninguna membresía.
+    const paraAsamblea = await membershipByCredential(secretaria, token);
+    expect(paraAsamblea.ok).toBe(true);
+    if (paraAsamblea.ok) expect(paraAsamblea.data).toBeNull();
 
     // Y no se le abrió ninguna membresía por el camino.
     const membresias = await base.prisma.membership.count({ where: { personId: persona.personId } });
@@ -274,6 +312,13 @@ describe('seguimiento y cierre de la atención', () => {
   it('cerrar exige contar cómo terminó, y lo cerrado ya no se edita', async () => {
     const { beneficiaryId } = await atencion();
 
+    const antes = await base.prisma.memberCredential.findFirstOrThrow({
+      where: { protectedBeneficiaryId: beneficiaryId },
+      select: { id: true, publicCode: true, signingKeyId: true, signature: true },
+    });
+    const token = tokenDe(antes);
+    expect((await verifyCredential(token)).status).toBe('ACTIVE');
+
     const sinRelato = await closeBeneficiary(secretaria, {
       beneficiaryId,
       outcome: 'CLOSED',
@@ -287,6 +332,15 @@ describe('seguimiento y cierre de la atención', () => {
       closeReason: 'Se acompañó el trámite hasta el final y la persona confirmó que quedó resuelto.',
     });
     expect(cerrada.ok, cerrada.ok ? '' : JSON.stringify(cerrada.error)).toBe(true);
+
+    expect((await verifyCredential(token)).status).toBe('REVOKED');
+    const credencialCerrada = await base.prisma.memberCredential.findUniqueOrThrow({
+      where: { id: antes.id },
+      select: { status: true, revokedAt: true, revokeReason: true },
+    });
+    expect(credencialCerrada.status).toBe('REVOKED');
+    expect(credencialCerrada.revokedAt).not.toBeNull();
+    expect(credencialCerrada.revokeReason).toMatch(/Terminó el registro protegido/);
 
     const despues = await updateBeneficiary(secretaria, {
       beneficiaryId,

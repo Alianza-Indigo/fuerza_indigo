@@ -9,14 +9,23 @@ import {
   Section,
 } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { credentialRegistry, verificationSummary } from '@/modules/membership';
+import {
+  beneficiaryCredentialCandidates,
+  credentialRegistry,
+  verificationSummary,
+} from '@/modules/membership';
 import { searchPeople } from '@/modules/identity';
 import { listLegalEntities } from '@/modules/admin';
 import { can } from '@/platform/authz/policy';
 import { codigoLegible } from '@/platform/credentials/design';
 import { ETIQUETA_DE_ESTADO, ETIQUETA_DE_TIPO } from '../../(publico)/verificar/etiquetas';
 import { ESTADOS } from './etiquetas';
-import { IssueForm, ReplaceForm, RevokeForm } from './credential-forms';
+import {
+  IssueForm,
+  ProtectedBeneficiaryIssueForm,
+  ReplaceForm,
+  RevokeForm,
+} from './credential-forms';
 
 export const metadata = { title: 'Credenciales', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -56,11 +65,12 @@ export default async function CredencialesPage({
 
   const ahora = new Date();
   const desde = new Date(ahora.getTime() - DIAS * 24 * 60 * 60 * 1000);
-  const [credenciales, consultas, personas, entidades] = await Promise.all([
+  const [credenciales, consultas, personas, entidades, beneficiariosSinCredencial] = await Promise.all([
     credentialRegistry(actor, filtros),
     verificationSummary(actor, desde),
     puedeEmitir ? searchPeople(actor, { limit: 200 }) : Promise.resolve(null),
     puedeEmitir ? listLegalEntities(actor) : Promise.resolve(null),
+    puedeEmitir ? beneficiaryCredentialCandidates(actor) : Promise.resolve(null),
   ]);
 
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: actor.timeZone });
@@ -132,7 +142,7 @@ export default async function CredencialesPage({
               ) : (
                 <EmptyState
                   title="Todavía no hay credenciales emitidas"
-                  description="Las de agremiado y honoraria se emiten solas al activarse cada membresía. Las de cargo y las profesionales se emiten desde aquí."
+                  description="Las de agremiado y agremiado honorario se emiten al activarse la membresía. La de beneficiario protegido nace al registrarse. Las de cargo y profesionales se emiten desde aquí."
                 />
               )
             ) : (
@@ -161,6 +171,11 @@ export default async function CredencialesPage({
                             {credencial.memberNumber !== null && (
                               <p className="font-mono text-sm text-[var(--color-ink-soft)]">
                                 {credencial.memberNumber}
+                              </p>
+                            )}
+                            {credencial.beneficiaryPublicId !== null && (
+                              <p className="font-mono text-sm text-[var(--color-ink-soft)]">
+                                {credencial.beneficiaryPublicId}
                               </p>
                             )}
                             {credencial.territoryLabel !== null && (
@@ -207,7 +222,7 @@ export default async function CredencialesPage({
         {puedeEmitir && personas !== null && entidades !== null && (
           <Section
             title="Emitir una credencial de cargo o profesional"
-            description="Las de agremiado y honoraria no se emiten aquí: nacen con la membresía."
+            description="Las de agremiado y agremiado honorario nacen con la membresía."
           >
             <Card>
               <IssueForm
@@ -228,6 +243,31 @@ export default async function CredencialesPage({
                 }
               />
             </Card>
+          </Section>
+        )}
+
+        {puedeEmitir && beneficiariosSinCredencial !== null && (
+          <Section
+            title="Emitir una credencial de beneficiario protegido"
+            description="Los registros nuevos la reciben automáticamente. Esta opción cubre registros anteriores que todavía no la tienen."
+          >
+            {!beneficiariosSinCredencial.ok ? (
+              <ErrorNotice title={beneficiariosSinCredencial.error.message} />
+            ) : beneficiariosSinCredencial.data.length === 0 ? (
+              <EmptyState
+                title="No hay registros pendientes de credencial"
+                description="Todos los beneficiarios protegidos vigentes ya tienen una credencial."
+              />
+            ) : (
+              <Card>
+                <ProtectedBeneficiaryIssueForm
+                  beneficiarios={beneficiariosSinCredencial.data.map((beneficiario) => ({
+                    value: beneficiario.beneficiaryId,
+                    label: beneficiario.label,
+                  }))}
+                />
+              </Card>
+            )}
           </Section>
         )}
 

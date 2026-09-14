@@ -2102,6 +2102,14 @@ El control nuevo `C-F9-05` vigila que la transparencia solo cuente (nada de `sel
 
 **Consecuencias.** Las delegaciones y secciones pueden implementarse desde la plataforma sin asignaciones manuales de roles. El periodo, el acceso territorial y la bitácora nacen juntos; el acceso incluye las unidades descendientes y termina con el cargo. Las entidades federativas de la semilla siguen siendo solo referencias: no se publican como presencia real mientras no exista una unidad constituida por acuerdo.
 
+## ADR-0180 · El formulario público abre el expediente formal de afiliación
+
+**Contexto.** El formulario público recababa CURP, ocupación, categoría y promotor, pero convertía todo en un mensaje `GENERAL_CONTACT`. El folio aparecía en Mensajes y luego exigía volver a capturar la información para crear la solicitud formal. Eso rompía la expectativa de la pantalla y duplicaba el trabajo administrativo.
+
+**Decisión.** Las vías de agremiado y agremiado honorario crean directamente una `MembershipApplication` en estado `SUBMITTED`, con folio institucional y resumen inmutable. La persona se identifica por CURP única; si ya tiene cuenta con el mismo correo se reutiliza su registro maestro, y si los identificadores contradicen otro expediente se detiene el alta. Se conserva como dato estructurado la ocupación libre, el territorio declarado y la referencia del promotor. El formulario pregunta la pertenencia a otro sindicato y registra la versión de estatutos y del aviso de privacidad aceptadas mediante un consentimiento `MEMBERSHIP`. El origen queda seudonimizado y limitado por hora. La categoría de beneficiario protegido no se fuerza dentro de `MembershipApplication`: se registra en `ProtectedBeneficiary`, porque no es membresía, no concede voz ni voto y nunca genera cuota.
+
+**Consecuencias.** Una solicitud pública aparece inmediatamente en `/gestion/afiliacion/solicitudes` y puede recorrer la revisión y resolución existentes; no vuelve a entrar en Mensajes. Los registros protegidos aparecen en `/gestion/afiliacion/beneficiarios`. La solicitud histórica que ya se recibió como mensaje conserva su folio y su trazabilidad; los envíos posteriores usan el flujo corregido.
+
 ## ADR-0179 · Cada delegación y sección tiene autoridad propia y el territorio del cargo no se elige al nombrar
 
 **Contexto.** La estructura ya podía guardar unidades, órganos y periodos, pero el despliegue territorial quedaba repartido entre tres pantallas genéricas. Además, al nombrar se podía elegir manualmente una unidad distinta de la del órgano territorial, lo que habría concedido acceso fuera de la delegación o sección que justificaba el cargo.

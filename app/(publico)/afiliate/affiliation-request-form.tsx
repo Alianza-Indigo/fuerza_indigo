@@ -25,6 +25,7 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
   const honoraryMember = modality === 'HONORARY_AFFILIATE';
 
   if (state.status === 'ok' && state.folio !== undefined) {
+    const formalApplication = state.destination === 'APPLICATION';
     return (
       <div className="space-y-5">
         <SuccessNotice title="Recibimos tu solicitud">
@@ -36,17 +37,25 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
 
         <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-sunken)] p-5">
           <h2 className="font-bold">¿Qué sigue?</h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--color-ink-soft)] marker:font-bold marker:text-[var(--color-accent)]">
-            <li>Una persona de Fuerza Índigo revisará los datos que enviaste.</li>
-            <li>Te escribiremos al correo indicado para verificar tu contacto.</li>
-            <li>Recibirás acceso para completar y enviar el expediente formal.</li>
-            <li>La Secretaría resolverá tu solicitud y te notificará la decisión.</li>
-          </ol>
+          {formalApplication ? (
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--color-ink-soft)] marker:font-bold marker:text-[var(--color-accent)]">
+              <li>Tu expediente ya está en la bandeja de Solicitudes de afiliación.</li>
+              <li>Una persona de Fuerza Índigo revisará los datos que enviaste.</li>
+              <li>La Secretaría podrá pedirte información adicional antes de resolver.</li>
+              <li>Te notificaremos la decisión al correo indicado.</li>
+            </ol>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
+              Tu registro ya está en el padrón de beneficiarios protegidos para que el equipo pueda darle seguimiento.
+            </p>
+          )}
         </div>
 
         <p className="text-sm text-[var(--color-ink-soft)]">
-          El folio confirma que recibimos la solicitud, pero todavía no acredita un registro. Si ya recibiste tu
-          acceso, puedes{' '}
+          {formalApplication
+            ? 'El folio acredita la recepción del expediente, no la aprobación de la afiliación. '
+            : 'El folio identifica tu registro protegido. '}
+          Si ya tienes acceso, puedes{' '}
           <Link href="/acceso" className="font-semibold text-[var(--color-accent-ink)] underline underline-offset-4">
             entrar al portal
           </Link>
@@ -185,6 +194,31 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
               : { errors: errors['neurodivergentConnection'] })}
           />
 
+          <Select
+            name="otherUnionMembership"
+            label="¿Actualmente perteneces a otro sindicato?"
+            required
+            options={[
+              { value: 'NONE', label: 'No pertenezco a otro sindicato' },
+              { value: 'SAME_TRADE', label: 'Sí, del mismo gremio o actividad' },
+              { value: 'DIFFERENT_TRADE', label: 'Sí, de otro gremio o actividad' },
+            ]}
+            {...(errors['otherUnionMembership'] === undefined
+              ? {}
+              : { errors: errors['otherUnionMembership'] })}
+          />
+
+          <TextArea
+            name="otherUnionClarification"
+            label="Si respondiste que sí, explica brevemente"
+            hint="Escribe el nombre del sindicato y la situación actual. Déjalo vacío si respondiste que no."
+            rows={3}
+            maxLength={2000}
+            {...(errors['otherUnionClarification'] === undefined
+              ? {}
+              : { errors: errors['otherUnionClarification'] })}
+          />
+
           <Checkbox
             name="ageConfirmed"
             label="Confirmo que tengo 15 años o más."
@@ -253,6 +287,16 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
 
       <div className="h-px bg-[var(--color-line)]" />
 
+      {(unionMember || honoraryMember) && (
+        <Checkbox
+          name="acceptsStatutes"
+          required
+          label="Acepto los estatutos vigentes y declaro que la información proporcionada es verdadera."
+          help="La versión vigente aceptada quedará registrada en tu expediente."
+          {...(errors['acceptsStatutes'] === undefined ? {} : { errors: errors['acceptsStatutes'] })}
+        />
+      )}
+
       <Checkbox
         name="acceptedPrivacyNotice"
         required
@@ -284,7 +328,9 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
                 : 'Enviar solicitud como beneficiario protegido'}
         </button>
         <p className="mt-3 text-center text-xs text-[var(--color-ink-soft)]">
-          Enviar esta forma no completa automáticamente el registro. Toda solicitud tiene revisión humana.
+          {unionMember || honoraryMember
+            ? 'Tu solicitud se registrará directamente para revisión. La afiliación no se activa hasta que sea aprobada.'
+            : 'El registro protegido no concede voz ni voto y nunca genera cuota.'}
         </p>
       </div>
     </form>

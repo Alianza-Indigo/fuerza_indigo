@@ -186,12 +186,16 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
             description="Tal como lo envió. La revisión anota y resuelve; no reescribe."
           >
             <dl className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)]">
+              <div className="p-4">
+                <dt className="font-medium">CURP</dt>
+                <dd className="mt-1 font-mono text-[var(--color-ink-soft)]">{solicitud.curp ?? '—'}</dd>
+              </div>
               {solicitud.category === 'UNION_MEMBER' ? (
                 <>
                   <div className="p-4">
                     <dt className="font-medium">Actividad</dt>
                     <dd className="mt-1 text-[var(--color-ink-soft)]">
-                      {solicitud.occupation ?? '—'}
+                      {solicitud.occupationText ?? solicitud.occupation ?? '—'}
                       {solicitud.workRelationKind !== null &&
                         ` · ${FORMA_DE_TRABAJO[solicitud.workRelationKind] ?? solicitud.workRelationKind}`}
                     </dd>
@@ -224,6 +228,10 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
                         : (PERFIL_HONORARIO[solicitud.honoraryProfile] ?? solicitud.honoraryProfile)}
                     </dd>
                   </div>
+                  <div className="p-4">
+                    <dt className="font-medium">Ocupación declarada</dt>
+                    <dd className="mt-1 text-[var(--color-ink-soft)]">{solicitud.occupationText ?? '—'}</dd>
+                  </div>
                   {solicitud.neurodivergentContactStatement !== null && (
                     <div className="p-4">
                       <dt className="font-medium">Lo que contó</dt>
@@ -237,6 +245,12 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
               <div className="p-4">
                 <dt className="font-medium">Territorio</dt>
                 <dd className="mt-1 text-[var(--color-ink-soft)]">{solicitud.territory ?? 'Sin especificar'}</dd>
+              </div>
+              <div className="p-4">
+                <dt className="font-medium">Promotor</dt>
+                <dd className="mt-1 text-[var(--color-ink-soft)]">
+                  {solicitud.promoterReference ?? 'No declarado'}
+                </dd>
               </div>
             </dl>
           </Section>

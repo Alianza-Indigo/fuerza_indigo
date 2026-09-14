@@ -1,19 +1,23 @@
 import { z } from 'zod';
 
-import { submitRequest, type IntakeContext } from '@/modules/support';
+import type { IntakeContext } from '@/modules/support';
+import { AUDIT_ACTIONS } from '@/platform/audit/actions';
+import { recordAudit } from '@/platform/audit/audit-service';
+import { env } from '@/platform/config/env';
+import { db } from '@/platform/db/client';
+import { transaction, type Tx } from '@/platform/db/unit-of-work';
 import { errors } from '@/platform/errors/app-error';
-import type { UseCaseResult } from '@/platform/kernel/result';
+import { systemContext } from '@/platform/kernel/actor-context';
+import { fingerprint, newPublicId } from '@/platform/kernel/ids';
+import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
 
 /**
- * Solicitud inicial de registro desde el sitio público.
+ * Alta pública de afiliación.
  *
- * La afiliación formal sigue viviendo en `MembershipApplication`: requiere una
- * cuenta, aceptación estatutaria y revisión humana. Esta entrada no pretende
- * sustituir ese expediente. Abre un folio trazable para que la Secretaría
- * verifique el contacto, invite a la persona y le permita continuar el trámite
- * sin recabar aquí documentos clínicos. La CURP se solicita por instrucción
- * institucional para identificar el expediente y queda bajo el aviso de
- * privacidad de la entrada pública.
+ * Las vías de agremiado y agremiado honorario crean directamente una
+ * `MembershipApplication` en estado `SUBMITTED`; no pasan por la bandeja de
+ * mensajes. La vía protegida crea el registro propio de beneficiario, porque
+ * no es membresía, no concede voz ni voto y nunca genera cuota.
  */
 
 export const PUBLIC_MEMBERSHIP_MODALITIES = [
@@ -22,6 +26,9 @@ export const PUBLIC_MEMBERSHIP_MODALITIES = [
   'PROTECTED_BENEFICIARY',
 ] as const;
 export const PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE = 'PRIVACY_NOTICE_MEMBERSHIP_INTAKE';
+
+const PUBLIC_REGISTRATION_ACTOR_LABEL = 'Registro público de afiliación';
+const PUBLIC_REGISTRATION_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxSubmissions: 5 } as const;
 
 function optionalText<T extends z.ZodType<string, string>>(schema: T) {
   return z.preprocess(
@@ -65,6 +72,8 @@ export const publicMembershipRequestSchema = z
         .max(160),
     ),
     workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT'])),
+    otherUnionMembership: optionalText(z.enum(['NONE', 'SAME_TRADE', 'DIFFERENT_TRADE'])),
+    otherUnionClarification: optionalText(z.string().trim().max(2000)),
     neurodivergentConnection: optionalText(
       z
         .string()
@@ -75,11 +84,20 @@ export const publicMembershipRequestSchema = z
     protectedProfile: optionalText(z.enum(['NEURODIVERGENT_PERSON', 'FAMILY_MEMBER', 'CAREGIVER'])),
     context: optionalText(z.string().trim().max(2000)),
     ageConfirmed: z.boolean(),
+    acceptsStatutes: z.boolean(),
     acceptedPrivacyNotice: z.literal(true, {
       error: () => 'Necesitamos que aceptes el aviso de privacidad para recibir tu solicitud.',
     }),
   })
   .superRefine((value, refinement) => {
+    if (value.modality !== 'PROTECTED_BENEFICIARY' && !value.acceptsStatutes) {
+      refinement.addIssue({
+        code: 'custom',
+        path: ['acceptsStatutes'],
+        message: 'Para enviar la solicitud debes aceptar los estatutos y las declaraciones.',
+      });
+    }
+
     if (value.modality === 'UNION_MEMBER') {
       if (!value.ageConfirmed) {
         refinement.addIssue({
@@ -90,6 +108,24 @@ export const publicMembershipRequestSchema = z
       }
       if (value.workRelation === undefined) {
         refinement.addIssue({ code: 'custom', path: ['workRelation'], message: 'Elige cómo realizas tu trabajo.' });
+      }
+      if (value.otherUnionMembership === undefined) {
+        refinement.addIssue({
+          code: 'custom',
+          path: ['otherUnionMembership'],
+          message: 'Indica si actualmente perteneces a otro sindicato.',
+        });
+      }
+      if (
+        value.otherUnionMembership !== undefined &&
+        value.otherUnionMembership !== 'NONE' &&
+        (value.otherUnionClarification?.length ?? 0) < 20
+      ) {
+        refinement.addIssue({
+          code: 'custom',
+          path: ['otherUnionClarification'],
+          message: 'Explica brevemente a qué sindicato perteneces. Con veinte caracteres basta.',
+        });
       }
       if (value.neurodivergentConnection === undefined) {
         refinement.addIssue({
@@ -119,99 +155,415 @@ export const publicMembershipRequestSchema = z
 
 export type PublicMembershipRequestInput = z.input<typeof publicMembershipRequestSchema>;
 
-const WORK_RELATION_LABELS = {
-  SUBORDINATE: 'Trabajo subordinado',
-  INDEPENDENT: 'Trabajo independiente',
-} as const;
-
-const PROTECTED_PROFILE_LABELS = {
-  NEURODIVERGENT_PERSON: 'Persona neurodivergente',
-  FAMILY_MEMBER: 'Familiar de una persona neurodivergente',
-  CAREGIVER: 'Persona cuidadora',
-} as const;
-
 function validationDetails(error: z.ZodError): Record<string, string[]> {
   const details: Record<string, string[]> = {};
   for (const issue of error.issues) (details[issue.path.join('.') || 'form'] ??= []).push(issue.message);
   return details;
 }
 
-function requestNarrative(data: z.output<typeof publicMembershipRequestSchema>): string {
-  const promoter =
-    data.promoterReference === undefined
-      ? ['PROMOTOR: No declarado']
-      : [`PROMOTOR (NÚMERO DE AGREMIADO O NOMBRE): ${data.promoterReference}`];
+export interface PublicMembershipRequestResult {
+  readonly folio: string;
+  readonly destination: 'APPLICATION' | 'PROTECTED_BENEFICIARY';
+}
 
-  if (data.modality === 'UNION_MEMBER') {
-    return [
-      'MODALIDAD: PERSONA AGREMIADA',
-      `CURP: ${data.curp}`,
-      `OCUPACIÓN: ${data.occupation}`,
-      ...promoter,
-      `FORMA DE TRABAJO: ${data.workRelation === undefined ? '' : WORK_RELATION_LABELS[data.workRelation]}`,
-      'VÍNCULO CON LA COMUNIDAD NEURODIVERGENTE:',
-      data.neurodivergentConnection ?? '',
-      'CONFIRMACIÓN DE EDAD: La persona declaró tener 15 años o más.',
-      'SIGUIENTE PASO: Verificar contacto, invitar como solicitante y continuar el expediente formal en el portal.',
-    ].join('\n\n');
+async function nextApplicationFolio(tx: Tx, prefix: string, year: number): Promise<string> {
+  const series = `${prefix}-${year}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`folio:${series}`}))`;
+  const used = await tx.membershipApplication.count({ where: { folio: { startsWith: `${series}-` } } });
+  return `${series}-${String(used + 1).padStart(5, '0')}`;
+}
+
+function protectedProfileLabel(profile: 'NEURODIVERGENT_PERSON' | 'FAMILY_MEMBER' | 'CAREGIVER'): string {
+  return profile === 'NEURODIVERGENT_PERSON'
+    ? 'Persona neurodivergente'
+    : profile === 'FAMILY_MEMBER'
+      ? 'Familiar de una persona neurodivergente'
+      : 'Persona cuidadora';
+}
+
+/** Reutiliza una persona solo cuando la CURP o su cuenta identifican el mismo registro. */
+async function existingPerson(curp: string, email: string) {
+  const [byCurp, byAccount] = await Promise.all([
+    db().person.findUnique({ where: { curp }, select: { id: true, curp: true, primaryEmail: true } }),
+    db().user.findUnique({
+      where: { email },
+      select: { person: { select: { id: true, curp: true, primaryEmail: true } } },
+    }),
+  ]);
+
+  if (byCurp !== null && byAccount !== null && byCurp.id !== byAccount.person.id) return { conflict: true as const };
+  const person = byCurp ?? byAccount?.person ?? null;
+  if (person !== null && person.curp !== null && person.curp !== curp) return { conflict: true as const };
+  if (person !== null && person.primaryEmail !== null && person.primaryEmail.toLowerCase() !== email) {
+    return { conflict: true as const };
   }
-
-  if (data.modality === 'HONORARY_AFFILIATE') {
-    return [
-      'CATEGORÍA: AGREMIADO HONORARIO',
-      `CURP: ${data.curp}`,
-      `OCUPACIÓN: ${data.occupation}`,
-      ...promoter,
-      'CONTACTO CON PERSONAS NEURODIVERGENTES:',
-      data.neurodivergentConnection ?? '',
-      ...(data.context === undefined ? [] : ['FORMA DE COLABORACIÓN:', data.context]),
-      'SIGUIENTE PASO: Verificar el contacto y revisar manualmente la solicitud de registro.',
-    ].join('\n\n');
-  }
-
-  return [
-    'CATEGORÍA: BENEFICIARIO PROTEGIDO',
-    `CURP: ${data.curp}`,
-    `OCUPACIÓN: ${data.occupation}`,
-    ...promoter,
-    `PERFIL: ${data.protectedProfile === undefined ? '' : PROTECTED_PROFILE_LABELS[data.protectedProfile]}`,
-    ...(data.context === undefined ? [] : ['AYUDA O PROTECCIÓN SOLICITADA:', data.context]),
-    'CONDICIONES: Sin voz, sin voto y sin pago de cuota.',
-    'SIGUIENTE PASO: Verificar el contacto y revisar manualmente la solicitud de registro.',
-  ].join('\n\n');
+  return {
+    conflict: false as const,
+    person,
+    hasDigitalAccount: person !== null && byAccount?.person.id === person.id,
+  };
 }
 
 export async function submitPublicMembershipRequest(
   input: PublicMembershipRequestInput,
   context: IntakeContext,
-): Promise<UseCaseResult<{ folio: string }>> {
+): Promise<UseCaseResult<PublicMembershipRequestResult>> {
   const parsed = publicMembershipRequestSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: errors.validation(validationDetails(parsed.error)) };
+  if (!parsed.success) return fail(errors.validation(validationDetails(parsed.error)));
+  const data = parsed.data;
+  const now = new Date();
+  const originFingerprint = fingerprint(context.ipHash ?? 'origen-desconocido', env().AUTH_SECRET);
+
+  const [recentApplications, recentBeneficiaries] = await Promise.all([
+    db().membershipApplication.count({
+      where: {
+        originFingerprint,
+        createdAt: { gte: new Date(now.getTime() - PUBLIC_REGISTRATION_RATE_LIMIT.windowMs) },
+      },
+    }),
+    db().protectedBeneficiary.count({
+      where: {
+        originFingerprint,
+        createdAt: { gte: new Date(now.getTime() - PUBLIC_REGISTRATION_RATE_LIMIT.windowMs) },
+      },
+    }),
+  ]);
+  if (recentApplications + recentBeneficiaries >= PUBLIC_REGISTRATION_RATE_LIMIT.maxSubmissions) {
+    return fail(errors.rateLimited(Math.ceil(PUBLIC_REGISTRATION_RATE_LIMIT.windowMs / 1000)));
   }
 
-  const data = parsed.data;
-  const contactName = [data.givenName, data.familyName, data.secondFamilyName].filter(Boolean).join(' ');
+  const entity = await db().legalEntity.findUnique({
+    where: { code: 'FUERZA_INDIGO' },
+    select: { id: true, documentSeriesPrefix: true },
+  });
+  if (entity === null) return fail(errors.notFound('entidad FUERZA_INDIGO inexistente'));
 
-  return submitRequest(
-    {
-      requestType: 'GENERAL_CONTACT',
-      legalEntity: 'FUERZA_INDIGO',
-      contactName,
-      contactEmail: data.email,
-      ...(data.phone === undefined ? {} : { contactPhone: data.phone }),
-      preferredChannel: 'EMAIL',
-      subject:
-        data.modality === 'UNION_MEMBER'
-          ? 'Solicitud inicial de registro como agremiado'
-          : data.modality === 'HONORARY_AFFILIATE'
-            ? 'Solicitud inicial de registro como agremiado honorario'
-            : 'Solicitud inicial de registro como beneficiario protegido',
-      narrative: requestNarrative(data),
-      territoryHint: data.territory,
-      acceptedPrivacyNotice: true,
-    },
-    context,
-    { privacyNoticeCode: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE },
-  );
+  const [notice, systemActor, identity] = await Promise.all([
+    db().consentVersion.findFirst({
+      where: { code: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE, legalEntityId: entity.id, status: 'PUBLISHED' },
+      orderBy: { version: 'desc' },
+      select: { id: true, version: true },
+    }),
+    db().actor.findFirst({
+      where: { kind: 'SYSTEM_JOB', label: PUBLIC_REGISTRATION_ACTOR_LABEL },
+      select: { id: true },
+    }),
+    existingPerson(data.curp, data.email),
+  ]);
+
+  if (notice === null) {
+    return fail(
+      errors.ruleViolation(
+        'Ahora mismo no podemos recibir solicitudes por este formulario. Escríbenos directamente y te atendemos igual.',
+        `no hay aviso de privacidad publicado (${PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE})`,
+      ),
+    );
+  }
+  if (systemActor === null) {
+    return fail(errors.ruleViolation('El registro público no está disponible en este momento.', 'falta actor de registro público'));
+  }
+  if (identity.conflict) {
+    return fail(
+      errors.conflict(
+        'La CURP o el correo ya pertenecen a otro expediente. Entra a tu cuenta o solicita ayuda para corregirlo.',
+        'CURP y correo apuntan a personas distintas',
+      ),
+    );
+  }
+
+  const category = data.modality === 'PROTECTED_BENEFICIARY' ? null : data.modality;
+  const [membershipType, statute, genericOccupation] =
+    category === null
+      ? [null, null, null]
+      : await Promise.all([
+          db().membershipType.findFirst({
+            where: {
+              legalEntityId: entity.id,
+              category,
+              isActive: true,
+              effectiveFrom: { lte: now },
+              OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }],
+            },
+            orderBy: { effectiveFrom: 'desc' },
+            select: { id: true },
+          }),
+          db().normativeRuleSet.findFirst({
+            where: { status: 'IN_FORCE' },
+            orderBy: { effectiveFrom: 'desc' },
+            select: { id: true, version: true },
+          }),
+          category === 'UNION_MEMBER'
+            ? db().specialtyCatalog.findUnique({ where: { code: 'OTRA_ACTIVIDAD' }, select: { id: true } })
+            : Promise.resolve(null),
+        ]);
+
+  if (category !== null && (membershipType === null || statute === null || (category === 'UNION_MEMBER' && genericOccupation === null))) {
+    return fail(
+      errors.ruleViolation(
+        'La solicitud de afiliación no está disponible en este momento. Inténtalo más tarde.',
+        'falta calidad vigente, estatuto en vigor o especialidad genérica',
+      ),
+    );
+  }
+
+  const [activeApplication, activeMembership, activeBeneficiary] = await Promise.all([
+    identity.person === null || category === null
+      ? null
+      : db().membershipApplication.findFirst({
+          where: {
+            personId: identity.person.id,
+            category,
+            status: {
+              in: ['DRAFT', 'SUBMITTED', 'DOCUMENTATION_PENDING', 'UNDER_REVIEW', 'CLARIFICATION_REQUIRED', 'APPROVED', 'PENDING_PAYMENT'],
+            },
+          },
+          select: { folio: true },
+        }),
+    identity.person === null || category === null
+      ? null
+      : db().membership.findFirst({
+          where: { personId: identity.person.id, category, status: 'ACTIVE' },
+          select: { memberNumber: true },
+        }),
+    identity.person === null || category !== null
+      ? null
+      : db().protectedBeneficiary.findFirst({
+          where: { personId: identity.person.id, status: { notIn: ['CLOSED', 'ARCHIVED'] } },
+          select: { publicId: true },
+        }),
+  ]);
+  if (activeApplication !== null) {
+    return fail(
+      errors.conflict(
+        `Ya existe una solicitud de afiliación en trámite con folio ${activeApplication.folio}. No necesitas enviarla otra vez.`,
+        'solicitud viva para la misma persona y categoría',
+      ),
+    );
+  }
+  if (activeMembership !== null) {
+    return fail(
+      errors.conflict(
+        `La persona ya tiene esa calidad activa con número ${activeMembership.memberNumber}.`,
+        'membresía activa de la misma categoría',
+      ),
+    );
+  }
+  if (activeBeneficiary !== null) {
+    return fail(
+      errors.conflict(
+        `Ya existe un registro protegido vigente con folio ${activeBeneficiary.publicId}. No necesitas enviarlo otra vez.`,
+        'beneficiario protegido vigente',
+      ),
+    );
+  }
+
+  const actor = systemContext({
+    actorId: systemActor.id,
+    jobType: 'public-membership-registration',
+    correlationId: context.correlationId,
+  });
+
+  try {
+    return await transaction(async (tx) => {
+      const person =
+        identity.person === null
+          ? await tx.person.create({
+              data: {
+                publicId: newPublicId(),
+                curp: data.curp,
+                givenName: data.givenName,
+                familyName: data.familyName,
+                secondFamilyName: data.secondFamilyName ?? null,
+                primaryEmail: data.email,
+                primaryPhone: data.phone ?? null,
+                createdByActorId: systemActor.id,
+                updatedByActorId: systemActor.id,
+              },
+              select: { id: true, publicId: true },
+            })
+          : await tx.person.update({
+              where: { id: identity.person.id },
+              data: {
+                curp: data.curp,
+                primaryEmail: data.email,
+                ...(data.phone === undefined ? {} : { primaryPhone: data.phone }),
+                updatedByActorId: systemActor.id,
+                rowVersion: { increment: 1 },
+              },
+              select: { id: true, publicId: true },
+            });
+
+      if (identity.person === null) {
+        await recordAudit(tx, actor, {
+          action: AUDIT_ACTIONS.PERSON_CREATED,
+          objectKind: 'Person',
+          objectId: person.id,
+          outcome: 'SUCCESS',
+          legalEntityId: entity.id,
+          onBehalfOfPersonId: person.id,
+          metadata: { origin: 'public-membership-registration' },
+        });
+      } else {
+        await recordAudit(tx, actor, {
+          action: AUDIT_ACTIONS.PERSON_UPDATED,
+          objectKind: 'Person',
+          objectId: person.id,
+          outcome: 'SUCCESS',
+          legalEntityId: entity.id,
+          onBehalfOfPersonId: person.id,
+          metadata: { origin: 'public-membership-registration', fields: ['curp', 'primaryEmail', 'primaryPhone'] },
+        });
+      }
+
+      const consent = await tx.consent.create({
+        data: {
+          personId: person.id,
+          consentVersionId: notice.id,
+          purpose: 'MEMBERSHIP',
+          grantedById: person.id,
+          scope: { legalEntityId: entity.id, intake: 'public-membership-registration' },
+          evidence: {
+            noticeCode: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE,
+            noticeVersion: notice.version,
+            acceptedAt: now.toISOString(),
+            medium: 'WEB_FORM',
+          },
+        },
+        select: { id: true },
+      });
+
+      await recordAudit(tx, actor, {
+        action: AUDIT_ACTIONS.CONSENT_GRANTED,
+        objectKind: 'Consent',
+        objectId: consent.id,
+        outcome: 'SUCCESS',
+        legalEntityId: entity.id,
+        onBehalfOfPersonId: person.id,
+        metadata: { noticeCode: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE, noticeVersion: notice.version },
+      });
+
+      if (category === null) {
+        const profile = data.protectedProfile!;
+        const beneficiary = await tx.protectedBeneficiary.create({
+          data: {
+            publicId: newPublicId(),
+            personId: person.id,
+            legalEntityId: entity.id,
+            originKind: profile === 'NEURODIVERGENT_PERSON' ? 'SELF' : 'FAMILY_OR_CAREGIVER',
+            initialNeed: [
+              `Perfil declarado: ${protectedProfileLabel(profile)}.`,
+              data.context ?? 'Registro preventivo; por ahora no declaró una necesidad específica.',
+            ].join('\n\n'),
+            occupationText: data.occupation,
+            territoryHint: data.territory,
+            promoterReference: data.promoterReference ?? null,
+            originFingerprint,
+            hasDigitalAccount: identity.hasDigitalAccount,
+            privacyLevel: 'REINFORCED',
+            createdByActorId: systemActor.id,
+            updatedByActorId: systemActor.id,
+          },
+          select: { id: true, publicId: true },
+        });
+
+        await recordAudit(tx, actor, {
+          action: AUDIT_ACTIONS.BENEFICIARY_REGISTERED,
+          objectKind: 'ProtectedBeneficiary',
+          objectId: beneficiary.id,
+          outcome: 'SUCCESS',
+          legalEntityId: entity.id,
+          onBehalfOfPersonId: person.id,
+          metadata: { publicId: beneficiary.publicId, origin: 'public-registration' },
+        });
+        return ok({ folio: beneficiary.publicId, destination: 'PROTECTED_BENEFICIARY' as const });
+      }
+
+      const folio = await nextApplicationFolio(tx, entity.documentSeriesPrefix, now.getUTCFullYear());
+      const routeFields =
+        category === 'UNION_MEMBER'
+          ? {
+              occupationSpecialtyId: genericOccupation!.id,
+              workRelationKind: data.workRelation!,
+              neurodivergentContactStatement: data.neurodivergentConnection!,
+              otherUnionMembership: data.otherUnionMembership!,
+              otherUnionClarification: data.otherUnionClarification ?? null,
+              honoraryProfile: null,
+            }
+          : {
+              occupationSpecialtyId: null,
+              workRelationKind: null,
+              neurodivergentContactStatement: data.neurodivergentConnection ?? null,
+              otherUnionMembership: null,
+              otherUnionClarification: null,
+              honoraryProfile: 'PROFESSIONAL_OR_COLLABORATOR' as const,
+            };
+
+      const application = await tx.membershipApplication.create({
+        data: {
+          folio,
+          personId: person.id,
+          membershipTypeId: membershipType!.id,
+          category,
+          legalEntityId: entity.id,
+          status: 'SUBMITTED',
+          submittedAt: now,
+          occupationText: data.occupation,
+          territoryHint: data.territory,
+          promoterReference: data.promoterReference ?? null,
+          originFingerprint,
+          acceptedRuleSetId: statute!.id,
+          originalSummary: {
+            enviadoEl: now.toISOString(),
+            solicitante: {
+              publicId: person.publicId,
+              nombre: [data.givenName, data.familyName, data.secondFamilyName].filter(Boolean).join(' '),
+              curp: data.curp,
+              correo: data.email,
+              telefono: data.phone ?? null,
+            },
+            categoria: category,
+            ocupacionDeclarada: data.occupation,
+            territorioDeclarado: data.territory,
+            promotor: data.promoterReference ?? null,
+            estatutoAceptado: statute!.version,
+            avisoPrivacidad: { codigo: PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE, version: notice.version },
+            formaDeTrabajo: data.workRelation ?? null,
+            contactoNeurodivergente: data.neurodivergentConnection ?? null,
+            otroSindicato: data.otherUnionMembership ?? null,
+            aclaracionOtroSindicato: data.otherUnionClarification ?? null,
+            formaDeColaboracion: data.context ?? null,
+            origen: 'FORMULARIO_PUBLICO',
+          },
+          ...routeFields,
+          createdByActorId: systemActor.id,
+          updatedByActorId: systemActor.id,
+        },
+        select: { id: true, folio: true },
+      });
+
+      await recordAudit(tx, actor, {
+        action: AUDIT_ACTIONS.APPLICATION_SUBMITTED,
+        objectKind: 'MembershipApplication',
+        objectId: application.id,
+        outcome: 'SUCCESS',
+        legalEntityId: entity.id,
+        onBehalfOfPersonId: person.id,
+        metadata: { folio: application.folio, category, origin: 'public-registration' },
+      });
+
+      return ok({ folio: application.folio, destination: 'APPLICATION' as const });
+    });
+  } catch (error) {
+    const uniqueConflict =
+      typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
+    if (uniqueConflict) {
+      return fail(
+        errors.conflict(
+          'Ya existe un expediente con esa CURP. Entra a tu cuenta o solicita ayuda para revisarlo.',
+          'conflicto único durante registro público',
+        ),
+      );
+    }
+    throw error;
+  }
 }

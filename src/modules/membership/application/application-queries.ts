@@ -27,6 +27,7 @@ export interface ApplicationRow {
   readonly legalEntity: string;
   readonly personName: string;
   readonly personPublicId: string;
+  readonly curp: string | null;
   readonly territory: string | null;
   readonly submittedAt: Date | null;
   readonly clarificationDueAt: Date | null;
@@ -43,7 +44,8 @@ const SELECCION = {
   membershipType: { select: { name: true } },
   legalEntity: { select: { shortName: true } },
   territorialUnit: { select: { name: true } },
-  person: { select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true, publicId: true } },
+  territoryHint: true,
+  person: { select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true, publicId: true, curp: true } },
   documents: { select: { status: true } },
 } as const;
 
@@ -57,12 +59,14 @@ type FilaCruda = {
   membershipType: { name: string };
   legalEntity: { shortName: string };
   territorialUnit: { name: string } | null;
+  territoryHint: string | null;
   person: {
     givenName: string;
     middleName: string | null;
     familyName: string;
     secondFamilyName: string | null;
     publicId: string;
+    curp: string | null;
   };
   documents: { status: string }[];
 };
@@ -77,7 +81,8 @@ function aFila(fila: FilaCruda): ApplicationRow {
     legalEntity: fila.legalEntity.shortName,
     personName: nombreCompleto(fila.person),
     personPublicId: fila.person.publicId,
-    territory: fila.territorialUnit?.name ?? null,
+    curp: fila.person.curp,
+    territory: fila.territorialUnit?.name ?? fila.territoryHint,
     submittedAt: fila.submittedAt,
     clarificationDueAt: fila.clarificationDueAt,
     documents: {
@@ -152,6 +157,8 @@ export interface ApplicationDetail extends ApplicationRow {
   readonly originalSummary: unknown;
   readonly autosavedDraft: unknown;
   readonly occupation: string | null;
+  readonly occupationText: string | null;
+  readonly promoterReference: string | null;
   readonly workRelationKind: string | null;
   readonly neurodivergentContactStatement: string | null;
   readonly otherUnionMembership: string | null;
@@ -223,6 +230,8 @@ export async function applicationDetail(
       otherUnionMembership: true,
       otherUnionClarification: true,
       honoraryProfile: true,
+      occupationText: true,
+      promoterReference: true,
       resolutionAt: true,
       resolutionReason: true,
       occupation: { select: { name: true } },
@@ -288,6 +297,8 @@ export async function applicationDetail(
     originalSummary: solicitud.originalSummary,
     autosavedDraft: solicitud.autosavedDraft,
     occupation: solicitud.occupation?.name ?? null,
+    occupationText: solicitud.occupationText,
+    promoterReference: solicitud.promoterReference,
     workRelationKind: solicitud.workRelationKind,
     neurodivergentContactStatement: solicitud.neurodivergentContactStatement,
     otherUnionMembership: solicitud.otherUnionMembership,

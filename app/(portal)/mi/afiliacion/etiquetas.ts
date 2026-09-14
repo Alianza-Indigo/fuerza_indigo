@@ -52,6 +52,7 @@ export const PERFIL_HONORARIO: Record<string, string> = {
   NEURODIVERGENT_PERSON: 'Persona neurodivergente',
   FAMILY_MEMBER: 'Familiar',
   CAREGIVER: 'Persona cuidadora',
+  PROFESSIONAL_OR_COLLABORATOR: 'Profesional o colaborador de la comunidad',
 };
 
 export const ACCION_DE_REVISION: Record<string, string> = {

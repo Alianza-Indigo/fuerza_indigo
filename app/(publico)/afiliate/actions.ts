@@ -8,6 +8,7 @@ export interface AffiliationRequestState {
   readonly status: 'idle' | 'error' | 'ok';
   readonly message?: string;
   readonly folio?: string;
+  readonly destination?: 'APPLICATION' | 'PROTECTED_BENEFICIARY';
   readonly fieldErrors?: Record<string, string[]>;
 }
 
@@ -30,10 +31,13 @@ export async function submitAffiliationRequestAction(
       occupation: textField(formData, 'occupation'),
       promoterReference: textField(formData, 'promoterReference'),
       workRelation: textField(formData, 'workRelation'),
+      otherUnionMembership: textField(formData, 'otherUnionMembership'),
+      otherUnionClarification: textField(formData, 'otherUnionClarification'),
       neurodivergentConnection: textField(formData, 'neurodivergentConnection'),
       protectedProfile: textField(formData, 'protectedProfile'),
       context: textField(formData, 'context'),
       ageConfirmed: checkboxField(formData, 'ageConfirmed'),
+      acceptsStatutes: checkboxField(formData, 'acceptsStatutes'),
       acceptedPrivacyNotice: checkboxField(formData, 'acceptedPrivacyNotice') as never,
     },
     { correlationId: context.correlationId, ipHash: context.ipHash },
@@ -47,5 +51,5 @@ export async function submitAffiliationRequestAction(
     };
   }
 
-  return { status: 'ok', folio: result.data.folio };
+  return { status: 'ok', folio: result.data.folio, destination: result.data.destination };
 }

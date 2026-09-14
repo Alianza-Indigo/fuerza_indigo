@@ -163,6 +163,9 @@ describe('con aviso publicado', () => {
 
   it('recibe una solicitud inicial de afiliación con CURP y ocupación bajo su aviso específico', async () => {
     await publicarAviso(fuerzaId, PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE);
+    await base.prisma.normativeRuleSet.updateMany({
+      data: { status: 'IN_FORCE', effectiveFrom: new Date('2026-01-01T00:00:00.000Z') },
+    });
 
     const resultado = await submitPublicMembershipRequest(
       {
@@ -177,10 +180,13 @@ describe('con aviso publicado', () => {
         occupation: 'Docente',
         promoterReference: 'FI-2026-0015 · Ana Pérez',
         workRelation: 'SUBORDINATE',
+        otherUnionMembership: 'NONE',
+        otherUnionClarification: '',
         neurodivergentConnection: 'Acompaño a estudiantes neurodivergentes dentro del aula.',
         protectedProfile: '',
         context: '',
         ageConfirmed: true,
+        acceptsStatutes: true,
         acceptedPrivacyNotice: true,
       },
       { correlationId: 'prueba-afiliacion-publica', ipHash: 'huella-afiliacion' },
@@ -189,17 +195,28 @@ describe('con aviso publicado', () => {
     expect(resultado.ok, resultado.ok ? '' : resultado.error.message).toBe(true);
     if (!resultado.ok) return;
 
-    const guardada = await base.prisma.supportRequest.findUniqueOrThrow({
+    expect(resultado.data.destination).toBe('APPLICATION');
+
+    const guardada = await base.prisma.membershipApplication.findUniqueOrThrow({
       where: { folio: resultado.data.folio },
-      select: { legalEntityId: true, subject: true, narrative: true, territoryHint: true },
+      select: {
+        legalEntityId: true,
+        status: true,
+        occupationText: true,
+        promoterReference: true,
+        territoryHint: true,
+        person: { select: { curp: true, primaryEmail: true } },
+      },
     });
 
     expect(guardada.legalEntityId).toBe(fuerzaId);
-    expect(guardada.subject).toBe('Solicitud inicial de registro como agremiado');
-    expect(guardada.narrative).toContain('CURP: GODE561231MDFRRN09');
-    expect(guardada.narrative).toContain('OCUPACIÓN: Docente');
-    expect(guardada.narrative).toContain('PROMOTOR (NÚMERO DE AGREMIADO O NOMBRE): FI-2026-0015 · Ana Pérez');
+    expect(guardada.status).toBe('SUBMITTED');
+    expect(guardada.person.curp).toBe('GODE561231MDFRRN09');
+    expect(guardada.person.primaryEmail).toBe('maria.afiliacion@ejemplo.mx');
+    expect(guardada.occupationText).toBe('Docente');
+    expect(guardada.promoterReference).toBe('FI-2026-0015 · Ana Pérez');
     expect(guardada.territoryHint).toBe('Ciudad de México, Coyoacán');
+    expect(await base.prisma.supportRequest.count({ where: { contactEmail: 'maria.afiliacion@ejemplo.mx' } })).toBe(0);
   });
 
   it('el folio no es correlativo: dos envíos seguidos no dejan adivinar el volumen', async () => {

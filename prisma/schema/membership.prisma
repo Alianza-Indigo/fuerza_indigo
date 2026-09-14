@@ -82,6 +82,12 @@ model MembershipApplication {
   status               ApplicationStatus   @default(DRAFT)
   submittedAt          DateTime?           @db.Timestamptz(3)
   territorialUnitId    String?             @db.Uuid
+  /// Datos de texto libre de la entrada pública. Se conservan junto al
+  /// expediente formal para que no terminen escondidos en Mensajes.
+  occupationText       String?             @db.VarChar(160)
+  territoryHint        String?             @db.VarChar(160)
+  promoterReference    String?             @db.VarChar(160)
+  originFingerprint    String?             @db.VarChar(64)
 
   // Campos de la vía sindical. Obligatorios para `UNION_MEMBER`, nulos para la
   // honoraria: una persona neurodivergente, un familiar o una persona cuidadora
@@ -137,6 +143,7 @@ model MembershipApplication {
   @@index([status])
   @@index([territorialUnitId])
   @@index([legalEntityId, status])
+  @@index([originFingerprint, createdAt])
   @@map("membership_application")
 }
 
@@ -174,6 +181,7 @@ enum HonoraryProfile {
   NEURODIVERGENT_PERSON
   FAMILY_MEMBER
   CAREGIVER
+  PROFESSIONAL_OR_COLLABORATOR
 }
 
 /// Evidencia adjunta a una solicitud, con revisión documento por documento.
@@ -520,6 +528,10 @@ model ProtectedBeneficiary {
   initialNeed         String             @db.Text
   urgencyLevel        BeneficiaryUrgency @default(ROUTINE)
   territorialUnitId   String?            @db.Uuid
+  occupationText      String?            @db.VarChar(160)
+  territoryHint       String?            @db.VarChar(160)
+  promoterReference   String?            @db.VarChar(160)
+  originFingerprint   String?            @db.VarChar(64)
   responsiblePersonId String?            @db.Uuid
   hasDigitalAccount   Boolean            @default(false)
   status              BeneficiaryStatus  @default(REGISTERED)
@@ -547,6 +559,7 @@ model ProtectedBeneficiary {
   @@index([legalEntityId, status])
   @@index([territorialUnitId])
   @@index([privacyLevel])
+  @@index([originFingerprint, createdAt])
   @@map("protected_beneficiary")
 }
 

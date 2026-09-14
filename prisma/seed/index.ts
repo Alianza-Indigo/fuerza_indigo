@@ -43,6 +43,14 @@ async function seedActors(): Promise<string> {
     await prisma.actor.create({ data: { kind: 'ROOT_SUPERADMIN', label: 'Superadmin raíz' } });
   }
 
+  const publicRegistration = await prisma.actor.findFirst({
+    where: { kind: 'SYSTEM_JOB', label: 'Registro público de afiliación' },
+    select: { id: true },
+  });
+  if (publicRegistration === null) {
+    await prisma.actor.create({ data: { kind: 'SYSTEM_JOB', label: 'Registro público de afiliación' } });
+  }
+
   return migrationActor.id;
 }
 
@@ -632,6 +640,7 @@ async function seedSpecialties(): Promise<void> {
     { code: 'PSIQUIATRIA', name: 'Psiquiatría', kind: 'CLINICAL_DISCIPLINE' as const },
     { code: 'TERAPIA_LENGUAJE', name: 'Terapia de lenguaje', kind: 'CLINICAL_DISCIPLINE' as const },
     { code: 'TERAPIA_OCUPACIONAL', name: 'Terapia ocupacional', kind: 'CLINICAL_DISCIPLINE' as const },
+    { code: 'OTRA_ACTIVIDAD', name: 'Otra actividad declarada', kind: 'TRADE' as const },
   ];
 
   for (const specialty of specialties) {
@@ -692,7 +701,7 @@ async function seedMembershipTypes(): Promise<void> {
     },
     {
       code: 'AFILIADO_HONORARIO',
-      name: 'Afiliado honorario',
+      name: 'Agremiado honorario',
       category: 'HONORARY_AFFILIATE' as const,
       grantsPoliticalRights: false,
       countsForQuorum: false,

@@ -12,6 +12,9 @@ const CONTACT = {
   territory: 'Ciudad de México, Coyoacán',
   occupation: 'Docente',
   promoterReference: '',
+  otherUnionMembership: 'NONE',
+  otherUnionClarification: '',
+  acceptsStatutes: true,
   acceptedPrivacyNotice: true as const,
 };
 

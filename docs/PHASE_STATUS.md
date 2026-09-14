@@ -111,7 +111,7 @@ Hecho eso, la Fase 10 —y con ella el contrato del PRD— queda cerrada, y se r
 
 ## Defectos abiertos
 
-Ninguno registrado todavía.
+Ninguno abierto.
 
 > **Cómo se lee esta tabla.** La última celda cuenta **cómo se corrigió** el defecto. Un defecto todavía abierto la deja
 > vacía o la empieza con `Abierto`. `npm run phase:verify` lo lee así: una celda en blanco es un defecto abierto, no un
@@ -119,6 +119,7 @@ Ninguno registrado todavía.
 
 | Id | Severidad | Descripción | Estado y corrección |
 |---|---|---|---|
+| D-F10-001 | Alta | El formulario público de afiliación se guardaba como `GENERAL_CONTACT` en la bandeja de Mensajes; no creaba una `MembershipApplication`, por lo que la Secretaría no podía revisarlo ni resolverlo desde Solicitudes de afiliación. | Corregido: agremiado y agremiado honorario crean directamente un expediente `SUBMITTED`; beneficiario protegido entra en su padrón propio. La CURP evita duplicados, el expediente conserva ocupación, territorio y promotor, y el envío registra estatuto, aviso y consentimiento aceptados. Prueba de integración en `support-intake.test.ts` y validación en `public-request.test.ts` (ADR-0180). |
 
 ---
 

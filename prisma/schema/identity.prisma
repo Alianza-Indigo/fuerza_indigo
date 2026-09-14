@@ -178,6 +178,9 @@ enum ActorKind {
 model Person {
   id                 String         @id @default(uuid(7)) @db.Uuid
   publicId           String         @unique @db.VarChar(22)
+  /// Clave de identidad declarada en la solicitud pública. Es única para que
+  /// un reenvío no abra dos expedientes para la misma persona.
+  curp               String?        @unique @db.Char(18)
   givenName          String         @db.VarChar(80)
   middleName         String?        @db.VarChar(80)
   familyName         String         @db.VarChar(80)

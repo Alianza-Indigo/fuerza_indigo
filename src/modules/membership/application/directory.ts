@@ -745,6 +745,11 @@ export interface PublicEntry {
   readonly publishedAt: Date;
 }
 
+export interface PublicHonoraryEntry extends PublicEntry {
+  readonly subjectKind: 'PERSON' | 'ORGANIZATION';
+  readonly profileHref: string | null;
+}
+
 /**
  * Las fichas públicas vigentes.
  *
@@ -774,31 +779,88 @@ export async function publicDirectory(): Promise<PublicEntry[]> {
  * autorizó su publicación y conserva una membresía honoraria activa. La cuota
  * o la pertenencia por sí solas nunca sustituyen el consentimiento.
  */
-export async function publicHonoraryDirectory(): Promise<PublicEntry[]> {
+export async function publicHonoraryDirectory(): Promise<PublicHonoraryEntry[]> {
   const now = new Date();
-  const rows = await db().directoryPublication.findMany({
-    where: {
-      withdrawnAt: null,
-      person: {
-        memberships: {
-          some: {
-            category: 'HONORARY_AFFILIATE',
-            status: 'ACTIVE',
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+  const [people, organizations] = await Promise.all([
+    db().directoryPublication.findMany({
+      where: {
+        withdrawnAt: null,
+        person: {
+          memberships: {
+            some: {
+              category: 'HONORARY_AFFILIATE',
+              organizationId: null,
+              status: 'ACTIVE',
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            },
           },
         },
       },
-    },
-    orderBy: { publishedAt: 'desc' },
-    take: 500,
-    select: { slug: true, publishedFields: true, indexable: true, publishedAt: true },
-  });
-  return rows.map((row) => ({
+      orderBy: { publishedAt: 'desc' },
+      take: 500,
+      select: { slug: true, publishedFields: true, indexable: true, publishedAt: true },
+    }),
+    db().membership.findMany({
+      where: {
+        category: 'HONORARY_AFFILIATE',
+        status: 'ACTIVE',
+        organizationId: { not: null },
+        organizationPublicListingAuthorized: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        organization: { status: 'ACTIVE', archivedAt: null },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: 500,
+      select: {
+        publicId: true,
+        startedAt: true,
+        application: { select: { territoryHint: true } },
+        organization: {
+          select: {
+            publicId: true,
+            legalName: true,
+            tradeName: true,
+            sector: true,
+            website: true,
+            territorialUnit: { select: { name: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const personalEntries: PublicHonoraryEntry[] = people.map((row) => ({
     slug: row.slug,
     fields: (row.publishedFields ?? {}) as Record<string, unknown>,
     indexable: row.indexable,
     publishedAt: row.publishedAt,
+    subjectKind: 'PERSON',
+    profileHref: `/directorio/${row.slug}`,
   }));
+
+  const organizationEntries: PublicHonoraryEntry[] = organizations.flatMap((membership) => {
+    if (membership.organization === null) return [];
+    const organization = membership.organization;
+    return [{
+      slug: `organizacion-${organization.publicId}`,
+      fields: {
+        nombre: organization.tradeName ?? organization.legalName,
+        razonSocial: organization.legalName,
+        titular: organization.sector,
+        territorio: organization.territorialUnit?.name ?? membership.application?.territoryHint ?? null,
+        sitioWeb: organization.website,
+        especialidades: organization.sector === null ? [] : [organization.sector],
+      },
+      indexable: true,
+      publishedAt: membership.startedAt,
+      subjectKind: 'ORGANIZATION' as const,
+      profileHref: null,
+    }];
+  });
+
+  return [...personalEntries, ...organizationEntries]
+    .toSorted((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+    .slice(0, 500);
 }
 
 /** Una ficha pública por su dirección. Devuelve `null` si se retiró. */

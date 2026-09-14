@@ -33,6 +33,17 @@ export async function submitAffiliationRequestAction(
       occupation: textField(formData, 'occupation'),
       promoterReference: textField(formData, 'promoterReference'),
       physicalCredentialRequested: checkboxField(formData, 'physicalCredentialRequested'),
+      honorarySubjectKind: (textField(formData, 'honorarySubjectKind') || undefined) as
+        | 'PERSON'
+        | 'ORGANIZATION'
+        | undefined,
+      organizationLegalName: textField(formData, 'organizationLegalName'),
+      organizationTradeName: textField(formData, 'organizationTradeName'),
+      organizationTaxId: textField(formData, 'organizationTaxId'),
+      organizationKind: textField(formData, 'organizationKind'),
+      organizationSector: textField(formData, 'organizationSector'),
+      organizationWebsite: textField(formData, 'organizationWebsite'),
+      organizationPublicListingAuthorized: checkboxField(formData, 'organizationPublicListingAuthorized'),
       workRelation: textField(formData, 'workRelation'),
       otherUnionMembership: textField(formData, 'otherUnionMembership'),
       otherUnionClarification: textField(formData, 'otherUnionClarification'),

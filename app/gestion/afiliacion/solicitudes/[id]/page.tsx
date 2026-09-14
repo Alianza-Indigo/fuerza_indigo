@@ -36,6 +36,14 @@ import {
 export const metadata = { title: 'Solicitud de afiliación', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
+const TIPO_DE_ORGANIZACION: Record<string, string> = {
+  COMPANY: 'Empresa',
+  SCHOOL: 'Escuela o institución educativa',
+  PUBLIC_INSTITUTION: 'Institución pública',
+  CIVIL_SOCIETY: 'Asociación u organización civil',
+  OTHER: 'Otra organización',
+};
+
 /**
  * Expediente de una solicitud para quien la revisa (PRD §8.1, pasos 9 y 10).
  *
@@ -108,7 +116,7 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
   return (
     <PageShell
       title={`Solicitud ${solicitud.folio}`}
-      description={`${solicitud.personName} · ${solicitud.membershipType}`}
+      description={`${solicitud.organization?.tradeName ?? solicitud.organization?.legalName ?? solicitud.personName} · ${solicitud.membershipType}`}
     >
       <div className="space-y-8">
         <p>
@@ -182,10 +190,45 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
           </Section>
         ) : (
           <Section
-            title="Lo que la persona envió"
+            title={solicitud.organization === null ? 'Lo que la persona envió' : 'Lo que envió la persona representante'}
             description="Tal como lo envió. La revisión anota y resuelve; no reescribe."
           >
             <dl className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)]">
+              {solicitud.organization !== null && (
+                <>
+                  <div className="p-4">
+                    <dt className="font-medium">Agremiado honorario institucional</dt>
+                    <dd className="mt-1 text-[var(--color-ink-soft)]">
+                      <strong>{solicitud.organization.tradeName ?? solicitud.organization.legalName}</strong>
+                      {solicitud.organization.tradeName !== null && (
+                        <span className="block">Razón social: {solicitud.organization.legalName}</span>
+                      )}
+                      <span className="block">
+                        {TIPO_DE_ORGANIZACION[solicitud.organization.kind] ?? solicitud.organization.kind}
+                        {solicitud.organization.sector === null ? '' : ` · ${solicitud.organization.sector}`}
+                      </span>
+                      <span className="block font-mono">RFC: {solicitud.organization.taxId ?? '—'}</span>
+                      {solicitud.organization.website !== null && (
+                        <a
+                          href={solicitud.organization.website}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block underline underline-offset-4"
+                        >
+                          {solicitud.organization.website}
+                        </a>
+                      )}
+                      <span className="mt-1 block">
+                        Publicación en la red: {solicitud.organizationPublicListingAuthorized ? 'autorizada' : 'no autorizada'}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="p-4">
+                    <dt className="font-medium">Persona representante</dt>
+                    <dd className="mt-1 text-[var(--color-ink-soft)]">{solicitud.personName}</dd>
+                  </div>
+                </>
+              )}
               <div className="p-4">
                 <dt className="font-medium">CURP</dt>
                 <dd className="mt-1 font-mono text-[var(--color-ink-soft)]">{solicitud.curp ?? '—'}</dd>

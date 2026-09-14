@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = socialMetadata({
   title: 'Agremiados honorarios',
   description:
-    'Profesionales y colaboradores que participan con voz en Fuerza Índigo y autorizaron aparecer públicamente.',
+    'Personas, empresas y organizaciones que participan con voz en Fuerza Índigo y autorizaron aparecer públicamente.',
   path: '/agremiados-honorarios',
 });
 
@@ -50,16 +50,16 @@ export default async function HonoraryMembersPage() {
               Agremiados honorarios
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-relaxed text-blue-100/80 sm:text-xl">
-              Profesionales y colaboradores que ponen su experiencia al servicio de la inclusión y participan con
-              voz en la vida de Fuerza Índigo.
+              Personas, empresas y organizaciones que ponen su experiencia al servicio de la inclusión y participan
+              con voz en la vida de Fuerza Índigo.
             </p>
           </header>
 
           <div className="border-l-2 border-cyan-300 pl-5">
-            <p className="text-2xl font-black">$5,000 MXN al año</p>
+            <p className="text-2xl font-black">Personas y organizaciones</p>
             <p className="mt-2 text-sm leading-relaxed text-blue-100/70">
-              La afiliación honoraria incluye credencial física, participación con voz y presencia en esta red cuando
-              la persona autoriza su publicación.
+              La cuota se determina de forma individual durante la revisión de cada solicitud. La presencia en esta
+              red requiere autorización expresa.
             </p>
             <Link
               href="/afiliate/honoraria"
@@ -97,6 +97,7 @@ export default async function HonoraryMembersPage() {
                 const headline = text(member.fields, 'titular');
                 const territory = text(member.fields, 'territorio');
                 const specialties = list(member.fields, 'especialidades');
+                const website = text(member.fields, 'sitioWeb');
                 return (
                   <li
                     key={member.slug}
@@ -129,12 +130,27 @@ export default async function HonoraryMembersPage() {
                       </ul>
                     )}
 
-                    <Link
-                      href={`/directorio/${member.slug}`}
-                      className="mt-auto pt-6 text-sm font-bold text-cyan-300 underline underline-offset-4"
-                    >
-                      Ver ficha pública →
-                    </Link>
+                    {member.profileHref !== null ? (
+                      <Link
+                        href={member.profileHref}
+                        className="mt-auto pt-6 text-sm font-bold text-cyan-300 underline underline-offset-4"
+                      >
+                        Ver ficha pública →
+                      </Link>
+                    ) : website !== null ? (
+                      <a
+                        href={website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-auto pt-6 text-sm font-bold text-cyan-300 underline underline-offset-4"
+                      >
+                        Visitar sitio web →
+                      </a>
+                    ) : (
+                      <p className="mt-auto pt-6 text-xs font-bold uppercase tracking-wider text-blue-100/55">
+                        Organización agremiada
+                      </p>
+                    )}
                   </li>
                 );
               })}
@@ -142,8 +158,8 @@ export default async function HonoraryMembersPage() {
           )}
 
           <p className="mt-8 max-w-4xl text-sm leading-relaxed text-blue-100/60">
-            Esta lista no es el padrón completo. Solo aparecen personas con membresía honoraria vigente que otorgaron
-            su autorización expresa. Cada persona decide qué información mostrar y puede retirarla en cualquier momento.
+            Esta lista no es el padrón completo. Solo aparecen personas y organizaciones con membresía honoraria
+            vigente y autorización expresa. La autorización puede retirarse en cualquier momento.
           </p>
         </div>
       </section>

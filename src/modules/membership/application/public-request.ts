@@ -77,6 +77,24 @@ export const publicMembershipRequestSchema = z
         .regex(/^FI-EMB-\d{5}$/, { error: () => 'Escribe un código de Embajador Índigo válido.' }),
     ),
     physicalCredentialRequested: z.boolean().default(false),
+    honorarySubjectKind: z.enum(['PERSON', 'ORGANIZATION']).optional().default('PERSON'),
+    organizationLegalName: optionalText(z.string().trim().min(2).max(200)),
+    organizationTradeName: optionalText(z.string().trim().max(200)),
+    organizationTaxId: optionalText(
+      z
+        .string()
+        .trim()
+        .toUpperCase()
+        .regex(/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/, {
+          error: () => 'Revisa el RFC: debe tener 12 o 13 caracteres, incluida la homoclave.',
+        }),
+    ),
+    organizationKind: optionalText(
+      z.enum(['COMPANY', 'SCHOOL', 'PUBLIC_INSTITUTION', 'CIVIL_SOCIETY', 'OTHER']),
+    ),
+    organizationSector: optionalText(z.string().trim().min(2).max(120)),
+    organizationWebsite: optionalText(z.url({ error: () => 'Escribe una dirección web completa, por ejemplo https://empresa.mx.' }).max(300)),
+    organizationPublicListingAuthorized: z.boolean().default(false),
     workRelation: optionalText(z.enum(['SUBORDINATE', 'INDEPENDENT'])),
     otherUnionMembership: optionalText(z.enum(['NONE', 'SAME_TRADE', 'DIFFERENT_TRADE'])),
     otherUnionClarification: optionalText(z.string().trim().max(2000)),
@@ -147,6 +165,29 @@ export const publicMembershipRequestSchema = z
         code: 'custom',
         path: ['neurodivergentConnection'],
         message: 'Cuéntanos qué tipo de contacto tienes con personas neurodivergentes.',
+      });
+    }
+
+    if (value.modality === 'HONORARY_AFFILIATE' && value.honorarySubjectKind === 'ORGANIZATION') {
+      if (value.organizationLegalName === undefined) {
+        refinement.addIssue({ code: 'custom', path: ['organizationLegalName'], message: 'Escribe la razón social.' });
+      }
+      if (value.organizationTaxId === undefined) {
+        refinement.addIssue({ code: 'custom', path: ['organizationTaxId'], message: 'Escribe el RFC de la organización.' });
+      }
+      if (value.organizationKind === undefined) {
+        refinement.addIssue({ code: 'custom', path: ['organizationKind'], message: 'Elige el tipo de organización.' });
+      }
+      if (value.organizationSector === undefined) {
+        refinement.addIssue({ code: 'custom', path: ['organizationSector'], message: 'Escribe la actividad o sector.' });
+      }
+    }
+
+    if (value.modality !== 'HONORARY_AFFILIATE' && value.honorarySubjectKind === 'ORGANIZATION') {
+      refinement.addIssue({
+        code: 'custom',
+        path: ['honorarySubjectKind'],
+        message: 'La modalidad institucional sólo está disponible para agremiados honorarios.',
       });
     }
 
@@ -362,6 +403,18 @@ export async function submitPublicMembershipRequest(
     );
   }
 
+  const existingOrganization =
+    data.modality === 'HONORARY_AFFILIATE' &&
+    data.honorarySubjectKind === 'ORGANIZATION' &&
+    data.organizationTaxId !== undefined
+      ? await db().organization.findUnique({
+          where: {
+            legalEntityId_taxId: { legalEntityId: entity.id, taxId: data.organizationTaxId },
+          },
+          select: { id: true, status: true },
+        })
+      : null;
+
   const category = data.modality === 'PROTECTED_BENEFICIARY' ? null : data.modality;
   const [membershipType, statute, genericOccupation] =
     category === null
@@ -397,23 +450,33 @@ export async function submitPublicMembershipRequest(
     );
   }
 
-  const [activeApplication, activeMembership, activeBeneficiary] = await Promise.all([
-    identity.person === null || category === null
+  const [activeApplication, activeMembership, activeBeneficiary, activeOrganizationApplication, activeOrganizationMembership] = await Promise.all([
+    identity.person === null ||
+    category === null ||
+    (category === 'HONORARY_AFFILIATE' && data.honorarySubjectKind === 'ORGANIZATION')
       ? null
       : db().membershipApplication.findFirst({
           where: {
             personId: identity.person.id,
             category,
+            ...(category === 'HONORARY_AFFILIATE' ? { organizationId: null } : {}),
             status: {
               in: ['DRAFT', 'SUBMITTED', 'DOCUMENTATION_PENDING', 'UNDER_REVIEW', 'CLARIFICATION_REQUIRED', 'APPROVED', 'PENDING_PAYMENT'],
             },
           },
           select: { folio: true },
         }),
-    identity.person === null || category === null
+    identity.person === null ||
+    category === null ||
+    (category === 'HONORARY_AFFILIATE' && data.honorarySubjectKind === 'ORGANIZATION')
       ? null
       : db().membership.findFirst({
-          where: { personId: identity.person.id, category, status: 'ACTIVE' },
+          where: {
+            personId: identity.person.id,
+            category,
+            status: 'ACTIVE',
+            ...(category === 'HONORARY_AFFILIATE' ? { organizationId: null } : {}),
+          },
           select: { memberNumber: true },
         }),
     identity.person === null || category !== null
@@ -422,7 +485,41 @@ export async function submitPublicMembershipRequest(
           where: { personId: identity.person.id, status: { notIn: ['CLOSED', 'ARCHIVED'] } },
           select: { publicId: true },
         }),
+    existingOrganization === null || category !== 'HONORARY_AFFILIATE'
+      ? null
+      : db().membershipApplication.findFirst({
+          where: {
+            organizationId: existingOrganization.id,
+            category: 'HONORARY_AFFILIATE',
+            status: {
+              in: ['DRAFT', 'SUBMITTED', 'DOCUMENTATION_PENDING', 'UNDER_REVIEW', 'CLARIFICATION_REQUIRED', 'APPROVED', 'PENDING_PAYMENT'],
+            },
+          },
+          select: { folio: true },
+        }),
+    existingOrganization === null || category !== 'HONORARY_AFFILIATE'
+      ? null
+      : db().membership.findFirst({
+          where: { organizationId: existingOrganization.id, category: 'HONORARY_AFFILIATE', status: 'ACTIVE' },
+          select: { memberNumber: true },
+        }),
   ]);
+  if (activeOrganizationApplication !== null) {
+    return fail(
+      errors.conflict(
+        `La organización ya tiene una solicitud honoraria en trámite con folio ${activeOrganizationApplication.folio}.`,
+        'solicitud honoraria viva para la misma organización',
+      ),
+    );
+  }
+  if (activeOrganizationMembership !== null) {
+    return fail(
+      errors.conflict(
+        `La organización ya es agremiada honoraria con número ${activeOrganizationMembership.memberNumber}.`,
+        'membresía honoraria activa para la misma organización',
+      ),
+    );
+  }
   if (activeApplication !== null) {
     return fail(
       errors.conflict(
@@ -505,6 +602,27 @@ export async function submitPublicMembershipRequest(
           metadata: { origin: 'public-membership-registration', fields: ['curp', 'primaryEmail', 'primaryPhone'] },
           });
       }
+
+      const organization =
+        category === 'HONORARY_AFFILIATE' && data.honorarySubjectKind === 'ORGANIZATION'
+          ? existingOrganization ??
+            (await tx.organization.create({
+              data: {
+                publicId: newPublicId(),
+                legalName: data.organizationLegalName!,
+                tradeName: data.organizationTradeName ?? null,
+                taxId: data.organizationTaxId!,
+                kind: data.organizationKind!,
+                sector: data.organizationSector!,
+                website: data.organizationWebsite ?? null,
+                status: 'PROSPECT',
+                legalEntityId: entity.id,
+                createdByActorId: systemActor.id,
+                updatedByActorId: systemActor.id,
+              },
+              select: { id: true },
+            }))
+          : null;
 
       // La solicitud pública también abre la cuenta de acceso. Antes solo se
       // creaban Person y MembershipApplication: la persona aparecía en la
@@ -662,7 +780,10 @@ export async function submitPublicMembershipRequest(
               neurodivergentContactStatement: data.neurodivergentConnection ?? null,
               otherUnionMembership: null,
               otherUnionClarification: null,
-              honoraryProfile: 'PROFESSIONAL_OR_COLLABORATOR' as const,
+              honoraryProfile:
+                data.honorarySubjectKind === 'ORGANIZATION'
+                  ? ('INSTITUTION' as const)
+                  : ('PROFESSIONAL_OR_COLLABORATOR' as const),
             };
 
       const application = await tx.membershipApplication.create({
@@ -678,6 +799,9 @@ export async function submitPublicMembershipRequest(
           territoryHint: data.territory,
           promoterReference: data.promoterReference ?? null,
           ambassadorId: ambassador?.id ?? null,
+          organizationId: organization?.id ?? null,
+          organizationPublicListingAuthorized:
+            organization !== null && data.organizationPublicListingAuthorized,
           physicalCredentialRequested:
             category === 'HONORARY_AFFILIATE' ? true : data.physicalCredentialRequested,
           originFingerprint,
@@ -691,6 +815,19 @@ export async function submitPublicMembershipRequest(
               correo: data.email,
               telefono: data.phone ?? null,
             },
+            sujetoHonorario:
+              organization === null
+                ? 'PERSONA'
+                : {
+                    tipo: 'ORGANIZACION',
+                    razonSocial: data.organizationLegalName,
+                    nombreComercial: data.organizationTradeName ?? null,
+                    rfc: data.organizationTaxId,
+                    clase: data.organizationKind,
+                    sector: data.organizationSector,
+                    sitioWeb: data.organizationWebsite ?? null,
+                    publicacionAutorizada: data.organizationPublicListingAuthorized,
+                  },
             categoria: category,
             ocupacionDeclarada: data.occupation,
             territorioDeclarado: data.territory,
@@ -725,6 +862,7 @@ export async function submitPublicMembershipRequest(
           category,
           origin: 'public-registration',
           ambassadorCode: ambassador?.code ?? null,
+          organizationId: organization?.id ?? null,
         },
       });
 
@@ -786,7 +924,7 @@ export async function submitPublicMembershipRequest(
     if (uniqueConflict) {
       return fail(
         errors.conflict(
-          'Ya existe un expediente con esa CURP. Entra a tu cuenta o solicita ayuda para revisarlo.',
+          'Ya existe un expediente con esa CURP o RFC. Entra a tu cuenta o solicita ayuda para revisarlo.',
           'conflicto único durante registro público',
         ),
       );

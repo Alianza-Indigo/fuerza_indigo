@@ -53,6 +53,7 @@ export const PERFIL_HONORARIO: Record<string, string> = {
   FAMILY_MEMBER: 'Familiar',
   CAREGIVER: 'Persona cuidadora',
   PROFESSIONAL_OR_COLLABORATOR: 'Profesional o colaborador de la comunidad',
+  INSTITUTION: 'Empresa u organización',
 };
 
 export const ACCION_DE_REVISION: Record<string, string> = {

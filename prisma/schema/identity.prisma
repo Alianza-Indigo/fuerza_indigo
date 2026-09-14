@@ -513,9 +513,11 @@ model Organization {
 
   users           OrganizationUser[]
   roleAssignments RoleAssignment[]
+  honoraryApplications MembershipApplication[] @relation("HonoraryApplicationOrganization")
+  honoraryMemberships  Membership[]            @relation("HonoraryMembershipOrganization")
 
   @@index([legalEntityId])
-  @@index([taxId])
+  @@unique([legalEntityId, taxId])
   @@index([territorialUnitId])
   /// Expedientes de negociación en los que es contraparte (Fase 5).
   bargainingFiles BargainingFile[] @relation("BargainingCounterpart")

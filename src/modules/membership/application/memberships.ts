@@ -180,6 +180,8 @@ interface SolicitudActivable {
   readonly id: string;
   readonly folio: string;
   readonly personId: string;
+  readonly organizationId: string | null;
+  readonly organizationPublicListingAuthorized: boolean;
   readonly membershipTypeId: string;
   readonly category: MembershipCategory;
   readonly legalEntityId: string;
@@ -221,6 +223,8 @@ export async function crearMembresiaActiva(
       publicId: newPublicId(20),
       memberNumber,
       personId: solicitud.personId,
+      organizationId: solicitud.organizationId,
+      organizationPublicListingAuthorized: solicitud.organizationPublicListingAuthorized,
       membershipTypeId: solicitud.membershipTypeId,
       category: solicitud.category,
       legalEntityId: solicitud.legalEntityId,
@@ -242,6 +246,7 @@ export async function crearMembresiaActiva(
   await emitirCredencialDeMembresia(tx, actor, {
     id: creada.id,
     personId: solicitud.personId,
+    organizationId: solicitud.organizationId,
     legalEntityId: solicitud.legalEntityId,
     category: solicitud.category,
     expiresAt: creada.expiresAt,
@@ -279,6 +284,32 @@ export async function crearMembresiaActiva(
     otorganteUserId: resolucion?.resolvedById ?? null,
   });
 
+  if (solicitud.organizationId !== null) {
+    await tx.organization.update({
+      where: { id: solicitud.organizationId },
+      data: { status: 'ACTIVE', updatedByActorId: actor.actorId, rowVersion: { increment: 1 } },
+    });
+    const representative = await tx.organizationUser.findFirst({
+      where: {
+        organizationId: solicitud.organizationId,
+        personId: solicitud.personId,
+        revokedAt: null,
+        OR: [{ endsAt: null }, { endsAt: { gt: ahora } }],
+      },
+      select: { id: true },
+    });
+    if (representative === null) {
+      await tx.organizationUser.create({
+        data: {
+          organizationId: solicitud.organizationId,
+          personId: solicitud.personId,
+          role: 'CONTACT',
+          jobTitle: 'Representante ante Fuerza Índigo',
+        },
+      });
+    }
+  }
+
   // El alta queda preparada para el informe ante la autoridad laboral, dentro
   // de la misma transacción que la produce (PRD §8.1 paso 14). Solo para las
   // calidades que sí aparecen ante autoridades: la función lo comprueba.
@@ -298,7 +329,12 @@ export async function crearMembresiaActiva(
     legalEntityId: solicitud.legalEntityId,
     onBehalfOfPersonId: solicitud.personId,
     ...(solicitud.territorialUnitId === null ? {} : { territorialUnitId: solicitud.territorialUnitId }),
-    metadata: { folio: solicitud.folio, memberNumber: creada.memberNumber, origen },
+    metadata: {
+      folio: solicitud.folio,
+      memberNumber: creada.memberNumber,
+      origen,
+      organizationId: solicitud.organizationId,
+    },
   });
 
   return { membershipId: creada.id, memberNumber: creada.memberNumber };
@@ -315,6 +351,8 @@ export async function solicitudParaActivar(
       id: true,
       folio: true,
       personId: true,
+      organizationId: true,
+      organizationPublicListingAuthorized: true,
       membershipTypeId: true,
       category: true,
       legalEntityId: true,

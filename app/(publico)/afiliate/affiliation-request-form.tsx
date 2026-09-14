@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 
 import {
   Checkbox,
@@ -30,6 +30,8 @@ export function AffiliationRequestForm({
   const unionMember = modality === 'UNION_MEMBER';
   const honoraryMember = modality === 'HONORARY_AFFILIATE';
   const assisted = ambassador !== undefined;
+  const [honorarySubjectKind, setHonorarySubjectKind] = useState<'PERSON' | 'ORGANIZATION'>('PERSON');
+  const institutionalHonorary = honoraryMember && honorarySubjectKind === 'ORGANIZATION';
 
   if (state.status === 'ok' && state.folio !== undefined) {
     const formalApplication = state.destination === 'APPLICATION';
@@ -115,12 +117,43 @@ export function AffiliationRequestForm({
         </div>
       )}
 
+      {honoraryMember && (
+        <RadioGroup
+          name="honorarySubjectKind"
+          legend="¿Quién solicita la afiliación honoraria?"
+          help="La empresa u organización será la titular; una persona representante administrará el trámite y su acceso."
+          value={honorarySubjectKind}
+          onChange={(value) => setHonorarySubjectKind(value as 'PERSON' | 'ORGANIZATION')}
+          options={[
+            {
+              value: 'PERSON',
+              label: 'Una persona',
+              hint: 'Médico, terapeuta, docente u otra persona profesional o colaboradora.',
+            },
+            {
+              value: 'ORGANIZATION',
+              label: 'Una empresa u organización',
+              hint: 'Empresa, escuela, institución pública, asociación civil u otra organización.',
+            },
+          ]}
+          {...(errors['honorarySubjectKind'] === undefined
+            ? {}
+            : { errors: errors['honorarySubjectKind'] })}
+        />
+      )}
+
       <fieldset className="space-y-4">
         <legend className="text-lg font-bold">
-          {assisted ? 'Datos de la persona que se registra' : 'Tus datos de identificación'}
+          {institutionalHonorary
+            ? 'Datos de la persona representante'
+            : assisted
+              ? 'Datos de la persona que se registra'
+              : 'Tus datos de identificación'}
         </legend>
         <p className="text-sm text-[var(--color-ink-soft)]">
-          Los usamos para identificar tu solicitud y continuar el trámite contigo.
+          {institutionalHonorary
+            ? 'Esta persona será el contacto autorizado y tendrá acceso al seguimiento del expediente.'
+            : 'Los usamos para identificar tu solicitud y continuar el trámite contigo.'}
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -209,6 +242,89 @@ export function AffiliationRequestForm({
         )}
       </fieldset>
 
+      {institutionalHonorary && (
+        <>
+          <div className="h-px bg-[var(--color-line)]" />
+          <fieldset className="space-y-4">
+            <legend className="text-lg font-bold">Datos de la empresa u organización</legend>
+            <p className="text-sm text-[var(--color-ink-soft)]">
+              Estos datos identifican a quien tendrá la calidad de agremiado honorario institucional.
+            </p>
+            <Field
+              name="organizationLegalName"
+              label="Razón social"
+              required
+              autoComplete="organization"
+              {...(errors['organizationLegalName'] === undefined
+                ? {}
+                : { errors: errors['organizationLegalName'] })}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                name="organizationTradeName"
+                label="Nombre comercial"
+                hint="Opcional."
+                autoComplete="organization"
+                {...(errors['organizationTradeName'] === undefined
+                  ? {}
+                  : { errors: errors['organizationTradeName'] })}
+              />
+              <Field
+                name="organizationTaxId"
+                label="RFC"
+                hint="Con homoclave."
+                required
+                autoComplete="off"
+                {...(errors['organizationTaxId'] === undefined
+                  ? {}
+                  : { errors: errors['organizationTaxId'] })}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select
+                name="organizationKind"
+                label="Tipo de organización"
+                required
+                options={[
+                  { value: 'COMPANY', label: 'Empresa' },
+                  { value: 'SCHOOL', label: 'Escuela o institución educativa' },
+                  { value: 'PUBLIC_INSTITUTION', label: 'Institución pública' },
+                  { value: 'CIVIL_SOCIETY', label: 'Asociación u organización civil' },
+                  { value: 'OTHER', label: 'Otra organización' },
+                ]}
+                {...(errors['organizationKind'] === undefined
+                  ? {}
+                  : { errors: errors['organizationKind'] })}
+              />
+              <Field
+                name="organizationSector"
+                label="Actividad o sector"
+                required
+                hint="Por ejemplo: educación, salud, tecnología o comercio."
+                {...(errors['organizationSector'] === undefined
+                  ? {}
+                  : { errors: errors['organizationSector'] })}
+              />
+            </div>
+            <Field
+              name="organizationWebsite"
+              label="Sitio web"
+              hint="Opcional. Incluye https://"
+              type="url"
+              autoComplete="url"
+              {...(errors['organizationWebsite'] === undefined
+                ? {}
+                : { errors: errors['organizationWebsite'] })}
+            />
+            <Checkbox
+              name="organizationPublicListingAuthorized"
+              label="Autorizo que la organización aparezca en la red pública de agremiados honorarios después de su aprobación."
+              help="Se mostrarán el nombre, sector, territorio y sitio web; nunca los datos personales de la persona representante."
+            />
+          </fieldset>
+        </>
+      )}
+
       <div className="h-px bg-[var(--color-line)]" />
 
       {unionMember ? (
@@ -278,7 +394,7 @@ export function AffiliationRequestForm({
         <fieldset className="space-y-5">
           <legend className="text-lg font-bold">Tu contacto con la comunidad</legend>
           <p className="text-sm text-[var(--color-ink-soft)]">
-            Esta categoría incluye médicos, terapeutas, docentes y otros profesionales o colaboradores. Tiene voz,
+            Esta categoría incluye personas profesionales, colaboradoras, empresas y organizaciones. Tiene voz,
             pero no voto.
           </p>
 
@@ -341,7 +457,7 @@ export function AffiliationRequestForm({
           <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-sunken)] p-4 text-sm">
             <p className="font-semibold">La afiliación honoraria incluye credencial física.</p>
             <p className="mt-1 text-[var(--color-ink-soft)]">
-              Después de la aprobación y el pago de la cuota, la persona subirá su fotografía para que el personal autorizado pueda imprimirla.
+              Después de la aprobación y, cuando corresponda, del pago acordado, se completarán los datos necesarios para que el personal autorizado pueda imprimirla.
             </p>
           </div>
         </>
@@ -360,7 +476,9 @@ export function AffiliationRequestForm({
           name="acceptsStatutes"
           required
           label={
-            assisted
+            institutionalHonorary
+              ? 'Declaro que tengo facultades para representar a la organización, acepto los estatutos vigentes en su nombre y confirmo que la información es verdadera.'
+              : assisted
               ? 'La persona solicitante acepta los estatutos vigentes y declara que la información proporcionada es verdadera.'
               : 'Acepto los estatutos vigentes y declaro que la información proporcionada es verdadera.'
           }

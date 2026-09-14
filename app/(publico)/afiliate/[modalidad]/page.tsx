@@ -28,15 +28,15 @@ const CONTENT = {
     eyebrow: 'Agremiado honorario',
     title: 'Solicitud para agremiado honorario',
     description:
-      'Para médicos, terapeutas, docentes y otros profesionales o colaboradores que tienen contacto con personas neurodivergentes.',
+      'Para médicos, terapeutas, docentes, empresas y organizaciones que tienen contacto con personas neurodivergentes.',
     modality: 'HONORARY_AFFILIATE' as const,
     icon: 'formacion',
     requirements: [
-      'Ser profesional o colaborar con la comunidad neurodivergente.',
+      'Ser profesional, empresa u organización que colabora con la comunidad neurodivergente.',
       'Tener contacto de cualquier índole con personas neurodivergentes.',
       'Compartir un correo donde podamos dar seguimiento al trámite.',
       'Aceptar el aviso de privacidad vigente.',
-      'Cubrir la cuota sindical de afiliación después de la aprobación.',
+      'Cubrir, después de la aprobación, la cuota que se determine para el caso concreto.',
     ],
     benefits: ['Voz sin voto', 'Participación y colaboración', 'Credencial física incluida'],
   },

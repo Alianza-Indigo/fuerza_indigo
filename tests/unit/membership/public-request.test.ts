@@ -63,6 +63,53 @@ describe('solicitud pública de registro', () => {
     expect(result.success).toBe(true);
   });
 
+  it('acepta a una empresa como agremiada honoraria y conserva a su representante', () => {
+    const result = publicMembershipRequestSchema.safeParse({
+      ...CONTACT,
+      modality: 'HONORARY_AFFILIATE',
+      honorarySubjectKind: 'ORGANIZATION',
+      organizationLegalName: 'Inclusión Índigo, S.A. de C.V.',
+      organizationTradeName: 'Inclusión Índigo',
+      organizationTaxId: 'IIN260101AB1',
+      organizationKind: 'COMPANY',
+      organizationSector: 'Tecnología accesible',
+      organizationWebsite: 'https://example.mx',
+      organizationPublicListingAuthorized: true,
+      workRelation: '',
+      neurodivergentConnection: 'La empresa atiende a personas neurodivergentes entre sus clientes y usuarios.',
+      protectedProfile: '',
+      context: 'Deseamos colaborar con programas de inclusión.',
+      ageConfirmed: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.organizationTaxId).toBe('IIN260101AB1');
+  });
+
+  it('exige identificación institucional cuando la titular es una organización', () => {
+    const result = publicMembershipRequestSchema.safeParse({
+      ...CONTACT,
+      modality: 'HONORARY_AFFILIATE',
+      honorarySubjectKind: 'ORGANIZATION',
+      organizationLegalName: '',
+      organizationTaxId: '',
+      organizationKind: '',
+      organizationSector: '',
+      workRelation: '',
+      neurodivergentConnection: 'La organización tiene contacto con personas neurodivergentes.',
+      protectedProfile: '',
+      context: '',
+      ageConfirmed: false,
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.map((issue) => issue.path[0])).toEqual(
+      expect.arrayContaining(['organizationLegalName', 'organizationTaxId', 'organizationKind', 'organizationSector']),
+    );
+  });
+
   it('acepta el registro de una persona beneficiaria protegida sin voz, voto ni cuota', () => {
     const result = publicMembershipRequestSchema.safeParse({
       ...CONTACT,

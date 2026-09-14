@@ -88,6 +88,10 @@ model MembershipApplication {
   territoryHint        String?             @db.VarChar(160)
   promoterReference    String?             @db.VarChar(160)
   ambassadorId         String?             @db.Uuid
+  /// En la vía honoraria, la titular puede ser una organización. `personId`
+  /// conserva a la persona representante y usuaria del portal.
+  organizationId       String?             @db.Uuid
+  organizationPublicListingAuthorized Boolean @default(false)
   physicalCredentialRequested Boolean      @default(false)
   originFingerprint    String?             @db.VarChar(64)
 
@@ -135,6 +139,7 @@ model MembershipApplication {
   createdByActor  Actor             @relation("ApplicationCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor  Actor             @relation("ApplicationUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
   ambassador      IndigoAmbassador?  @relation(fields: [ambassadorId], references: [id], onDelete: Restrict)
+  organization    Organization?      @relation("HonoraryApplicationOrganization", fields: [organizationId], references: [id], onDelete: Restrict)
 
   documents      ApplicationDocument[]
   reviews        ApplicationReview[]
@@ -148,6 +153,7 @@ model MembershipApplication {
   @@index([legalEntityId, status])
   @@index([originFingerprint, createdAt])
   @@index([ambassadorId, createdAt])
+  @@index([organizationId, status])
   @@map("membership_application")
 }
 
@@ -186,6 +192,7 @@ enum HonoraryProfile {
   FAMILY_MEMBER
   CAREGIVER
   PROFESSIONAL_OR_COLLABORATOR
+  INSTITUTION
 }
 
 /// Evidencia adjunta a una solicitud, con revisión documento por documento.
@@ -327,6 +334,10 @@ model Membership {
   /// alguien enseña.
   memberNumber      String             @unique @db.VarChar(30)
   personId          String             @db.Uuid
+  /// Nulo para membresías personales; identifica al titular institucional de
+  /// una membresía honoraria y deja a `personId` como representante.
+  organizationId    String?            @db.Uuid
+  organizationPublicListingAuthorized Boolean @default(false)
   membershipTypeId  String             @db.Uuid
   category          MembershipCategory
   legalEntityId     String             @db.Uuid
@@ -350,6 +361,7 @@ model Membership {
   rowVersion       Int      @default(0)
 
   person          Person                 @relation(fields: [personId], references: [id], onDelete: Restrict)
+  organization    Organization?           @relation("HonoraryMembershipOrganization", fields: [organizationId], references: [id], onDelete: Restrict)
   membershipType  MembershipType         @relation(fields: [membershipTypeId, category], references: [id, category], onDelete: Restrict)
   legalEntity     LegalEntity            @relation(fields: [legalEntityId], references: [id], onDelete: Restrict)
   application     MembershipApplication? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
@@ -364,6 +376,7 @@ model Membership {
   subscriptions Subscription[]
 
   @@index([personId])
+  @@index([organizationId, status])
   @@index([legalEntityId, status])
   /// El padrón se recorre por entidad, calidad y estado (PRD §7.1). Sin este
   /// índice cada consulta recorre la tabla entera: hoy no se nota y el día de

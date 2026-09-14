@@ -137,6 +137,8 @@ export async function applicationQueue(
               { folio: { contains: texto, mode: 'insensitive' as const } },
               { person: { familyName: { contains: texto, mode: 'insensitive' as const } } },
               { person: { givenName: { contains: texto, mode: 'insensitive' as const } } },
+              { organization: { legalName: { contains: texto, mode: 'insensitive' as const } } },
+              { organization: { tradeName: { contains: texto, mode: 'insensitive' as const } } },
             ],
           }),
     },
@@ -165,6 +167,16 @@ export interface ApplicationDetail extends ApplicationRow {
   readonly otherUnionMembership: string | null;
   readonly otherUnionClarification: string | null;
   readonly honoraryProfile: string | null;
+  readonly organization: {
+    readonly id: string;
+    readonly legalName: string;
+    readonly tradeName: string | null;
+    readonly taxId: string | null;
+    readonly kind: string;
+    readonly sector: string | null;
+    readonly website: string | null;
+  } | null;
+  readonly organizationPublicListingAuthorized: boolean;
   readonly resolutionAt: Date | null;
   readonly resolutionReason: string | null;
   readonly resolvedBy: string | null;
@@ -231,6 +243,18 @@ export async function applicationDetail(
       otherUnionMembership: true,
       otherUnionClarification: true,
       honoraryProfile: true,
+      organizationPublicListingAuthorized: true,
+      organization: {
+        select: {
+          id: true,
+          legalName: true,
+          tradeName: true,
+          taxId: true,
+          kind: true,
+          sector: true,
+          website: true,
+        },
+      },
       occupationText: true,
       promoterReference: true,
       physicalCredentialRequested: true,
@@ -307,6 +331,8 @@ export async function applicationDetail(
     otherUnionMembership: solicitud.otherUnionMembership,
     otherUnionClarification: solicitud.otherUnionClarification,
     honoraryProfile: solicitud.honoraryProfile,
+    organization: solicitud.organization,
+    organizationPublicListingAuthorized: solicitud.organizationPublicListingAuthorized,
     resolutionAt: solicitud.resolutionAt,
     resolutionReason: solicitud.resolutionReason,
     resolvedBy:

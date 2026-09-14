@@ -114,23 +114,31 @@ export async function emitirCredencialDeMembresia(
   membresia: {
     id: string;
     personId: string;
+    organizationId?: string | null;
     legalEntityId: string;
     category: 'UNION_MEMBER' | 'HONORARY_AFFILIATE';
     expiresAt: Date | null;
     territorialUnitId: string | null;
   },
 ): Promise<{ credentialId: string; publicCode: string }> {
-  const persona = await tx.person.findUniqueOrThrow({
-    where: { id: membresia.personId },
-    select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true },
-  });
-  const territorio =
+  const [persona, organizacion, territorio] = await Promise.all([
+    tx.person.findUniqueOrThrow({
+      where: { id: membresia.personId },
+      select: { givenName: true, middleName: true, familyName: true, secondFamilyName: true },
+    }),
+    membresia.organizationId === null || membresia.organizationId === undefined
+      ? null
+      : tx.organization.findUniqueOrThrow({
+          where: { id: membresia.organizationId },
+          select: { legalName: true, tradeName: true },
+        }),
     membresia.territorialUnitId === null
       ? null
-      : await tx.territorialUnit.findUnique({
+      : tx.territorialUnit.findUnique({
           where: { id: membresia.territorialUnitId },
           select: { name: true },
-        });
+        }),
+  ]);
 
   const codigo = nuevoCodigoFirmado();
   const creada = await tx.memberCredential.create({
@@ -141,7 +149,7 @@ export async function emitirCredencialDeMembresia(
       membershipId: membresia.id,
       personId: membresia.personId,
       credentialKind: membresia.category,
-      displayName: nombreCompleto(persona),
+      displayName: organizacion?.tradeName ?? organizacion?.legalName ?? nombreCompleto(persona),
       territoryLabel: territorio?.name ?? null,
       expiresAt: membresia.expiresAt,
       createdByActorId: actor.actorId,
@@ -157,7 +165,11 @@ export async function emitirCredencialDeMembresia(
     outcome: 'SUCCESS',
     legalEntityId: membresia.legalEntityId,
     onBehalfOfPersonId: membresia.personId,
-    metadata: { tipo: membresia.category, origen: 'activación de membresía' },
+    metadata: {
+      tipo: membresia.category,
+      origen: 'activación de membresía',
+      organizationId: membresia.organizationId ?? null,
+    },
   });
 
   return { credentialId: creada.id, publicCode: creada.publicCode };

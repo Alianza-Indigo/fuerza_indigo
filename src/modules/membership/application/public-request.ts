@@ -8,8 +8,10 @@ import { db } from '@/platform/db/client';
 import { transaction, type Tx } from '@/platform/db/unit-of-work';
 import { errors } from '@/platform/errors/app-error';
 import { systemContext } from '@/platform/kernel/actor-context';
-import { fingerprint, newPublicId } from '@/platform/kernel/ids';
+import { fingerprint, hashToken, newOpaqueToken, newPublicId } from '@/platform/kernel/ids';
 import { fail, ok, type UseCaseResult } from '@/platform/kernel/result';
+import { sendTemplatedMail } from '@/platform/mail/mailer';
+import { logger } from '@/platform/observability/logger';
 
 /**
  * Alta pública de afiliación.
@@ -29,6 +31,7 @@ export const PUBLIC_MEMBERSHIP_INTAKE_NOTICE_CODE = 'PRIVACY_NOTICE_MEMBERSHIP_I
 
 const PUBLIC_REGISTRATION_ACTOR_LABEL = 'Registro público de afiliación';
 const PUBLIC_REGISTRATION_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxSubmissions: 5 } as const;
+const ACCOUNT_SETUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function optionalText<T extends z.ZodType<string, string>>(schema: T) {
   return z.preprocess(
@@ -164,6 +167,10 @@ function validationDetails(error: z.ZodError): Record<string, string[]> {
 export interface PublicMembershipRequestResult {
   readonly folio: string;
   readonly destination: 'APPLICATION' | 'PROTECTED_BENEFICIARY';
+  /** Forma en que la persona puede terminar de preparar su acceso. */
+  readonly accountAccess: 'SETUP_LINK' | 'EMAIL' | 'EXISTING';
+  /** Solo se expone al navegador que acaba de crear la cuenta. */
+  readonly accountSetupUrl?: string;
 }
 
 async function nextApplicationFolio(tx: Tx, prefix: string, year: number): Promise<string> {
@@ -187,7 +194,7 @@ async function existingPerson(curp: string, email: string) {
     db().person.findUnique({ where: { curp }, select: { id: true, curp: true, primaryEmail: true } }),
     db().user.findUnique({
       where: { email },
-      select: { person: { select: { id: true, curp: true, primaryEmail: true } } },
+      select: { id: true, person: { select: { id: true, curp: true, primaryEmail: true } } },
     }),
   ]);
 
@@ -201,7 +208,59 @@ async function existingPerson(curp: string, email: string) {
     conflict: false as const,
     person,
     hasDigitalAccount: person !== null && byAccount?.person.id === person.id,
+    userId: person !== null && byAccount?.person.id === person.id ? byAccount.id : null,
   };
+}
+
+async function ensureAutomaticPortalRole(
+  tx: Tx,
+  actor: ReturnType<typeof systemContext>,
+  input: {
+    userId: string;
+    personId: string;
+    legalEntityId: string;
+    roleCode: 'APPLICANT' | 'PROTECTED_BENEFICIARY';
+  },
+): Promise<void> {
+  const role = await tx.role.findUnique({ where: { code: input.roleCode }, select: { id: true } });
+  if (role === null) throw new Error(`Falta el rol automático ${input.roleCode}.`);
+
+  const existing = await tx.roleAssignment.findFirst({
+    where: {
+      userId: input.userId,
+      roleId: role.id,
+      legalEntityId: input.legalEntityId,
+      revokedAt: null,
+    },
+    select: { id: true },
+  });
+  if (existing !== null) return;
+
+  // RoleAssignment conserva una FK histórica a una cuenta otorgante. Para los
+  // roles automáticos de autoservicio usamos la cuenta destinataria como ancla;
+  // la bitácora deja claro que el actor real fue el registro público del sistema.
+  const assignment = await tx.roleAssignment.create({
+    data: {
+      userId: input.userId,
+      roleId: role.id,
+      legalEntityId: input.legalEntityId,
+      grantedById: input.userId,
+      grantReason:
+        input.roleCode === 'APPLICANT'
+          ? 'Asignación automática al presentar una solicitud pública de afiliación.'
+          : 'Asignación automática al registrarse como beneficiario protegido.',
+    },
+    select: { id: true },
+  });
+  await recordAudit(tx, actor, {
+    action: AUDIT_ACTIONS.ROLE_GRANTED,
+    objectKind: 'RoleAssignment',
+    objectId: assignment.id,
+    outcome: 'SUCCESS',
+    legalEntityId: input.legalEntityId,
+    onBehalfOfPersonId: input.personId,
+    metadata: { role: input.roleCode, origin: 'public-membership-registration', automatic: true },
+  });
 }
 
 export async function submitPublicMembershipRequest(
@@ -364,7 +423,7 @@ export async function submitPublicMembershipRequest(
   });
 
   try {
-    return await transaction(async (tx) => {
+    const registered = await transaction(async (tx) => {
       const person =
         identity.person === null
           ? await tx.person.create({
@@ -412,8 +471,64 @@ export async function submitPublicMembershipRequest(
           legalEntityId: entity.id,
           onBehalfOfPersonId: person.id,
           metadata: { origin: 'public-membership-registration', fields: ['curp', 'primaryEmail', 'primaryPhone'] },
+          });
+      }
+
+      // La solicitud pública también abre la cuenta de acceso. Antes solo se
+      // creaban Person y MembershipApplication: la persona aparecía en la
+      // bandeja, pero no existía en user_account y por tanto jamás podía entrar
+      // a consultar su propio trámite. La cuenta nace ACTIVE porque durante la
+      // puesta en marcha la verificación por correo está deshabilitada; el
+      // testigo únicamente permite elegir la primera contraseña.
+      let accountSetupToken: string | null = null;
+      let accountUserId = identity.userId;
+      if (!identity.hasDigitalAccount) {
+        accountSetupToken = newOpaqueToken();
+        const user = await tx.user.create({
+          data: {
+            personId: person.id,
+            email: data.email,
+            status: 'ACTIVE',
+            mustChangePassword: true,
+            createdByActorId: systemActor.id,
+            updatedByActorId: systemActor.id,
+          },
+          select: { id: true },
+        });
+        accountUserId = user.id;
+        await tx.actor.create({
+          data: {
+            kind: 'PERSON',
+            userId: user.id,
+            label: [data.givenName, data.familyName].join(' '),
+          },
+        });
+        await tx.passwordReset.create({
+          data: {
+            userId: user.id,
+            tokenHash: hashToken(accountSetupToken),
+            expiresAt: new Date(now.getTime() + ACCOUNT_SETUP_TTL_MS),
+            requestIpHash: context.ipHash,
+          },
+        });
+        await recordAudit(tx, actor, {
+          action: AUDIT_ACTIONS.USER_INVITED,
+          objectKind: 'User',
+          objectId: user.id,
+          outcome: 'SUCCESS',
+          legalEntityId: entity.id,
+          onBehalfOfPersonId: person.id,
+          metadata: { origin: 'public-membership-registration', status: 'ACTIVE' },
         });
       }
+      if (accountUserId === null) throw new Error('No fue posible vincular la cuenta del registro público.');
+
+      await ensureAutomaticPortalRole(tx, actor, {
+        userId: accountUserId,
+        personId: person.id,
+        legalEntityId: entity.id,
+        roleCode: category === null ? 'PROTECTED_BENEFICIARY' : 'APPLICANT',
+      });
 
       const consent = await tx.consent.create({
         data: {
@@ -458,7 +573,7 @@ export async function submitPublicMembershipRequest(
             territoryHint: data.territory,
             promoterReference: data.promoterReference ?? null,
             originFingerprint,
-            hasDigitalAccount: identity.hasDigitalAccount,
+            hasDigitalAccount: true,
             privacyLevel: 'REINFORCED',
             createdByActorId: systemActor.id,
             updatedByActorId: systemActor.id,
@@ -475,7 +590,12 @@ export async function submitPublicMembershipRequest(
           onBehalfOfPersonId: person.id,
           metadata: { publicId: beneficiary.publicId, origin: 'public-registration' },
         });
-        return ok({ folio: beneficiary.publicId, destination: 'PROTECTED_BENEFICIARY' as const });
+        return {
+          folio: beneficiary.publicId,
+          destination: 'PROTECTED_BENEFICIARY' as const,
+          personId: person.id,
+          accountSetupToken,
+        };
       }
 
       const folio = await nextApplicationFolio(tx, entity.documentSeriesPrefix, now.getUTCFullYear());
@@ -551,7 +671,57 @@ export async function submitPublicMembershipRequest(
         metadata: { folio: application.folio, category, origin: 'public-registration' },
       });
 
-      return ok({ folio: application.folio, destination: 'APPLICATION' as const });
+      return {
+        folio: application.folio,
+        destination: 'APPLICATION' as const,
+        personId: person.id,
+        accountSetupToken,
+      };
+    });
+
+    if (registered.accountSetupToken === null) {
+      return ok({
+        folio: registered.folio,
+        destination: registered.destination,
+        accountAccess: 'EXISTING' as const,
+      });
+    }
+
+    const accountSetupUrl = `${env().APP_URL}/activar/${registered.accountSetupToken}`;
+    if (env().ACCOUNT_ACTIVATION_DELIVERY === 'email') {
+      try {
+        await sendTemplatedMail({
+          to: data.email,
+          templateCode: 'USER_INVITATION',
+          variables: {
+            givenName: data.givenName,
+            activationUrl: accountSetupUrl,
+            expiresInHours: '168',
+          },
+          correlationId: context.correlationId,
+        });
+        return ok({
+          folio: registered.folio,
+          destination: registered.destination,
+          accountAccess: 'EMAIL' as const,
+        });
+      } catch (error) {
+        // La cuenta y la solicitud ya quedaron guardadas. Entregamos el enlace
+        // en pantalla para no dejar a la persona fuera por una falla de correo.
+        logger.error('No se pudo enviar el enlace de acceso de la afiliación pública', {
+          module: 'membership',
+          correlationId: context.correlationId,
+          outcome: 'failed',
+          context: { personId: registered.personId, error: String(error) },
+        });
+      }
+    }
+
+    return ok({
+      folio: registered.folio,
+      destination: registered.destination,
+      accountAccess: 'SETUP_LINK' as const,
+      accountSetupUrl,
     });
   } catch (error) {
     const uniqueConflict =

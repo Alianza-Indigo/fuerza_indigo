@@ -205,7 +205,24 @@ describe('con aviso publicado', () => {
         occupationText: true,
         promoterReference: true,
         territoryHint: true,
-        person: { select: { curp: true, primaryEmail: true } },
+        person: {
+          select: {
+            curp: true,
+            primaryEmail: true,
+            user: {
+              select: {
+                status: true,
+                mustChangePassword: true,
+                actor: { select: { kind: true } },
+                passwordResets: { where: { consumedAt: null, invalidatedAt: null }, select: { id: true } },
+                roleAssignments: {
+                  where: { revokedAt: null },
+                  select: { role: { select: { code: true } } },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -213,6 +230,13 @@ describe('con aviso publicado', () => {
     expect(guardada.status).toBe('SUBMITTED');
     expect(guardada.person.curp).toBe('GODE561231MDFRRN09');
     expect(guardada.person.primaryEmail).toBe('maria.afiliacion@ejemplo.mx');
+    expect(guardada.person.user?.status).toBe('ACTIVE');
+    expect(guardada.person.user?.mustChangePassword).toBe(true);
+    expect(guardada.person.user?.actor?.kind).toBe('PERSON');
+    expect(guardada.person.user?.passwordResets).toHaveLength(1);
+    expect(guardada.person.user?.roleAssignments.map((assignment) => assignment.role.code)).toContain('APPLICANT');
+    expect(resultado.data.accountAccess).toBe('SETUP_LINK');
+    expect(resultado.data.accountSetupUrl).toContain('/activar/');
     expect(guardada.occupationText).toBe('Docente');
     expect(guardada.promoterReference).toBe('FI-2026-0015 · Ana Pérez');
     expect(guardada.territoryHint).toBe('Ciudad de México, Coyoacán');

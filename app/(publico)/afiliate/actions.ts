@@ -9,6 +9,8 @@ export interface AffiliationRequestState {
   readonly message?: string;
   readonly folio?: string;
   readonly destination?: 'APPLICATION' | 'PROTECTED_BENEFICIARY';
+  readonly accountAccess?: 'SETUP_LINK' | 'EMAIL' | 'EXISTING';
+  readonly accountSetupUrl?: string;
   readonly fieldErrors?: Record<string, string[]>;
 }
 
@@ -51,5 +53,11 @@ export async function submitAffiliationRequestAction(
     };
   }
 
-  return { status: 'ok', folio: result.data.folio, destination: result.data.destination };
+  return {
+    status: 'ok',
+    folio: result.data.folio,
+    destination: result.data.destination,
+    accountAccess: result.data.accountAccess,
+    ...(result.data.accountSetupUrl === undefined ? {} : { accountSetupUrl: result.data.accountSetupUrl }),
+  };
 }

@@ -51,6 +51,35 @@ export function AffiliationRequestForm({ modality }: { modality: RegistrationCat
           )}
         </div>
 
+        <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-5">
+          <h2 className="font-bold">Tu cuenta de acceso está activa</h2>
+          {state.accountAccess === 'SETUP_LINK' && state.accountSetupUrl !== undefined ? (
+            <>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                Crea ahora tu contraseña. El enlace es personal, se usa una sola vez y vence en siete días.
+              </p>
+              <Link
+                href={state.accountSetupUrl}
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--color-accent)] px-5 py-2.5 font-semibold text-[var(--color-ink-inverse)]"
+              >
+                Crear mi contraseña y entrar
+              </Link>
+            </>
+          ) : state.accountAccess === 'EMAIL' ? (
+            <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+              Te enviamos un enlace para crear tu contraseña. Revisa también la carpeta de correo no deseado.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+              Ya tenías una cuenta con este correo; puedes entrar con tu contraseña habitual.
+            </p>
+          )}
+          <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
+            La cuenta te permite consultar el trámite. La afiliación sindical se activa únicamente después de su
+            aprobación y, cuando corresponda, del pago aplicable.
+          </p>
+        </div>
+
         <p className="text-sm text-[var(--color-ink-soft)]">
           {formalApplication
             ? 'El folio acredita la recepción del expediente, no la aprobación de la afiliación. '

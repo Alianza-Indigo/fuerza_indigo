@@ -514,10 +514,10 @@ describe('credenciales de cargo y profesionales (F4-CRE-001)', () => {
 });
 
 describe('descargar la credencial (F4-CRE-002)', () => {
-  it('la persona descarga la suya, y queda asiento de la entrega', async () => {
-    const { persona, suyo, credencial } = await agremiadaConCredencial('Descarga');
+  it('el personal autorizado la descarga, y queda asiento de la entrega', async () => {
+    const { persona, credencial } = await agremiadaConCredencial('Descarga');
 
-    const resultado = await credentialForDownload(suyo, credencial.id);
+    const resultado = await credentialForDownload(secretaria, credencial.id);
     expect(resultado.ok, resultado.ok ? '' : JSON.stringify(resultado.error)).toBe(true);
     if (!resultado.ok) return;
 
@@ -533,8 +533,8 @@ describe('descargar la credencial (F4-CRE-002)', () => {
   });
 
   it('el documento lleva el QR, el código legible y el diseño de su tipo', async () => {
-    const { suyo, credencial } = await agremiadaConCredencial('Dibuja');
-    const datos = await credentialForDownload(suyo, credencial.id);
+    const { credencial } = await agremiadaConCredencial('Dibuja');
+    const datos = await credentialForDownload(secretaria, credencial.id);
     if (!datos.ok) throw datos.error;
 
     const svg = svgCredencial({
@@ -561,7 +561,7 @@ describe('descargar la credencial (F4-CRE-002)', () => {
   });
 
   it('no se descarga una credencial que ya no vale', async () => {
-    const { suyo, credencial } = await agremiadaConCredencial('NoVale');
+    const { credencial } = await agremiadaConCredencial('NoVale');
     await revokeCredential(secretaria, {
       credentialId: credencial.id,
       reason: 'La persona reportó que perdió la credencial impresa el martes pasado.',
@@ -569,14 +569,13 @@ describe('descargar la credencial (F4-CRE-002)', () => {
 
     // Entregar el dibujo de una credencial revocada es fabricar el documento
     // que no debería circular.
-    const intento = await credentialForDownload(suyo, credencial.id);
+    const intento = await credentialForDownload(secretaria, credencial.id);
     expect(intento.ok).toBe(false);
     if (!intento.ok) expect(intento.error.code).toBe('CONFLICT');
   });
 
-  it('nadie descarga la credencial de otra persona', async () => {
-    const { credencial } = await agremiadaConCredencial('Mia');
-    const { suyo } = await agremiadaConCredencial('Tuya');
+  it('la persona titular no descarga ni siquiera su propia credencial', async () => {
+    const { suyo, credencial } = await agremiadaConCredencial('SoloDigital');
     const intento = await credentialForDownload(suyo, credencial.id);
     expect(intento.ok).toBe(false);
     if (!intento.ok) expect(intento.error.code).toBe('FORBIDDEN');

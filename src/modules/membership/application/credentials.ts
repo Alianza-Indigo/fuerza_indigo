@@ -1044,11 +1044,13 @@ export async function personCredentials(
 }
 
 /**
- * Una credencial concreta, para dibujarla o descargarla.
+ * Una credencial concreta, para que el personal autorizado la imprima.
  *
- * Descargar la propia deja asiento (`CREDENTIAL_DOWNLOADED`) porque es la
- * entrega de un documento: si mañana aparece una credencial impresa que no
- * debería circular, la pregunta «cuándo se descargó y quién» tiene respuesta.
+ * Ver la credencial propia y fabricar su archivo imprimible son facultades
+ * distintas. Solo quien puede emitir credenciales puede descargar este
+ * documento. Cada descarga deja asiento (`CREDENTIAL_DOWNLOADED`): si mañana
+ * aparece una credencial impresa que no debería circular, se puede saber quién
+ * produjo el archivo y cuándo.
  */
 export async function credentialForDownload(
   actor: ActorContext,
@@ -1060,16 +1062,19 @@ export async function credentialForDownload(
   });
   if (fila === null) return fail(errors.notFound('credencial inexistente'));
 
-  const propia = fila.personId === actor.personId;
+  const datos = aFila(fila);
   const decision = can(
     actor,
-    propia ? 'credentialing.credential.read_own' : 'credentialing.credential.read',
-    { kind: 'MemberCredential', id: fila.id, containsPersonalData: true },
-    { hasLiveAssignment: () => propia },
+    'credentialing.credential.issue',
+    {
+      kind: 'MemberCredential',
+      id: fila.id,
+      legalEntityId: datos.legalEntityId,
+      containsPersonalData: true,
+    },
   );
   if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
 
-  const datos = aFila(fila);
   if (datos.status !== 'ACTIVE') {
     return fail(
       errors.conflict(

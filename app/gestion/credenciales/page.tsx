@@ -200,6 +200,13 @@ export default async function CredencialesPage({
                           <td className="p-3">
                             {credencial.status === 'ACTIVE' ? (
                               <div className="space-y-4">
+                                <a
+                                  href={`/gestion/credenciales/${credencial.id}/imprimir`}
+                                  className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-4 font-medium text-[var(--color-ink-inverse)]"
+                                  download
+                                >
+                                  Descargar para imprimir
+                                </a>
                                 <RevokeForm credentialId={credencial.id} />
                                 <ReplaceForm credentialId={credencial.id} />
                               </div>

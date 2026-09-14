@@ -7,22 +7,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Descarga de la credencial en formato digital e imprimible (PRD §7.4,
- * F4-CRE-002).
- *
- * **Se dibuja al pedirla, no se guarda una copia.** El documento se deriva del
- * estado de la credencial en este instante; archivar el dibujo produciría una
- * imagen que envejece —con el diseño de hace dos años y una vigencia que ya
- * pasó— y que alguien acabaría enseñando. Lo que hay que poder demostrar es el
- * **código**, y ese sí está guardado y firmado.
- *
- * **SVG y no PDF** (ADR-0091): imprime igual de bien a cualquier tamaño, lo
- * abre cualquier navegador, pesa unos kilobytes y no obliga a añadir una
- * biblioteca de composición de documentos para dibujar seis líneas de texto.
- *
- * Solo se entrega si la credencial está **vigente**: `credentialForDownload`
- * rechaza las revocadas, repuestas y vencidas. Entregar el dibujo de una
- * credencial que ya no vale es fabricar el documento que no debería circular.
+ * Archivo imprimible reservado al personal autorizado para emitir
+ * credenciales. La autorización se comprueba dentro de
+ * `credentialForDownload`; la ubicación bajo Gestión solo hace visible la
+ * intención, no sustituye el control del servidor.
  */
 export async function GET(
   _request: Request,
@@ -54,8 +42,6 @@ export async function GET(
     headers: {
       'Content-Type': 'image/svg+xml; charset=utf-8',
       'Content-Disposition': `attachment; filename="credencial-${credencial.publicCode}.svg"`,
-      // Lleva el nombre de una persona y su código de verificación: no se
-      // guarda en ninguna caché intermedia.
       'Cache-Control': 'private, no-store, max-age=0',
       'X-Content-Type-Options': 'nosniff',
     },

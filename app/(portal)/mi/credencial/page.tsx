@@ -49,7 +49,7 @@ export default async function MiCredencialPage() {
   return (
     <PageShell
       title="Mi credencial"
-      description="Tu credencial digital, con su código para verificarla. Puedes enseñarla desde el teléfono o descargarla para imprimirla."
+      description="Tu credencial digital, con su código para verificarla. Puedes enseñarla desde el teléfono; la impresión corresponde únicamente al personal autorizado."
     >
       <div className="space-y-8">
         {credenciales.data.length === 0 && (
@@ -122,13 +122,6 @@ export default async function MiCredencialPage() {
                     </dl>
 
                     <div className="flex flex-wrap gap-3">
-                      <a
-                        href={`/mi/credencial/${credencial.id}/descargar`}
-                        className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-accent)] px-4 font-medium text-[var(--color-ink-inverse)]"
-                        download
-                      >
-                        Descargar para imprimir
-                      </a>
                       <Link
                         href={`/verificar/${credencial.token}`}
                         className="inline-flex min-h-11 items-center rounded-lg border border-[var(--color-line-strong)] px-4 font-medium"
@@ -175,8 +168,9 @@ export default async function MiCredencialPage() {
             número de miembro.
           </p>
           <p>
-            Si pierdes la credencial impresa, avisa a la organización: se repone con un código nuevo y el
-            anterior deja de valer en el acto.
+            La impresión y reposición corresponden al personal autorizado. Si pierdes una credencial
+            impresa, avisa a la organización: se repone con un código nuevo y el anterior deja de valer
+            en el acto.
           </p>
         </Prose>
       </div>

@@ -437,7 +437,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     requiresReason: true,
   }),
   define('credentialing.credential.read', 'Consultar credenciales emitidas', { sensitivity: 'SENSITIVE' }),
-  define('credentialing.credential.read_own', 'Consultar y descargar la credencial propia', {
+  define('credentialing.credential.read_own', 'Consultar la credencial digital propia', {
     needsAssignment: true,
   }),
 

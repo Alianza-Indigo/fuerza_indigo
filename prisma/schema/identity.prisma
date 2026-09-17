@@ -518,6 +518,13 @@ model Organization {
 
   @@index([legalEntityId])
   @@unique([legalEntityId, taxId])
+  /// Lo crea la migración inicial y el esquema no lo declaraba: la comparación
+  /// esquema-migraciones lo veía como una divergencia, es decir, como que una
+  /// instalación desde cero y una base al día no producen lo mismo. Se declara
+  /// aquí, que es donde faltaba; el índice ya existe en la base y no hace falta
+  /// migración. Sirve para buscar una organización por su RFC sin acotar antes
+  /// por entidad jurídica, que el único único compuesto no cubre.
+  @@index([taxId])
   @@index([territorialUnitId])
   /// Expedientes de negociación en los que es contraparte (Fase 5).
   bargainingFiles BargainingFile[] @relation("BargainingCounterpart")

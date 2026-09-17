@@ -30,7 +30,7 @@ async function existe(consulta: string, parametros: unknown[] = []): Promise<boo
 }
 
 describe('instalación limpia', () => {
-  it('crea las 135 tablas de las fases 1 a 9', async () => {
+  it('crea las 136 tablas del sistema', async () => {
     const { rows } = await base.sql.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'
@@ -91,6 +91,9 @@ describe('instalación limpia', () => {
       // Fase 8 · inteligencia artificial gobernada. Nueve tablas, y la cuenta
       // importa: si un día apareciera aquí una que guarde el texto enviado al
       // modelo en claro, o la clave del proveedor, este conteo lo diría.
+      // Embajadores Índigo, de la puesta en marcha: acompañan un registro y no
+      // pueden aprobarlo ni consultar el expediente.
+      'indigo_ambassador',
       'ai_provider_configuration', 'ai_prompt', 'ai_prompt_version',
       'ai_prompt_version_source', 'ai_conversation', 'ai_generation', 'ai_review',
       'knowledge_source', 'knowledge_chunk',
@@ -103,7 +106,7 @@ describe('instalación limpia', () => {
     ]) {
       expect(tablas, `falta la tabla ${esperada}`).toContain(esperada);
     }
-    expect(tablas).toHaveLength(135);
+    expect(tablas).toHaveLength(136);
   });
 
   it('deja registradas todas las migraciones del repositorio, ninguna a medias', async () => {

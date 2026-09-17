@@ -195,7 +195,17 @@ describe('una misma persona acumula relaciones sin duplicarse (F4-QA-001)', () =
     expect(await base.prisma.protectedBeneficiary.count({ where: { personId: quien.personId } })).toBe(1);
     expect(await base.prisma.membership.count({ where: { personId: quien.personId } })).toBe(1);
     expect(await base.prisma.careRelationship.count({ where: { fromPersonId: quien.personId } })).toBe(1);
-    expect(await base.prisma.memberCredential.count({ where: { personId: quien.personId } })).toBe(1);
+    // Dos credenciales, y cada una por su relación: la de beneficiaria protegida
+    // —que nace con el registro protegido— y la de afiliada honoraria, que nace
+    // con la membresía. No son un duplicado: el criterio que esta prueba
+    // defiende es que la **persona** no se duplique, y sigue siendo una sola
+    // fila. Eran una sola hasta que el beneficiario protegido tuvo la suya.
+    const credenciales = await base.prisma.memberCredential.findMany({
+      where: { personId: quien.personId },
+      select: { credentialKind: true },
+    });
+    expect(credenciales).toHaveLength(2);
+    expect(credenciales.map((c) => c.credentialKind).sort()).toEqual(['HONORARY_AFFILIATE', 'PROTECTED_BENEFICIARY']);
   });
 
   it('la atención protegida no se cierra al afiliarse: son cosas distintas', async () => {

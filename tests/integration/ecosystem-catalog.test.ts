@@ -142,10 +142,13 @@ describe('las direcciones que el gestor de contenidos no puede ocupar', () => {
     const actor = await contextoDe(base.prisma, redactora);
 
     const resultado = await createPage(actor, {
-      slug: 'que-es-fuerza-indigo',
+      // Una dirección que ninguna ruta del código sirve. La anterior,
+      // `que-es-fuerza-indigo`, dejó de servir para esto en cuanto se construyó
+      // esa pantalla: pasó a estar reservada y la prueba afirmaba lo contrario.
+      slug: 'preguntas-frecuentes-de-afiliacion',
       kind: 'PAGE',
-      title: 'Qué es Fuerza Índigo',
-      summary: 'Quiénes somos y qué defendemos.',
+      title: 'Preguntas frecuentes de afiliación',
+      summary: 'Lo que más se pregunta antes de afiliarse.',
       bodyMarkdown: 'Contenido.',
       accessLevel: 'PUBLIC',
     });

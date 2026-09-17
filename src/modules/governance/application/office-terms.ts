@@ -277,7 +277,7 @@ export async function appointOffice(
           metadata: {
             roleCode: office.grantsRoleCode,
             porCargo: office.name,
-            puestaEnMarchaInicial: actor.actorKind === 'ROOT_SUPERADMIN' && actor.userId === null,
+            puestaEnMarchaInicial: actor.actorKind === 'ROOT_SUPERADMIN',
           },
         });
       }

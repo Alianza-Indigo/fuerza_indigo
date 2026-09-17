@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma-client/client';
 import { healthReport } from '@/platform/health';
-import { resetEnvCache } from '@/platform/config/env';
+import { env, resetEnvCache } from '@/platform/config/env';
 import { PERMISSIONS } from '@/platform/authz/permissions';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 
@@ -64,15 +64,23 @@ describe('la semilla', () => {
     }).toEqual(primera);
   }, 180_000);
 
-  it('no siembra ni una sola persona: el padrón no se inventa', async () => {
+  it('no siembra ni un solo agremiado: el padrón no se inventa', async () => {
     base = await createTestDatabase('semilla_sin_personas');
     await base.seed();
 
     // Sembrar personas ficticias en un ambiente compartido es exactamente el
-    // «dato simulado en producción» que el PRD §0.3 prohíbe.
-    expect(await base.prisma.person.count()).toBe(0);
-    expect(await base.prisma.user.count()).toBe(0);
+    // dato simulado que no debe existir. Lo que la semilla sí crea es **una**
+    // fila: la cuenta institucional del Superadmin, que no es un agremiado —no
+    // tiene membresía, ni padrón, ni directorio— sino la identidad con la que
+    // la raíz responde por lo que resuelve (ADR-0182).
+    const correoDeLaRaiz = env().SUPERADMIN_EMAIL.trim().toLowerCase();
+    expect(await base.prisma.person.count()).toBe(1);
+    expect(await base.prisma.user.count()).toBe(1);
+    expect(await base.prisma.user.count({ where: { email: correoDeLaRaiz } })).toBe(1);
+
+    // Y sigue sin sembrar nada que pueda iniciar sesión ni figurar en un padrón.
     expect(await base.prisma.credential.count()).toBe(0);
+    expect(await base.prisma.membership.count()).toBe(0);
   }, 120_000);
 
   it('el catálogo de permisos de la base coincide con el del código', async () => {
@@ -310,7 +318,12 @@ describe('el arranque de la primera Secretaría Ejecutiva', () => {
       mensaje = `${fallo.stdout ?? ''}${fallo.stderr ?? ''}`;
     }
     expect(mensaje).toContain('formato válido');
-    expect(await base.prisma.user.count()).toBe(0);
+    // Solo la cuenta institucional de la raíz, que siembra la semilla: el guion
+    // no llegó a crear ninguna con el correo mal formado (ADR-0182).
+    expect(await base.prisma.user.count()).toBe(1);
+    expect(
+      await base.prisma.user.count({ where: { email: { not: env().SUPERADMIN_EMAIL.trim().toLowerCase() } } }),
+    ).toBe(0);
   }, 180_000);
 });
 

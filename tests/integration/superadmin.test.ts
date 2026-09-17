@@ -19,6 +19,12 @@ import { isAuthorizedCron } from '@/platform/http/cron-auth';
 import { env, resetEnvCache } from '@/platform/config/env';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { crearPersonaConCuenta, entidadPrincipal } from './helpers/fixtures';
+import {
+  startAssistedApplication,
+  submitApplication,
+  startReview,
+  resolveApplication,
+} from '@/modules/membership';
 import { ROOT_TEST_PASSWORD } from './setup-env';
 
 /**
@@ -42,14 +48,31 @@ afterAll(async () => {
 });
 
 describe('acceso del actor raíz', () => {
-  it('entra con las credenciales del entorno, sin existir como persona', async () => {
+  it('entra con las credenciales del entorno, sin consultar la base', () => {
+    // Sin `await` a propósito: comprobar la credencial de la raíz no toca la
+    // base. Por eso puede administrar una instalación recién encendida.
     const resultado = verifyRootCredentials(env().SUPERADMIN_EMAIL, ROOT_TEST_PASSWORD);
     expect(resultado.ok).toBe(true);
+  });
 
-    // No hay ninguna persona ni cuenta que le corresponda: su acceso no depende
-    // del padrón, y por eso puede administrar un sistema todavía vacío.
-    expect(await base.prisma.person.count()).toBe(0);
-    expect(await base.prisma.user.count()).toBe(0);
+  /**
+   * La raíz **sí** tiene ahora una cuenta institucional, porque varios actos
+   * —tomar y resolver una solicitud de afiliación, responder una aclaración—
+   * exigen una persona identificada y no un actor. Lo que esa cuenta no hace es
+   * abrir un segundo camino de acceso: nace sin credencial, de modo que nadie
+   * puede iniciar sesión con ella por la puerta ordinaria.
+   *
+   * Si algún día se le crea una credencial, esta prueba cae. Debe caer: sería
+   * una contraseña más con acceso total, fuera del entorno y fuera de rotación.
+   */
+  it('su cuenta institucional existe y no abre un segundo camino de acceso', async () => {
+    const cuenta = await base.prisma.user.findUnique({
+      where: { email: env().SUPERADMIN_EMAIL.trim().toLowerCase() },
+      select: { id: true, status: true, _count: { select: { credentials: true } } },
+    });
+    expect(cuenta, 'la semilla debe crear la cuenta institucional de la raíz').not.toBeNull();
+    expect(cuenta?.status).toBe('ACTIVE');
+    expect(cuenta?._count.credentials).toBe(0);
   });
 
   it('rechaza la contraseña incorrecta y el correo incorrecto por igual', () => {
@@ -98,7 +121,7 @@ describe('la sesión raíz es independiente y de larga duración', () => {
     }
   });
 
-  it('resuelve a un actor raíz sin cuenta pero con todos los compartimentos', async () => {
+  it('resuelve a un actor raíz con su cuenta institucional y todos los compartimentos', async () => {
     const emitida = await transaction((tx) =>
       issueSession(tx, {
         userId: null,
@@ -117,9 +140,15 @@ describe('la sesión raíz es independiente y de larga duración', () => {
       userAgentSummary: 'prueba',
     });
 
+    const institucional = await base.prisma.user.findUniqueOrThrow({
+      where: { email: env().SUPERADMIN_EMAIL.trim().toLowerCase() },
+      select: { id: true },
+    });
+
     expect(actor.actorKind).toBe('ROOT_SUPERADMIN');
-    expect(actor.userId).toBeNull();
-    expect(actor.personId).toBeNull();
+    // Actúa con su cuenta institucional allí donde el sistema exige una persona.
+    expect(actor.userId).toBe(institucional.id);
+    // Y su poder no viene de un rol: sigue sin ninguno, como siempre.
     expect(actor.roles).toEqual([]);
     // Acceso total (ADR-0174): la raíz tiene los tres compartimentos.
     expect([...actor.compartments].sort()).toEqual(['DISCIPLINARY', 'SOCIAL', 'UNION']);
@@ -218,9 +247,15 @@ describe('la raíz tiene acceso total (ADR-0174)', () => {
       where: { id: resultado.data.assignmentId },
       select: { grantedById: true, grantReason: true },
     });
-    // La cuenta designada ocupa el campo relacional obligatorio; el acto real
-    // queda atribuido al actor raíz en la bitácora y marcado como arranque.
-    expect(assignment.grantedById).toBe(persona.userId);
+    // El otorgante es la cuenta institucional de la raíz. Antes se anotaba a la
+    // propia persona designada, porque la columna es obligatoria y la raíz no
+    // tenía cuenta: se nombraba a sí misma. Ahora dice quién nombró de verdad.
+    const institucional = await base.prisma.user.findUniqueOrThrow({
+      where: { email: env().SUPERADMIN_EMAIL.trim().toLowerCase() },
+      select: { id: true },
+    });
+    expect(assignment.grantedById).toBe(institucional.id);
+    expect(assignment.grantedById).not.toBe(persona.userId);
     expect(assignment.grantReason).toContain('raíz');
 
     const segundo = await crearPersonaConCuenta(base.prisma, { givenName: 'Segunda' });
@@ -450,4 +485,115 @@ describe('autenticación de las rutas programadas', () => {
     expect(isAuthorizedCron(conCabecera(`Bearer ${secreto.slice(0, -1)}`))).toBe(false);
     expect(isAuthorizedCron(conCabecera(`Bearer ${secreto}x`))).toBe(false);
   });
+});
+
+/** Contexto de una sesión raíz viva, como la que resuelve una petición real. */
+async function raizAutenticada() {
+  const emitida = await transaction((tx) =>
+    issueSession(tx, {
+      userId: null,
+      actorKind: 'ROOT_SUPERADMIN',
+      sessionVersion: env().SUPERADMIN_SESSION_VERSION,
+      ipHash: null,
+      userAgentSummary: null,
+    }),
+  );
+  return resolveActor({
+    sessionToken: null,
+    rootSessionToken: emitida.token,
+    correlationId: 'correlacion-afiliacion',
+    ipHash: null,
+    userAgentSummary: null,
+  });
+}
+
+describe('la raíz puede dar de alta y aceptar una afiliación', () => {
+  /**
+   * Es lo que el acceso total del ADR-0174 prometía y la base impedía. Los
+   * permisos nunca fueron el problema —la raíz los tiene todos—: `reviewerId` y
+   * `resolvedById` apuntan a `User` y no admiten vacío, de modo que sin cuenta
+   * institucional los seis actos de revisión fallaban con «necesitas haber
+   * iniciado sesión», después de que la pantalla ya se hubiera pintado entera.
+   *
+   * Se ejerce el recorrido completo, no una comprobación de permiso: dar de
+   * alta, tomar la revisión y resolver. Y se mira después lo que quedó escrito,
+   * que es lo que de verdad importa: el expediente tiene que poder decir quién
+   * admitió a esa persona.
+   */
+  it('recorre alta, revisión y resolución, y el expediente dice quién resolvió', async () => {
+    const actor = await raizAutenticada();
+
+    const solicitante = await crearPersonaConCuenta(base.prisma, { givenName: 'Quien', familyName: 'Se Afilia' });
+    const calidad = await base.prisma.membershipType.findFirstOrThrow({
+      where: { code: 'AGREMIADO' },
+      select: { id: true },
+    });
+
+    const alta = await startAssistedApplication(actor, {
+      personId: solicitante.personId,
+      membershipTypeId: calidad.id,
+      territorialUnitId: null,
+    });
+    expect(alta.ok, alta.ok ? '' : alta.error.message).toBe(true);
+    if (!alta.ok) return;
+
+    // La captura asistida nace en borrador; presentarla es lo que la pone en
+    // trámite, igual que en el formulario público.
+    const oficio = await base.prisma.specialtyCatalog.findFirstOrThrow({ select: { id: true } });
+    const presentada = await submitApplication(actor, {
+      category: 'UNION_MEMBER',
+      applicationId: alta.data.applicationId,
+      personId: solicitante.personId,
+      membershipTypeId: calidad.id,
+      territorialUnitId: null,
+      occupationSpecialtyId: oficio.id,
+      workRelationKind: 'INDEPENDENT',
+      neurodivergentContactStatement:
+        'Acompaño a personas neurodivergentes en su entorno laboral desde hace varios años.',
+      otherUnionMembership: 'NONE',
+      otherUnionClarification: null,
+      acceptsStatutes: true,
+    });
+    expect(presentada.ok, presentada.ok ? '' : presentada.error.message).toBe(true);
+
+    const tomada = await startReview(actor, {
+      applicationId: alta.data.applicationId,
+      note: 'La revisa la administración durante la puesta en marcha.',
+    });
+    expect(tomada.ok, tomada.ok ? '' : tomada.error.message).toBe(true);
+
+    const resuelta = await resolveApplication(actor, {
+      applicationId: alta.data.applicationId,
+      decision: 'APPROVED',
+      rationale:
+        'Cumple los requisitos estatutarios de afiliación y acompañó la documentación exigida. Se admite.',
+    });
+    expect(resuelta.ok, resuelta.ok ? '' : resuelta.error.message).toBe(true);
+    if (!resuelta.ok) return;
+    expect(resuelta.data.status).toBe('APPROVED');
+
+    const institucional = await base.prisma.user.findUniqueOrThrow({
+      where: { email: env().SUPERADMIN_EMAIL.trim().toLowerCase() },
+      select: { id: true },
+    });
+    const expediente = await base.prisma.membershipApplication.findUniqueOrThrow({
+      where: { id: alta.data.applicationId },
+      select: { status: true, resolvedById: true },
+    });
+    // Aprobar no deja el expediente en «aprobado»: esta calidad no exige cobro
+    // previo, así que la resolución activa la membresía en el mismo acto y el
+    // estado final es `ACTIVATED`. Se admiten los dos para no atar la prueba a
+    // si una calidad cobra o no.
+    expect(['APPROVED', 'ACTIVATED']).toContain(expediente.status);
+    // Lo que esto compra: la pregunta «¿quién admitió a esta persona?» tiene
+    // respuesta en el propio expediente, no solo en la bitácora.
+    expect(expediente.resolvedById).toBe(institucional.id);
+
+    const revisiones = await base.prisma.applicationReview.findMany({
+      where: { applicationId: alta.data.applicationId },
+      select: { reviewerId: true },
+    });
+    expect(revisiones.length).toBeGreaterThan(0);
+    for (const revision of revisiones) expect(revision.reviewerId).toBe(institucional.id);
+  }, 120_000);
 });

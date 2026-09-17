@@ -164,7 +164,13 @@ export async function assignRole(
   let grantedById = actor.userId;
   let initialBootstrap = false;
   let bootstrapEntityId: string | null = null;
-  if (grantedById === null) {
+  // La raíz se reconoce por lo que es, no por no tener cuenta. Desde que el
+  // Superadmin tiene cuenta institucional —para poder figurar como quien revisa
+  // y resuelve una afiliación—, `actor.userId` ya no es nulo, y detectarla por
+  // ahí habría saltado en silencio la única puerta que esta rama existe para
+  // custodiar: que la raíz abra el primer nombramiento y **nada más**. La
+  // restricción que impide una segunda Secretaría Ejecutiva vive dentro.
+  if (grantedById === null || actor.actorKind === 'ROOT_SUPERADMIN') {
     // Una instalación nueva no tiene todavía a la persona que podría hacer el
     // primer nombramiento. La raíz puede abrir esa única puerta y nada más: la
     // primera Secretaría Ejecutiva de una entidad. Una vez que existe, todos
@@ -207,10 +213,11 @@ export async function assignRole(
       );
     }
 
-    // La columna histórica exige una cuenta otorgante. En este único acto
-    // constitutivo se usa la cuenta destinataria como ancla relacional; la
-    // bitácora conserva sin ambigüedad que el actor real fue ROOT_SUPERADMIN.
-    grantedById = data.userId;
+    // La columna histórica exige una cuenta otorgante. Se usa la de la raíz
+    // cuando la tiene —su cuenta institucional— y, solo si no existe, la
+    // destinataria como ancla relacional, que era el apaño anterior. La bitácora
+    // conserva en ambos casos que el actor real fue ROOT_SUPERADMIN.
+    grantedById = actor.userId ?? data.userId;
     initialBootstrap = true;
   }
 

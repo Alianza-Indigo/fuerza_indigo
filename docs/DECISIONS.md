@@ -2143,3 +2143,21 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 - **La constante `ACTIVE_PHASE` de `src/platform/config/env.ts` no se toca.** Parece burocracia del contrato y no lo es: de ella depende **qué variables de entorno son obligatorias al arrancar**. Bajarla o quitarla dejaría de exigir las claves que producción necesita, que es exactamente el defecto `D-F4-002` y su reincidencia. Por eso `docs/PHASE_STATUS.md` conserva el número de fase declarado, aunque la fase esté cerrada.
 
 **Consecuencia.** Se pierde el marco que obligaba a terminar una cosa antes de empezar otra y a no dejar nada a medias. Era útil mientras se construía y ya no lo es: un producto en producción se mantiene, no se construye por etapas contratadas. Lo que queda en su lugar es el criterio de quien trabaja, con el historial completo a mano para no repetir lo ya razonado.
+
+---
+
+## ADR-0182 · El Superadmin raíz tiene cuenta institucional, para poder responder por lo que resuelve
+
+**Contexto.** ADR-0174 le dio al actor raíz acceso total, incluidas todas las pantallas. Pero seguía sin cuenta: `actor.userId` era nulo por diseño. Al intentar dar de alta y aceptar una solicitud de afiliación, la pantalla se pintaba entera y el botón fallaba con «Para tomar una solicitud necesitas haber iniciado sesión».
+
+**No eran los permisos.** La raíz los tiene todos. El obstáculo es el modelo de datos: `ApplicationReview.reviewerId` y `MembershipApplication.resolvedById` apuntan a `User` y no admiten vacío. Y lo hacen con razón: un expediente que no puede decir **quién admitió a una persona** no sirve de expediente. Seis puntos de `application-review.ts` rechazaban a un actor sin cuenta, y ese actor era exactamente la raíz.
+
+**Decisión.** La semilla crea una **cuenta institucional** para el correo de `SUPERADMIN_EMAIL` —persona «Administración Fuerza Índigo», editable desde `/gestion/personas`— y el resolvedor de actores ata la sesión raíz a ella. A partir de ahí, la raíz actúa con una identidad allí donde el sistema exige una persona y no un actor.
+
+**No abre un segundo camino de acceso.** La cuenta nace **sin credencial**: no se puede iniciar sesión con ella por la puerta ordinaria. La raíz sigue entrando con la contraseña del entorno, por su propia ruta, con su propia cookie y su propia revocación. Una prueba lo sostiene y cae si algún día alguien le crea una credencial —debe caer: sería una contraseña más con acceso total, fuera del entorno y fuera de rotación—.
+
+**Lo que se ganó sin buscarlo.** El nombramiento de la primera Secretaría Ejecutiva anotaba como otorgante a la **propia persona designada**, porque la columna es obligatoria y no había otra cuenta: se nombraba a sí misma. Ahora anota a la cuenta institucional, que es quien nombró de verdad.
+
+**Lo que estuvo a punto de romperse, y cómo se evitó.** La rama de arranque de `assignRole` se reconocía por `grantedById === null`, es decir, **por que la raíz no tuviera cuenta**. Con cuenta, esa rama dejaba de entrar en silencio, y dentro de ella vive la restricción que impide nombrar una **segunda** Secretaría Ejecutiva viva. La raíz habría pasado a nombrar sin ese límite sin que nada avisara. Se corrigió reconociéndola por lo que es —`actorKind === 'ROOT_SUPERADMIN'`— y no por lo que le falta. La lección: **una condición que identifica a alguien por una carencia se rompe el día que esa carencia desaparece**, y no se rompe con un error, se rompe con silencio.
+
+**Consecuencias.** El Superadmin aparece como una persona más en el registro, y su nombre queda en cada afiliación que resuelva. Es lo que se quería: la pregunta «¿quién admitió a esta persona?» se responde en el propio expediente. Conviene que ese nombre diga algo cierto; se edita desde `/gestion/personas`. Una instalación cuya semilla sea anterior a esto no tiene la fila: el contexto queda como estaba —acceso total, sin cuenta— y `npm run db:seed` la crea.

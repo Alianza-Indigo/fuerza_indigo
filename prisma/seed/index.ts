@@ -1156,6 +1156,54 @@ async function seedAiProvider(actorId: string): Promise<void> {
   });
 }
 
+/**
+ * Cuenta institucional del Superadmin raíz.
+ *
+ * El acceso raíz se autentica con la contraseña del entorno y no con esta
+ * cuenta: aquí no se crea ninguna credencial, de modo que **no aparece un
+ * segundo camino de inicio de sesión**. Lo que esta fila resuelve es otra cosa.
+ *
+ * Varios actos institucionales exigen una persona identificada, no un actor:
+ * quién tomó una solicitud de afiliación, quién la resolvió, quién respondió una
+ * aclaración. Esas columnas apuntan a `User` y no admiten vacío, con razón —un
+ * expediente que no puede decir quién admitió a alguien no sirve de expediente—.
+ * Sin esta fila, la raíz veía la pantalla y el botón le fallaba.
+ *
+ * El nombre es editable desde `/gestion/personas`: aparecerá como quien revisó y
+ * resolvió cada afiliación, así que conviene que diga algo cierto.
+ */
+async function seedSuperadminAccount(actorId: string): Promise<void> {
+  const correo = env().SUPERADMIN_EMAIL.trim().toLowerCase();
+
+  const existente = await prisma.user.findUnique({ where: { email: correo }, select: { id: true } });
+  if (existente !== null) return;
+
+  const persona = await prisma.person.create({
+    data: {
+      publicId: newPublicId(),
+      givenName: 'Administración',
+      familyName: 'Fuerza Índigo',
+      primaryEmail: correo,
+      createdByActorId: actorId,
+      updatedByActorId: actorId,
+    },
+    select: { id: true },
+  });
+
+  await prisma.user.create({
+    data: {
+      personId: persona.id,
+      email: correo,
+      // Activa para poder figurar como autora de actos. Sin credencial no puede
+      // iniciar sesión por el camino ordinario, y `emailVerifiedAt` queda vacío
+      // porque nadie ha comprobado el buzón (misma convención que ADR-0178).
+      status: 'ACTIVE',
+      createdByActorId: actorId,
+      updatedByActorId: actorId,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   const actorId = await seedActors();
   await seedLegalEntities(actorId);
@@ -1171,6 +1219,7 @@ async function main(): Promise<void> {
   await seedStripeAccounts();
   await seedEcosystemLinks(actorId);
   await seedAiProvider(actorId);
+  await seedSuperadminAccount(actorId);
 
   const counts = {
     entidadesJuridicas: await prisma.legalEntity.count(),

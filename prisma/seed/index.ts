@@ -1236,6 +1236,12 @@ async function main(): Promise<void> {
     reglasNormativas: await prisma.normativeRuleSet.count(),
     fichasDelEcosistema: await prisma.ecosystemLink.count(),
     proveedoresDeIaEncendidos: await prisma.aiProviderConfiguration.count({ where: { isEnabled: true } }),
+    // Se informa porque de ella depende que la raíz pueda tomar y resolver una
+    // solicitud de afiliación, y sin esta línea la única forma de saber si la
+    // fila existe en un despliegue era entrar a la base (ADR-0182).
+    cuentaInstitucionalDeLaRaiz: await prisma.user.count({
+      where: { email: env().SUPERADMIN_EMAIL.trim().toLowerCase() },
+    }),
   };
   console.log('Semilla aplicada:', JSON.stringify(counts, null, 2));
 }

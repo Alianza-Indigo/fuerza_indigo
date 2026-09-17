@@ -27,6 +27,7 @@
 export const RUTAS_DEL_CODIGO: readonly string[] = [
   'accesibilidad',
   'afiliate/:param',
+  'agremiados-honorarios',
   'buscar',
   'constancias',
   'constancias/:param',
@@ -34,6 +35,7 @@ export const RUTAS_DEL_CODIGO: readonly string[] = [
   'delegaciones',
   'directorio',
   'directorio/:param',
+  'embajadores/:param',
   'eventos',
   'eventos/:param',
   'herramientas',
@@ -46,6 +48,7 @@ export const RUTAS_DEL_CODIGO: readonly string[] = [
   'transparencia',
   'verificar',
   'verificar/:param',
+  'verificar/:param/foto',
   'votar/:param',
 ];
 

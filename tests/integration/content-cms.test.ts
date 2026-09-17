@@ -134,6 +134,43 @@ describe('borrador', () => {
     expect(!resultado.ok && resultado.error.code).toBe('FORBIDDEN');
   }, 60_000);
 
+  /**
+   * El sitio público resuelve las páginas del gestor por una ruta atrapatodo, y
+   * una ruta del código que case con la misma dirección **gana siempre**, sin
+   * error y sin aviso: la página se publica, el gestor la da por publicada, y
+   * quien abre la dirección ve otra cosa. Por eso se rechaza al crearla, que es
+   * cuando todavía se puede elegir otra.
+   *
+   * Se prueban las tres formas que tiene una ruta del código: sin parámetro, con
+   * un segmento variable, y con un segmento fijo después del variable. Y se
+   * prueba lo contrario —que una dirección parecida pero libre sí se acepte—,
+   * porque un guardián que negara todo también pasaría las tres primeras.
+   */
+  it('una dirección que sirve el propio código se rechaza, y una libre no', async () => {
+    const actor = await contextoDe(base.prisma, redactora);
+    const intentar = (slug: string) =>
+      createPage(actor, {
+        slug,
+        kind: 'PAGE',
+        title: 'Una página que pretende una dirección del código',
+        summary: 'Un resumen suficientemente largo para pasar la validación de entrada.',
+        bodyMarkdown: 'texto',
+        legalEntityId: entidadId,
+        accessLevel: 'PUBLIC',
+      });
+
+    for (const reservada of ['agremiados-honorarios', 'embajadores/ABC123', 'verificar/xyz/foto']) {
+      const resultado = await intentar(reservada);
+      expect(resultado.ok, `${reservada} debería estar reservada`).toBe(false);
+      expect(!resultado.ok && resultado.error.code).toBe('CONFLICT');
+    }
+
+    // `embajadores` a secas no la sirve nadie: el código solo tiene la ficha por
+    // código. El gestor puede publicar ahí y debe poder.
+    const libre = await intentar('embajadores');
+    expect(libre.ok, 'embajadores (sin código) no la sirve el código y debería aceptarse').toBe(true);
+  }, 60_000);
+
   it('una dirección con mayúsculas o espacios se rechaza con una explicación útil', async () => {
     const actor = await contextoDe(base.prisma, redactora);
     const resultado = await createPage(actor, {

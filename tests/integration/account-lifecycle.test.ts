@@ -13,6 +13,8 @@ import {
   requestPasswordReset,
 } from '@/modules/identity';
 import { resolveSession } from '@/platform/auth/session';
+import { setMailerForTests, type MailerPort } from '@/platform/mail/mailer';
+import { resetEnvCache } from '@/platform/config/env';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import {
   contextoDe,
@@ -92,6 +94,70 @@ describe('invitación y activación', () => {
 
     const despues = await login({ email: 'invitada@ejemplo.invalid', password: CLAVE_NUEVA }, contextoLogin);
     expect(despues.ok).toBe(true);
+  }, 60_000);
+
+  /**
+   * Con la entrega por correo configurada, el enlace va al buzón de la persona
+   * y **no** vuelve al panel. Antes volvía igual: el caso de uso no consultaba
+   * `ACCOUNT_ACTIVATION_DELIVERY` y dejaba escrito `delivery: 'panel'` en la
+   * bitácora pasara lo que pasara. Una configuración que el código no lee es una
+   * configuración que miente, y esta en concreto decide quién acaba con una
+   * copia de la llave en la mano.
+   */
+  it('con entrega por correo manda el enlace al buzón y no lo devuelve al panel', async () => {
+    const enviados: { to: string; body: string }[] = [];
+    const captura: MailerPort = {
+      name: 'captura',
+      capability: 'DELIVERS',
+      capabilityDetail: 'adaptador de captura para pruebas',
+      send: ({ to, body }) => {
+        enviados.push({ to, body });
+        return Promise.resolve({ providerMessageId: 'capturado' });
+      },
+    };
+
+    const actor = await contextoDe(base.prisma, secretaria);
+    const invitacion = await inviteUser(actor, {
+      email: 'por-correo@ejemplo.invalid',
+      givenName: 'Por',
+      familyName: 'Correo',
+    });
+    if (!invitacion.ok) throw invitacion.error;
+
+    process.env['ACCOUNT_ACTIVATION_DELIVERY'] = 'email';
+    resetEnvCache();
+    setMailerForTests(captura);
+    try {
+      const nuevo = await createAccountSetupLink(actor, { userId: invitacion.data.userId });
+      expect(nuevo.ok, nuevo.ok ? '' : nuevo.error.message).toBe(true);
+      if (!nuevo.ok) return;
+
+      // No se devuelve: quien administra no se queda con una copia de la llave.
+      expect(nuevo.data.setupUrl).toBe('');
+
+      expect(enviados).toHaveLength(1);
+      expect(enviados[0]?.to).toBe('por-correo@ejemplo.invalid');
+
+      // Y el enlace que llegó al buzón sirve de verdad.
+      const enlace = /\/activar\/([A-Za-z0-9_-]+)/.exec(enviados[0]?.body ?? '');
+      expect(enlace, 'el correo debe traer el enlace de activación').not.toBeNull();
+      const activacion = await activateAccount(
+        { token: enlace?.[1] ?? '', password: CLAVE_NUEVA, passwordConfirmation: CLAVE_NUEVA },
+        contexto,
+      );
+      expect(activacion.ok, activacion.ok ? '' : activacion.error.message).toBe(true);
+
+      const asiento = await base.prisma.auditEvent.findFirst({
+        where: { objectKind: 'User', objectId: invitacion.data.userId, action: 'identity.user.setup_link_created' },
+        orderBy: { occurredAt: 'desc' },
+        select: { metadata: true },
+      });
+      expect((asiento?.metadata as { delivery?: string } | null)?.delivery).toBe('email');
+    } finally {
+      setMailerForTests(null);
+      process.env['ACCOUNT_ACTIVATION_DELIVERY'] = 'panel';
+      resetEnvCache();
+    }
   }, 60_000);
 
   it('regenera desde el panel el enlace perdido de una cuenta existente', async () => {

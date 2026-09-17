@@ -185,8 +185,17 @@ export const createAccountSetupLinkSchema = z.object({ userId: z.uuid() });
 
 /**
  * Genera un nuevo testigo para una cuenta que todavía no tiene contraseña.
- * Permite recuperar las invitaciones existentes al retirar temporalmente la
- * dependencia del correo; solo se devuelve a quien puede invitar cuentas.
+ *
+ * Respeta `ACCOUNT_ACTIVATION_DELIVERY`, que es de donde viene su nombre: en
+ * `panel` devuelve el enlace a quien administra, para que lo entregue; en
+ * `email` lo manda al buzón de la persona y **no** lo devuelve, porque
+ * entregarlo por dos caminos a la vez convierte en dos las copias de una llave
+ * que debería tener una sola dueña.
+ *
+ * Antes ignoraba la variable: mandaba el enlace al panel incluso con la entrega
+ * por correo configurada, y dejaba escrito en la bitácora `delivery: 'panel'`
+ * pasara lo que pasara. Una configuración que el código no consulta es una
+ * configuración que miente.
  */
 export async function createAccountSetupLink(
   actor: ActorContext,
@@ -204,6 +213,7 @@ export async function createAccountSetupLink(
       id: true,
       email: true,
       status: true,
+      person: { select: { givenName: true } },
       credentials: { where: { type: 'PASSWORD', revokedAt: null }, take: 1, select: { id: true } },
     },
   });
@@ -213,6 +223,7 @@ export async function createAccountSetupLink(
     return fail(errors.conflict('La cuenta ya tiene contraseña. Si la olvidó, utilice la recuperación de acceso.'));
   }
 
+  const entrega = env().ACCOUNT_ACTIVATION_DELIVERY;
   const token = newOpaqueToken();
   await transaction(async (tx) => {
     await tx.passwordReset.updateMany({
@@ -242,11 +253,28 @@ export async function createAccountSetupLink(
       objectKind: 'User',
       objectId: account.id,
       outcome: 'SUCCESS',
-      metadata: { subject: maskEmail(account.email), delivery: 'panel' },
+      metadata: { subject: maskEmail(account.email), delivery: entrega },
     });
   });
 
-  return ok({ setupUrl: `${env().APP_URL}/activar/${token}` });
+  const setupUrl = `${env().APP_URL}/activar/${token}`;
+  if (entrega === 'panel') return ok({ setupUrl });
+
+  try {
+    await sendTemplatedMail({
+      to: account.email,
+      templateCode: 'USER_INVITATION',
+      variables: { givenName: account.person.givenName, activationUrl: setupUrl, expiresInHours: '168' },
+      correlationId: actor.correlationId,
+    });
+    return ok({ setupUrl: '' });
+  } catch {
+    // El testigo ya quedó creado y el anterior ya quedó invalidado: negarlo
+    // ahora dejaría a la persona sin el viejo y sin el nuevo. Se devuelve el
+    // enlace a quien administra para que lo entregue, que es peor que el correo
+    // y mucho mejor que dejarla fuera.
+    return ok({ setupUrl });
+  }
 }
 
 /* -------------------------------------------------------------------------- */

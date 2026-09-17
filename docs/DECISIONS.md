@@ -2161,3 +2161,19 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 **Lo que estuvo a punto de romperse, y cómo se evitó.** La rama de arranque de `assignRole` se reconocía por `grantedById === null`, es decir, **por que la raíz no tuviera cuenta**. Con cuenta, esa rama dejaba de entrar en silencio, y dentro de ella vive la restricción que impide nombrar una **segunda** Secretaría Ejecutiva viva. La raíz habría pasado a nombrar sin ese límite sin que nada avisara. Se corrigió reconociéndola por lo que es —`actorKind === 'ROOT_SUPERADMIN'`— y no por lo que le falta. La lección: **una condición que identifica a alguien por una carencia se rompe el día que esa carencia desaparece**, y no se rompe con un error, se rompe con silencio.
 
 **Consecuencias.** El Superadmin aparece como una persona más en el registro, y su nombre queda en cada afiliación que resuelva. Es lo que se quería: la pregunta «¿quién admitió a esta persona?» se responde en el propio expediente. Conviene que ese nombre diga algo cierto; se edita desde `/gestion/personas`. Una instalación cuya semilla sea anterior a esto no tiene la fila: el contexto queda como estaba —acceso total, sin cuenta— y `npm run db:seed` la crea.
+
+---
+
+## ADR-0183 · Reenviar el acceso: una sola puerta, y la entrega que dice la configuración
+
+**Contexto.** Una persona que se registra recibe su enlace para crear contraseña **una sola vez**, en la pantalla, porque `ACCOUNT_ACTIVATION_DELIVERY=panel` retiró la dependencia del correo durante la puesta en marcha (ADR-0178). Si cierra la pestaña, si el enlace vence a los siete días, o si nunca lo vio porque la alta la capturó la administración, se queda fuera.
+
+**Lo que ya existía y no se veía.** La recuperación de acceso sirve para ese caso desde siempre: `completePasswordReset` crea la credencial **exista o no una previa**. Quien nunca tuvo contraseña puede usarla. El problema era de palabras: la pantalla de acceso ofrecía «Olvidé mi contraseña», y nadie que nunca haya tenido una se reconoce ahí. Se queda fuera creyendo que no hay nada para él.
+
+**Decisión: una sola puerta.** El enlace pasa a decir «No puedo entrar» y la pantalla de recuperación explica que sirve igual para quien olvidó su contraseña que para quien nunca llegó a crearla. **No se construye un flujo aparte de reenvío.** Sería la misma tabla de testigos, el mismo límite por dirección y la misma garantía de no revelar quién tiene cuenta, duplicadas; y de dos puertas al mismo cuarto, una es siempre la que nadie mantiene.
+
+**Y un defecto real, de paso.** `createAccountSetupLink` —regenerar el enlace desde el panel— **no consultaba `ACCOUNT_ACTIVATION_DELIVERY`**: devolvía el enlace a quien administra incluso con la entrega por correo configurada, y dejaba escrito en la bitácora `delivery: 'panel'` pasara lo que pasara. Ahora, con `email`, lo manda al buzón de la persona y **no** lo devuelve: entregar una llave por dos caminos a la vez la convierte en dos llaves, y una queda en manos de quien no es su dueña. Si el envío falla, sí lo devuelve al panel, porque el testigo anterior ya quedó invalidado y negarlo entonces dejaría a la persona sin el viejo y sin el nuevo.
+
+**La lección, que ya es vieja aquí.** Una configuración que el código no consulta es una configuración que miente. `ACCOUNT_ACTIVATION_DELIVERY` decía «email» y este camino seguía siendo el panel, sin que nada avisara.
+
+**Lo que esto no arregla.** Todo lo anterior entrega por correo, y **el correo todavía no se ha comprobado que salga** en producción. Mientras el adaptador activo no entregue de verdad, la puerta de autoservicio manda enlaces al vacío y el único camino sigue siendo que alguien regenere y entregue a mano. El orden es: primero que el correo salga, después `ACCOUNT_ACTIVATION_DELIVERY=email`.

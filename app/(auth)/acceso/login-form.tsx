@@ -50,8 +50,16 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between gap-4">
         <SubmitButton>{pending ? 'Entrando…' : 'Entrar'}</SubmitButton>
+        {/*
+          Una sola puerta, y a propósito. Quien nunca llegó a crear su
+          contraseña —porque cerró la pestaña, porque el enlace venció, porque
+          nunca le llegó— no se reconoce en «olvidé mi contraseña» y se queda
+          fuera creyendo que no hay nada para él. El flujo de recuperación ya
+          sirve para los dos casos: crea la credencial exista o no una previa.
+          Lo que faltaba era decirlo.
+        */}
         <Link href="/recuperar" className="text-sm underline underline-offset-4">
-          Olvidé mi contraseña
+          No puedo entrar
         </Link>
       </div>
 

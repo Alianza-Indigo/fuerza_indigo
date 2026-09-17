@@ -18,6 +18,22 @@
 >
 > El detalle del cierre está en `docs/PHASE_STATUS.md`, y el porqué en
 > `docs/DECISIONS.md`.
+>
+> ### Qué se corre al cambiar algo
+>
+> **Solo lo que ejerce lo que se tocó**, y nada más: ese archivo, ese módulo,
+> ese control. No se reejecuta la suite entera «por si acaso» —tarda siete
+> minutos y no dice nada que las pruebas del cambio no digan ya—.
+>
+> Con dos excepciones, porque ahí el cambio no se queda donde se hizo:
+>
+> - **Se tocó `prisma/schema/`**, que regenera el cliente del que depende todo.
+> - **Se tocó algo compartido** —el resolvedor de actores, el motor de permisos,
+>   la semilla, un puerto de plataforma—, que media en pantallas que no se
+>   abrieron al hacer el cambio.
+>
+> Y ninguna prueba nueva vale hasta verla ponerse en rojo: rompa lo que la
+> sostiene, compruebe que falla, restaure.
 
 ---
 

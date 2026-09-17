@@ -3,10 +3,22 @@
 > Documento de seguimiento exigido por el PRD §23.1. Se actualiza durante toda la construcción. El verificador `npm run phase:verify` lee de aquí la fase activa y ejecuta los controles que le corresponden.
 
 ---
+
+## ⬛ CERRADO — 17 de septiembre de 2026
+
+**El contrato del PRD queda cerrado a partir de este momento. La plataforma está construida y en producción.**
+
+Las once fases se construyeron, se verificaron y se aprobaron. **El PRD deja de ser aplicable**: no hay fase activa que construir, no hay informe de cierre que emitir, no hay autorización que esperar y no hay alcance que consultar antes de hacer algo. Lo que se trabaje a partir de aquí es **independiente del contrato** y se decide por sus propias necesidades. Las garantías del producto se modifican cuando haga falta modificarlas.
+
+**Punto de control:** `26359f8`, el estado del producto en producción al cerrarse.
+
+**Todo lo que viene abajo se conserva como registro (log), íntegro y sin reescribir.** Es la historia de cómo se construyó esto y por qué cada cosa es como es —incluidos el archivo fase por fase, los defectos que aparecieron y cómo se corrigieron—. Se lee para entender el pasado, no para pedirle permiso al presente.
+
+---
 ## Situación actual
 
 - **Fase activa:** 10 — Integración, endurecimiento y producción
-- **Estado:** `IN_PROGRESS`
+- **Estado:** `APPROVED` — cerrada el 17 de septiembre de 2026 en `26359f8`, con la plataforma en producción. Con ella cierra el contrato completo.
 - **Autorizada por la persona usuaria:** 8 de septiembre de 2026
 - **Fecha de inicio:** 8 de septiembre de 2026
 - **Fase anterior:** 9 — `APPROVED`, cerrada en `b2730c0`. Su registro íntegro se conserva en el **Archivo** al final de este documento.
@@ -107,6 +119,8 @@ Todo lo automatizable de la Fase 10 está construido, verificado y documentado: 
 
 Hecho eso, la Fase 10 —y con ella el contrato del PRD— queda cerrada, y se registra el estado `APPROVED` con el SHA del punto de control en el historial de abajo.
 
+> **Cumplido.** La plataforma se desplegó y está en producción. La fase queda cerrada el 17 de septiembre de 2026 en `26359f8`, y con ella el contrato. Lo de arriba se conserva como registro de lo que estaba pendiente y ya no lo está.
+
 ---
 
 ## Defectos abiertos
@@ -137,7 +151,7 @@ Ninguno abierto.
 | 7 | 2026-09-06 | 2026-09-06 | `APPROVED` | `0101a2a` |
 | 8 | 2026-09-06 | 2026-09-07 | `APPROVED` | `58601f7` |
 | 9 | 2026-09-07 | 2026-09-08 | `APPROVED` | `b2730c0` |
-| 10 | 2026-09-08 | — | `IN_PROGRESS` | — |
+| 10 | 2026-09-08 | 2026-09-17 | `APPROVED` | `26359f8` — con la plataforma en producción; cierra el contrato |
 
 ---
 

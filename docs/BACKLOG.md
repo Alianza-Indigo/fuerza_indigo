@@ -1,5 +1,21 @@
 # Backlog por fases
 
+> ## ⬛ CERRADO — 17 de septiembre de 2026
+>
+> **El contrato del PRD terminó y la plataforma está en producción.** Este
+> backlog deja de repartir trabajo: se conserva como **registro (log)** de lo que
+> se construyó, fase por fase, sin reescribirlo.
+>
+> Ninguna fila de aquí es trabajo pendiente. Las que sigan diciendo `Pendiente`
+> —las de la sexta fase, en particular— son un registro que nunca se actualizó al
+> cerrarse esa fase: lo que describen está construido, aprobado y en producción
+> desde entonces. Se dejan como estaban para no reescribir el historial.
+>
+> El trabajo que venga a partir de ahora es independiente del contrato y no se
+> anota aquí.
+
+---
+
 > Entregable de la **Fase 0** (PRD §24): *"backlog asignado a fases, sin tareas huérfanas"*. Todo el alcance del PRD está distribuido en las once fases. **No existe una sección de tareas sin asignar**: el control `C-PHASE-01` de `npm run phase:verify` falla si alguna fase queda sin tareas o si aparecen identificadores de otra fase dentro de una sección.
 
 ## Cómo leer este documento

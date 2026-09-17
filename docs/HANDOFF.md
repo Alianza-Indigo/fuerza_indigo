@@ -1,5 +1,28 @@
 # Cómo se continúa este proyecto
 
+> ## ⬛ El contrato del PRD está cerrado — 17 de septiembre de 2026
+>
+> **La plataforma está construida y en producción. El PRD ya no es aplicable y no
+> impone nada.** No hay nada que construir por contrato, nada que cerrar con
+> informe y ninguna autorización que esperar. El trabajo que venga es
+> independiente y se decide por sus propias necesidades.
+>
+> **Este manual se conserva íntegro como registro (log)**, porque la parte
+> práctica sigue sirviendo: cómo se pone en marcha el entorno, cómo se corre cada
+> suite, las reglas de esquema y de permisos, y el método de probar una garantía
+> rompiéndola. Dos cosas de las que cuenta **ya no rigen**:
+>
+> - El **protocolo de construcción por etapas** del apartado 6 —terminar, cerrar,
+>   detenerse a esperar autorización— terminó con el contrato.
+> - La **integración continua se retiró** (ADR-0177): donde este documento la
+>   exija como puerta, ya no existe. La puerta es local, y si no la corre quien
+>   hace el cambio, no la corre nadie.
+>
+> El cierre está registrado en `docs/PHASE_STATUS.md` y razonado en
+> `docs/DECISIONS.md`.
+
+---
+
 > Manual de operación. Está escrito para quien llega sin haber visto nada: otra
 > ventana, otra cuenta, otra persona, otro agente. Explica **cómo** se trabaja.
 >

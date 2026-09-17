@@ -10,6 +10,29 @@
 
 ---
 
+> # ⬛ CONTRATO CERRADO — 17 de septiembre de 2026
+>
+> **Este documento ya no es aplicable y no impone nada.** La plataforma que
+> encargó está construida y en producción; las once fases se completaron y se
+> aprobaron. El punto de control del cierre es `26359f8`.
+>
+> A partir de esta fecha **no rige nada de lo que sigue**: ni el protocolo de
+> fases del §23 —construir solo la fase activa, cerrar con informe y detenerse a
+> esperar autorización—, ni el alcance del §24, ni las prohibiciones y reglas
+> transversales de los §0 y §25. El trabajo posterior es **independiente de este
+> contrato** y se decide por las necesidades de la organización, no por lo que
+> aquí se haya escrito. Las garantías del producto se modifican cuando haga falta.
+>
+> **Se conserva íntegro como registro (log).** Sigue siendo la explicación más
+> completa de **por qué** el producto quedó como quedó, y por eso no se reescribe
+> ni se recorta. Se lee para entender el pasado, no para pedirle permiso al
+> presente.
+>
+> El cierre está registrado en `docs/PHASE_STATUS.md` y razonado en
+> `docs/DECISIONS.md`.
+
+---
+
 # 0. INSTRUCCIÓN DE SISTEMA PARA EL AGENTE DE CÓDIGO
 
 Este documento no es una colección de ideas ni una propuesta preliminar. Es la especificación maestra para construir una plataforma completa, productiva y verificable. El agente deberá tomar decisiones técnicas razonables dentro de las reglas aquí establecidas, sin trasladar preguntas técnicas al usuario y sin reducir el alcance a un MVP.

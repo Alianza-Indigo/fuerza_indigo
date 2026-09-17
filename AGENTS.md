@@ -1,5 +1,26 @@
 # Fuerza Índigo · cómo se trabaja en este repositorio
 
+> ## ⬛ El contrato del PRD está cerrado — 17 de septiembre de 2026
+>
+> **La plataforma está construida y en producción. El PRD ya no es aplicable y no
+> impone nada.** No hay fase activa que construir, no hay informe de cierre que
+> emitir, no hay autorización que esperar y no hay alcance que consultar antes de
+> hacer algo. El trabajo que venga es **independiente del contrato** y se decide
+> por sus propias necesidades; las garantías del producto se modifican cuando
+> haga falta modificarlas.
+>
+> **Lo que sigue escrito abajo se conserva como registro (log).** Cuenta cómo se
+> construyó esto y por qué cada cosa quedó como quedó, que es información útil
+> para quien tenga que tocarla. Pero **describe un régimen que ya terminó**: donde
+> diga que solo se construye la fase activa, que hay que detenerse a esperar
+> autorización o que la integración continua tiene que estar en verde —se retiró,
+> ya no existe—, eso es historia, no una instrucción vigente.
+>
+> El detalle del cierre está en `docs/PHASE_STATUS.md`, y el porqué en
+> `docs/DECISIONS.md`.
+
+---
+
 Léalo entero antes de tocar nada. Es corto a propósito. Lo que no está aquí está
 en `docs/HANDOFF.md`, que es el manual de operación, y en `docs/PRD.md`, que es
 el contrato.

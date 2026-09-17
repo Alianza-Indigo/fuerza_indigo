@@ -2117,3 +2117,29 @@ El control nuevo `C-F9-05` vigila que la transparencia solo cuente (nada de `sel
 **Decisión.** La puesta en marcha enlaza un flujo explícito de cuatro actos: constituir y activar la unidad mediante resolución aprobada; instalar en ella un órgano `SECTION_DELEGATION`; definir su cargo `SECTION_DELEGATE`, que concede `TERRITORIAL_DELEGATE`; y nombrar a una persona agremiada activa. El caso de uso, no el formulario, deriva el alcance desde la unidad a la que pertenece el órgano. Si el cliente envía otra unidad, el acto se rechaza; si la omite, se aplica obligatoriamente la correcta. Una unidad territorial inactiva, disuelta o de otro tipo no puede recibir ese órgano, y no puede tener dos autoridades territoriales vivas.
 
 **Consecuencias.** Las delegaciones y secciones pueden implementarse desde la plataforma sin asignaciones manuales de roles. El periodo, el acceso territorial y la bitácora nacen juntos; el acceso incluye las unidades descendientes y termina con el cargo. Las entidades federativas de la semilla siguen siendo solo referencias: no se publican como presencia real mientras no exista una unidad constituida por acuerdo.
+
+---
+
+## ADR-0181 · El contrato del PRD se cierra: la plataforma está en producción y el documento deja de ser aplicable
+
+**Contexto.** El PRD encargó una plataforma y la repartió en once fases con un protocolo estricto (§23): construir solo la fase activa, terminarla al cien por ciento, cerrarla con informe y **detenerse** a esperar autorización expresa antes de seguir. Ese protocolo cumplió su función —llevó el proyecto de un repositorio vacío a un producto operando— y las once fases se completaron y aprobaron. La plataforma está desplegada y en producción.
+
+**Decisión.** El contrato queda **cerrado** el 17 de septiembre de 2026, con punto de control `26359f8`. **El PRD deja de ser aplicable y no impone nada.**
+
+Lo que deja de regir, por decisión expresa de la persona usuaria:
+
+- el protocolo de fases del §23 —no hay fase activa, ni informe de cierre, ni autorización que esperar—;
+- el alcance del §24 como límite de lo que puede construirse;
+- las prohibiciones y reglas transversales de los §0 y §25 como obligaciones.
+
+A partir de aquí, el trabajo se decide por las necesidades de la organización. **Las garantías del producto se modifican cuando haga falta modificarlas**, y la conversación sobre cada una es técnica, no contractual: si conviene cambiar una regla de permisos, un límite o una restricción de la base, se cambia y se razona aquí.
+
+**Nada se borra.** El PRD, `docs/PHASE_STATUS.md` con su archivo fase por fase, `docs/BACKLOG.md` y `docs/HANDOFF.md` se conservan **íntegros, como registro**. Cada uno lleva ahora un aviso de cierre al principio que dice que describe un régimen terminado. El motivo de conservarlos es práctico y no ceremonial: son la respuesta a «¿por qué esto es así?», y esa pregunta se hace más después de producción que antes. Recortar el historial para que cuente una versión más cómoda del pasado habría sido el error contrario.
+
+**Qué sobrevive, y por qué no es una excepción al cierre.** Tres cosas siguen en el repositorio y ninguna depende del PRD:
+
+- **`docs/DECISIONS.md` sigue vivo.** Es el único de los documentos de gobierno que no cierra: toda decisión que a alguien vaya a sorprenderle dentro de un año se escribe aquí, con su contexto y su consecuencia. Lo que antes lo exigía el PRD §0.1 ahora lo justifica solo su utilidad.
+- **`npm run phase:verify` se conserva tal cual.** Sus controles dejan de ser una puerta de fase; lo que vigilan sigue importando, porque casi todos comprueban garantías del producto que hoy está en producción —el secreto del voto, la inmutabilidad de la bitácora, la separación entre entidades jurídicas, las catorce amenazas del plan de seguridad, los trece flujos de extremo a extremo—. Cuando uno estorbe porque la garantía que vigila ya no se quiere, se cambia el control y se razona el cambio; apagarlo en bloque habría sido tirar la red junto con el andamio, y más ahora que tampoco hay integración continua (ADR-0177).
+- **La constante `ACTIVE_PHASE` de `src/platform/config/env.ts` no se toca.** Parece burocracia del contrato y no lo es: de ella depende **qué variables de entorno son obligatorias al arrancar**. Bajarla o quitarla dejaría de exigir las claves que producción necesita, que es exactamente el defecto `D-F4-002` y su reincidencia. Por eso `docs/PHASE_STATUS.md` conserva el número de fase declarado, aunque la fase esté cerrada.
+
+**Consecuencia.** Se pierde el marco que obligaba a terminar una cosa antes de empezar otra y a no dejar nada a medias. Era útil mientras se construía y ya no lo es: un producto en producción se mantiene, no se construye por etapas contratadas. Lo que queda en su lugar es el criterio de quien trabaja, con el historial completo a mano para no repetir lo ya razonado.

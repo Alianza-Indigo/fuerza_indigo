@@ -25,12 +25,27 @@
 > ese control. No se reejecuta la suite entera «por si acaso» —tarda siete
 > minutos y no dice nada que las pruebas del cambio no digan ya—.
 >
-> Con dos excepciones, porque ahí el cambio no se queda donde se hizo:
+> **Al tocar `prisma/schema/`** lo que hay que correr **no** es la suite entera:
 >
-> - **Se tocó `prisma/schema/`**, que regenera el cliente del que depende todo.
-> - **Se tocó algo compartido** —el resolvedor de actores, el motor de permisos,
->   la semilla, un puerto de plataforma—, que media en pantallas que no se
->   abrieron al hacer el cambio.
+> ```bash
+> npm run db:generate && npm run typecheck   # el destrozo de tipos, en segundos
+> npm run db:check                           # la base coincide con las migraciones
+> npx vitest run tests/integration/migrations.test.ts   # y el esquema con ellas
+> ```
+>
+> `typecheck` recorre el repositorio completo, pruebas incluidas, y es lo que de
+> verdad encuentra lo que un cambio de esquema rompe: con el cliente desfasado
+> señaló los archivos rotos en segundos, mientras la suite entera tardaba siete
+> minutos en decir lo mismo con más ruido. Un índice, un comentario o un `@@map`
+> sobre algo que nadie consulta no necesitan nada más.
+>
+> La suite completa solo si el cambio altera **lo que pasa en ejecución** y los
+> tipos no pueden verlo: una columna obligatoria nueva, un valor de enumeración,
+> una relación o su `onDelete`, un único nuevo.
+>
+> **Y al tocar algo compartido** —el resolvedor de actores, el motor de permisos,
+> la semilla, un puerto de plataforma—, las suites de lo que media: media en
+> pantallas que no se abrieron al hacer el cambio.
 >
 > Y ninguna prueba nueva vale hasta verla ponerse en rojo: rompa lo que la
 > sostiene, compruebe que falla, restaure.

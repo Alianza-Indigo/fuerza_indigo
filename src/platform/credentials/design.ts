@@ -2,6 +2,7 @@ import type { CredentialKind } from '@prisma-client/enums';
 
 import { colorToken } from '@/design-system/tokens';
 import { escaparXml, svgQr } from './qr';
+import { direccionDeVerificacion } from './signing';
 
 /**
  * Los cinco diseños de credencial (PRD §7.4).
@@ -117,7 +118,7 @@ export interface DatosDeCredencial {
   readonly photoDataUrl: string;
   /** Número público de verificación: el código opaco, no el de miembro. */
   readonly publicCode: string;
-  /** Lo que se escribe dentro del QR. */
+  /** Testigo de la credencial. El QR lleva la **dirección** que lo contiene, no esto a secas. */
   readonly token: string;
   /** Dirección del verificador, para escribirla también en letra legible. */
   readonly verificationUrl: string;
@@ -184,7 +185,7 @@ export function svgCredencial(datos: DatosDeCredencial): string {
 
   // El QR se dibuja aparte y se incrusta: así el trazado de los módulos y el de
   // la tarjeta no se estorban, y el mismo código sirve para la pantalla.
-  const qr = svgQr(datos.token, {
+  const qr = svgQr(direccionDeVerificacion(datos.verificationUrl, datos.token), {
     titulo: `Código de verificación ${codigoLegible(datos.publicCode)}`,
     tinta,
     fondo: '#ffffff',

@@ -3,6 +3,7 @@ import { CONTRAST_THRESHOLDS, contrastRatio, parseOklch, type Oklch } from '@/de
 import { colorToken } from '@/design-system/tokens';
 import { readFileSync } from 'node:fs';
 import { codigoLegible, DISENOS, svgCredencial } from '@/platform/credentials/design';
+import { svgQr } from '@/platform/credentials/qr';
 import type { CredentialKind } from '@prisma-client/enums';
 
 /**
@@ -106,6 +107,40 @@ describe('la tarjeta que se imprime', () => {
       expect(svg, tipo).not.toContain('var(--');
       expect(svg, tipo).toContain(colorToken(DISENOS[tipo].acento));
     }
+  });
+
+  /**
+   * El QR llevaba el testigo pelado: quien acercaba el teléfono a la credencial
+   * obtenía `codigo.clave.firma`, una cadena sin esquema que ningún teléfono
+   * sabe abrir, y se quedaba buscando a mano dónde teclearla. Un QR que no
+   * lleva a ningún sitio es una decoración cuadrada.
+   *
+   * Se compara contra el trazado real: se dibuja el QR de la dirección y el del
+   * testigo por separado, y se exige que la tarjeta lleve el primero y no el
+   * segundo. Comprobar que «hay un QR» habría pasado igual con el defecto
+   * dentro.
+   */
+  it('el QR lleva la dirección que abre el verificador, no el testigo a secas', () => {
+    const svg = svgCredencial({ ...datos, kind: 'UNION_MEMBER' });
+    const interno = (dibujo: string): string =>
+      dibujo.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+
+    const destino = `${datos.verificationUrl}/${encodeURIComponent(datos.token)}`;
+    expect(destino).toBe(
+      'https://ejemplo.invalid/verificar/A1B2C3D4E5F6G7H8J9K0.k1.firmadeprueba0000',
+    );
+
+    // El trazado del QR de la dirección está dentro de la tarjeta.
+    const trazoDestino = /d="([^"]+)"/.exec(interno(svgQr(destino, { titulo: 't', tinta: '#000000', fondo: '#ffffff' })))?.[1];
+    expect(trazoDestino, 'el QR de la dirección debe tener trazado').toBeTruthy();
+    expect(svg).toContain(trazoDestino ?? 'sin-trazado');
+
+    // Y el del testigo pelado no.
+    const trazoTestigo = /d="([^"]+)"/.exec(
+      interno(svgQr(datos.token, { titulo: 't', tinta: '#000000', fondo: '#ffffff' })),
+    )?.[1];
+    expect(trazoTestigo, 'el QR del testigo debe tener trazado').toBeTruthy();
+    expect(svg).not.toContain(trazoTestigo ?? 'sin-trazado');
   });
 
   it('lleva el código en bloques de cinco, para poder dictarlo', () => {

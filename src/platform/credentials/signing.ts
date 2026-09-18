@@ -69,6 +69,27 @@ export function tokenDe(credencial: {
   return `${credencial.publicCode}.${credencial.signingKeyId}.${credencial.signature}`;
 }
 
+/**
+ * Dirección que abre el verificador público para una credencial.
+ *
+ * **Es lo que va dentro del QR**, y no el testigo pelado. Un teléfono que
+ * escanea `codigo.clave.firma` no abre nada: enseña una cadena sin sentido y
+ * deja a quien verifica buscando a mano dónde teclearla. Con la dirección
+ * completa, la cámara del teléfono abre el verificador y muestra el estado de
+ * la credencial, que es lo que se pretende al acercar el teléfono a una
+ * identificación.
+ *
+ * Vive aquí, junto al testigo, y no en el dibujo del QR, porque el dibujo lo
+ * hacen dos sitios —la tarjeta imprimible y la credencial digital— y cada uno
+ * componiendo la dirección por su cuenta es cómo empiezan a diferir.
+ *
+ * No añade nada que el testigo no dijera ya: el dominio va impreso en letra
+ * legible en la propia tarjeta.
+ */
+export function direccionDeVerificacion(baseDelVerificador: string, token: string): string {
+  return `${baseDelVerificador.replace(/\/+$/, '')}/${encodeURIComponent(token)}`;
+}
+
 export type LecturaDeToken =
   /** Venía firmado y la firma cuadra: el código se puede buscar. */
   | { readonly clase: 'FIRMADO'; readonly publicCode: string }

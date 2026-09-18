@@ -5,8 +5,9 @@ import { personCredentials } from '@/modules/membership';
 import { formatDate } from '@/platform/i18n/format';
 import { codigoLegible } from '@/platform/credentials/design';
 import { svgQr } from '@/platform/credentials/qr';
-import { colorToken } from '@/design-system/tokens';
+import { direccionDeVerificacion } from '@/platform/credentials/signing';
 import { env } from '@/platform/config/env';
+import { colorToken } from '@/design-system/tokens';
 import { ETIQUETA_DE_ESTADO, ETIQUETA_DE_TIPO } from '../../../(publico)/verificar/etiquetas';
 import { OwnCredentialPhotoForm } from './photo-form';
 
@@ -67,7 +68,10 @@ export default async function MiCredencialPage() {
         )}
 
         {vigentes.map((credencial) => {
-          const qr = svgQr(credencial.token, {
+          // La dirección completa, no el testigo pelado: al acercar el
+          // teléfono a la pantalla, la cámara abre el verificador y enseña el
+          // estado de la credencial. Con la cadena sola no abría nada.
+          const qr = svgQr(direccionDeVerificacion(`${env().APP_URL}/verificar`, credencial.token), {
             titulo: `Código de verificación ${codigoLegible(credencial.publicCode)}`,
             tinta,
             fondo: '#ffffff',

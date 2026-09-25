@@ -11,7 +11,7 @@ import {
 } from '@/modules/cases/domain';
 import { REQUEST_TYPE_LABELS } from '../(publico)/contacto/labels';
 
-export const metadata = { title: 'Mis expedientes', robots: { index: false, follow: false } };
+export const metadata = { title: 'Casos', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 /**

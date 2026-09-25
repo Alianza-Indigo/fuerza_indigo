@@ -2037,3 +2037,27 @@ FASE 2 — COMPLETADA
 FASE 3 — COMPLETADA
 ```
 
+---
+
+## Ampliación de acceso raíz · Fase 4
+
+**Objetivo.** Convertir `/superadmin` en la puerta de entrada operativa a toda la plataforma, en vez de mantener una navegación raíz limitada.
+
+**Estado:** completada.
+
+**Cambios realizados:**
+- se creó un índice central del Centro de Control que compone las rutas existentes de Gestión, Institucional y Casos;
+- se reemplazó la navegación horizontal del Superadmin por un sidebar agrupado por funciones;
+- se añadió navegación responsive para móvil;
+- se añadió búsqueda rápida “Ir a…”;
+- se añadieron accesos rápidos a las áreas de uso frecuente;
+- la portada muestra el mapa completo de la plataforma usando el mismo índice;
+- se conserva el estado técnico, salud del sistema y métricas base;
+- se añadió una prueba de cobertura que obliga a incluir cualquier nueva sección declarada por Gestión, Institucional o Casos.
+
+**Decisión:** ADR-0185.
+
+```text
+FASE 4 — COMPLETADA
+```
+

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Badge, Card, EmptyState, ErrorNotice, PageShell, ScrollableTable } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { listAdministrablePeople, listLegalEntities } from '@/modules/admin';
@@ -84,7 +85,11 @@ export default async function PeoplePage() {
               <tbody>
                 {people.data.map((person) => (
                   <tr key={person.userId} className="border-b border-[var(--color-line)] last:border-0 align-top">
-                    <td className="p-3 font-medium">{person.displayName}</td>
+                    <td className="p-3 font-medium">
+                      <Link href={`/superadmin/personas/${person.personId}`} className="underline underline-offset-4">
+                        {person.displayName}
+                      </Link>
+                    </td>
                     <td className="p-3 font-mono text-xs">{person.maskedEmail}</td>
                     <td className="p-3">
                       <Badge

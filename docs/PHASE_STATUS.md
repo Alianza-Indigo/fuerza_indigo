@@ -2011,3 +2011,29 @@ FASE 1 — COMPLETADA
 FASE 2 — COMPLETADA
 ```
 
+---
+
+## Ampliación de acceso raíz · Fase 3
+
+**Objetivo.** Garantizar que `ROOT_SUPERADMIN` pueda ejecutar las operaciones que requieren una identidad `User`, incluso si la instalación no contiene todavía su cuenta institucional.
+
+**Estado:** completada.
+
+**Cambios realizados:**
+- se añadió `rootInstitutionalUserId()` como garantía autocurativa;
+- `resolveActor()` ya no devuelve una sesión raíz válida con `userId = null`;
+- si la cuenta institucional falta, se recrea de forma transaccional y serializada;
+- se reutiliza la persona institucional existente cuando está disponible;
+- si tampoco existe, se crea «Administración Fuerza Índigo»;
+- la cuenta recreada queda `ACTIVE` y sin credenciales ordinarias;
+- el `Actor` raíz sigue separado de la cuenta institucional y la autenticación sigue dependiendo exclusivamente del entorno;
+- se añadieron pruebas de integración que eliminan la cuenta y comprueban su autocuración a través de `resolveActor()`.
+
+**Cobertura operativa.** Con `actor.userId` garantizado para la raíz, los casos de uso que exigen identidad humana para atribución —afiliación, asignaciones, riesgos, tareas, canalizaciones, gobierno institucional, finanzas y otros registros con claves foráneas a `User`— dejan de depender de que la semilla haya corrido previamente.
+
+**Decisión:** ADR-0184.
+
+```text
+FASE 3 — COMPLETADA
+```
+

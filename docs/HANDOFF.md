@@ -321,3 +321,13 @@ El layout usa sidebar en escritorio, navegación expandible en móvil y búsqued
 
 `tests/unit/superadmin-navigation.test.ts` protege la cobertura: cualquier nueva sección declarada en las áreas operativas debe aparecer también en el Centro de Control.
 
+---
+
+## 13. Persona 360 y Ver como
+
+El Centro de Control dispone de un índice universal de personas en `/superadmin/personas`. Cada registro abre `/superadmin/personas/[publicId]`, que agrega las relaciones principales de la persona en una sola vista administrativa.
+
+“Ver como esta persona” es deliberadamente de solo lectura. No altera el actor actual ni emite una sesión ordinaria: recompone una vista personal para inspección y registra la lectura en la bitácora con la persona observada como `onBehalfOfPersonId`.
+
+La implementación vive en `src/modules/admin/application/person-360.ts` y está cubierta por una prueba de integración en `tests/integration/superadmin.test.ts`.
+

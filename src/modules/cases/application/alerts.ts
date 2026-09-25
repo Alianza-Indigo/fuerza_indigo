@@ -60,8 +60,9 @@ const PESO: Record<ClaseDeAlerta, number> = {
 const ABIERTOS = ['OPEN', 'IN_PROGRESS', 'WAITING_ON_THIRD_PARTY', 'REFERRED'] as const;
 
 export async function caseAlerts(actor: ActorContext): Promise<UseCaseResult<readonly Alerta[]>> {
+  const esRaiz = actor.actorKind === 'ROOT_SUPERADMIN';
   const userId = actor.userId;
-  if (userId === null || userId === undefined) return ok([]);
+  if (!esRaiz && (userId === null || userId === undefined)) return ok([]);
 
   const dominios: CaseDomain[] = [];
   if (actor.compartments.has('UNION')) dominios.push('UNION_DEFENSE');
@@ -83,7 +84,9 @@ export async function caseAlerts(actor: ActorContext): Promise<UseCaseResult<rea
     where: {
       domain: { in: dominios },
       status: { in: [...ABIERTOS] },
-      assignments: { some: { userId, unassignedAt: null } },
+      // La raíz vigila todas las alertas de la plataforma; para el resto se
+      // mantiene la frontera de asignación viva.
+      ...(esRaiz ? {} : { assignments: { some: { userId: userId!, unassignedAt: null } } }),
       ...(territorio ?? {}),
     },
     take: 200,

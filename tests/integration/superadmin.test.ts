@@ -13,7 +13,7 @@ import {
 } from '@/platform/auth/session';
 import { transaction } from '@/platform/db/unit-of-work';
 import { can } from '@/platform/authz/policy';
-import { updateLegalEntity } from '@/modules/admin';
+import { getPerson360, listPerson360Index, updateLegalEntity } from '@/modules/admin';
 import { activateInitialRules } from '@/modules/governance';
 import { isAuthorizedCron } from '@/platform/http/cron-auth';
 import { env, resetEnvCache } from '@/platform/config/env';
@@ -26,6 +26,7 @@ import {
   resolveApplication,
 } from '@/modules/membership';
 import { ROOT_TEST_PASSWORD } from './setup-env';
+import { root } from '../support/actors';
 
 /**
  * Superadmin raíz y trabajos programados (PRD §4.4, §17.5, docs/SECURITY.md §3).
@@ -125,6 +126,49 @@ describe('acceso del actor raíz', () => {
     // Sin cuenta asociada: no es un sujeto de autorización, es un asidero de
     // atribución.
     expect(actor.userId).toBeNull();
+  });
+});
+
+describe('Persona 360 del Superadmin', () => {
+  it('incluye personas sin depender de que tengan una cuenta y audita la lectura', async () => {
+    const persona = await crearPersonaConCuenta(base.prisma, {
+      givenName: 'Persona',
+      familyName: 'Vista Trescientos Sesenta',
+    });
+    const registro = await base.prisma.person.findUniqueOrThrow({
+      where: { id: persona.personId },
+      select: { publicId: true },
+    });
+    const raiz = root({
+      actorId: await rootActorId(),
+      userId: persona.userId,
+      correlationId: 'persona-360-prueba',
+    });
+
+    const indice = await listPerson360Index(raiz);
+    expect(indice.ok, indice.ok ? '' : indice.error.message).toBe(true);
+    if (!indice.ok) return;
+    expect(indice.data.some((item) => item.publicId === registro.publicId)).toBe(true);
+
+    const detalle = await getPerson360(raiz, registro.publicId, 'VIEW_AS');
+    expect(detalle.ok, detalle.ok ? '' : detalle.error.message).toBe(true);
+    if (!detalle.ok) return;
+
+    expect(detalle.data.identity.displayName).toContain('Persona');
+    expect(detalle.data.account?.id).toBe(persona.userId);
+
+    const audit = await base.prisma.auditEvent.findFirst({
+      where: {
+        actorId: raiz.actorId,
+        objectKind: 'Person',
+        objectId: persona.personId,
+        correlationId: 'persona-360-prueba',
+      },
+      orderBy: { occurredAt: 'desc' },
+      select: { onBehalfOfPersonId: true, metadata: true },
+    });
+    expect(audit?.onBehalfOfPersonId).toBe(persona.personId);
+    expect(audit?.metadata).toMatchObject({ operation: 'person_view_as_readonly' });
   });
 });
 

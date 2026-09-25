@@ -79,7 +79,7 @@ export async function rootInstitutionalUserId(): Promise<string> {
   return transaction(async (tx) => {
     // Dos peticiones raíz simultáneas sobre una instalación antigua no deben
     // crear dos personas ni competir por el correo único de User.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`root-institutional-user:${email}`})::bigint)`;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`root-institutional-user:${email}`})::bigint)`;
 
     const afterLock = await tx.user.findUnique({ where: { email }, select: { id: true } });
     if (afterLock !== null) return afterLock.id;

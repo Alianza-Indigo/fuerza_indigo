@@ -24,11 +24,12 @@ export const dynamic = 'force-dynamic';
  */
 export default async function CasosPage() {
   const actor = await currentActor();
+  const esRaiz = actor.actorKind === 'ROOT_SUPERADMIN';
   const [expedientes, alertas] = await Promise.all([caseList(actor), caseAlerts(actor)]);
 
   if (!expedientes.ok) {
     return (
-      <PageShell title="Mis expedientes" width="ancha">
+      <PageShell title={esRaiz ? 'Todos los expedientes' : 'Mis expedientes'} width="ancha">
         <ErrorNotice title={expedientes.error.message} />
       </PageShell>
     );
@@ -39,8 +40,12 @@ export default async function CasosPage() {
 
   return (
     <PageShell
-      title="Mis expedientes"
-      description="Lo que llevas a tu cargo, ordenado por lo que más daño hace si no se atiende."
+      title={esRaiz ? 'Todos los expedientes' : 'Mis expedientes'}
+      description={
+        esRaiz
+          ? 'Vista global de todos los expedientes, ordenados por lo que más daño hace si no se atiende.'
+          : 'Lo que llevas a tu cargo, ordenado por lo que más daño hace si no se atiende.'
+      }
       width="ancha"
     >
       {pendientes.length > 0 && (
@@ -76,14 +81,24 @@ export default async function CasosPage() {
         </Section>
       )}
 
-      <Section title="A tu cargo" level={2}>
+      <Section title={esRaiz ? 'Todos los expedientes' : 'A tu cargo'} level={2}>
         {expedientes.data.length === 0 ? (
           <EmptyState
-            title="No llevas ningún expediente"
-            description="Cuando se te asigne uno aparecerá aquí. Los expedientes se abren desde un mensaje de la entrada pública, una vez confirmada su canalización."
+            title={esRaiz ? 'No hay expedientes' : 'No llevas ningún expediente'}
+            description={
+              esRaiz
+                ? 'Todavía no existe ningún expediente en la plataforma.'
+                : 'Cuando se te asigne uno aparecerá aquí. Los expedientes se abren desde un mensaje de la entrada pública, una vez confirmada su canalización.'
+            }
           />
         ) : (
-          <ScrollableTable caption="Expedientes a tu cargo, con su materia, prioridad, estado y plazo">
+          <ScrollableTable
+            caption={
+              esRaiz
+                ? 'Todos los expedientes, con su materia, prioridad, estado y plazo'
+                : 'Expedientes a tu cargo, con su materia, prioridad, estado y plazo'
+            }
+          >
             <thead>
               <tr className="border-b border-[var(--color-line)] text-left">
                 <th scope="col" className="p-3 font-medium">Folio</th>

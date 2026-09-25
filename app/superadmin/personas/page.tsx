@@ -86,7 +86,7 @@ export default async function PeoplePage() {
                 {people.data.map((person) => (
                   <tr key={person.userId} className="border-b border-[var(--color-line)] last:border-0 align-top">
                     <td className="p-3 font-medium">
-                      <Link href={`/superadmin/personas/${person.personId}`} className="underline underline-offset-4">
+                      <Link href={`/superadmin/personas/${person.personPublicId}`} className="underline underline-offset-4">
                         {person.displayName}
                       </Link>
                     </td>

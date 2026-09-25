@@ -2190,3 +2190,17 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 
 **Consecuencias.** La limitación final de ADR-0182 —«una instalación cuya semilla sea anterior queda sin cuenta hasta ejecutar `db:seed`»— deja de aplicar. La semilla sigue creando la cuenta de forma idempotente, pero ya no es necesaria para que el Superadmin pueda operar. Las pruebas de integración eliminan la cuenta institucional y comprueban que `resolveActor()` la recrea, devuelve su `userId`, conserva la misma persona cuando existe y mantiene cero credenciales ordinarias.
 
+## ADR-0185 · El Superadmin usa un Centro de Control que compone las rutas reales de la plataforma
+
+**Contexto.** El Superadmin ya tenía acceso total, pero su navegación seguía siendo una barra horizontal con unas cuantas entradas generales. Eso obligaba a entrar primero a Gestión, Institucional o Casos para localizar una función concreta y permitía que el panel raíz quedara incompleto aunque las facultades existieran.
+
+**Decisión.** `/superadmin` pasa a ser el Centro de Control de toda la plataforma. Su navegación se agrupa por función —Centro de control, Personas, Afiliación, Organización, Institucional, Casos y acompañamiento, Comunicaciones, Contenidos, Finanzas, Inteligencia artificial y Control— y enlaza las superficies reales de Gestión, Institucional y Casos. No se clonan esas rutas: `app/superadmin/navigation.ts` las compone desde `secciones.ts` de cada área y añade únicamente las pantallas propias del Superadmin.
+
+**Búsqueda.** El Centro de Control incorpora una búsqueda rápida “Ir a…” sobre el mismo índice. No consulta la base ni inventa otra fuente de navegación: filtra en cliente las rutas ya declaradas.
+
+**Responsive.** En escritorio la navegación vive en un sidebar desplazable y persistente; en pantallas pequeñas se presenta mediante un bloque expandible accesible. La portada conserva el estado técnico, métricas y salud del sistema, pero añade accesos rápidos y el mapa completo de la plataforma.
+
+**Garantía de cobertura.** Una prueba unitaria compara el índice del Superadmin con todas las rutas declaradas por Gestión, Institucional y Casos. Si en el futuro se añade una sección operativa y se olvida incorporarla al Centro de Control, la prueba falla.
+
+**Consecuencias.** La raíz deja de tener un “panel paralelo” reducido: el Centro de Control es la puerta de entrada a las mismas áreas operativas de la aplicación. El acceso sigue protegido por los casos de uso y por la política; la navegación solo hace visible y alcanzable lo que ADR-0174 ya concedía.
+

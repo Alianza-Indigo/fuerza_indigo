@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { verifyRootCredentials, rootActorId, systemActorId } from '@/platform/auth/superadmin';
+import { verifyRootCredentials, rootActorId, rootInstitutionalUserId, systemActorId } from '@/platform/auth/superadmin';
 import { resolveActor } from '@/platform/auth/actor-resolver';
 import {
   issueSession,
@@ -73,6 +73,32 @@ describe('acceso del actor raíz', () => {
     expect(cuenta, 'la semilla debe crear la cuenta institucional de la raíz').not.toBeNull();
     expect(cuenta?.status).toBe('ACTIVE');
     expect(cuenta?._count.credentials).toBe(0);
+  });
+
+  it('recrea la cuenta institucional si una instalación antigua no la tiene', async () => {
+    const email = env().SUPERADMIN_EMAIL.trim().toLowerCase();
+    const anterior = await base.prisma.user.findUniqueOrThrow({
+      where: { email },
+      select: { id: true, personId: true },
+    });
+
+    await base.prisma.user.delete({ where: { id: anterior.id } });
+
+    const recreadaId = await rootInstitutionalUserId();
+    const recreada = await base.prisma.user.findUniqueOrThrow({
+      where: { id: recreadaId },
+      select: {
+        email: true,
+        personId: true,
+        status: true,
+        _count: { select: { credentials: true } },
+      },
+    });
+
+    expect(recreada.email).toBe(email);
+    expect(recreada.personId).toBe(anterior.personId);
+    expect(recreada.status).toBe('ACTIVE');
+    expect(recreada._count.credentials).toBe(0);
   });
 
   it('rechaza la contraseña incorrecta y el correo incorrecto por igual', () => {

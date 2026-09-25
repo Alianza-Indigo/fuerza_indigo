@@ -311,3 +311,13 @@ Esto cierra los fallos del tipo «la pantalla abre pero el botón falla porque e
 
 La decisión está registrada en ADR-0184 y cubierta por pruebas de integración que eliminan la cuenta y la reconstruyen mediante `resolveActor()`.
 
+---
+
+## 12. Centro de Control del Superadmin
+
+`/superadmin` es ahora la puerta de entrada a toda la plataforma. El menú raíz no mantiene copias independientes de las secciones operativas: `app/superadmin/navigation.ts` compone las rutas declaradas por Gestión, Institucional y Casos y agrega únicamente las superficies propias de la raíz.
+
+El layout usa sidebar en escritorio, navegación expandible en móvil y búsqueda rápida “Ir a…”. La portada reutiliza el mismo índice para mostrar el mapa completo y los accesos rápidos.
+
+`tests/unit/superadmin-navigation.test.ts` protege la cobertura: cualquier nueva sección declarada en las áreas operativas debe aparecer también en el Centro de Control.
+

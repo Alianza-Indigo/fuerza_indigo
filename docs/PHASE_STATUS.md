@@ -1967,9 +1967,24 @@ La Fase 1 **no** se inicia en esta ejecución. Queda a la espera de autorizació
 
 ## Ampliación de acceso raíz · Fase 1
 
-**Objetivo.** Verificar y completar el contrato operativo de acceso total de `ROOT_SUPERADMIN`, preservando íntegra la documentación histórica y registrando cada cambio mediante nuevas decisiones.
+**Objetivo.** Verificar y completar el contrato operativo de acceso total de `ROOT_SUPERADMIN`, preservando íntegra la documentación histórica y registrando cada cambio sin reescribir las decisiones anteriores.
 
-**Estado:** en ejecución.
+**Estado:** completada.
 
-**Verificación inicial:** la raíz ya recibe todos los permisos del catálogo, alcance global de entidades, territorios y organizaciones, los compartimentos `UNION`, `SOCIAL` y `DISCIPLINARY`, y las excepciones ya documentadas de asignación, motivo y lectura masiva. Las barreras residuales se documentarán como nuevas decisiones antes de cerrarse esta fase.
+**Resultado de la verificación:**
+- la raíz recibe `ALL_PERMISSION_CODES`;
+- alcanza todas las entidades jurídicas, territorios y organizaciones;
+- recibe los compartimentos `UNION`, `SOCIAL` y `DISCIPLINARY`;
+- no queda frenada por asignación viva ni por motivo escrito;
+- no recibe máscara de campos y conserva lectura masiva conforme a ADR-0174;
+- los layouts de `/gestion`, `/institucional`, `/casos` y `/territorio/[unidad]` admiten explícitamente `ROOT_SUPERADMIN`;
+- se añadieron pruebas de regresión que fijan el alcance global por entidad, territorio, organización y compartimento, además de comprobar `territorialReach(...)=ALL`.
+
+**Consentimiento.** No se modificó. La revisión de los flujos reales mostró que el consentimiento se valida como regla de negocio en operaciones que lo requieren —por ejemplo, una canalización— y no como una barrera general de navegación administrativa. Por ello no fue necesario alterar esa salvaguarda para cerrar esta fase.
+
+**Cambios aplicados:** `tests/unit/authz/superadmin.test.ts` y corrección del comentario obsoleto en `src/platform/kernel/actor-context.ts`.
+
+```text
+FASE 1 — COMPLETADA
+```
 

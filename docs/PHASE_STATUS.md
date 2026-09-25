@@ -1988,3 +1988,26 @@ La Fase 1 **no** se inicia en esta ejecución. Queda a la espera de autorizació
 FASE 1 — COMPLETADA
 ```
 
+---
+
+## Ampliación de acceso raíz · Fase 2
+
+**Objetivo.** Dar a `ROOT_SUPERADMIN` acceso global real al módulo de Casos, eliminando filtros locales por asignación que contradecían ADR-0174.
+
+**Estado:** completada.
+
+**Cambios realizados:**
+- `caseList()`: la raíz ve todos los expedientes de los dominios que alcanza, sin filtro por asignación viva;
+- `caseAlerts()`: la raíz ve todas las alertas activas, sin filtro por asignación;
+- `claseDeLectura()`: la raíz abre cualquier expediente con lectura `SUPERVISION`;
+- la interfaz cambia para la raíz de “Mis expedientes” / “A tu cargo” a “Todos los expedientes” y “Vista global”;
+- el detalle adapta el enlace de regreso para la raíz;
+- se añadieron pruebas de integración para comprobar que la raíz lista expedientes de distintos territorios, abre uno no asignado como `SUPERVISION` y recibe alertas globales;
+- se auditó el resto del módulo de Casos: las operaciones usan `can()` con sondas de asignación, que ya no frenan a la raíz; los actos que exigen `userId` siguen funcionando con la cuenta institucional del Superadmin resuelta por `actor-resolver.ts`.
+
+**Verificación de despliegue:** el commit funcional `f410be424d03b3913f37dc69cb1e78d1c528d6eb` compiló y quedó `READY` en producción en Vercel.
+
+```text
+FASE 2 — COMPLETADA
+```
+

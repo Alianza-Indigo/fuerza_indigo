@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { can, effectiveGrantedPermissions, fieldMaskFor } from '@/platform/authz/policy';
+import { can, effectiveGrantedPermissions, fieldMaskFor, territorialReach } from '@/platform/authz/policy';
 import { ALL_PERMISSION_CODES, PERMISSIONS } from '@/platform/authz/permissions';
 import { root } from '../../support/actors';
 
@@ -42,6 +42,24 @@ describe('el actor raíz gobierna y administra todo', () => {
     'access.role.revoke',
   ])('puede %s', (code) => {
     expect(can(root(), code, { kind: 'Cualquiera' }).allowed).toBe(true);
+  });
+});
+
+describe('el actor raíz tiene alcance global', () => {
+  it('cruza entidad, territorio y organización sin quedar acotado por ninguno', () => {
+    expect(
+      can(root(), 'identity.person.read_sensitive', {
+        kind: 'Person',
+        legalEntityId: 'entidad-cualquiera',
+        territorialPath: '/mx/estado/municipio',
+        organizationId: 'organizacion-cualquiera',
+        compartment: 'SOCIAL',
+      }).allowed,
+    ).toBe(true);
+  });
+
+  it('su alcance territorial efectivo es ALL', () => {
+    expect(territorialReach(root(), 'cases.case.read')).toBe('ALL');
   });
 });
 

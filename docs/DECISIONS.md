@@ -2204,3 +2204,17 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 
 **Consecuencias.** La raíz deja de tener un “panel paralelo” reducido: el Centro de Control es la puerta de entrada a las mismas áreas operativas de la aplicación. El acceso sigue protegido por los casos de uso y por la política; la navegación solo hace visible y alcanzable lo que ADR-0174 ya concedía.
 
+## ADR-0186 · Persona 360 y Ver como preservan al Superadmin como actor real
+
+**Contexto.** Con las Fases 1 a 4, la raíz ya tenía acceso total, casos globales, identidad institucional garantizada y un Centro de Control completo. Faltaba una forma de revisar la experiencia y el expediente integral de una persona sin saltar manualmente entre Registro, Afiliación, Credenciales, Pagos, Casos y Auditoría.
+
+**Decisión.** Se crea `Persona 360` como una consulta administrativa propia del módulo `admin`. La ruta `/superadmin/personas/[persona]` utiliza el identificador público opaco de la persona y reúne, en una sola vista, identidad y contacto, cuenta y sesiones, roles, solicitudes, membresías, beneficiarios, credenciales, preferencias de directorio, consentimientos, pagos, notificaciones, casos, documentos, firmas y auditoría relacionada.
+
+**Índice universal.** `/superadmin/personas` deja de limitarse a cuentas de usuario: lista el registro maestro completo, incluidas personas sin cuenta digital. De esta forma, Persona 360 es accesible para cualquier persona registrada y no solo para quienes pueden iniciar sesión.
+
+**Ver como.** El botón “Ver como esta persona” activa una vista administrativa de solo lectura mediante `?modo=ver-como`. No crea una sesión de la persona, no cambia `actorKind`, no sustituye `userId` ni `personId` del root y no ejecuta acciones en nombre de la persona. Solo recompone, desde datos ya autorizados para la raíz, una vista semejante a la experiencia personal para comprobar qué información encontraría.
+
+**Auditoría.** Tanto la apertura 360 como “Ver como” dejan un asiento `system.superadmin.action` con `onBehalfOfPersonId` y un metadato que distingue `person_360_read` de `person_view_as_readonly`. La atribución del acto sigue siendo el actor raíz.
+
+**Consecuencias.** El Superadmin puede revisar de extremo a extremo la situación de cualquier persona sin perder trazabilidad ni adoptar derechos personales, sindicales o electorales de esa persona. Si en el futuro se construye un verdadero “Actuar como”, deberá ser una capacidad separada, explícita y auditada; esta decisión no la implementa.
+

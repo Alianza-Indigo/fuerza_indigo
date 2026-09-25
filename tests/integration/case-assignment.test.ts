@@ -3,6 +3,8 @@ import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { contextoDe, crearPersonaConCuenta, entidadPrincipal, nombrar, type PersonaDePrueba } from './helpers/fixtures';
 import { confirmRouting, PUBLIC_INTAKE_NOTICE_CODE, submitRequest, territoriesForRouting } from '@/modules/support';
 import { assignableUsers, assignCase, caseDetail, caseList, openCase, unassignCase } from '@/modules/cases';
+import { rootActorId } from '@/platform/auth/superadmin';
+import { root } from '../support/actors';
 
 /**
  * Asignación por territorio y competencia (PRD §10.3; alcance de la Fase 6).
@@ -411,6 +413,27 @@ describe('el territorio ajeno no se alcanza ni por la lista ni por el detalle', 
     const folios = lista.data.map((fila) => fila.folio);
     expect(folios).toContain(enJalisco.folio);
     expect(folios).toContain(enNayarit.folio);
+  });
+});
+
+describe('el Superadmin raíz ve todos los expedientes sin estar asignado', () => {
+  it('lista expedientes de distintos territorios y abre cualquiera como supervisión', async () => {
+    const enJalisco = await abrir(jalisco.id);
+    const enNayarit = await abrir(nayarit.id);
+    const raiz = root({ actorId: await rootActorId() });
+
+    const lista = await caseList(raiz);
+    expect(lista.ok, lista.ok ? '' : lista.error.message).toBe(true);
+    if (!lista.ok) return;
+
+    const folios = lista.data.map((fila) => fila.folio);
+    expect(folios).toContain(enJalisco.folio);
+    expect(folios).toContain(enNayarit.folio);
+
+    const detalle = await caseDetail(raiz, enNayarit.publicId);
+    expect(detalle.ok, detalle.ok ? '' : detalle.error.message).toBe(true);
+    if (!detalle.ok) return;
+    expect(detalle.data.lectura).toBe('SUPERVISION');
   });
 });
 

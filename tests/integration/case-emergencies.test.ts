@@ -17,6 +17,8 @@ import {
 import { RUTA_DEL_PROTOCOLO_DE_RIESGO } from '@/modules/cases/domain';
 import { createPage, publishPage, reviewPage, submitForReview } from '@/modules/content';
 import { healthReport } from '@/platform/health';
+import { rootActorId } from '@/platform/auth/superadmin';
+import { root } from '../support/actors';
 
 /**
  * Prioridades, alertas y protocolo de riesgo visible
@@ -459,6 +461,18 @@ describe('las alertas se derivan al leer y el orden lo decide el daño', () => {
     const alertas = await caseAlerts(await contextoDe(base.prisma, atiende));
     expect(alertas.ok).toBe(true);
     if (alertas.ok) expect(alertas.data.some((alerta) => alerta.clase === 'TAREA_VENCIDA')).toBe(false);
+  });
+
+  it('el Superadmin raíz ve alertas globales aunque no esté asignado', async () => {
+    const { caseId } = await abrir('CRITICAL');
+    await base.sql.query(`UPDATE "case_file" SET "openedAt" = now() - interval '2 days' WHERE id = $1`, [caseId]);
+
+    const raiz = root({ actorId: await rootActorId() });
+    const alertas = await caseAlerts(raiz);
+    expect(alertas.ok, alertas.ok ? '' : alertas.error.message).toBe(true);
+    if (!alertas.ok) return;
+
+    expect(alertas.data.some((alerta) => alerta.caseId === caseId && alerta.clase === 'SIN_PRIMERA_RESPUESTA')).toBe(true);
   });
 
   it('ninguna alerta cruza el compartimento de quien pregunta', async () => {

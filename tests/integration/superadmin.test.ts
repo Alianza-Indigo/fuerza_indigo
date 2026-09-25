@@ -180,6 +180,50 @@ describe('la sesión raíz es independiente y de larga duración', () => {
     expect([...actor.compartments].sort()).toEqual(['DISCIPLINARY', 'SOCIAL', 'UNION']);
   }, 60_000);
 
+  it('autocura la cuenta institucional si falta, sin crear credencial ordinaria', async () => {
+    const email = env().SUPERADMIN_EMAIL.trim().toLowerCase();
+    const anterior = await base.prisma.user.findUniqueOrThrow({
+      where: { email },
+      select: { id: true, personId: true },
+    });
+
+    await base.prisma.user.delete({ where: { id: anterior.id } });
+
+    const emitida = await transaction((tx) =>
+      issueSession(tx, {
+        userId: null,
+        actorKind: 'ROOT_SUPERADMIN',
+        sessionVersion: env().SUPERADMIN_SESSION_VERSION,
+        ipHash: 'ip-autocuracion',
+        userAgentSummary: 'prueba-autocuracion',
+      }),
+    );
+
+    const actor = await resolveActor({
+      sessionToken: null,
+      rootSessionToken: emitida.token,
+      correlationId: 'correlacion-autocuracion',
+      ipHash: 'ip-autocuracion',
+      userAgentSummary: 'prueba-autocuracion',
+    });
+
+    const recreada = await base.prisma.user.findUniqueOrThrow({
+      where: { email },
+      select: {
+        id: true,
+        personId: true,
+        status: true,
+        _count: { select: { credentials: true } },
+      },
+    });
+
+    expect(actor.actorKind).toBe('ROOT_SUPERADMIN');
+    expect(actor.userId).toBe(recreada.id);
+    expect(recreada.personId).toBe(anterior.personId);
+    expect(recreada.status).toBe('ACTIVE');
+    expect(recreada._count.credentials).toBe(0);
+  }, 60_000);
+
   it('su testigo no sirve como sesión ordinaria', async () => {
     const emitida = await transaction((tx) =>
       issueSession(tx, {

@@ -331,7 +331,7 @@ export default async function Person360Page({
         <section id="consentimientos">
           <h2 className="mb-3 text-lg font-semibold">Consentimientos</h2>
           {data.consents.length === 0 ? (
-            <EmptyState title="Sin consentimientos" />
+            <EmptyState title="Sin consentimientos" description="No hay consentimientos registrados para esta persona." />
           ) : (
             <ScrollableTable caption="Consentimientos de la persona">
               <thead>
@@ -359,7 +359,7 @@ export default async function Person360Page({
         <section id="pagos">
           <h2 className="mb-3 text-lg font-semibold">Pagos</h2>
           {data.payments.length === 0 ? (
-            <EmptyState title="Sin pagos" />
+            <EmptyState title="Sin pagos" description="No hay pagos asociados a esta persona." />
           ) : (
             <ScrollableTable caption="Pagos asociados a la persona">
               <thead>
@@ -387,7 +387,7 @@ export default async function Person360Page({
         <section id="casos">
           <h2 className="mb-3 text-lg font-semibold">Casos y acompañamiento</h2>
           {data.cases.length === 0 ? (
-            <EmptyState title="Sin expedientes relacionados" />
+            <EmptyState title="Sin expedientes relacionados" description="La persona no aparece como participante de ningún expediente." />
           ) : (
             <ScrollableTable caption="Expedientes en los que participa la persona">
               <thead>
@@ -438,7 +438,7 @@ export default async function Person360Page({
         <section id="notificaciones">
           <h2 className="mb-3 text-lg font-semibold">Notificaciones recientes</h2>
           {data.notifications.length === 0 ? (
-            <EmptyState title="Sin notificaciones" />
+            <EmptyState title="Sin notificaciones" description="No hay notificaciones registradas para esta persona." />
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
               {data.notifications.map((item) => (
@@ -457,7 +457,7 @@ export default async function Person360Page({
         <section id="auditoria">
           <h2 className="mb-3 text-lg font-semibold">Auditoría relacionada</h2>
           {data.audit.length === 0 ? (
-            <EmptyState title="Sin eventos relacionados" />
+            <EmptyState title="Sin eventos relacionados" description="No hay eventos de auditoría relacionados directamente con esta persona." />
           ) : (
             <ScrollableTable caption="Eventos de auditoría relacionados directamente con la persona">
               <thead>
@@ -508,7 +508,7 @@ function GridSection({
     <section>
       <h2 className="mb-3 text-lg font-semibold">{title}</h2>
       {empty ? (
-        <EmptyState title={`Sin ${title.toLowerCase()}`} />
+        <EmptyState title={`Sin ${title.toLowerCase()}`} description={`No hay ${title.toLowerCase()} registrados para esta persona.`} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>
       )}

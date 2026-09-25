@@ -17,6 +17,7 @@ import { maskEmail } from '@/platform/audit/audit-service';
 export interface AdminPersonView {
   readonly userId: string;
   readonly personId: string;
+  readonly personPublicId: string;
   readonly displayName: string;
   readonly maskedEmail: string;
   readonly status: string;
@@ -56,7 +57,7 @@ export async function listAdministrablePeople(
       lastLoginAt: true,
       lockedUntil: true,
       personId: true,
-      person: { select: { givenName: true, familyName: true, secondFamilyName: true } },
+      person: { select: { publicId: true, givenName: true, familyName: true, secondFamilyName: true } },
       credentials: { where: { type: 'PASSWORD', revokedAt: null }, take: 1, select: { id: true } },
       roleAssignments: {
         where: { revokedAt: null, startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
@@ -75,6 +76,7 @@ export async function listAdministrablePeople(
     rows.map((row) => ({
       userId: row.id,
       personId: row.personId,
+      personPublicId: row.person.publicId,
       displayName: [row.person.givenName, row.person.familyName, row.person.secondFamilyName]
         .filter((part) => part !== null && part !== '')
         .join(' '),

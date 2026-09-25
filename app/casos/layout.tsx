@@ -55,16 +55,22 @@ export default async function CasosLayout({ children }: { children: ReactNode })
         </div>
         <nav aria-label="Secciones" className="mx-auto w-full max-w-6xl overflow-x-auto px-4 sm:px-6">
           <ul className="flex gap-1 pb-2">
-            {SECCIONES.map((seccion) => (
+            {SECCIONES.map((seccion) => {
+              const label =
+                actor.actorKind === 'ROOT_SUPERADMIN' && seccion.href === '/casos'
+                  ? 'Todos los expedientes'
+                  : seccion.label;
+              return (
               <li key={seccion.href}>
                 <Link
                   href={seccion.href}
                   className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 py-2 font-medium hover:bg-[var(--color-accent-soft)]"
                 >
-                  {seccion.label}
+                  {label}
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </nav>
       </header>

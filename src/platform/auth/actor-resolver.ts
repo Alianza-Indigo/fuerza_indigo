@@ -4,7 +4,6 @@ import type { ActorContext, RoleAssignmentSnapshot } from '@/platform/kernel/act
 import { publicContext } from '@/platform/kernel/actor-context';
 import { resolveSession } from '@/platform/auth/session';
 import { rootActorId, rootInstitutionalUserId } from '@/platform/auth/superadmin';
-import { env } from '@/platform/config/env';
 
 /**
  * Construye el contexto del actor a partir de la sesión (docs/ARCHITECTURE.md §6).

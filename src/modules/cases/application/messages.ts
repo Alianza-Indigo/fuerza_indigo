@@ -95,6 +95,13 @@ export async function claseDeLectura(
   actor: ActorContext,
   expediente: { id: string; legalEntityId: string; domain: 'UNION_DEFENSE' | 'SOCIAL_ATTENTION'; territorialUnit: { path: string } | null },
 ): Promise<ClaseDeLectura | null> {
+  if (actor.actorKind === 'ROOT_SUPERADMIN') {
+    const reservado = can(actor, 'cases.message.read_reserved', recursoDelExpediente(expediente), {
+      hasLiveAssignment: () => true,
+    });
+    if (reservado.allowed) return 'SUPERVISION';
+  }
+
   const asignada = await estaAsignada(actor, expediente.id);
 
   if (asignada) {

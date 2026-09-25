@@ -2177,3 +2177,16 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 **La lección, que ya es vieja aquí.** Una configuración que el código no consulta es una configuración que miente. `ACCOUNT_ACTIVATION_DELIVERY` decía «email» y este camino seguía siendo el panel, sin que nada avisara.
 
 **Lo que esto no arregla.** Todo lo anterior entrega por correo, y **el correo todavía no se ha comprobado que salga** en producción. Mientras el adaptador activo no entregue de verdad, la puerta de autoservicio manda enlaces al vacío y el único camino sigue siendo que alguien regenere y entregue a mano. El orden es: primero que el correo salga, después `ACCOUNT_ACTIVATION_DELIVERY=email`.
+
+## ADR-0184 · La cuenta institucional del Superadmin se autocura al resolver su sesión
+
+**Contexto.** ADR-0182 añadió una cuenta institucional al Superadmin raíz para que los actos que exigen un `User` —revisar y resolver afiliaciones, asignar expedientes, aceptar canalizaciones, cerrar tareas y otros actos atribuidos a una persona— no fallaran con `actor.userId = null`. Sin embargo, ADR-0182 dependía de que `db:seed` hubiera creado previamente esa fila. Una instalación antigua o una base restaurada sin esa semilla seguía resolviendo una sesión raíz válida con acceso total pero sin identidad institucional, de modo que podía entrar a la pantalla y volver a fallar al ejecutar el acto.
+
+**Decisión.** La cuenta institucional deja de ser una precondición de despliegue y pasa a ser una **garantía de tiempo de ejecución**. Cada vez que `resolveActor()` valida una sesión `ROOT_SUPERADMIN`, llama a `rootInstitutionalUserId()`. Si la cuenta existe, reutiliza su identificador. Si falta, la crea dentro de una transacción serializada con un advisory lock de PostgreSQL; reutiliza una `Person` institucional existente con el mismo correo si la hay y, si tampoco existe, crea la persona «Administración Fuerza Índigo». La cuenta nace `ACTIVE` y sin credenciales.
+
+**No cambia la autenticación.** Esta autocuración no crea `Credential`, no permite inicio de sesión ordinario y no vincula el `Actor` raíz a la cuenta. La raíz sigue autenticándose exclusivamente con `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD`, usando su sesión y cookie propias. La cuenta institucional existe solo para satisfacer relaciones de atribución que apuntan a `User`.
+
+**Concurrencia.** Dos peticiones raíz simultáneas sobre una instalación sin la cuenta no pueden crear dos personas o competir por el correo único: la creación queda serializada dentro de la transacción. Después del cerrojo se vuelve a consultar la cuenta antes de crear nada.
+
+**Consecuencias.** La limitación final de ADR-0182 —«una instalación cuya semilla sea anterior queda sin cuenta hasta ejecutar `db:seed`»— deja de aplicar. La semilla sigue creando la cuenta de forma idempotente, pero ya no es necesaria para que el Superadmin pueda operar. Las pruebas de integración eliminan la cuenta institucional y comprueban que `resolveActor()` la recrea, devuelve su `userId`, conserva la misma persona cuando existe y mantiene cero credenciales ordinarias.
+

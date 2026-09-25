@@ -1,6 +1,7 @@
 import { env } from '@/platform/config/env';
 import { db } from '@/platform/db/client';
-import { safeEquals } from '@/platform/kernel/ids';
+import { newPublicId, safeEquals } from '@/platform/kernel/ids';
+import { transaction } from '@/platform/db/unit-of-work';
 
 /**
  * Superadmin raíz definido por variables de entorno (PRD §4.4, docs/SECURITY.md §3).
@@ -59,6 +60,69 @@ export async function rootActorId(): Promise<string> {
     select: { id: true },
   });
   return created.id;
+}
+
+/**
+ * Cuenta institucional con la que la raíz firma actos que exigen `User`.
+ *
+ * La semilla la crea normalmente, pero una instalación antigua puede no tenerla.
+ * Resolver una sesión raíz válida no puede dejar `userId = null`: se asegura
+ * aquí, sin credencial y sin abrir una segunda vía de autenticación.
+ */
+export async function rootInstitutionalUserId(): Promise<string> {
+  const email = env().SUPERADMIN_EMAIL.trim().toLowerCase();
+  const existing = await db().user.findUnique({ where: { email }, select: { id: true } });
+  if (existing !== null) return existing.id;
+
+  const actorId = await rootActorId();
+
+  return transaction(async (tx) => {
+    // Dos peticiones raíz simultáneas sobre una instalación antigua no deben
+    // crear dos personas ni competir por el correo único de User.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`root-institutional-user:${email}`})::bigint)`;
+
+    const afterLock = await tx.user.findUnique({ where: { email }, select: { id: true } });
+    if (afterLock !== null) return afterLock.id;
+
+    const person = await tx.person.findFirst({
+      where: {
+        primaryEmail: email,
+        user: { is: null },
+        archivedAt: null,
+        mergedIntoPersonId: null,
+      },
+      select: { id: true },
+    });
+
+    const personId =
+      person?.id ??
+      (
+        await tx.person.create({
+          data: {
+            publicId: newPublicId(),
+            givenName: 'Administración',
+            familyName: 'Fuerza Índigo',
+            primaryEmail: email,
+            createdByActorId: actorId,
+            updatedByActorId: actorId,
+          },
+          select: { id: true },
+        })
+      ).id;
+
+    const created = await tx.user.create({
+      data: {
+        personId,
+        email,
+        status: 'ACTIVE',
+        createdByActorId: actorId,
+        updatedByActorId: actorId,
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  });
 }
 
 /**

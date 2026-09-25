@@ -1962,3 +1962,14 @@ FASE APROBADA — 100% COMPLETA
 ```
 
 La Fase 1 **no** se inicia en esta ejecución. Queda a la espera de autorización expresa de la persona usuaria, conforme al PRD §23.3.
+
+---
+
+## Ampliación de acceso raíz · Fase 1
+
+**Objetivo.** Verificar y completar el contrato operativo de acceso total de `ROOT_SUPERADMIN`, preservando íntegra la documentación histórica y registrando cada cambio mediante nuevas decisiones.
+
+**Estado:** en ejecución.
+
+**Verificación inicial:** la raíz ya recibe todos los permisos del catálogo, alcance global de entidades, territorios y organizaciones, los compartimentos `UNION`, `SOCIAL` y `DISCIPLINARY`, y las excepciones ya documentadas de asignación, motivo y lectura masiva. Las barreras residuales se documentarán como nuevas decisiones antes de cerrarse esta fase.
+

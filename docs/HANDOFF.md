@@ -280,3 +280,14 @@ eso ya está en el diff. Si un defecto apareció durante el bloque, el mensaje l
 dice y dice cómo se corrigió.
 
 Nunca se reescribe la historia de una rama que ya se empujó.
+
+---
+
+## 9. Cierre de ampliación de acceso raíz
+
+La Fase 1 de ampliación del Superadmin quedó cerrada sobre el contrato ya decidido en ADR-0174. No se reescribió la historia documental.
+
+Se verificó que `ROOT_SUPERADMIN` posee todos los permisos del catálogo, alcance global de entidad/territorio/organización, todos los compartimentos, acceso sin asignación ni motivo, lectura masiva y ausencia de máscara de campos. La cobertura de regresión se amplió en `tests/unit/authz/superadmin.test.ts` para comprobar explícitamente el cruce simultáneo de entidad, territorio, organización y compartimento, además del alcance territorial `ALL`.
+
+El consentimiento permanece como regla de negocio en los flujos que lo requieren y no fue modificado como parte de esta fase.
+

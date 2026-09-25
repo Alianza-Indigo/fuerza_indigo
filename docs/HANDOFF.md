@@ -291,3 +291,13 @@ Se verificó que `ROOT_SUPERADMIN` posee todos los permisos del catálogo, alcan
 
 El consentimiento permanece como regla de negocio en los flujos que lo requieren y no fue modificado como parte de esta fase.
 
+---
+
+## 10. Acceso global del Superadmin a Casos
+
+La Fase 2 eliminó los tres bloqueos locales que todavía hacían que la raíz se comportara como una persona ordinaria dentro del módulo de Casos: la lista filtraba por asignación, las alertas filtraban por asignación y el detalle solo abría si la raíz estaba asignada o era parte.
+
+Desde este cambio, `ROOT_SUPERADMIN` ve la bandeja completa, las alertas globales y cualquier expediente con clase de lectura `SUPERVISION`. Los actores ordinarios conservan exactamente las fronteras anteriores por asignación, territorio y compartimento.
+
+Las pruebas de integración cubren explícitamente un root no asignado. El despliegue funcional correspondiente quedó `READY` en producción.
+

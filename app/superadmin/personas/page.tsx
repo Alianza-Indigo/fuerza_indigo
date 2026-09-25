@@ -19,7 +19,7 @@ export default async function PeoplePage() {
       {!people.ok ? (
         <ErrorNotice title={people.error.message} />
       ) : people.data.length === 0 ? (
-        <EmptyState title="Todavía no hay personas registradas" />
+        <EmptyState title="Todavía no hay personas registradas" description="El índice aparecerá cuando exista al menos una persona en el registro maestro." />
       ) : (
         <ScrollableTable caption="Personas del registro maestro y sus relaciones principales">
           <thead>

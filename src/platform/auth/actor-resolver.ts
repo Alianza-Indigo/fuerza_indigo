@@ -3,7 +3,7 @@ import { db } from '@/platform/db/client';
 import type { ActorContext, RoleAssignmentSnapshot } from '@/platform/kernel/actor-context';
 import { publicContext } from '@/platform/kernel/actor-context';
 import { resolveSession } from '@/platform/auth/session';
-import { rootActorId } from '@/platform/auth/superadmin';
+import { rootActorId, rootInstitutionalUserId } from '@/platform/auth/superadmin';
 import { env } from '@/platform/config/env';
 
 /**
@@ -49,23 +49,15 @@ export async function resolveActor(input: ResolveActorInput): Promise<ActorConte
       // contraseña del entorno— sino **con qué identidad actúa** allí donde el
       // sistema exige una persona y no un actor: quién tomó una solicitud de
       // afiliación, quién la resolvió, quién respondió una aclaración. Esas
-      // columnas apuntan a `User` y no admiten vacío, así que sin esto la raíz
-      // veía la pantalla y el botón le fallaba.
-      //
-      // Si la fila no existe —una instalación cuya semilla es anterior a esto—
-      // el contexto queda como estaba: acceso total, sin cuenta. Nada se rompe;
-      // simplemente vuelven a fallar los actos que exigen persona, y `db:seed`
-      // los arregla.
-      const institucional = await db().user.findUnique({
-        where: { email: env().SUPERADMIN_EMAIL.trim().toLowerCase() },
-        select: { id: true },
-      });
+      // columnas apuntan a `User` y no admiten vacío, así que la cuenta se
+      // garantiza en tiempo de ejecución incluso en instalaciones antiguas.
+      const institutionalUserId = await rootInstitutionalUserId();
 
       return {
         ...base,
         actorId: await rootActorId(),
         actorKind: 'ROOT_SUPERADMIN',
-        userId: institucional?.id ?? null,
+        userId: institutionalUserId,
         sessionId: rootSession.sessionId,
         // Acceso total (ADR-0174, que revierte ADR-0026): la raíz tiene todos
         // los compartimentos, para que también las rutas que los consultan

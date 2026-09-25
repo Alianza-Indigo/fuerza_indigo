@@ -301,3 +301,13 @@ Desde este cambio, `ROOT_SUPERADMIN` ve la bandeja completa, las alertas globale
 
 Las pruebas de integración cubren explícitamente un root no asignado. El despliegue funcional correspondiente quedó `READY` en producción.
 
+---
+
+## 11. Identidad institucional autocurativa del Superadmin
+
+La raíz ya no depende de la semilla para obtener `userId`. Una sesión `ROOT_SUPERADMIN` válida garantiza su cuenta institucional al resolverse: si falta, se recrea bajo transacción y advisory lock, sin credencial ordinaria y sin alterar el mecanismo de autenticación raíz.
+
+Esto cierra los fallos del tipo «la pantalla abre pero el botón falla porque exige una cuenta». Los casos de uso pueden seguir exigiendo `actor.userId` para atribuir actos a una persona: para la raíz, esa identidad ya es una garantía del contexto.
+
+La decisión está registrada en ADR-0184 y cubierta por pruebas de integración que eliminan la cuenta y la reconstruyen mediante `resolveActor()`.
+

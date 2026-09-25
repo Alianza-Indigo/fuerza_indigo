@@ -6,11 +6,10 @@ import { transaction } from '@/platform/db/unit-of-work';
 /**
  * Superadmin raíz definido por variables de entorno (PRD §4.4, docs/SECURITY.md §3).
  *
- * No existe como registro editable: su correo y su contraseña viven en el
- * entorno, de modo que nadie puede crearlo, alterarlo ni escalar hacia él desde
- * la aplicación. La única fila que le corresponde en la base es su `Actor`, que
- * sirve para **atribuir** sus actos y que no concede ni retiene acceso alguno
- * (ADR-0026).
+ * Sus credenciales raíz viven exclusivamente en el entorno: ninguna fila de la
+ * base concede acceso root. En la base conserva un `Actor` de atribución y una
+ * cuenta institucional sin credenciales ordinarias para firmar actos que exigen
+ * `User` (ADR-0182 y ADR-0184).
  */
 
 /** Identificador estable del actor raíz. Lo crea la semilla. */

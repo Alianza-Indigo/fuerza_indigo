@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { SECCIONES as SECCIONES_GESTION } from '@/../app/gestion/secciones';
-import { SECCIONES as SECCIONES_INSTITUCIONAL } from '@/../app/institucional/secciones';
-import { SECCIONES as SECCIONES_CASOS } from '@/../app/casos/secciones';
-import { SUPERADMIN_LINKS } from '@/../app/superadmin/navigation';
+import { SECCIONES as SECCIONES_GESTION } from '../../app/gestion/secciones';
+import { SECCIONES as SECCIONES_INSTITUCIONAL } from '../../app/institucional/secciones';
+import { SECCIONES as SECCIONES_CASOS } from '../../app/casos/secciones';
+import { SUPERADMIN_LINKS } from '../../app/superadmin/navigation';
 
 describe('Centro de Control del Superadmin', () => {
   it('incluye todas las rutas declaradas por Gestión, Institucional y Casos', () => {

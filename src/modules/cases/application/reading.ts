@@ -263,8 +263,9 @@ const ORDEN = [
 ];
 
 export async function caseList(actor: ActorContext): Promise<UseCaseResult<readonly CaseRow[]>> {
+  const esRaiz = actor.actorKind === 'ROOT_SUPERADMIN';
   const userId = actor.userId;
-  if (userId === null || userId === undefined) return ok([]);
+  if (!esRaiz && (userId === null || userId === undefined)) return ok([]);
 
   // Se pregunta por cada compartimento que el actor tenga: un expediente
   // sindical y uno social no se mezclan ni siquiera para contarlos.
@@ -292,7 +293,9 @@ export async function caseList(actor: ActorContext): Promise<UseCaseResult<reado
   const filas = await db().case.findMany({
     where: {
       domain: { in: dominios },
-      assignments: { some: { userId, unassignedAt: null } },
+      // La raíz ve la bandeja completa. Para cualquier otro actor la frontera
+      // sigue siendo la asignación viva sobre el expediente concreto.
+      ...(esRaiz ? {} : { assignments: { some: { userId: userId!, unassignedAt: null } } }),
       ...(territorio ?? {}),
     },
     orderBy: ORDEN,

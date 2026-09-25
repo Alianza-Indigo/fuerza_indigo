@@ -22,3 +22,5 @@ export {
   type PublicIndigoAmbassador,
   type UpdateIndigoAmbassadorInput,
 } from './application/ambassadors';
+
+export { getPerson360, type Person360Mode, type Person360View } from './application/person-360';

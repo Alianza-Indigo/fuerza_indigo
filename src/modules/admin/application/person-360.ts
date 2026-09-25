@@ -189,6 +189,69 @@ function displayName(person: {
   );
 }
 
+
+export interface Person360IndexRow {
+  readonly publicId: string;
+  readonly displayName: string;
+  readonly primaryEmail: string | null;
+  readonly territory: string | null;
+  readonly archived: boolean;
+  readonly accountStatus: string | null;
+  readonly memberships: number;
+  readonly beneficiaryRecords: number;
+  readonly cases: number;
+}
+
+export async function listPerson360Index(
+  actor: ActorContext,
+  options: { limit?: number } = {},
+): Promise<UseCaseResult<readonly Person360IndexRow[]>> {
+  const decision = can(actor, 'identity.person.read_sensitive', {
+    kind: 'Person',
+    isBulk: true,
+    containsPersonalData: true,
+  });
+  if (!decision.allowed) return fail(errors.forbidden(explain(decision.reason!)));
+
+  const rows = await db().person.findMany({
+    orderBy: [{ archivedAt: 'asc' }, { familyName: 'asc' }, { givenName: 'asc' }],
+    take: Math.min(options.limit ?? 200, 500),
+    select: {
+      publicId: true,
+      givenName: true,
+      middleName: true,
+      familyName: true,
+      secondFamilyName: true,
+      preferredName: true,
+      primaryEmail: true,
+      archivedAt: true,
+      territorialUnit: { select: { name: true } },
+      user: { select: { status: true } },
+      _count: {
+        select: {
+          memberships: true,
+          beneficiaryRecords: true,
+          caseParticipations: { where: { removedAt: null } },
+        },
+      },
+    },
+  });
+
+  return ok(
+    rows.map((row) => ({
+      publicId: row.publicId,
+      displayName: displayName(row),
+      primaryEmail: row.primaryEmail,
+      territory: row.territorialUnit?.name ?? null,
+      archived: row.archivedAt !== null,
+      accountStatus: row.user?.status ?? null,
+      memberships: row._count.memberships,
+      beneficiaryRecords: row._count.beneficiaryRecords,
+      cases: row._count.caseParticipations,
+    })),
+  );
+}
+
 export async function getPerson360(
   actor: ActorContext,
   publicId: string,

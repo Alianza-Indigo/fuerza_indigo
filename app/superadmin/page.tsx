@@ -2,22 +2,9 @@ import Link from 'next/link';
 import { Badge, Card, PageShell } from '@/design-system/primitives';
 import { healthReport } from '@/platform/health';
 import { systemOverview } from '@/modules/admin';
-import { SECCIONES as SECCIONES_GESTION } from '../gestion/secciones';
-import { SECCIONES as SECCIONES_INSTITUCIONAL } from '../institucional/secciones';
+import { SUPERADMIN_NAVIGATION } from './navigation';
 
-/**
- * Directorio de áreas para el acceso total de la raíz (ADR-0174): cada pantalla
- * de administración, enlazada directamente desde el panel. Las listas se toman
- * de las mismas fuentes que arman la navegación de cada área, así que no se
- * desincronizan.
- */
-const AREAS = [
-  { titulo: 'Gestión', enlaces: SECCIONES_GESTION.map((s) => ({ href: s.href, label: s.label })) },
-  { titulo: 'Institucional', enlaces: SECCIONES_INSTITUCIONAL.map((s) => ({ href: s.href, label: s.label })) },
-  { titulo: 'Casos y apoyo', enlaces: [{ href: '/casos', label: 'Casos y protección' }] },
-] as const;
-
-export const metadata = { title: 'Estado general', robots: { index: false, follow: false } };
+export const metadata = { title: 'Centro de control', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 /**
@@ -35,8 +22,8 @@ export default async function SuperadminHomePage() {
 
   return (
     <PageShell
-      title="Estado general del sistema"
-      description="Acceso total a la plataforma y a todas sus áreas de administración."
+      title="Centro de control"
+      description="Resumen operativo y acceso directo a toda la plataforma."
     >
       <div className="space-y-8">
         {failing.length > 0 && (
@@ -66,14 +53,27 @@ export default async function SuperadminHomePage() {
         )}
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Primeros pasos</h2>
+          <h2 className="mb-3 text-lg font-semibold">Accesos rápidos</h2>
           <Card>
-            <p className="text-sm text-[var(--color-ink-soft)]">
-              Si esta es una instalación nueva, completa la entidad, los avisos, las reglas constitutivas y el primer nombramiento en un solo recorrido.
-            </p>
-            <Link href="/superadmin/puesta-en-marcha" className="mt-3 inline-block font-medium underline underline-offset-4">
-              Abrir puesta en marcha
-            </Link>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { href: '/superadmin/puesta-en-marcha', label: 'Configuración inicial', detail: 'Entidad, reglas y estructura de arranque.' },
+                { href: '/gestion/registro', label: 'Registro de personas', detail: 'Personas, cuentas y datos maestros.' },
+                { href: '/gestion/afiliacion/solicitudes', label: 'Solicitudes de afiliación', detail: 'Revisión y resolución de nuevas solicitudes.' },
+                { href: '/casos', label: 'Todos los expedientes', detail: 'Vista global de casos y alertas.' },
+                { href: '/institucional/asambleas', label: 'Asambleas', detail: 'Convocatorias, quórum y acuerdos.' },
+                { href: '/gestion/finanzas', label: 'Finanzas', detail: 'Cobros, pagos, libro y rendición.' },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-lg border border-[var(--color-line)] p-3 no-underline hover:bg-[var(--color-indigo-50)]"
+                >
+                  <span className="block font-medium">{item.label}</span>
+                  <span className="mt-1 block text-sm text-[var(--color-ink-soft)]">{item.detail}</span>
+                </Link>
+              ))}
+            </div>
           </Card>
         </section>
 
@@ -112,19 +112,19 @@ export default async function SuperadminHomePage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Áreas de administración</h2>
+          <h2 className="mb-3 text-lg font-semibold">Mapa completo de la plataforma</h2>
           <p className="mb-3 text-sm text-[var(--color-ink-soft)]">
-            Acceso total: todas las pantallas de la organización, enlazadas directamente.
+            Las mismas rutas del menú lateral, agrupadas por función para localizar cualquier área rápidamente.
           </p>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {AREAS.map((area) => (
-              <Card key={area.titulo}>
-                <h3 className="mb-2 font-semibold">{area.titulo}</h3>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {SUPERADMIN_NAVIGATION.map((group) => (
+              <Card key={group.label}>
+                <h3 className="mb-2 font-semibold">{group.label}</h3>
                 <ul className="space-y-1 text-sm">
-                  {area.enlaces.map((enlace) => (
-                    <li key={enlace.href}>
-                      <Link href={enlace.href} className="underline underline-offset-4 hover:no-underline">
-                        {enlace.label}
+                  {group.links.map((item) => (
+                    <li key={item.href}>
+                      <Link href={item.href} className="underline underline-offset-4 hover:no-underline">
+                        {item.label}
                       </Link>
                     </li>
                   ))}

@@ -2061,3 +2061,27 @@ FASE 3 — COMPLETADA
 FASE 4 — COMPLETADA
 ```
 
+---
+
+## Ampliación de acceso raíz · Fase 5
+
+**Objetivo.** Dar al Superadmin una Vista 360° de cualquier persona y una forma segura de revisar su experiencia personal sin suplantar identidad.
+
+**Estado:** completada.
+
+**Cambios realizados:**
+- se creó `getPerson360()` con identidad, contacto, cuenta, sesiones, roles, afiliación, beneficiarios, credenciales, directorio, consentimientos, pagos, notificaciones, casos, documentos, firmas y auditoría;
+- se creó `listPerson360Index()` para incluir a todas las personas del registro maestro, tengan o no cuenta;
+- `/superadmin/personas` se convirtió en índice universal 360;
+- se creó `/superadmin/personas/[persona]` usando `publicId`, no UUID interno;
+- se añadió “Ver como esta persona” en modo de solo lectura;
+- el modo “Ver como” conserva al Superadmin como actor real y no genera sesión de la persona;
+- cada lectura 360 y cada “Ver como” queda auditada con `onBehalfOfPersonId`;
+- se añadió una prueba de integración para índice, detalle y auditoría.
+
+**Decisión:** ADR-0186.
+
+```text
+FASE 5 — COMPLETADA
+```
+

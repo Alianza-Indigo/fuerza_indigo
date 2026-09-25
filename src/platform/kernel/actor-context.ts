@@ -41,7 +41,7 @@ export interface ActorContext {
 
   readonly roles: readonly RoleAssignmentSnapshot[];
   readonly legalEntityScope: readonly string[];
-  /** Vacío para el Superadmin raíz: es la salvaguarda de docs/PERMISSIONS.md §5.1. */
+  /** Compartimentos de sensibilidad alcanzables; la raíz recibe todos desde ADR-0174. */
   readonly compartments: ReadonlySet<Compartment>;
 
   /** Motivo capturado por la persona. Exigido por los permisos que lo marcan. */

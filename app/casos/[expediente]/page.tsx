@@ -58,6 +58,7 @@ export const dynamic = 'force-dynamic';
 export default async function ExpedientePage({ params }: { params: Promise<{ expediente: string }> }) {
   const { expediente } = await params;
   const actor = await currentActor();
+  const esRaiz = actor.actorKind === 'ROOT_SUPERADMIN';
   const consulta = await caseDetail(actor, expediente);
 
   if (!consulta.ok) {
@@ -65,7 +66,7 @@ export default async function ExpedientePage({ params }: { params: Promise<{ exp
       <PageShell title="Expediente" width="lectura">
         <ErrorNotice title={consulta.error.message}>
           <Link href="/casos" className="underline underline-offset-4">
-            Volver a mis expedientes
+            {esRaiz ? 'Volver a todos los expedientes' : 'Volver a mis expedientes'}
           </Link>
         </ErrorNotice>
       </PageShell>

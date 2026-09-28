@@ -132,7 +132,7 @@ export default async function PublicoLayout({ children }: { children: ReactNode 
               Sindicato Unión de Inclusión y Derechos Neurodivergentes «Fuerza Índigo» y Alianza Índigo A. C.
               <span className="mt-1 block">
                 Una iniciativa de la Asociación Mexicana de Criptominería Ecológica A. C., CLUNI AMC2408070873T,
-                Uxmal 7315, Chihuahua, Chihuahua 32120.
+                Uxmal 7315, Chihuahua, Chihuahua 31120.
               </span>
             </p>
           </div>

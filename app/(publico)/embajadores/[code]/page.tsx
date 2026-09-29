@@ -20,6 +20,10 @@ export default async function AmbassadorAffiliationPage({ params }: { params: Pr
   return (
     <main id="contenido" className="min-h-dvh bg-[var(--color-surface-sunken)] px-4 py-12 sm:px-6">
       <div className="mx-auto max-w-3xl space-y-7">
+        <div className="rounded-xl border border-[var(--color-success)] bg-[var(--color-surface-raised)] p-4 shadow-[var(--shadow-subtle)]">
+          <p className="text-sm font-bold uppercase tracking-[.14em] text-[var(--color-success)]">Credencial digital verificada</p>
+          <p className="mt-1 font-semibold">Embajador Índigo activo · {ambassador.code}</p>
+        </div>
         <header>
           <p className="text-sm font-bold uppercase tracking-[.18em] text-[var(--color-accent-ink)]">Embajadores Índigo</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight">Registro acompañado por {ambassador.displayName}</h1>

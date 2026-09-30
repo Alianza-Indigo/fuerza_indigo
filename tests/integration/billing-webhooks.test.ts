@@ -351,9 +351,9 @@ describe('evento fuera de orden', () => {
     if (sesion.kind !== 'ACCEPTED') throw new Error('no se aceptó');
     await processWebhookEvent(sesion.eventRowId, 'prueba');
 
-    // Y el reintento del primero ahora sí resuelve.
+    // Checkout ya resolvió el periodo adelantado; el reenvío no repite el efecto.
     const reintento = await processWebhookEvent(temprano.eventRowId, 'prueba');
-    expect(reintento.kind).toBe('PROCESSED');
+    expect(reintento.kind).toBe('ALREADY_DONE');
 
     const suscripcion = await base.prisma.subscription.findUniqueOrThrow({
       where: { stripeSubscriptionId: subId },
@@ -584,7 +584,7 @@ describe('lo que no se sabe manejar se ignora, no se pierde', () => {
 });
 
 describe('lo que queda sin conciliar se reintenta y, si no cede, se avisa', () => {
-  it('el reintento resuelve el evento adelantado en cuanto llega el que faltaba', async () => {
+  it('Checkout resuelve el evento adelantado sin esperar al cron', async () => {
     const intencion = await intencionAbierta('RECONCILIA_SOLO', 'RECURRING');
     const subId = `sub_reconcilia_${Date.now().toString(36)}`;
 
@@ -620,8 +620,9 @@ describe('lo que queda sin conciliar se reintenta y, si no cede, se avisa', () =
       temprano.eventRowId,
     ]);
 
-    const resumen = await retryUnreconciledWebhooks('prueba');
-    expect(resumen.resolved).toBeGreaterThanOrEqual(1);
+    const beforeRetry = await base.prisma.stripeWebhookEvent.findUniqueOrThrow({ where: { id: temprano.eventRowId } });
+    expect(beforeRetry.processingStatus).toBe('PROCESSED');
+    await retryUnreconciledWebhooks('prueba');
 
     expect(
       (
@@ -712,5 +713,47 @@ describe('lo que queda sin conciliar se reintenta y, si no cede, se avisa', () =
         })
       ).attempts,
     ).toBe(MAX_ATTEMPTS);
+  });
+});
+
+
+describe('eventos actuales de Stripe y primer cobro', () => {
+  it('la primera factura confirma la intención original y lee los campos Basil', async () => {
+    const intent = await intencionAbierta('BASIL_INICIAL', 'RECURRING');
+    const subId = 'sub_basil_inicial';
+    const session = await entregar('fuerza', sobre('checkout.session.completed', {
+      id: intent.stripeCheckoutSessionId, subscription: subId, customer: 'cus_basil', metadata: { paymentId: intent.id },
+    }));
+    if (session.kind !== 'ACCEPTED') throw new Error('sesión no aceptada');
+    await processWebhookEvent(session.eventRowId, 'prueba');
+    const period = await entregar('fuerza', sobre('customer.subscription.updated', {
+      id: subId, status: 'active', items: { data: [{ current_period_start: 1800000000, current_period_end: 1802000000 }] },
+    }));
+    if (period.kind !== 'ACCEPTED') throw new Error('periodo no aceptado');
+    await processWebhookEvent(period.eventRowId, 'prueba');
+    const subscription = await base.prisma.subscription.findUniqueOrThrow({ where: { stripeSubscriptionId: subId } });
+    expect(subscription.currentPeriodEnd.getTime()).toBe(1802000000000);
+    const invoice = {
+      id: 'in_basil_inicial', billing_reason: 'subscription_create',
+      parent: { type: 'subscription_details', subscription_details: { subscription: subId } },
+      payments: { data: [{ status: 'paid', payment: { type: 'payment_intent', payment_intent: 'pi_basil_inicial' } }] },
+      amount_paid: 15000, currency: 'mxn',
+    };
+    for (let i = 0; i < 2; i++) {
+      const event = await entregar('fuerza', sobre('invoice.payment_succeeded', invoice));
+      if (event.kind !== 'ACCEPTED') throw new Error('factura no aceptada');
+      expect((await processWebhookEvent(event.eventRowId, 'prueba')).kind).toMatch(/PROCESSED|ALREADY_DONE/);
+    }
+    const payment = await base.prisma.payment.findUniqueOrThrow({ where: { id: intent.id } });
+    expect(payment.status).toBe('SUCCEEDED');
+    expect(payment.stripePaymentIntentId).toBe('pi_basil_inicial');
+    expect(await base.prisma.payment.count({ where: { subscriptionId: subscription.id } })).toBe(1);
+    expect(await base.prisma.ledgerEntry.count({ where: { sourceKind: 'PAYMENT', sourceId: intent.id } })).toBe(1);
+    const failure = await entregar('fuerza', sobre('invoice.payment_failed', {
+      id: 'in_basil_failed', parent: invoice.parent,
+    }));
+    if (failure.kind !== 'ACCEPTED') throw new Error('fallo no aceptado');
+    expect((await processWebhookEvent(failure.eventRowId, 'prueba')).kind).toBe('PROCESSED');
+    expect((await base.prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } })).status).toBe('PAST_DUE');
   });
 });

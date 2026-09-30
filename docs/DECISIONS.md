@@ -2218,3 +2218,15 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 
 **Consecuencias.** El Superadmin puede revisar de extremo a extremo la situación de cualquier persona sin perder trazabilidad ni adoptar derechos personales, sindicales o electorales de esa persona. Si en el futuro se construye un verdadero “Actuar como”, deberá ser una capacidad separada, explícita y auditada; esta decisión no la implementa.
 
+
+## ADR-0187 · Activación de cobros y catálogo con importe cero
+
+**Contexto.** Stripe ya está configurado. Faltaban la periodicidad al crear precios recurrentes inline, la lectura de eventos Basil/Clover y la activación inmediata de afiliaciones pagadas. La primera factura de una suscripción creaba un movimiento separado de la intención vinculada a la solicitud.
+
+**Decisión.** El puerto HTTP envía la periodicidad del precio del catálogo, también cuando una beca o descuento obliga a usar `price_data`. Los webhooks admiten referencias históricas y actuales de facturas y periodos de suscripción. La primera factura confirma la intención original cuando coincide su importe y moneda; su identificador se conserva en `InvoiceReference`, sin alterar columnas financieras inmutables. La factura se procesa bajo un cerrojo transaccional para evitar ingresos duplicados.
+
+**Activación.** Después de confirmar un pago se entregan sus propios eventos de la bandeja de salida, con el cron existente como recuperación. Checkout reintenta los eventos adelantados de su misma cuenta y suscripción. Vincular un pago ya confirmado, incluido un precio de catálogo `0.00`, activa la solicitud aprobada sin esperar al despacho diario. La vinculación y la activación verifican persona, entidad y concepto; la activación concurrente se serializa. La acción de cuota obtiene el producto de la solicitud, no del campo enviado por el navegador.
+
+**Configuración comercial.** Los importes, becas, descuentos y excepciones siguen administrándose en la aplicación. No se codifican cuotas ni exenciones por categoría de persona. Un precio `0.00` usa el recorrido de exención existente, sin tarjeta, sesión de Stripe ni suscripción bancaria. No se modifican secretos, precios de producción, semillas ni migraciones existentes.
+
+**Validación.** Pruebas del formulario HTTP de Stripe, de webhooks actuales, de primer cobro sin duplicados, de activación con `0.00` y de rechazo de conceptos ajenos; se ejercen además las suites existentes de cobros, eventos, membresías y bandeja de salida.

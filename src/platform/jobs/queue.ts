@@ -193,9 +193,12 @@ export function clearHandlersForTests(): void {
  * entrega no duplica el efecto. Un manejador que falla no impide que los demás
  * del mismo mensaje se entreguen.
  */
-export async function dispatchOutbox(limit = 25): Promise<{ delivered: number; failed: number }> {
+export async function dispatchOutbox(limit = 25, messageIds?: readonly string[]): Promise<{ delivered: number; failed: number }> {
   const pending = await db().outboxMessage.findMany({
-    where: { status: { in: ['PENDING', 'DELIVERING'] }, availableAt: { lte: new Date() } },
+    where: {
+      status: { in: ['PENDING', 'DELIVERING'] }, availableAt: { lte: new Date() },
+      ...(messageIds === undefined ? {} : { id: { in: [...messageIds] } }),
+    },
     orderBy: { occurredAt: 'asc' },
     take: limit,
     select: { id: true, eventName: true, payload: true, correlationId: true, attempts: true },

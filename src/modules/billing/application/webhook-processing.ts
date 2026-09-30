@@ -6,6 +6,7 @@ import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { systemActorId } from '@/platform/auth/superadmin';
 import { systemContext } from '@/platform/kernel/actor-context';
 import { newPublicId } from '@/platform/kernel/ids';
+import { deliverConfirmedPayment } from '@/platform/jobs/domain-event-registry';
 import { announcePaymentSucceeded } from './payment-events';
 import { postPaymentEntry } from './ledger';
 import { issueReceipt, noticeFailedCharge } from './receipts';
@@ -98,6 +99,41 @@ function metadato(objeto: Record<string, unknown>, clave: string): string | null
   return texto(meta as Record<string, unknown>, clave);
 }
 
+function object(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+/** Las versiones Basil/Clover movieron estas referencias; se admiten eventos históricos. */
+function invoiceSubscription(invoice: Record<string, unknown>): string | null {
+  const parent = object(invoice['parent']);
+  return referencia(invoice, 'subscription') ??
+    (parent['type'] === 'subscription_details' ? referencia(object(parent['subscription_details']), 'subscription') : null);
+}
+
+function invoicePaymentIntent(invoice: Record<string, unknown>): string | null {
+  const legacy = referencia(invoice, 'payment_intent');
+  if (legacy !== null) return legacy;
+  const payments = object(invoice['payments'])['data'];
+  if (!Array.isArray(payments)) return null;
+  for (const item of payments) {
+    const row = object(item);
+    const payment = object(row['payment']);
+    if (row['status'] === 'paid' && payment['type'] === 'payment_intent') return referencia(payment, 'payment_intent');
+  }
+  return null;
+}
+
+function subscriptionPeriod(subscription: Record<string, unknown>, key: string): Date | null {
+  const legacy = segundos(subscription, key);
+  if (legacy !== null) return legacy;
+  const items = object(subscription['items'])['data'];
+  if (!Array.isArray(items)) return null;
+  const dates = items.map((item) => segundos(object(item), key)).filter((date): date is Date => date !== null);
+  // Esta plataforma crea una línea recurrente; si llegan varias, usa el periodo común.
+  if (dates.length === 0) return null;
+  return new Date(key === 'current_period_start' ? Math.max(...dates.map(Number)) : Math.min(...dates.map(Number)));
+}
+
 /* -------------------------------------------------------------------------- */
 /* Transiciones de un pago                                                    */
 /* -------------------------------------------------------------------------- */
@@ -147,6 +183,7 @@ type Manejador = (contexto: Contexto) => Promise<
     receiptFor?: string;
     /** Suscripción cuyo cobro falló y hay que avisar. */
     noticeFor?: string;
+    subscriptionReady?: string;
   }
 >;
 
@@ -260,7 +297,7 @@ const sesionTerminada: Manejador = async ({ tx, objeto, correlationId, actorId }
     };
   }
 
-  return { kind: 'PROCESSED', detail: 'sesión de cobro registrada', paymentId: pago.id };
+  return { kind: 'PROCESSED', detail: 'sesión de cobro registrada', paymentId: pago.id, ...(subscriptionId === null ? {} : { subscriptionReady: subscriptionId }) };
 };
 
 const intencionPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) => {
@@ -420,8 +457,8 @@ const suscripcionCambiada: Manejador = async ({ tx, objeto }) => {
     return { kind: 'FAILED', detail: `estado de suscripción desconocido: ${estadoCrudo}` };
   }
 
-  const inicio = segundos(objeto, 'current_period_start');
-  const fin = segundos(objeto, 'current_period_end');
+  const inicio = subscriptionPeriod(objeto, 'current_period_start');
+  const fin = subscriptionPeriod(objeto, 'current_period_end');
   const dias = fila.catalogPrice.product.gracePeriodDays;
 
   const enApuros = estado === 'PAST_DUE' || estado === 'UNPAID';
@@ -453,10 +490,12 @@ const suscripcionCambiada: Manejador = async ({ tx, objeto }) => {
  */
 const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) => {
   const facturaId = texto(objeto, 'id');
-  const subscriptionId = referencia(objeto, 'subscription');
+  const subscriptionId = invoiceSubscription(objeto);
   if (facturaId === null || subscriptionId === null) {
     return { kind: 'IGNORED', detail: 'factura sin suscripción: no corresponde a una renovación' };
   }
+
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`stripe-invoice:${facturaId}`}))`;
 
   const suscripcion = await tx.subscription.findUnique({
     where: { stripeSubscriptionId: subscriptionId },
@@ -477,6 +516,10 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
   if (yaContado !== null) {
     return { kind: 'ALREADY_DONE', detail: 'el ingreso de esta factura ya estaba contado', paymentId: yaContado.id };
   }
+  const referenciaExistente = await tx.invoiceReference.findUnique({
+    where: { externalSystem_externalId: { externalSystem: 'STRIPE', externalId: facturaId } }, select: { paymentId: true },
+  });
+  if (referenciaExistente !== null) return { kind: 'ALREADY_DONE', detail: 'factura ya vinculada a su ingreso', paymentId: referenciaExistente.paymentId };
 
   const pagado = importe(objeto, 'amount_paid');
   if (pagado === null) return { kind: 'FAILED', detail: 'la factura no trae un importe legible' };
@@ -490,7 +533,19 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
     select: { code: true },
   });
 
-  const pago = await tx.payment.create({
+  const inicial = texto(objeto, 'billing_reason') === 'subscription_create'
+    ? await tx.payment.findFirst({
+        where: { subscriptionId: suscripcion.id, stripeCheckoutSessionId: { not: null }, status: { in: [...ADMITEN_CONFIRMACION] } },
+        select: { id: true, amountMinor: true, currency: true },
+      })
+    : null;
+
+  if (inicial !== null && (inicial.amountMinor !== pagado || inicial.currency !== (texto(objeto, 'currency') ?? suscripcion.catalogPrice.currency).toUpperCase())) {
+    return { kind: 'UNRECONCILED', detail: 'la primera factura no coincide con el importe o moneda de la intención original' };
+  }
+
+  // La primera factura confirma la intención que ya está vinculada a la solicitud.
+  const pago = inicial === null ? await tx.payment.create({
     data: {
       publicId: newPublicId(20),
       billingAccountId: suscripcion.billingAccountId,
@@ -498,7 +553,7 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
       catalogPriceId: suscripcion.catalogPriceId,
       subscriptionId: suscripcion.id,
       stripeAccountKey: entidad.code === 'ALIANZA_INDIGO' ? 'ALIANZA' : 'FUERZA',
-      stripePaymentIntentId: referencia(objeto, 'payment_intent'),
+      stripePaymentIntentId: invoicePaymentIntent(objeto),
       amountMinor: pagado,
       currency: (texto(objeto, 'currency') ?? suscripcion.catalogPrice.currency).toUpperCase(),
       status: 'SUCCEEDED',
@@ -508,6 +563,17 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
       createdByActorId: actorId,
     },
     select: { id: true },
+  }) : await tx.payment.update({
+    where: { id: inicial.id },
+    data: {
+      status: 'SUCCEEDED', paidAt: new Date(),
+      stripePaymentIntentId: invoicePaymentIntent(objeto),
+    },
+    select: { id: true },
+  });
+
+  await tx.invoiceReference.create({
+    data: { paymentId: pago.id, externalSystem: 'STRIPE', externalId: facturaId, status: 'ISSUED', issuedAt: new Date() },
   });
 
   // Se cobró: si venía de un fallo, la gracia deja de correr.
@@ -545,7 +611,7 @@ const facturaPagada: Manejador = async ({ tx, objeto, correlationId, actorId }) 
 
 /** Una factura de renovación falló. Abre el periodo de gracia si el concepto lo tiene. */
 const facturaFallida: Manejador = async ({ tx, objeto, correlationId, actorId }) => {
-  const subscriptionId = referencia(objeto, 'subscription');
+  const subscriptionId = invoiceSubscription(objeto);
   if (subscriptionId === null) {
     return { kind: 'IGNORED', detail: 'factura sin suscripción: no corresponde a una renovación' };
   }
@@ -608,7 +674,7 @@ const MANEJADORES: Record<string, Manejador> = {
 export async function processWebhookEvent(eventRowId: string, correlationId: string): Promise<ProcessOutcome> {
   const evento = await db().stripeWebhookEvent.findUnique({
     where: { id: eventRowId },
-    select: { id: true, eventType: true, payload: true, processingStatus: true, attempts: true },
+    select: { id: true, eventType: true, payload: true, processingStatus: true, attempts: true, stripeAccountKey: true },
   });
   if (evento === null) return { kind: 'FAILED', detail: 'el evento no existe' };
 
@@ -662,9 +728,28 @@ export async function processWebhookEvent(eventRowId: string, correlationId: str
       },
     });
 
+    // Al llegar Checkout, las facturas/periodos adelantados ya pueden resolverse.
+    // Se reintentan solo los eventos de esta suscripción y cuenta, sin esperar al cron diario.
+    if (resultado.subscriptionReady !== undefined) {
+      const subscriptionId = resultado.subscriptionReady;
+      const earlier = await db().stripeWebhookEvent.findMany({
+        where: {
+          stripeAccountKey: evento.stripeAccountKey, processingStatus: 'UNRECONCILED',
+          eventType: { in: ['invoice.payment_succeeded', 'invoice.payment_failed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'] },
+          OR: [
+            { payload: { path: ['data', 'object', 'id'], equals: subscriptionId } },
+            { payload: { path: ['data', 'object', 'subscription'], equals: subscriptionId } },
+            { payload: { path: ['data', 'object', 'parent', 'subscription_details', 'subscription'], equals: subscriptionId } },
+          ],
+        }, orderBy: { receivedAt: 'asc' }, take: 25, select: { id: true },
+      });
+      for (const pending of earlier) await processWebhookEvent(pending.id, correlationId);
+    }
+
     // El acuse va **fuera** de la transacción a propósito: el cobro ya está
     // confirmado y asentado, y perderlo porque el proveedor de correo falló
     // sería perder lo único que importa. La cola reintenta.
+    if (resultado.paymentId !== undefined) await deliverConfirmedPayment(resultado.paymentId, correlationId);
     if (resultado.receiptFor !== undefined) await issueReceipt(resultado.receiptFor, correlationId);
     if (resultado.noticeFor !== undefined) await noticeFailedCharge(resultado.noticeFor, correlationId);
 

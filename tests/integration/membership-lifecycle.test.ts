@@ -3,6 +3,7 @@ import { createTestDatabase, type TestDatabase } from './helpers/database';
 import { contextoDe, crearPersonaConCuenta, entidadPrincipal, nombrar, type PersonaDePrueba } from './helpers/fixtures';
 import {
   activateFromConfirmedPayment,
+  linkPaymentToApplication,
   endMembership,
   expireDueMemberships,
   membershipDetail,
@@ -14,7 +15,9 @@ import {
   submitApplication,
   suspendMembership,
 } from '@/modules/membership';
-import { createPrice, createProduct } from '@/modules/billing';
+import { createPrice, createProduct, startCheckout, receiveWebhook, processWebhookEvent } from '@/modules/billing';
+import { setStripeForTests, webhookSecretFor } from '@/platform/payments/stripe-port';
+import { signStripePayload } from '@/platform/payments/signature';
 import { grantConsent, publishConsentVersion } from '@/platform/consent';
 import { dispatchOutbox, clearHandlersForTests } from '@/platform/jobs/queue';
 import { registerDomainEventHandlers, resetRegistryForTests } from '@/platform/jobs/domain-event-registry';
@@ -759,5 +762,81 @@ describe('el rol sigue a la calidad', () => {
     });
     expect(segunda.ok, segunda.ok ? '' : JSON.stringify(segunda.error)).toBe(true);
     expect(await rolesVivos(quien.userId)).not.toContain('UNION_MEMBER');
+  });
+});
+
+
+describe('confirmación de afiliación sin esperar al cron', () => {
+  it('un precio de catálogo 0.00 activa al vincular el pago y no crea suscripción en Stripe', async () => {
+    const { quien, suyo, applicationId, tipo } = await solicitudResuelta('AGREMIADO', 'CatalogoCero');
+    const price = await base.prisma.catalogPrice.findUniqueOrThrow({ where: { id: precioId } });
+    await base.prisma.catalogPrice.update({ where: { id: precioId }, data: { amountMinor: 0n } });
+    try {
+      const started = await startCheckout(suyo, { productId: tipo.catalogProductId! });
+      if (!started.ok) throw started.error;
+      const linked = await linkPaymentToApplication(suyo, { applicationId, paymentPublicId: started.data.paymentPublicId });
+      expect(linked.ok).toBe(true);
+      expect(await base.prisma.membership.count({ where: { personId: quien.personId, status: 'ACTIVE' } })).toBe(1);
+      const payment = await base.prisma.payment.findUniqueOrThrow({ where: { publicId: started.data.paymentPublicId } });
+      expect(payment.amountMinor).toBe(0n);
+      expect(payment.method).toBe('EXEMPTION');
+      expect(payment.stripeCheckoutSessionId).toBeNull();
+    } finally {
+      await base.prisma.catalogPrice.update({ where: { id: precioId }, data: { amountMinor: price.amountMinor } });
+    }
+  });
+
+  it('un pago confirmado de otro concepto no puede vincularse ni activar la solicitud', async () => {
+    const { quien, suyo, applicationId } = await solicitudResuelta('AGREMIADO', 'ConceptoIncorrecto');
+    const paymentId = await cobroConfirmado(quien.personId, applicationId);
+    await base.prisma.membershipApplication.update({ where: { id: applicationId }, data: { paymentId: null } });
+    await base.sql.query('UPDATE payment SET "catalogPriceId" = NULL WHERE id = $1', [paymentId]);
+    const payment = await base.prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
+    expect((await linkPaymentToApplication(suyo, { applicationId, paymentPublicId: payment.publicId })).ok).toBe(false);
+    await base.prisma.membershipApplication.update({ where: { id: applicationId }, data: { paymentId } });
+    expect((await activateFromConfirmedPayment(secretaria, paymentId)).activated).toBe(false);
+  });
+});
+
+
+describe('primer cobro recurrente de afiliación', () => {
+  it('la factura adelantada activa la solicitud al llegar Checkout y no duplica el ingreso', async () => {
+    const { quien, suyo, applicationId, tipo } = await solicitudResuelta('AGREMIADO', 'SuscripcionPagada');
+    const productId = tipo.catalogProductId!;
+    await base.prisma.catalogProduct.update({ where: { id: productId }, data: { billingMode: 'RECURRING' } });
+    await base.prisma.catalogPrice.update({ where: { id: precioId }, data: { interval: 'MONTH' } });
+    setStripeForTests({
+      name: 'prueba', capability: () => ({ capability: 'CHARGES', detail: 'prueba' }),
+      createCheckoutSession: () => Promise.resolve({ id: 'cs_membership_subscription', url: 'https://checkout.invalid', paymentIntentId: null }),
+      createPortalSession: () => Promise.resolve({ url: 'https://portal.invalid' }),
+      createRefund: () => Promise.resolve({ id: 're_test', status: 'succeeded' }),
+    });
+    async function event(type: string, object: Record<string, unknown>) {
+      const rawBody = JSON.stringify({ id: newPublicId(24), type, data: { object } });
+      const received = await receiveWebhook({ slug: 'fuerza', rawBody, signatureHeader: signStripePayload({ rawBody, secret: webhookSecretFor('FUERZA') }), correlationId: 'prueba', ipHash: null });
+      if (received.kind !== 'ACCEPTED') throw new Error('evento no aceptado');
+      return processWebhookEvent(received.eventRowId, 'prueba');
+    }
+    try {
+      const opened = await startCheckout(suyo, { productId });
+      if (!opened.ok) throw opened.error;
+      expect((await linkPaymentToApplication(suyo, { applicationId, paymentPublicId: opened.data.paymentPublicId })).ok).toBe(true);
+      const payment = await base.prisma.payment.findUniqueOrThrow({ where: { publicId: opened.data.paymentPublicId } });
+      const invoice = {
+        id: 'in_membership_first', billing_reason: 'subscription_create', amount_paid: 50000, currency: 'mxn',
+        parent: { type: 'subscription_details', subscription_details: { subscription: 'sub_membership' } },
+        payments: { data: [{ status: 'paid', payment: { type: 'payment_intent', payment_intent: 'pi_membership_first' } }] },
+      };
+      expect((await event('invoice.payment_succeeded', invoice)).kind).toBe('UNRECONCILED');
+      await event('checkout.session.completed', { id: 'cs_membership_subscription', subscription: 'sub_membership', customer: 'cus_membership', metadata: { paymentId: payment.id } });
+      expect(await base.prisma.membership.count({ where: { personId: quien.personId, status: 'ACTIVE' } })).toBe(1);
+      expect((await base.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe('SUCCEEDED');
+      await event('invoice.payment_succeeded', invoice);
+      expect(await base.prisma.ledgerEntry.count({ where: { sourceKind: 'PAYMENT', sourceId: payment.id } })).toBe(1);
+    } finally {
+      setStripeForTests(null);
+      await base.prisma.catalogProduct.update({ where: { id: productId }, data: { billingMode: 'ONE_TIME' } });
+      await base.prisma.catalogPrice.update({ where: { id: precioId }, data: { interval: null } });
+    }
   });
 });

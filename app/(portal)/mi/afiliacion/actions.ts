@@ -6,6 +6,7 @@ import { startCheckout } from '@/modules/billing';
 import {
   answerClarification,
   linkPaymentToApplication,
+  pendingChargeFor,
   attachApplicationDocument,
   submitApplication,
   withdrawApplication,
@@ -200,8 +201,13 @@ export async function payApplicationFeeAction(
   const actor = await currentActor();
   const applicationId = textField(formData, 'applicationId');
 
+  const fee = await pendingChargeFor(actor, applicationId);
+  if (!fee.ok) return { status: 'error', message: fee.error.message };
+  if (fee.data.catalogProductId === null || fee.data.alreadyPaid) {
+    return { status: 'error', message: 'Esta solicitud no tiene una cuota pendiente.' };
+  }
   const cobro = await startCheckout(actor, {
-    productId: textField(formData, 'productId'),
+    productId: fee.data.catalogProductId,
     returnPath: `/mi/afiliacion/${applicationId}`,
   });
   if (!cobro.ok) return { status: 'error', message: cobro.error.message };

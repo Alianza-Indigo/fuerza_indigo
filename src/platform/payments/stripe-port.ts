@@ -27,6 +27,7 @@ export interface CheckoutLineItem {
   readonly currency: string;
   readonly productName: string;
   readonly quantity: number;
+  readonly interval?: string | null;
 }
 
 export interface CreateCheckoutInput {
@@ -105,6 +106,17 @@ export function accountFromSlug(slug: string): StripeAccountKey | null {
 /* -------------------------------------------------------------------------- */
 
 const STRIPE_API = 'https://api.stripe.com/v1';
+
+function recurringFor(interval: string | null | undefined): { interval: string; interval_count: number } {
+  if (interval === null || interval === undefined) throw new Error('El cobro recurrente necesita una periodicidad válida del catálogo.');
+  switch (interval) {
+    case 'MONTH': return { interval: 'month', interval_count: 1 };
+    case 'QUARTER': return { interval: 'month', interval_count: 3 };
+    case 'SEMESTER': return { interval: 'month', interval_count: 6 };
+    case 'YEAR': return { interval: 'year', interval_count: 1 };
+    default: throw new Error('El cobro recurrente necesita una periodicidad válida del catálogo.');
+  }
+}
 
 /**
  * Stripe recibe formularios, no JSON, y anida con corchetes.
@@ -222,6 +234,7 @@ const httpAdapter: StripePort = {
                   currency: linea.currency.toLowerCase(),
                   unit_amount: linea.amountMinor.toString(),
                   product_data: { name: linea.productName },
+                  ...(input.mode === 'subscription' ? { recurring: recurringFor(linea.interval) } : {}),
                 },
               }
             : { quantity: linea.quantity, price: linea.stripePriceId },

@@ -440,7 +440,7 @@ export async function linkPaymentToApplication(
 ): Promise<UseCaseResult<{ applicationId: string }>> {
   const solicitud = await db().membershipApplication.findUnique({
     where: { id: input.applicationId },
-    select: { id: true, status: true, personId: true, legalEntityId: true, paymentId: true },
+    select: { id: true, status: true, personId: true, legalEntityId: true, paymentId: true, membershipType: { select: { catalogProductId: true } } },
   });
   if (solicitud === null) return fail(errors.notFound('solicitud inexistente'));
 
@@ -455,7 +455,7 @@ export async function linkPaymentToApplication(
 
   const pago = await db().payment.findUnique({
     where: { publicId: input.paymentPublicId },
-    select: { id: true, billingAccount: { select: { personId: true } } },
+    select: { id: true, status: true, legalEntityId: true, catalogPrice: { select: { productId: true } }, billingAccount: { select: { personId: true } } },
   });
   if (pago === null) return fail(errors.notFound('cobro inexistente'));
   if (pago.billingAccount.personId !== solicitud.personId) {
@@ -467,10 +467,26 @@ export async function linkPaymentToApplication(
     );
   }
 
+  if (solicitud.status !== 'APPROVED') return fail(errors.conflict('La solicitud debe estar aprobada antes de vincular el pago.'));
+  if (pago.legalEntityId !== solicitud.legalEntityId || pago.catalogPrice?.productId !== solicitud.membershipType.catalogProductId) {
+    return fail(errors.ruleViolation('Ese pago no corresponde al concepto de esta afiliación.', 'concepto o entidad de cobro distintos de los autorizados para la solicitud'));
+  }
+  if (solicitud.paymentId !== null && solicitud.paymentId !== pago.id) {
+    const previo = await db().payment.findUnique({ where: { id: solicitud.paymentId }, select: { status: true } });
+    if (previo?.status === 'SUCCEEDED') return fail(errors.conflict('La solicitud ya tiene un pago confirmado.'));
+  }
+
   await db().membershipApplication.update({
     where: { id: solicitud.id },
     data: { paymentId: pago.id, updatedByActorId: actor.actorId, rowVersion: { increment: 1 } },
   });
+
+  if (pago.status === 'SUCCEEDED') {
+    const { deliverConfirmedPayment } = await import('@/platform/jobs/domain-event-registry');
+    await deliverConfirmedPayment(pago.id, actor.correlationId);
+    // Un pago confirmado pudo ser entregado antes de que se vinculase al trámite.
+    await activateFromConfirmedPayment(actor, pago.id);
+  }
 
   return ok({ applicationId: solicitud.id });
 }
@@ -494,14 +510,18 @@ export async function activateFromConfirmedPayment(
   paymentId: string,
 ): Promise<{ activated: boolean; membershipId?: string }> {
   return transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`activar-pago:${paymentId}`}))`;
     const solicitud = await tx.membershipApplication.findFirst({
       where: { paymentId, status: 'APPROVED' },
-      select: { id: true },
+      select: { id: true, personId: true, legalEntityId: true, membershipType: { select: { catalogProductId: true } } },
     });
     if (solicitud === null) return { activated: false };
 
-    const pago = await tx.payment.findUnique({ where: { id: paymentId }, select: { status: true } });
+    const pago = await tx.payment.findUnique({ where: { id: paymentId }, select: { status: true, legalEntityId: true, billingAccount: { select: { personId: true } }, catalogPrice: { select: { productId: true } } } });
     if (pago?.status !== 'SUCCEEDED') return { activated: false };
+    if (pago.legalEntityId !== solicitud.legalEntityId || pago.billingAccount.personId !== solicitud.personId || pago.catalogPrice?.productId !== solicitud.membershipType.catalogProductId) {
+      return { activated: false };
+    }
 
     const activable = await solicitudParaActivar(tx, solicitud.id);
     if (activable === null) return { activated: false };

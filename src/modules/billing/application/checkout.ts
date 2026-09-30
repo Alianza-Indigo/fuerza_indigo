@@ -326,6 +326,7 @@ export async function startCheckout(
           productName:
             efectivo.explanation === null ? producto.name : `${producto.name} — ${efectivo.explanation}`,
           quantity: 1,
+          interval: precio.interval,
         },
       ],
       // El identificador público viaja en la dirección de regreso para poder

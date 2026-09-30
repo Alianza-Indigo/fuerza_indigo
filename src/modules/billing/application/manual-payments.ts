@@ -8,6 +8,7 @@ import { newPublicId } from '@/platform/kernel/ids';
 import { can, explain } from '@/platform/authz/policy';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { announcePaymentSucceeded } from './payment-events';
+import { deliverConfirmedPayment } from '@/platform/jobs/domain-event-registry';
 import { recordAudit } from '@/platform/audit/audit-service';
 import { AUDIT_ACTIONS } from '@/platform/audit/actions';
 import { accountForLegalEntity } from '@/platform/payments/accounts';
@@ -257,6 +258,7 @@ export async function approveManualPayment(
   });
 
   // Fuera de la transacción: el pago ya está aprobado y asentado.
+  await deliverConfirmedPayment(pago.id, actor.correlationId);
   await issueReceipt(pago.id, actor.correlationId);
 
   return ok({ paymentId: pago.id });

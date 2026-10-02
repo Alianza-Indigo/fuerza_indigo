@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { saveMapLocation } from '@/modules/network-map';
+import { reviewMapLocationRequest, saveMapLocation } from '@/modules/network-map';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -19,4 +19,29 @@ export async function saveMapAction(_previous: MapFormState, formData: FormData)
   if (!result.ok) return { status: 'error', message: result.error.message, ...(result.error.details ? { fieldErrors: result.error.details } : {}) };
   for (const path of ['/', '/mapa', '/superadmin/mapa', '/delegaciones', '/agremiados-honorarios']) revalidatePath(path);
   return { status: 'ok', message: 'Ubicación y contactos guardados.' };
+}
+
+export async function reviewMapRequestAction(_previous: MapFormState, formData: FormData): Promise<MapFormState> {
+  const actor = await currentActor();
+  const result = await reviewMapLocationRequest(actor, {
+    requestId: textField(formData, 'requestId'),
+    decision: textField(formData, 'decision'),
+    note: textField(formData, 'note').trim() || null,
+  });
+  if (!result.ok) {
+    return {
+      status: 'error',
+      message: result.error.message,
+      ...(result.error.details ? { fieldErrors: result.error.details } : {}),
+    };
+  }
+  for (const path of ['/', '/mapa', '/superadmin/mapa', '/mi/directorio', '/agremiados-honorarios']) {
+    revalidatePath(path);
+  }
+  return {
+    status: 'ok',
+    message: result.data.status === 'APPROVED'
+      ? 'Solicitud autorizada. La ubicación ya está publicada.'
+      : 'Solicitud rechazada. La ubicación pública anterior no cambió.',
+  };
 }

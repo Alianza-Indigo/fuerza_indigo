@@ -19,3 +19,41 @@ model NetworkMapLocation {
 
   @@map("network_map_location")
 }
+
+/// Propuesta de ubicación enviada por un agremiado honorario.
+/// Es inmutable mientras se revisa: aprobarla copia sus datos a
+/// `NetworkMapLocation`; rechazarla nunca altera lo que ya está publicado.
+model NetworkMapRequest {
+  id                 String                  @id @default(uuid(7)) @db.Uuid
+  subjectKey         String                  @db.VarChar(200)
+  category           String                  @default("HONORARY") @db.VarChar(20)
+  status             NetworkMapRequestStatus @default(PENDING)
+  latitude           Float
+  longitude          Float
+  address            String?                 @db.VarChar(300)
+  city               String?                 @db.VarChar(160)
+  state              String?                 @db.VarChar(160)
+  contactName        String?                 @db.VarChar(160)
+  email              String?                 @db.VarChar(320)
+  phone              String?                 @db.VarChar(40)
+  website            String?                 @db.VarChar(500)
+  requestedAt        DateTime                @default(now()) @db.Timestamptz(3)
+  requestedByActorId String                  @db.Uuid
+  reviewedAt         DateTime?               @db.Timestamptz(3)
+  reviewedByActorId  String?                 @db.Uuid
+  reviewNote         String?                 @db.VarChar(600)
+
+  requestedByActor Actor  @relation("NetworkMapRequestRequestedBy", fields: [requestedByActorId], references: [id], onDelete: Restrict)
+  reviewedByActor  Actor? @relation("NetworkMapRequestReviewedBy", fields: [reviewedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([subjectKey, status, requestedAt])
+  @@index([status, requestedAt])
+  @@map("network_map_request")
+}
+
+enum NetworkMapRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}

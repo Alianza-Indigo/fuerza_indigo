@@ -3,7 +3,9 @@ import { Card, ErrorNotice, Notice, PageShell, Section } from '@/design-system/p
 import { currentActor } from '@/platform/http/request-context';
 import { formatDateTime } from '@/platform/i18n/format';
 import { myDirectoryState } from '@/modules/membership';
+import { myHonoraryMapLocations } from '@/modules/network-map';
 import { PreferenceForm, WithdrawForm } from './directory-forms';
+import { HonoraryMapRequestForm } from './honorary-map-form';
 
 export const metadata = { title: 'Mi ficha pública', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -25,7 +27,10 @@ export default async function MiDirectorioPage() {
     );
   }
 
-  const estado = await myDirectoryState(actor, actor.personId);
+  const [estado, mapa] = await Promise.all([
+    myDirectoryState(actor, actor.personId),
+    myHonoraryMapLocations(actor),
+  ]);
   if (!estado.ok) {
     return (
       <PageShell title="Mi ficha pública">
@@ -104,6 +109,34 @@ export default async function MiDirectorioPage() {
             <Card>
               <WithdrawForm />
             </Card>
+          </Section>
+        )}
+
+        {mapa.ok && mapa.data.hasHonoraryMembership && (
+          <Section
+            title="Mi ubicación en el mapa nacional"
+            description="Marca tu sede o lugar de atención. El Superadmin debe autorizarla antes de que se muestre públicamente."
+          >
+            <div className="space-y-6">
+              {mapa.data.requiresPublicProfile && (
+                <Notice tone="warning" title="Primero publica tu ficha">
+                  <p>
+                    Para aparecer en el mapa como persona honoraria necesitas autorizar arriba una ficha pública.
+                    Después podrás enviar tu ubicación para revisión.
+                  </p>
+                </Notice>
+              )}
+              {mapa.data.entries.map((item) => (
+                <Card key={`${item.entry.id}:${item.latestRequest?.id ?? 'new'}`}>
+                  <HonoraryMapRequestForm item={item} />
+                </Card>
+              ))}
+              {mapa.data.entries.length === 0 && !mapa.data.requiresPublicProfile && (
+                <Notice tone="neutral" title="Tu registro todavía no puede solicitar una ubicación">
+                  <p>La membresía y su autorización pública deben estar vigentes para habilitar esta opción.</p>
+                </Notice>
+              )}
+            </div>
           </Section>
         )}
       </div>

@@ -8,6 +8,8 @@
 /// permisos de la lista cerrada de concesión (PRD §4.4).
 model Actor {
   networkMapLocations NetworkMapLocation[]
+  requestedNetworkMapLocations NetworkMapRequest[] @relation("NetworkMapRequestRequestedBy")
+  reviewedNetworkMapLocations  NetworkMapRequest[] @relation("NetworkMapRequestReviewedBy")
   id        String    @id @default(uuid(7)) @db.Uuid
   kind      ActorKind
   userId    String?   @unique @db.Uuid

@@ -149,6 +149,7 @@ export {
   type DirectoryEntry,
   type DirectoryFilters,
   type PublicEntry,
+  type PublicHonoraryEntry,
   type SetDirectoryPreferenceInput,
   type WithdrawDirectoryInput,
   type ExportDirectoryInput,

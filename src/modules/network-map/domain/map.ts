@@ -54,19 +54,39 @@ export function filterMapEntries(entries: readonly NetworkMapEntry[], category: 
   );
 }
 const optionalText = (max: number) => z.string().trim().max(max).nullable();
+const publicContactFields = {
+  address: optionalText(300), city: optionalText(160), state: optionalText(160),
+  contactName: optionalText(160),
+  email: z.email('Escribe un correo válido.').max(320).nullable(),
+  phone: z.string().trim().max(40).regex(/^[+\d\s().-]+$/, 'Revisa el teléfono.').nullable(),
+  website: optionalText(500).refine((value) => value === null || safeWebsite(value) !== null, 'Usa una dirección http o https.'),
+};
 export const mapLocationSchema = z.object({
   subjectKey: z.string().min(1).max(200),
   category: z.enum(['STATE', 'MUNICIPALITY', 'SECTION', 'HONORARY']),
   enabled: z.boolean(),
   latitude: z.number().finite().min(-90).max(90).nullable(),
   longitude: z.number().finite().min(-180).max(180).nullable(),
-  address: optionalText(300), city: optionalText(160), state: optionalText(160),
-  contactName: optionalText(160),
-  email: z.email('Escribe un correo válido.').max(320).nullable(),
-  phone: z.string().trim().max(40).regex(/^[+\d\s().-]+$/, 'Revisa el teléfono.').nullable(),
-  website: optionalText(500).refine((value) => value === null || safeWebsite(value) !== null, 'Usa una dirección http o https.'),
+  ...publicContactFields,
 }).superRefine((value, ctx) => {
   if ((value.latitude === null) !== (value.longitude === null) || (value.enabled && !hasCoordinates(value))) {
     ctx.addIssue({ code: 'custom', path: ['latitude'], message: 'Selecciona una ubicación o captura ambas coordenadas para publicarla.' });
+  }
+});
+
+export const ownMapLocationRequestSchema = z.object({
+  subjectKey: z.string().startsWith('honorary:').max(200),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+  ...publicContactFields,
+});
+
+export const mapLocationReviewSchema = z.object({
+  requestId: z.uuid(),
+  decision: z.enum(['APPROVE', 'REJECT']),
+  note: optionalText(600),
+}).superRefine((value, ctx) => {
+  if (value.decision === 'REJECT' && value.note === null) {
+    ctx.addIssue({ code: 'custom', path: ['note'], message: 'Explica brevemente por qué se rechaza la ubicación.' });
   }
 });

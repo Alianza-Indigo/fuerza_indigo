@@ -6,6 +6,7 @@ import {
   setDirectoryPreference,
   withdrawDirectoryConsent,
 } from '@/modules/membership';
+import { submitOwnMapLocationRequest } from '@/modules/network-map';
 import { currentActor } from '@/platform/http/request-context';
 import { checkboxField, textField } from '@/platform/http/form-fields';
 
@@ -110,5 +111,41 @@ export async function withdrawDirectoryAction(
       resultado.data.withdrawn === 0
         ? 'Retiramos tu autorización. No tenías ninguna ficha publicada.'
         : 'Retiramos tu autorización y tu ficha dejó de estar publicada. Los buscadores ya no la pueden indexar.',
+  };
+}
+
+export async function submitMapLocationRequestAction(
+  _previous: DirectorioPropioState,
+  formData: FormData,
+): Promise<DirectorioPropioState> {
+  const actor = await currentActor();
+  const optional = (name: string) => textField(formData, name).trim() || null;
+  const coordinate = (name: string) => {
+    const value = optional(name);
+    return value === null ? Number.NaN : Number(value);
+  };
+  const result = await submitOwnMapLocationRequest(actor, {
+    subjectKey: textField(formData, 'subjectKey'),
+    latitude: coordinate('latitude'),
+    longitude: coordinate('longitude'),
+    address: optional('address'),
+    city: optional('city'),
+    state: optional('state'),
+    contactName: optional('contactName'),
+    email: optional('email'),
+    phone: optional('phone'),
+    website: optional('website'),
+  });
+  if (!result.ok) {
+    return {
+      status: 'error',
+      message: result.error.message,
+      ...(result.error.details === undefined ? {} : { fieldErrors: result.error.details }),
+    };
+  }
+  for (const path of ['/mi/directorio', '/superadmin/mapa']) revalidatePath(path);
+  return {
+    status: 'ok',
+    message: 'Enviamos tu ubicación al Superadmin. No se mostrará en el mapa hasta que sea autorizada.',
   };
 }

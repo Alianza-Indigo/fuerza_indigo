@@ -2241,3 +2241,14 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 **Presentación.** La portada y `/mapa` comparten el mismo explorador, con selector de categoría, estado, búsqueda, agrupación de puntos y fichas de contacto. Los registros públicos todavía sin coordenadas permanecen consultables en la lista y nunca heredan ni inventan una ubicación. La política de contenido admite exclusivamente el origen cartográfico configurado y trabajadores `blob:` de MapLibre.
 
 **Validación.** Pruebas del cruce con las fuentes públicas, retiro al perder elegibilidad, autoridad del Superadmin, restricciones de coordenadas y enlaces, filtrado y auditoría. La migración se ejerció en PostgreSQL temporal con casos válidos, coordenadas incompletas, fuera de rango, categorías inválidas y autoría inexistente. Se revisaron las vistas de mapa y lista en escritorio y móvil.
+
+
+## ADR-0189 · La ubicación propuesta por el honorario exige autorización previa
+
+**Contexto.** El mapa nacional nació con captura exclusiva del Superadmin. Los agremiados honorarios conocen mejor su sede y sus medios públicos de atención, pero permitirles escribir directamente en `NetworkMapLocation` eliminaría la revisión institucional y podría sustituir de inmediato una ubicación ya validada.
+
+**Decisión.** La persona titular o representante de una membresía honoraria vigente puede proponer su ubicación desde `Mi ficha pública`. La titularidad se deriva en servidor de la membresía activa, la ficha pública vigente y, en su caso, la organización representada; el identificador enviado por el navegador nunca basta. Cada propuesta se conserva en `NetworkMapRequest` con estado `PENDING`. Una nueva propuesta sustituye únicamente otra solicitud pendiente, no la ubicación publicada.
+
+**Aprobación.** Solo el Superadmin puede aprobar o rechazar. Aprobar copia la instantánea propuesta a `NetworkMapLocation` y la habilita; rechazar deja intacta cualquier ubicación anterior y exige una observación visible para que el honorario pueda corregirla. La lectura pública continúa cruzándose con los directorios vigentes, de modo que aprobar coordenadas no sustituye la membresía ni el consentimiento de publicación.
+
+**Concurrencia y evidencia.** Un índice parcial admite como máximo una solicitud pendiente por ficha. La resolución reclama el estado `PENDING` dentro de la transacción antes de publicar, y tanto solicitud como decisión quedan auditadas con actor y fecha. Las pruebas comprueban titularidad personal e institucional, ausencia de autopublicación, exclusividad del Superadmin y preservación de la ubicación anterior al rechazar.

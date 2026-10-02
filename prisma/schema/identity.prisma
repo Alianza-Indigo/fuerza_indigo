@@ -7,6 +7,7 @@
 /// crearla no se lo da. Su autenticación viene de las variables de entorno y sus
 /// permisos de la lista cerrada de concesión (PRD §4.4).
 model Actor {
+  networkMapLocations NetworkMapLocation[]
   id        String    @id @default(uuid(7)) @db.Uuid
   kind      ActorKind
   userId    String?   @unique @db.Uuid

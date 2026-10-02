@@ -2230,3 +2230,14 @@ A partir de aquí, el trabajo se decide por las necesidades de la organización.
 **Configuración comercial.** Los importes, becas, descuentos y excepciones siguen administrándose en la aplicación. No se codifican cuotas ni exenciones por categoría de persona. Un precio `0.00` usa el recorrido de exención existente, sin tarjeta, sesión de Stripe ni suscripción bancaria. No se modifican secretos, precios de producción, semillas ni migraciones existentes.
 
 **Validación.** Pruebas del formulario HTTP de Stripe, de webhooks actuales, de primer cobro sin duplicados, de activación con `0.00` y de rechazo de conceptos ajenos; se ejercen además las suites existentes de cobros, eventos, membresías y bandeja de salida.
+
+
+## ADR-0188 · Mapa nacional derivado de los directorios públicos
+
+**Contexto.** La portada mostraba una ilustración territorial y las delegaciones y agremiados honorarios vivían en directorios separados. Hacía falta localizarlos en un mapa común, con contacto público, sin convertir la ubicación en una vía paralela para publicar personas o unidades que ya no fueran elegibles.
+
+**Decisión.** El mapa usa MapLibre con teselas de OpenStreetMap y cuatro vistas: delegaciones estatales, municipales, seccionales y agremiados honorarios. `NetworkMapLocation` conserva únicamente la ubicación y el contacto adicional autorizado. Cada lectura vuelve a cruzar esa configuración con `publicDelegations()` y `publicHonoraryDirectory()`: si una delegación deja de estar activa o una membresía honoraria vence o retira su autorización, su ubicación guardada deja de publicarse automáticamente. El Superadmin administra los puntos desde `/superadmin/mapa`; la captura exige ambas coordenadas, registra autoría y deja evidencia en la bitácora.
+
+**Presentación.** La portada y `/mapa` comparten el mismo explorador, con selector de categoría, estado, búsqueda, agrupación de puntos y fichas de contacto. Los registros públicos todavía sin coordenadas permanecen consultables en la lista y nunca heredan ni inventan una ubicación. La política de contenido admite exclusivamente el origen cartográfico configurado y trabajadores `blob:` de MapLibre.
+
+**Validación.** Pruebas del cruce con las fuentes públicas, retiro al perder elegibilidad, autoridad del Superadmin, restricciones de coordenadas y enlaces, filtrado y auditoría. La migración se ejerció en PostgreSQL temporal con casos válidos, coordenadas incompletas, fuera de rango, categorías inválidas y autoría inexistente. Se revisaron las vistas de mapa y lista en escritorio y móvil.

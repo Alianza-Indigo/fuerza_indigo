@@ -33,6 +33,7 @@ export const RUTAS_DEL_CODIGO: readonly string[] = [
   'constancias/:param',
   'contacto',
   'delegaciones',
+  'mapa',
   'directorio',
   'directorio/:param',
   'embajadores/:param',

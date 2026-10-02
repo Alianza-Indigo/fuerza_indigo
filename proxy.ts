@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { MAP_TILE_ORIGIN } from '@/platform/config/network-map';
 
 /**
  * El proxy **no** consulta la base de datos ni decide autorizaciones
@@ -36,7 +37,7 @@ export default function proxy(request: NextRequest) {
  * no ejecuta código. Prohibirlo obligaría a un nonce por atributo `style` de
  * React sin cerrar ninguna vía de ejecución.
  *
- * `connect-src` sigue limitado al propio origen, incluso en la Fase 3: el cobro
+ * `connect-src` permite además las teselas cartográficas de OpenStreetMap. El cobro
  * ocurre en una página alojada por la pasarela, a la que se **navega**, y esta
  * aplicación no le hace ninguna petición desde el navegador. Los datos de una
  * tarjeta no pasan por aquí ni un instante (ADR-0055), así que no hay conexión
@@ -59,14 +60,14 @@ function contentSecurityPolicy(nonce: string): string {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data:",
+    `img-src 'self' blob: data: ${MAP_TILE_ORIGIN}`,
     "font-src 'self'",
-    "connect-src 'self'",
+    `connect-src 'self' ${MAP_TILE_ORIGIN}`,
     // El trabajador de servicio y el manifiesto son del propio origen. Se
     // declaran en vez de dejarlos caer en `default-src` porque un lector de la
     // política tiene que poder ver que la aplicación instalable está prevista,
     // y no deducirlo de una ausencia.
-    "worker-src 'self'",
+    "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

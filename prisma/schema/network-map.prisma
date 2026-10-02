@@ -1,0 +1,21 @@
+/// Public contact/location supplement, keyed by the existing public directory identity.
+/// Eligibility is always rechecked against the source directory before publication.
+model NetworkMapLocation {
+  subjectKey       String   @id @db.VarChar(200)
+  category         String   @db.VarChar(20)
+  enabled          Boolean  @default(false)
+  latitude         Float?
+  longitude        Float?
+  address          String?  @db.VarChar(300)
+  city             String?  @db.VarChar(160)
+  state            String?  @db.VarChar(160)
+  contactName      String?  @db.VarChar(160)
+  email            String?  @db.VarChar(320)
+  phone            String?  @db.VarChar(40)
+  website          String?  @db.VarChar(500)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  updatedByActorId String   @db.Uuid
+  updatedByActor   Actor    @relation(fields: [updatedByActorId], references: [id], onDelete: Restrict)
+
+  @@map("network_map_location")
+}

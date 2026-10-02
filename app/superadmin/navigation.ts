@@ -110,6 +110,7 @@ export const SUPERADMIN_NAVIGATION: readonly SuperadminNavGroup[] = [
   {
     label: 'Contenidos',
     links: [
+      { href: '/superadmin/mapa', label: 'Mapa nacional y contactos' },
       link(gestion, '/gestion/contenidos'),
       link(gestion, '/gestion/contenidos/ecosistema'),
       link(gestion, '/gestion/redirecciones'),

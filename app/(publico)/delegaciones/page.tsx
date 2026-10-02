@@ -206,6 +206,7 @@ export default async function DelegacionesPage() {
             </p>
           </header>
 
+          <div className="mt-6 text-center"><Link href="/mapa" className="inline-flex min-h-11 items-center rounded-lg border border-cyan-300 px-5 font-bold text-cyan-200">Ver delegaciones en el mapa →</Link></div>
           {delegaciones.length === 0 ? (
             <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-cyan-300/25 bg-[#071133]/80 p-7 text-center">
               <LandingIcon name="red-territorial" className="mx-auto size-16" />

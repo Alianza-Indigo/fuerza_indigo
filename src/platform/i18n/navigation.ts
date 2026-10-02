@@ -41,6 +41,12 @@ export const SITE_NAV: readonly NavSection[] = [
         module: 'sindicato',
       },
       {
+        href: '/mapa',
+        label: 'Mapa nacional',
+        description: 'Delegaciones y agremiados honorarios con sus datos de contacto.',
+        module: 'sindicato',
+      },
+      {
         href: '/delegaciones',
         label: 'Delegaciones',
         description: 'Dónde estamos y con quién hablar en tu territorio.',

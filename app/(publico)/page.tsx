@@ -3,6 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { publishedList } from '@/modules/content';
+import { publicNetworkMap } from '@/modules/network-map';
+import { NetworkExplorer } from '@/components/network-map/network-explorer';
 import { formatDate } from '@/platform/i18n';
 import { StructuredData, organizacion, sitioWeb, socialMetadata } from '@/platform/seo';
 
@@ -207,7 +209,7 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow?: string; title
 }
 
 export default async function InicioPage() {
-  const noticias = await publishedList('NEWS', { limit: 3 });
+  const [noticias, mapEntries] = await Promise.all([publishedList('NEWS', { limit: 3 }), publicNetworkMap()]);
 
   return (
     <main id="contenido" className="fi-dark overflow-hidden bg-[linear-gradient(180deg,#030923_0%,#061132_48%,#030923_100%)] text-white">
@@ -485,22 +487,13 @@ export default async function InicioPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-b border-cyan-400/15 px-4 py-11 sm:px-6 sm:py-12 lg:px-8">
-        <div className="mx-auto grid w-full max-w-7xl items-center gap-8 lg:grid-cols-[.6fr_1.4fr]">
-          <div className="relative z-10">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Territorio</p>
-            <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Una red cerca de ti</h2>
-            <p className="mt-4 text-blue-100/75">Consulta las delegaciones publicadas y encuentra el canal adecuado para tu territorio.</p>
-            <ul className="mt-5 space-y-2 text-sm text-blue-100/65">
-              <li className="flex items-center gap-2"><span className="size-2 rounded-full bg-fuchsia-400" /> Delegaciones estatales</li>
-              <li className="flex items-center gap-2"><span className="size-2 rounded-full bg-violet-400" /> Delegaciones municipales</li>
-              <li className="flex items-center gap-2"><span className="size-2 rounded-full bg-cyan-300" /> Secciones</li>
-            </ul>
-            <div className="mt-7"><PrimaryLink href="/delegaciones">Encontrar mi delegación</PrimaryLink></div>
-          </div>
-          <div className="relative aspect-[2/1] w-full">
-            <Image src="/landing/05-mapa-red-territorial.png" alt="Mapa ilustrado de México y América Latina unidos por una red índigo" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-contain" />
-          </div>
+      <section id="mapa" className="scroll-mt-24 border-b border-cyan-400/15 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-7xl">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Mapa nacional</p>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Una red cerca de ti</h2>
+          <p className="mb-7 mt-4 max-w-3xl text-blue-100/80">Encuentra delegaciones estatales, municipales, seccionales y agremiados honorarios. Selecciona una ubicación para conocer sus datos de contacto.</p>
+          <NetworkExplorer entries={mapEntries} />
+          <div className="mt-7"><PrimaryLink href="/mapa">Explorar mapa nacional</PrimaryLink></div>
         </div>
       </section>
 

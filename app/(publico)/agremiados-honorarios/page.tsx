@@ -83,6 +83,7 @@ export default async function HonoraryMembersPage() {
             </p>
           </div>
 
+          <Link href="/mapa?tipo=HONORARY" className="mt-6 inline-flex min-h-11 items-center rounded-lg border border-cyan-300 px-5 font-bold text-cyan-200">Ver agremiados honorarios en el mapa →</Link>
           {members.length === 0 ? (
             <div className="mt-8 rounded-2xl border border-cyan-300/20 bg-white/[.045] p-6">
               <EmptyState

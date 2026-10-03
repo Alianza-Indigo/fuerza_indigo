@@ -2,6 +2,10 @@
 
 > ## ⬛ El contrato del PRD está cerrado — 17 de septiembre de 2026
 >
+> **ESTADO FINAL: COMPLETADO Y CERRADO.** Las once fases fueron desarrolladas y
+> aprobadas; toda referencia posterior al PRD se conserva como antecedente de la
+> construcción y no como instrucción vigente.
+>
 > **La plataforma está construida y en producción. El PRD ya no es aplicable y no
 > impone nada.** No hay fase activa que construir, no hay informe de cierre que
 > emitir, no hay autorización que esperar y no hay alcance que consultar antes de

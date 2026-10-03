@@ -81,7 +81,7 @@ export const createMembershipTypeSchema = z
           code: 'custom',
           path: [campo],
           message:
-            'Una calidad honoraria no concede derechos políticos sindicales, no computa para el quórum y no aparece ante la autoridad laboral (PRD §3.3).',
+            'Una calidad honoraria no concede derechos políticos sindicales, no computa para el quórum y no aparece ante la autoridad laboral.',
         });
       }
     }

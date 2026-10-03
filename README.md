@@ -2,6 +2,11 @@
 
 Sistema operativo digital del **Sindicato Unión de Inclusión y Derechos Neurodivergentes "Fuerza Índigo"** y de la asociación civil **Alianza Índigo**: afiliación, padrones, vida democrática, defensa y protección, atención social, pagos e inteligencia artificial gobernada.
 
+> **ESTADO FINAL DEL PRD: COMPLETADO Y CERRADO.** Las once fases fueron
+> desarrolladas y aprobadas; la plataforma está en producción. Las referencias
+> al PRD que permanecen en este repositorio documentan la construcción realizada
+> y no limitan el mantenimiento ni la evolución posterior del producto.
+
 > **CIAN y CENI no se construyen aquí.** Son plataformas propias e independientes, ya desarrolladas, con su propia autenticación, su propia operación, sus propios pagos y sus propios datos. Este repositorio las **presenta y lleva a ellas** —ficha y dirección externa configurable desde el CMS—, igual que a las herramientas NeuroPlan, ADIA y NEXO. No las duplica y no administra su operación (PRD §13 y §14).
 
 - **Dominio principal previsto:** `fuerzaindigo.lat`

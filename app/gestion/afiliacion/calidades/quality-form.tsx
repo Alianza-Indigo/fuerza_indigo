@@ -168,7 +168,7 @@ export function QualityForm({
           <Checkbox
             name="requiresHumanReview"
             label="Exige revisión humana antes de resolver"
-            help="La admisión de agremiados siempre la exige (PRD §3.2)."
+            help="La admisión de agremiados siempre exige una revisión humana registrada."
             defaultChecked={casilla('requiresHumanReview', true)}
           />
           <Checkbox

@@ -414,7 +414,7 @@ export async function setDirectoryPreference(
     return fail(
       errors.ruleViolation(
         'No publicamos a personas menores de edad. Hace falta una base y una autorización específicas que la organización todavía no ha aprobado.',
-        'intento de publicar a una persona menor de edad (PRD §7.3)',
+        'intento de publicar a una persona menor de edad',
       ),
     );
   }
@@ -432,7 +432,7 @@ export async function setDirectoryPreference(
       return fail(
         errors.ruleViolation(
           'Esta persona tiene una atención con privacidad reforzada. Publicarla en el directorio contradiría esa protección.',
-          'intento de publicar a una persona con atención de privacidad reforzada (PRD §7.3)',
+          'intento de publicar a una persona con atención de privacidad reforzada',
         ),
       );
     }

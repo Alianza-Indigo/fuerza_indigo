@@ -472,7 +472,7 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
         {puedeResolver && enTramite && (
           <Section
             title="Resolver"
-            description="Quien revisa prepara; quien resuelve firma. El PRD §8.1 las separa a propósito."
+            description="Quien revisa prepara; quien resuelve firma. Son responsabilidades separadas."
           >
             {aclaracionAbierta !== undefined ? (
               <Notice tone="warning" title="No se resuelve con una aclaración abierta">
@@ -485,8 +485,8 @@ export default async function SolicitudPage({ params }: { params: Promise<{ id: 
             ) : solicitud.reviews.length === 0 ? (
               <Notice tone="warning" title="Todavía no hay ninguna revisión">
                 <p>
-                  La admisión exige revisión humana registrada antes de resolver (PRD §3.2). Toma la solicitud
-                  y revísala primero.
+                  La admisión exige una revisión humana registrada antes de resolver. Toma la solicitud y
+                  revísala primero.
                 </p>
               </Notice>
             ) : (

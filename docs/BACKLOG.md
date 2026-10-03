@@ -2,6 +2,9 @@
 
 > ## ⬛ CERRADO — 17 de septiembre de 2026
 >
+> **ESTADO FINAL DEL PRD: COMPLETADO Y CERRADO.** Las once fases y el alcance
+> correspondiente fueron desarrollados y aprobados.
+>
 > **El contrato del PRD terminó y la plataforma está en producción.** Este
 > backlog deja de repartir trabajo: se conserva como **registro (log)** de lo que
 > se construyó, fase por fase, sin reescribirlo.

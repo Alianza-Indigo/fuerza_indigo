@@ -81,7 +81,7 @@ const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
 function assertSoloServidor(): void {
   if (typeof window !== 'undefined') {
     throw new Error(
-      'El adaptador de Gemini es solo de servidor: llamarlo desde el cliente expondría la clave del proveedor (PRD §15.1).',
+      'El adaptador de Gemini es solo de servidor: llamarlo desde el cliente expondría la clave del proveedor.',
     );
   }
 }

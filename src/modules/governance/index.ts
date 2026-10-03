@@ -20,6 +20,19 @@ export {
 } from './application/territory';
 
 export {
+  createTerritorialDeploymentByAppointment,
+  attachSignedTerritorialAppointment,
+  territorialAppointmentDetail,
+  canCreateTerritorialDeploymentByAppointment,
+  createTerritorialDeploymentByAppointmentSchema,
+  attachSignedTerritorialAppointmentSchema,
+  type CreateTerritorialDeploymentByAppointmentInput,
+  type AttachSignedTerritorialAppointmentInput,
+  type TerritorialAppointmentResult,
+  type TerritorialAppointmentDetail,
+} from './application/territorial-appointments';
+
+export {
   appointableMemberships,
   grantablePeople,
   permissionOptions,

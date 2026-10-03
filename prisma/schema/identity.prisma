@@ -100,6 +100,7 @@ model Actor {
   updatedOfficeIncompatibilities OfficeIncompatibility[]        @relation("OfficeIncompatibilityUpdatedBy")
   createdOfficeTerms             OfficeTerm[]                   @relation("OfficeTermCreatedBy")
   updatedOfficeTerms             OfficeTerm[]                   @relation("OfficeTermUpdatedBy")
+  issuedTerritorialCreationAppointments TerritorialCreationAppointment[] @relation("TerritorialCreationAppointmentIssuedBy")
   createdPowerGrants             PowerGrant[]                   @relation("PowerGrantCreatedBy")
   updatedPowerGrants             PowerGrant[]                   @relation("PowerGrantUpdatedBy")
   createdAssemblies              Assembly[]                     @relation("AssemblyCreatedBy")

@@ -52,6 +52,7 @@ model FileObject {
   disciplinaryEvidence  DisciplinaryEvidence[]         @relation("DisciplinaryEvidenceFile")
   renderedDocuments     GeneratedDocument[]            @relation("RenderedDocuments")
   signatureFiles        SignatureRecord[]              @relation("SignatureFile")
+  signedTerritorialAppointment TerritorialCreationAppointment? @relation("TerritorialCreationSignedFile")
 
   @@map("file_object")
 

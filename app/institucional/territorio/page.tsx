@@ -12,8 +12,14 @@ import {
 } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
 import { can } from '@/platform/authz/policy';
-import { approvedResolutionOptions, territorialTree } from '@/modules/governance';
-import { CreateUnitForm, DissolveUnitForm, UpdateUnitForm } from './territory-forms';
+import {
+  appointableMemberships,
+  approvedResolutionOptions,
+  canCreateTerritorialDeploymentByAppointment,
+  territorialTree,
+} from '@/modules/governance';
+import { listLegalEntities } from '@/modules/admin';
+import { CreateByAppointmentForm, CreateUnitForm, DissolveUnitForm, UpdateUnitForm } from './territory-forms';
 
 export const metadata = { title: 'Estructura territorial', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -46,9 +52,12 @@ const ESTADO: Record<string, { label: string; tone: Tone }> = {
 export default async function EstructuraTerritorialPage() {
   const actor = await currentActor();
 
-  const [arbol, acuerdos] = await Promise.all([
+  const [arbol, acuerdos, personasNombrables, entidades, puedeNombrarDirectamente] = await Promise.all([
     territorialTree(actor, { includeDissolved: true }),
     approvedResolutionOptions(actor),
+    appointableMemberships(actor),
+    listLegalEntities(actor),
+    canCreateTerritorialDeploymentByAppointment(actor),
   ]);
 
   const puedeCrear = can({ ...actor, reason: 'alta de unidad territorial' }, 'territory.unit.create', {
@@ -81,19 +90,44 @@ export default async function EstructuraTerritorialPage() {
   const opcionesAcuerdo: readonly Option[] = acuerdos.ok
     ? acuerdos.data.map((acuerdo) => ({ value: acuerdo.id, label: acuerdo.label }))
     : [];
+  const opcionesEstado: readonly Option[] = arbol.ok
+    ? arbol.data
+        .filter((unidad) => unidad.type === 'STATE' && unidad.dissolvedOn === null)
+        .map((unidad) => ({ value: unidad.id, label: unidad.name }))
+    : [];
+  const opcionesDelegacion: readonly Option[] = arbol.ok
+    ? arbol.data
+        .filter((unidad) => unidad.type === 'DELEGATION' && unidad.status === 'ACTIVE' && unidad.dissolvedOn === null)
+        .map((unidad) => ({ value: unidad.id, label: `${'· '.repeat(Math.max(0, unidad.depth))}${unidad.name}` }))
+    : [];
+  const opcionesDelegacionEstatal: readonly Option[] = arbol.ok
+    ? arbol.data
+        .filter(
+          (unidad) =>
+            unidad.type === 'DELEGATION' &&
+            unidad.municipalityCode === null &&
+            unidad.status === 'ACTIVE' &&
+            unidad.dissolvedOn === null,
+        )
+        .map((unidad) => ({ value: unidad.id, label: unidad.name }))
+    : [];
+  const opcionesPersona: readonly Option[] = personasNombrables.ok ? personasNombrables.data : [];
+  const opcionesEntidad: readonly Option[] = entidades.ok
+    ? entidades.data.filter((entidad) => entidad.code === 'FUERZA_INDIGO').map((entidad) => ({ value: entidad.id, label: entidad.shortName }))
+    : [];
 
   return (
     <PageShell
       title="Estructura territorial"
-      description="Cada unidad nace de un acuerdo de asamblea y conserva su historia. Disolver no borra: cambia el estado y deja la fecha."
+      description="Las delegaciones y seccionales pueden constituirse por nombramiento o por acuerdo de asamblea. Cada acto conserva su folio, documento e historia."
       width="ancha"
     >
       <div className="space-y-8">
         <section id="delegaciones-secciones" className="scroll-mt-6">
           <h2 className="mb-2 text-lg font-semibold">Despliegue de delegaciones y secciones</h2>
           <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
-            La plataforma ya permite constituir la unidad, instalar su autoridad y nombrar a la persona responsable.
-            Cada nombramiento queda limitado a su territorio y a sus unidades descendientes.
+            La unidad puede constituirse por nombramiento directo o por acuerdo de asamblea. El nombramiento directo
+            instala en un solo acto la autoridad, el cargo y a la persona responsable, con acceso limitado a su territorio.
           </p>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -188,7 +222,19 @@ export default async function EstructuraTerritorialPage() {
                         )}
                       </td>
                       <td className="p-3 text-sm">
-                        {unidad.hasEnablingResolution ? (
+                        {unidad.hasCreationAppointment ? (
+                          <div className="space-y-1">
+                            <Badge tone="success">Por nombramiento</Badge>
+                            {unidad.creationAppointment !== null && (
+                              <Link
+                                href={`/institucional/territorio/nombramientos/${unidad.creationAppointment.publicId}`}
+                                className="block underline underline-offset-4"
+                              >
+                                {unidad.creationAppointment.number}
+                              </Link>
+                            )}
+                          </div>
+                        ) : unidad.hasEnablingResolution ? (
                           <Badge tone="success">Con acuerdo</Badge>
                         ) : unidad.depth === 0 || unidad.type === 'STATE' ? (
                           <span className="text-xs text-[var(--color-ink-soft)]">Marco de referencia</span>
@@ -214,10 +260,32 @@ export default async function EstructuraTerritorialPage() {
 
         {puedeCrear && (
           <section id="constituir-unidad" className="scroll-mt-6">
-            <h2 className="mb-3 text-lg font-semibold">Constituir una unidad</h2>
-            <Card>
-              <CreateUnitForm padres={opcionesPadre} acuerdos={opcionesAcuerdo} />
-            </Card>
+            <h2 className="mb-3 text-lg font-semibold">Constituir una delegación o seccional</h2>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {puedeNombrarDirectamente && (
+                <Card>
+                  <h3 className="mb-2 font-semibold">Por nombramiento</h3>
+                  <p className="mb-5 text-sm text-[var(--color-ink-soft)]">
+                    Para el despliegue inicial lo emite el Superadmin; después, la Secretaría General en funciones.
+                    La estructura completa queda instalada en un solo acto.
+                  </p>
+                  <CreateByAppointmentForm
+                    estados={opcionesEstado}
+                    delegacionesEstatales={opcionesDelegacionEstatal}
+                    delegaciones={opcionesDelegacion}
+                    entidades={opcionesEntidad}
+                    personas={opcionesPersona}
+                  />
+                </Card>
+              )}
+              <Card>
+                <h3 className="mb-2 font-semibold">Por acuerdo de asamblea</h3>
+                <p className="mb-5 text-sm text-[var(--color-ink-soft)]">
+                  Conserva la vía formal existente cuando una resolución aprobada sea el acto constitutivo.
+                </p>
+                <CreateUnitForm padres={opcionesPadre} acuerdos={opcionesAcuerdo} />
+              </Card>
+            </div>
           </section>
         )}
 

@@ -219,6 +219,8 @@ model OfficeTerm {
   reviewedApplications ApplicationReview[]   @relation("ReviewerOfficeTerm")
   credentials        MemberCredential[]      @relation("CredentialOfficeTerm")
   signatures         SignatureRecord[]       @relation("SignatureOfficeTerm")
+  territorialCreationAsDelegate TerritorialCreationAppointment?  @relation("TerritorialCreationDelegate")
+  territorialCreationsIssued    TerritorialCreationAppointment[] @relation("TerritorialCreationIssuer")
 
   @@index([officeDefinitionId])
   @@index([personId])
@@ -227,9 +229,42 @@ model OfficeTerm {
   @@map("office_term")
 }
 
+/// Acto que constituye una delegación o seccional y deja instalada a su
+/// persona responsable en una sola transacción. La primera red puede emitirla
+/// el Superadmin; después la emite un periodo vigente de Secretaría General.
+model TerritorialCreationAppointment {
+  id                       String   @id @default(uuid(7)) @db.Uuid
+  publicId                 String   @unique @db.VarChar(22)
+  number                   String   @unique @db.VarChar(40)
+  territorialUnitId        String   @unique @db.Uuid
+  delegateOfficeTermId     String   @unique @db.Uuid
+  appointedByOfficeTermId  String?  @db.Uuid
+  appointedOn              DateTime @db.Date
+  reason                   String   @db.VarChar(2000)
+  /// Texto inmutable del acuerdo que produjo el propio acto. No se recompone
+  /// desde nombres actuales: lo expedido conserva exactamente lo que decía.
+  agreementText            String   @db.Text
+  /// Copia escaneada o PDF del acuerdo ya firmado. Se incorpora después sin
+  /// recrear la unidad ni alterar el acuerdo originalmente expedido.
+  signedFileId             String?  @unique @db.Uuid
+  issuedByActorId          String   @db.Uuid
+  createdAt                DateTime @default(now()) @db.Timestamptz(3)
+
+  territorialUnit       TerritorialUnit @relation(fields: [territorialUnitId], references: [id], onDelete: Restrict)
+  delegateOfficeTerm     OfficeTerm      @relation("TerritorialCreationDelegate", fields: [delegateOfficeTermId], references: [id], onDelete: Restrict)
+  appointedByOfficeTerm OfficeTerm?     @relation("TerritorialCreationIssuer", fields: [appointedByOfficeTermId], references: [id], onDelete: Restrict)
+  signedFile             FileObject?     @relation("TerritorialCreationSignedFile", fields: [signedFileId], references: [id], onDelete: Restrict)
+  issuedByActor          Actor           @relation("TerritorialCreationAppointmentIssuedBy", fields: [issuedByActorId], references: [id], onDelete: Restrict)
+
+  @@index([appointedByOfficeTermId])
+  @@index([issuedByActorId])
+  @@map("territorial_creation_appointment")
+}
+
 enum DesignationMethod {
   ELECTION
   ASSEMBLY_APPOINTMENT
+  DIRECT_APPOINTMENT
   SUBSTITUTION
   INTERIM
 }

@@ -26,6 +26,8 @@ export const AUDIT_ACTIONS = {
   LEGAL_ENTITY_CREATED: 'institution.legal_entity.created',
   LEGAL_ENTITY_UPDATED: 'institution.legal_entity.updated',
   TERRITORIAL_UNIT_CREATED: 'institution.territorial_unit.created',
+  TERRITORIAL_UNIT_APPOINTED: 'institution.territorial_unit.appointed',
+  TERRITORIAL_APPOINTMENT_SIGNED_FILE_ATTACHED: 'institution.territorial_appointment.signed_file_attached',
   TERRITORIAL_UNIT_UPDATED: 'institution.territorial_unit.updated',
   TERRITORIAL_UNIT_DISSOLVED: 'institution.territorial_unit.dissolved',
   NORMATIVE_RULES_PUBLISHED: 'institution.normative_rules.published',

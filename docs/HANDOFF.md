@@ -70,13 +70,16 @@ La contraseña del Superadmin va en texto plano en `SUPERADMIN_PASSWORD`
 (ADR-0175). En el panel de Vercel se pega tal cual; en `.env.local`, si lleva un
 `$`, entre comillas simples y con cada `$` escapado como `\$`.
 
-La red territorial se despliega desde **Puesta en marcha → Despliegue territorial**. El orden operativo es: registrar la resolución aprobada; constituir y activar la delegación o sección; instalar su autoridad y definir el cargo responsable; y registrar el nombramiento. El alcance del cargo se deriva de la unidad del órgano y no se puede ampliar desde el formulario.
-
 La red territorial se despliega desde **Puesta en marcha → Despliegue
-territorial**. El orden operativo es: registrar la resolución aprobada;
-constituir y activar la delegación o sección; instalar su autoridad y definir el
-cargo responsable; y registrar el nombramiento. El alcance del cargo se deriva
-de la unidad del órgano y no se puede ampliar desde el formulario.
+territorial** por dos vías. **Nombramiento directo** crea de una sola vez la
+delegación o seccional, su autoridad, el cargo, el periodo de la persona
+responsable y su acceso territorial; inicialmente lo emite el Superadmin y
+después la Secretaría General en funciones. **Acuerdo de asamblea** conserva el
+recorrido de resolución aprobada, constitución y posterior instalación. En ambos
+casos el alcance del cargo se deriva de la unidad y no se puede ampliar desde el
+formulario. El nombramiento directo genera su acuerdo foliado; desde el expediente
+del acto se incorpora después el PDF o imagen de la copia firmada, sin recrear la
+estructura.
 
 ### Un PostgreSQL local, si no hay ninguno a mano
 
@@ -330,4 +333,3 @@ El Centro de Control dispone de un índice universal de personas en `/superadmin
 “Ver como esta persona” es deliberadamente de solo lectura. No altera el actor actual ni emite una sesión ordinaria: recompone una vista personal para inspección y registra la lectura en la bitácora con la persona observada como `onBehalfOfPersonId`.
 
 La implementación vive en `src/modules/admin/application/person-360.ts` y está cubierta por una prueba de integración en `tests/integration/superadmin.test.ts`.
-

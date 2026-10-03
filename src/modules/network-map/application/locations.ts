@@ -54,7 +54,10 @@ async function eligibleEntries(): Promise<NetworkMapEntry[]> {
       ...blank,
       id: `delegation:${entry.publicId}`,
       name: entry.name,
-      category: isMapCategory(entry.type) ? entry.type : null,
+      category:
+        entry.type === 'DELEGATION'
+          ? entry.municipalityCode === null ? 'STATE' : 'MUNICIPALITY'
+          : isMapCategory(entry.type) ? entry.type : null,
       territory: entry.parentName,
       description: entry.parentName === null ? null : `Forma parte de ${entry.parentName}`,
       email: entry.contactEmail,

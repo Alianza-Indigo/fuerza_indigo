@@ -20,7 +20,7 @@ const actor = { actorKind: 'ROOT_SUPERADMIN', actorId: '00000000-0000-4000-8000-
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.delegations.mockResolvedValue([{ publicId: 'prueba', name: entry.name, type: 'STATE', contactEmail: entry.email, parentName: 'México' }]);
+  mocks.delegations.mockResolvedValue([{ publicId: 'prueba', name: entry.name, type: 'STATE', municipalityCode: null, contactEmail: entry.email, parentName: 'México' }]);
   mocks.honorary.mockResolvedValue([]);
   mocks.findMany.mockResolvedValue([{ ...input }]);
 });
@@ -43,6 +43,15 @@ describe('Publicación del mapa nacional', () => {
     const [point] = await publicNetworkMap();
     expect(point?.latitude).toBeNull();
     expect(point?.longitude).toBeNull();
+  });
+  it('deriva el nivel estatal o municipal de una delegación constituida', async () => {
+    mocks.findMany.mockResolvedValue([]);
+    mocks.delegations.mockResolvedValue([
+      { publicId: 'estatal', name: 'Delegación estatal', type: 'DELEGATION', municipalityCode: null, contactEmail: null, parentName: 'Chihuahua' },
+      { publicId: 'municipal', name: 'Delegación municipal', type: 'DELEGATION', municipalityCode: 'CHH-019', contactEmail: null, parentName: 'Delegación estatal' },
+      { publicId: 'seccional', name: 'Seccional', type: 'SECTION', municipalityCode: 'CHH-019', contactEmail: null, parentName: 'Delegación municipal' },
+    ]);
+    expect((await publicNetworkMap()).map((point) => point.category)).toEqual(['STATE', 'MUNICIPALITY', 'SECTION']);
   });
   it('incluye honorarios personas y organizaciones desde sus fichas autorizadas', async () => {
     mocks.delegations.mockResolvedValue([]);

@@ -315,9 +315,17 @@ export interface TerritorialNode {
   readonly path: string;
   readonly depth: number;
   readonly parentId: string | null;
+  readonly stateCode: string | null;
+  readonly municipalityCode: string | null;
   readonly dissolvedOn: Date | null;
   readonly contactEmail: string | null;
   readonly hasEnablingResolution: boolean;
+  readonly hasCreationAppointment: boolean;
+  readonly creationAppointment: {
+    readonly publicId: string;
+    readonly number: string;
+    readonly signedFileId: string | null;
+  } | null;
 }
 
 export interface PublicDelegation {
@@ -326,6 +334,7 @@ export interface PublicDelegation {
   readonly type: TerritorialUnitType;
   readonly countryCode: string;
   readonly stateCode: string | null;
+  readonly municipalityCode: string | null;
   readonly contactEmail: string | null;
   readonly parentName: string | null;
 }
@@ -335,16 +344,20 @@ export interface PublicDelegation {
  *
  * Las entidades federativas que instala la semilla son solo el marco donde
  * puede constituirse una delegación; no prueban que el sindicato ya opere
- * allí. Por eso esta consulta exige acuerdo habilitante además de estado
- * activo. También selecciona únicamente datos institucionales: nunca personas,
- * cargos internos, membresías ni métricas.
+ * allí. Por eso esta consulta exige un acto constitutivo —resolución aprobada o
+ * nombramiento territorial— además de estado activo. También selecciona
+ * únicamente datos institucionales: nunca personas, cargos internos,
+ * membresías ni métricas.
  */
 export async function publicDelegations(): Promise<readonly PublicDelegation[]> {
   const filas = await db().territorialUnit.findMany({
     where: {
       status: 'ACTIVE',
       dissolvedOn: null,
-      enablingResolutionId: { not: null },
+      OR: [
+        { enablingResolutionId: { not: null } },
+        { creationAppointment: { isNot: null } },
+      ],
       type: { in: ['STATE', 'MUNICIPALITY', 'SECTION', 'DELEGATION'] },
     },
     orderBy: { path: 'asc' },
@@ -354,6 +367,7 @@ export async function publicDelegations(): Promise<readonly PublicDelegation[]> 
       type: true,
       countryCode: true,
       stateCode: true,
+      municipalityCode: true,
       contactEmail: true,
       parent: { select: { name: true } },
     },
@@ -365,6 +379,7 @@ export async function publicDelegations(): Promise<readonly PublicDelegation[]> 
     type: fila.type,
     countryCode: fila.countryCode,
     stateCode: fila.stateCode,
+    municipalityCode: fila.municipalityCode,
     contactEmail: fila.contactEmail,
     parentName: fila.parent?.name ?? null,
   }));
@@ -410,9 +425,12 @@ export async function territorialTree(
       path: true,
       depth: true,
       parentId: true,
+      stateCode: true,
+      municipalityCode: true,
       dissolvedOn: true,
       contactEmail: true,
       enablingResolutionId: true,
+      creationAppointment: { select: { publicId: true, number: true, signedFileId: true } },
     },
   });
 
@@ -427,9 +445,13 @@ export async function territorialTree(
       path: fila.path,
       depth: fila.depth,
       parentId: fila.parentId,
+      stateCode: fila.stateCode,
+      municipalityCode: fila.municipalityCode,
       dissolvedOn: fila.dissolvedOn,
       contactEmail: fila.contactEmail,
       hasEnablingResolution: fila.enablingResolutionId !== null,
+      hasCreationAppointment: fila.creationAppointment !== null,
+      creationAppointment: fila.creationAppointment,
     })),
   );
 }

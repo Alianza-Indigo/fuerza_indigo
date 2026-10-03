@@ -1,8 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { appointOffice, createUnionBody, defineOffice } from '@/modules/governance';
+import {
+  attachSignedTerritorialAppointment,
+  appointOffice,
+  createTerritorialDeploymentByAppointment,
+  createUnionBody,
+  defineOffice,
+} from '@/modules/governance';
 import { createTestDatabase, type TestDatabase } from './helpers/database';
 import {
   actorDeMigracion,
+  contextoDe,
   contextoRaiz,
   crearMembresia,
   crearPersonaConCuenta,
@@ -265,6 +272,180 @@ describe('integración inicial de los órganos nacionales', () => {
     expect(periodo.territorialUnitId).toBe(delegacion.id);
     expect(periodo.roleAssignment?.territorialScopes).toEqual([
       { territorialUnitId: delegacion.id, includesDescendants: true },
+    ]);
+  }, 90_000);
+
+  it('constituye la red inicial por nombramiento y permite continuar a la Secretaría General', async () => {
+    const raiz = await contextoRaiz();
+    const estado = await base.prisma.territorialUnit.findFirstOrThrow({
+      where: { type: 'STATE', stateCode: 'CHH' },
+      select: { id: true },
+    });
+
+    const cen = await createUnionBody(raiz, {
+      code: 'CEN_NOMBRAMIENTO_TERRITORIAL',
+      name: 'Comité Ejecutivo para nombramientos territoriales',
+      kind: 'NATIONAL_EXECUTIVE_COMMITTEE',
+      territorialUnitId: territorioId,
+      legalEntityId: entidadId,
+      installedOn: '2026-10-02',
+    });
+    if (!cen.ok) throw cen.error;
+    const secretaria = await defineOffice(raiz, {
+      code: 'SECRETARIA_GENERAL_NOMBRAMIENTO_TERRITORIAL',
+      name: 'Secretaría General para despliegue territorial',
+      unionBodyId: cen.data.unionBodyId,
+      kind: 'SECRETARY_GENERAL',
+      termMonths: 48,
+      reelectionAllowed: false,
+      seats: 1,
+      grantsRoleCode: 'EXECUTIVE_SECRETARY',
+      permissionCodes: ['territory.unit.create'],
+    });
+    if (!secretaria.ok) throw secretaria.error;
+    const titular = await crearPersonaConCuenta(base.prisma, { givenName: 'Secretaria', familyName: 'Territorial' });
+    const membresiaTitular = await crearMembresia(base.prisma, {
+      personId: titular.personId,
+      legalEntityId: entidadId,
+      typeCode: 'AGREMIADO',
+      territorialUnitId: territorioId,
+    });
+    const periodoTitular = await appointOffice(raiz, {
+      officeDefinitionId: secretaria.data.officeDefinitionId,
+      membershipId: membresiaTitular.id,
+      territorialUnitId: null,
+      designationMethod: 'ASSEMBLY_APPOINTMENT',
+      electionId: null,
+      substitutedTermId: null,
+      startsOn: '2026-10-02',
+      reason: 'instalación de la Secretaría General para desplegar la red territorial',
+    });
+    if (!periodoTitular.ok) throw periodoTitular.error;
+
+    const delegadaEstatal = await crearPersonaConCuenta(base.prisma, { givenName: 'Delegada', familyName: 'Estatal' });
+    const membresiaEstatal = await crearMembresia(base.prisma, {
+      personId: delegadaEstatal.personId,
+      legalEntityId: entidadId,
+      typeCode: 'AGREMIADO',
+      territorialUnitId: estado.id,
+    });
+    const estatal = await createTerritorialDeploymentByAppointment(raiz, {
+      level: 'STATE',
+      code: 'DEL_CHH_NOMBRADA',
+      name: 'Delegación Estatal de Chihuahua por nombramiento',
+      parentId: estado.id,
+      legalEntityId: entidadId,
+      appointedMembershipId: membresiaEstatal.id,
+      appointedOn: '2026-10-02',
+      termMonths: 48,
+      reelectionAllowed: false,
+      stateCode: 'CHH',
+      municipalityCode: null,
+      contactEmail: 'chihuahua@ejemplo.invalid',
+      reason: 'nombramiento inicial emitido por el Superadmin para constituir la delegación estatal',
+    });
+    expect(estatal.ok, estatal.ok ? '' : estatal.error.message).toBe(true);
+    if (!estatal.ok) return;
+
+    const contextoSecretaria = await contextoDe(base.prisma, titular, {
+      reason: 'nombramiento de la siguiente delegación territorial',
+    });
+    const delegadaMunicipal = await crearPersonaConCuenta(base.prisma, { givenName: 'Delegada', familyName: 'Municipal' });
+    const membresiaMunicipal = await crearMembresia(base.prisma, {
+      personId: delegadaMunicipal.personId,
+      legalEntityId: entidadId,
+      typeCode: 'AGREMIADO',
+      territorialUnitId: estatal.data.territorialUnitId,
+    });
+    const municipal = await createTerritorialDeploymentByAppointment(contextoSecretaria, {
+      level: 'MUNICIPALITY',
+      code: 'DEL_CHH_CAPITAL',
+      name: 'Delegación Municipal de Chihuahua',
+      parentId: estatal.data.territorialUnitId,
+      legalEntityId: entidadId,
+      appointedMembershipId: membresiaMunicipal.id,
+      appointedOn: '2026-10-03',
+      termMonths: 48,
+      reelectionAllowed: false,
+      stateCode: 'CHH',
+      municipalityCode: 'CHH-019',
+      contactEmail: 'capital@ejemplo.invalid',
+      reason: 'nombramiento de la Secretaría General para constituir la delegación municipal',
+    });
+    expect(municipal.ok, municipal.ok ? '' : municipal.error.message).toBe(true);
+    if (!municipal.ok) return;
+
+    const municipioBajoMunicipio = await createTerritorialDeploymentByAppointment(contextoSecretaria, {
+      level: 'MUNICIPALITY',
+      code: 'DEL_CHH_MUNICIPIO_INVALIDO',
+      name: 'Delegación municipal con dependencia inválida',
+      parentId: municipal.data.territorialUnitId,
+      legalEntityId: entidadId,
+      appointedMembershipId: membresiaMunicipal.id,
+      appointedOn: '2026-10-03',
+      termMonths: 48,
+      reelectionAllowed: false,
+      stateCode: 'CHH',
+      municipalityCode: 'CHH-020',
+      contactEmail: null,
+      reason: 'intento que comprueba que una delegación municipal solo depende de una estatal',
+    });
+    expect(municipioBajoMunicipio.ok).toBe(false);
+    expect(!municipioBajoMunicipio.ok && municipioBajoMunicipio.error.code).toBe('CONFLICT');
+
+    const appointmentId = (
+      await base.prisma.territorialCreationAppointment.findUniqueOrThrow({
+        where: { publicId: municipal.data.appointmentPublicId },
+        select: { id: true },
+      })
+    ).id;
+    const copiaFirmada = await attachSignedTerritorialAppointment(contextoSecretaria, {
+      appointmentId,
+      originalFileName: 'nombramiento-firmado.pdf',
+      mimeType: 'application/pdf',
+      content: new TextEncoder().encode('%PDF-1.7\nacuerdo territorial firmado'),
+    });
+    expect(copiaFirmada.ok, copiaFirmada.ok ? '' : copiaFirmada.error.message).toBe(true);
+    const copiaDuplicada = await attachSignedTerritorialAppointment(contextoSecretaria, {
+      appointmentId,
+      originalFileName: 'otra-copia.pdf',
+      mimeType: 'application/pdf',
+      content: new TextEncoder().encode('%PDF-1.7\notra copia'),
+    });
+    expect(copiaDuplicada.ok).toBe(false);
+    expect(!copiaDuplicada.ok && copiaDuplicada.error.code).toBe('CONFLICT');
+
+    const instalada = await base.prisma.territorialUnit.findUniqueOrThrow({
+      where: { id: municipal.data.territorialUnitId },
+      select: {
+        status: true,
+        enablingResolutionId: true,
+        creationAppointment: {
+          select: {
+            number: true,
+            agreementText: true,
+            signedFileId: true,
+            appointedByOfficeTermId: true,
+            delegateOfficeTerm: {
+              select: {
+                territorialUnitId: true,
+                roleAssignment: { select: { territorialScopes: { select: { territorialUnitId: true } } } },
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(instalada.status).toBe('ACTIVE');
+    expect(instalada.enablingResolutionId).toBeNull();
+    expect(instalada.creationAppointment?.number).toMatch(/^NOM-TERR-2026-/);
+    expect(instalada.creationAppointment?.agreementText).toContain('ACUERDO DE CREACIÓN Y NOMBRAMIENTO TERRITORIAL');
+    expect(instalada.creationAppointment?.agreementText).toContain('Delegación Municipal de Chihuahua');
+    expect(instalada.creationAppointment?.signedFileId).toBe(copiaFirmada.ok ? copiaFirmada.data.fileObjectId : null);
+    expect(instalada.creationAppointment?.appointedByOfficeTermId).toBe(periodoTitular.data.officeTermId);
+    expect(instalada.creationAppointment?.delegateOfficeTerm.territorialUnitId).toBe(municipal.data.territorialUnitId);
+    expect(instalada.creationAppointment?.delegateOfficeTerm.roleAssignment?.territorialScopes).toEqual([
+      { territorialUnitId: municipal.data.territorialUnitId },
     ]);
   }, 90_000);
 });

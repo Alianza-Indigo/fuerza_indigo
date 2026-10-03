@@ -67,7 +67,7 @@ const formation = [
   ['Afíliate', 'La construcción territorial comienza con personas agremiadas y una comunidad organizada.'],
   ['Conecta', 'Identifica a otras personas interesadas en participar dentro de tu estado o municipio.'],
   ['Presenta la iniciativa', 'Fuerza Índigo revisa la necesidad, el alcance y la viabilidad de la propuesta.'],
-  ['Formaliza', 'La unidad se incorpora a la estructura mediante el acuerdo y el proceso institucional correspondiente.'],
+  ['Formaliza', 'La unidad se incorpora mediante nombramiento directo o acuerdo de asamblea.'],
 ] as const;
 
 const typeLabel = {
@@ -80,6 +80,13 @@ const typeLabel = {
   OFFICE: 'Oficina',
   VIRTUAL_THEMATIC: 'Temática',
 } as const;
+
+function delegationLabel(delegation: Awaited<ReturnType<typeof publicDelegations>>[number]): string {
+  if (delegation.type === 'DELEGATION') {
+    return delegation.municipalityCode === null ? 'Delegación estatal' : 'Delegación municipal';
+  }
+  return typeLabel[delegation.type];
+}
 
 function LandingIcon({ name, className = 'size-12' }: { name: IconName; className?: string }) {
   return (
@@ -241,7 +248,7 @@ export default async function DelegacionesPage() {
                       </span>
                       <div>
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-300">
-                          {typeLabel[delegacion.type]}
+                          {delegationLabel(delegacion)}
                         </p>
                         <h3 className="mt-1 text-xl font-black">{delegacion.name}</h3>
                       </div>

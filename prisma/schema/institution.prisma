@@ -144,6 +144,8 @@ model TerritorialUnit {
   /// Acuerdo habilitante de la unidad (PRD §9.1).
   enablingResolutionId String?    @db.Uuid
   enablingResolution   Resolution? @relation("TerritorialEnabling", fields: [enablingResolutionId], references: [id], onDelete: Restrict)
+  /// Nombramiento que constituyó e instaló la unidad sin acuerdo de asamblea.
+  creationAppointment TerritorialCreationAppointment?
   events               Event[]     @relation("EventTerritory")
 
   @@index([parentId])

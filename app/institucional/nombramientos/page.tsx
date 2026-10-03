@@ -31,6 +31,7 @@ export const dynamic = 'force-dynamic';
 const METODO: Record<string, string> = {
   ELECTION: 'Elección',
   ASSEMBLY_APPOINTMENT: 'Designación por asamblea',
+  DIRECT_APPOINTMENT: 'Nombramiento directo',
   SUBSTITUTION: 'Suplencia',
   INTERIM: 'Interinato',
 };

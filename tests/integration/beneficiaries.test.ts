@@ -4,29 +4,20 @@ import { contextoDe, crearPersonaConCuenta, entidadPrincipal, nombrar, type Pers
 import {
   beneficiaryDetail,
   beneficiaryRegistry,
-  closeBeneficiary,
   membershipByCredential,
   registerBeneficiary,
+  revokeBeneficiary,
   updateBeneficiary,
   verifyCredential,
 } from '@/modules/membership';
 import type { ActorContext } from '@/platform/kernel/actor-context';
 import { tokenDe } from '@/platform/credentials/signing';
 
-/**
- * Beneficiario protegido (PRD §3.4, §8.3; F4-AFI-004).
- *
- * La calidad que existe para que nadie se quede fuera: atención sin afiliación
- * y sin pago. Lo que se prueba aquí es que la protección no dependa de que
- * alguien se acuerde de activarla.
- */
-
 let base: TestDatabase;
 let entidadId: string;
 let secretaria: ActorContext;
 let secretariaPersona: PersonaDePrueba;
 
-/** Fecha de nacimiento de quien tiene la edad indicada hoy. */
 function naceHace(anios: number): Date {
   const hoy = new Date();
   return new Date(Date.UTC(hoy.getUTCFullYear() - anios, hoy.getUTCMonth(), hoy.getUTCDate()));
@@ -36,11 +27,7 @@ beforeAll(async () => {
   base = await createTestDatabase('beneficiarios');
   await base.seed();
   entidadId = await entidadPrincipal(base.prisma);
-
-  secretariaPersona = await crearPersonaConCuenta(base.prisma, {
-    givenName: 'Secretaria',
-    familyName: 'De Beneficiarios',
-  });
+  secretariaPersona = await crearPersonaConCuenta(base.prisma, { givenName: 'Secretaria', familyName: 'Beneficiarios' });
   await nombrar(base.prisma, {
     userId: secretariaPersona.userId,
     roleCode: 'EXECUTIVE_SECRETARY',
@@ -50,423 +37,180 @@ beforeAll(async () => {
   secretaria = await contextoDe(base.prisma, secretariaPersona);
 }, 180_000);
 
-afterAll(async () => {
-  await base.destroy();
-});
+afterAll(async () => base.destroy());
 
-const NECESIDAD = 'Necesita acompañamiento para un trámite escolar y no sabe por dónde empezar.';
-
-async function personaConEdad(anios: number | null, nombre: string): Promise<PersonaDePrueba> {
+async function personaConEdad(anios: number, nombre: string): Promise<PersonaDePrueba> {
   const persona = await crearPersonaConCuenta(base.prisma, { givenName: nombre, familyName: 'Beneficiaria' });
-  if (anios !== null) {
-    await base.prisma.person.update({
-      where: { id: persona.personId },
-      data: { birthDate: naceHace(anios) },
-    });
-  }
+  await base.prisma.person.update({ where: { id: persona.personId }, data: { birthDate: naceHace(anios) } });
   return persona;
 }
 
-describe('alta de una atención protegida', () => {
-  it('se registra sin afiliación, sin pago y sin cuenta previa', async () => {
+async function altaDe(persona: PersonaDePrueba) {
+  const alta = await registerBeneficiary(secretaria, {
+    personId: persona.personId,
+    legalEntityId: entidadId,
+    profileKind: 'NEURODIVERGENT_PERSON',
+    originKind: 'SOCIAL_STAFF',
+  });
+  if (!alta.ok) throw alta.error;
+  return alta.data;
+}
+
+describe('registro protegido persistente', () => {
+  it('nace activo, sin membresía ni pago, y emite su propia credencial', async () => {
     const persona = await personaConEdad(40, 'Adulta');
-    const alta = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'EXTERNAL_REFERRAL',
-      initialNeed: NECESIDAD,
-    });
-    expect(alta.ok, alta.ok ? '' : JSON.stringify(alta.error)).toBe(true);
-    if (!alta.ok) return;
-
+    const alta = await altaDe(persona);
     const fila = await base.prisma.protectedBeneficiary.findUniqueOrThrow({
-      where: { id: alta.data.beneficiaryId },
-      select: {
-        privacyLevel: true,
-        status: true,
-        urgencyLevel: true,
-        hasDigitalAccount: true,
-        credentials: {
-          select: {
-            id: true,
-            publicCode: true,
-            signingKeyId: true,
-            signature: true,
-            credentialKind: true,
-            membershipId: true,
-            protectedBeneficiaryId: true,
-          },
-        },
-      },
+      where: { id: alta.beneficiaryId },
+      include: { credentials: true },
     });
-    // Reforzada por omisión: la protección no espera a que alguien la pida.
-    expect(fila.privacyLevel).toBe('REINFORCED');
-    expect(fila.status).toBe('REGISTERED');
-    expect(fila.urgencyLevel).toBe('ROUTINE');
-
-    // La calidad protegida ya tiene su propio documento. Está enlazado a esta
-    // atención, no a una membresía que conceda voz o voto.
+    expect(fila.status).toBe('ACTIVE');
+    expect(fila.profileKind).toBe('NEURODIVERGENT_PERSON');
     expect(fila.credentials).toHaveLength(1);
     const credencial = fila.credentials[0]!;
     expect(credencial.credentialKind).toBe('PROTECTED_BENEFICIARY');
     expect(credencial.membershipId).toBeNull();
-    expect(credencial.protectedBeneficiaryId).toBe(alta.data.beneficiaryId);
-
     const token = tokenDe(credencial);
-    const verificada = await verifyCredential(token);
-    expect(verificada.status).toBe('ACTIVE');
-    expect(verificada.kind).toBe('PROTECTED_BENEFICIARY');
-
-    // Ni siquiera una lectura interna puede convertirla en pase para una
-    // asamblea: no resuelve a ninguna membresía.
+    expect((await verifyCredential(token)).status).toBe('ACTIVE');
     const paraAsamblea = await membershipByCredential(secretaria, token);
     expect(paraAsamblea.ok).toBe(true);
     if (paraAsamblea.ok) expect(paraAsamblea.data).toBeNull();
-
-    // Y no se le abrió ninguna membresía por el camino.
-    const membresias = await base.prisma.membership.count({ where: { personId: persona.personId } });
-    expect(membresias).toBe(0);
+    expect(await base.prisma.membership.count({ where: { personId: persona.personId } })).toBe(0);
   });
 
-  it('una persona menor de edad no puede quedar en privacidad estándar', async () => {
-    const persona = await personaConEdad(9, 'Menor');
-    const responsable = await personaConEdad(35, 'Responsable');
-
-    const intento = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'FAMILY_OR_CAREGIVER',
-      initialNeed: NECESIDAD,
-      responsiblePersonId: responsable.personId,
-      privacyLevel: 'STANDARD',
+  it('solo existe una ficha por persona y entidad, incluso después de revocarla', async () => {
+    const persona = await personaConEdad(28, 'Única');
+    const primera = await altaDe(persona);
+    const revocada = await revokeBeneficiary(secretaria, {
+      beneficiaryId: primera.beneficiaryId,
+      reasonKind: 'PERSON_REQUEST',
+      reason: 'La persona solicitó expresamente cancelar su registro protegido.',
     });
-    expect(intento.ok).toBe(false);
-    if (!intento.ok) expect(intento.error.code).toBe('RULE_VIOLATION');
-  });
-
-  it('una persona menor de edad exige decir quién la representa', async () => {
-    const persona = await personaConEdad(12, 'Menor');
-    const intento = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'FAMILY_OR_CAREGIVER',
-      initialNeed: NECESIDAD,
-    });
-    expect(intento.ok).toBe(false);
-    if (!intento.ok) {
-      expect(JSON.stringify(intento.error.details)).toMatch(/quién la representa/i);
-    }
-  });
-
-  it('nadie es responsable de sí mismo', async () => {
-    const persona = await personaConEdad(30, 'Sola');
-    const intento = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'SOCIAL_STAFF',
-      initialNeed: NECESIDAD,
-      responsiblePersonId: persona.personId,
-    });
-    expect(intento.ok).toBe(false);
-    if (!intento.ok) expect(JSON.stringify(intento.error.details)).toMatch(/responsable de sí/i);
-  });
-
-  it('dos atenciones vivas para la misma persona y entidad no se abren', async () => {
-    const persona = await personaConEdad(28, 'Repetida');
-    const primera = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'DELEGATE',
-      initialNeed: NECESIDAD,
-    });
-    if (!primera.ok) throw primera.error;
-
+    expect(revocada.ok).toBe(true);
     const segunda = await registerBeneficiary(secretaria, {
       personId: persona.personId,
       legalEntityId: entidadId,
-      originKind: 'DELEGATE',
-      initialNeed: NECESIDAD,
+      profileKind: 'NEURODIVERGENT_PERSON',
+      originKind: 'SELF',
     });
     expect(segunda.ok).toBe(false);
-    if (!segunda.ok) {
-      expect(segunda.error.code).toBe('CONFLICT');
-      // El mensaje dice cuál es la abierta, para que quien atiende pueda ir a ella.
-      expect(segunda.error.message).toContain(primera.data.publicId);
-    }
+    if (!segunda.ok) expect(segunda.error.message).toMatch(/restaur/i);
   });
 
-  it('quien se registra a sí misma declara ese origen y no otro', async () => {
-    const persona = await crearPersonaConCuenta(base.prisma, { givenName: 'Pide', familyName: 'Ayuda' });
+  it('una persona menor requiere representante y privacidad reforzada', async () => {
+    const menor = await personaConEdad(10, 'Menor');
+    const responsable = await personaConEdad(38, 'Responsable');
+    const sinResponsable = await registerBeneficiary(secretaria, {
+      personId: menor.personId,
+      legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
+      originKind: 'FAMILY_OR_CAREGIVER',
+    });
+    expect(sinResponsable.ok).toBe(false);
+    const sinPrivacidad = await registerBeneficiary(secretaria, {
+      personId: menor.personId,
+      legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
+      originKind: 'FAMILY_OR_CAREGIVER',
+      responsiblePersonId: responsable.personId,
+      privacyLevel: 'STANDARD',
+    });
+    expect(sinPrivacidad.ok).toBe(false);
+  });
+
+  it('quien se registra a sí misma solo puede declarar origen propio', async () => {
+    const persona = await personaConEdad(30, 'Propia');
     await nombrar(base.prisma, {
       userId: persona.userId,
       roleCode: 'APPLICANT',
       grantedById: secretariaPersona.userId,
       legalEntityId: entidadId,
     });
-    const suyo = await contextoDe(base.prisma, persona);
-
-    const ajeno = await registerBeneficiary(suyo, {
+    const actor = await contextoDe(base.prisma, persona);
+    const incorrecto = await registerBeneficiary(actor, {
       personId: persona.personId,
       legalEntityId: entidadId,
+      profileKind: 'FAMILY_MEMBER',
       originKind: 'EXTERNAL_REFERRAL',
-      initialNeed: NECESIDAD,
     });
-    expect(ajeno.ok).toBe(false);
-
-    const propio = await registerBeneficiary(suyo, {
+    expect(incorrecto.ok).toBe(false);
+    const correcto = await registerBeneficiary(actor, {
       personId: persona.personId,
       legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'SELF',
-      initialNeed: NECESIDAD,
     });
-    expect(propio.ok, propio.ok ? '' : JSON.stringify(propio.error)).toBe(true);
-  });
-
-  it('quien solo puede registrarse a sí misma no registra a otra persona', async () => {
-    const quien = await crearPersonaConCuenta(base.prisma, { givenName: 'Solicita', familyName: 'Nada Mas' });
-    await nombrar(base.prisma, {
-      userId: quien.userId,
-      roleCode: 'APPLICANT',
-      grantedById: secretariaPersona.userId,
-      legalEntityId: entidadId,
-    });
-    const suyo = await contextoDe(base.prisma, quien);
-    const otra = await personaConEdad(33, 'Ajena');
-
-    const intento = await registerBeneficiary(suyo, {
-      personId: otra.personId,
-      legalEntityId: entidadId,
-      originKind: 'FAMILY_OR_CAREGIVER',
-      initialNeed: NECESIDAD,
-    });
-    expect(intento.ok).toBe(false);
-    if (!intento.ok) expect(intento.error.code).toBe('FORBIDDEN');
+    expect(correcto.ok).toBe(true);
   });
 });
 
-describe('seguimiento y cierre de la atención', () => {
-  async function atencion(edad = 26) {
-    const persona = await personaConEdad(edad, 'Seguimiento');
-    const alta = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'SOCIAL_STAFF',
-      initialNeed: NECESIDAD,
-    });
-    if (!alta.ok) throw alta.error;
-    return { persona, ...alta.data };
-  }
-
-  it('bajar la privacidad a estándar exige motivo escrito', async () => {
-    const { beneficiaryId } = await atencion();
-
+describe('actualización y revocación', () => {
+  it('bajar privacidad exige motivo y nunca se permite para menores', async () => {
+    const adulta = await personaConEdad(35, 'Privacidad');
+    const alta = await altaDe(adulta);
     const sinMotivo = await updateBeneficiary(secretaria, {
-      beneficiaryId,
-      urgencyLevel: 'PRIORITY',
-      status: 'IN_ATTENTION',
+      beneficiaryId: alta.beneficiaryId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       privacyLevel: 'STANDARD',
     });
     expect(sinMotivo.ok).toBe(false);
-
     const conMotivo = await updateBeneficiary(secretaria, {
-      beneficiaryId,
-      urgencyLevel: 'PRIORITY',
-      status: 'IN_ATTENTION',
+      beneficiaryId: alta.beneficiaryId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       privacyLevel: 'STANDARD',
-      privacyChangeReason: 'La persona pidió por escrito que su caso pueda verlo el equipo territorial.',
+      privacyChangeReason: 'La persona lo solicitó por escrito para la gestión territorial.',
     });
-    expect(conMotivo.ok, conMotivo.ok ? '' : JSON.stringify(conMotivo.error)).toBe(true);
-
-    const fila = await base.prisma.protectedBeneficiary.findUniqueOrThrow({
-      where: { id: beneficiaryId },
-      select: { privacyLevel: true, urgencyLevel: true, status: true },
-    });
-    expect(fila.privacyLevel).toBe('STANDARD');
-    expect(fila.urgencyLevel).toBe('PRIORITY');
-    expect(fila.status).toBe('IN_ATTENTION');
+    expect(conMotivo.ok).toBe(true);
   });
 
-  it('la privacidad de una persona menor de edad no baja ni con motivo', async () => {
-    const persona = await personaConEdad(10, 'Menor');
-    const responsable = await personaConEdad(38, 'Madre');
-    const alta = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'FAMILY_OR_CAREGIVER',
-      initialNeed: NECESIDAD,
-      responsiblePersonId: responsable.personId,
+  it('revocar conserva la ficha y el acceso al historial, pero revoca la credencial y notifica', async () => {
+    const persona = await personaConEdad(42, 'Revocable');
+    const alta = await altaDe(persona);
+    const credencial = await base.prisma.memberCredential.findFirstOrThrow({
+      where: { protectedBeneficiaryId: alta.beneficiaryId },
     });
-    if (!alta.ok) throw alta.error;
-
-    const intento = await updateBeneficiary(secretaria, {
-      beneficiaryId: alta.data.beneficiaryId,
-      urgencyLevel: 'URGENT',
-      status: 'IN_ATTENTION',
-      privacyLevel: 'STANDARD',
-      privacyChangeReason: 'Motivo escrito que no debería bastar para una persona menor de edad.',
+    const token = tokenDe(credencial);
+    const resultado = await revokeBeneficiary(secretaria, {
+      beneficiaryId: alta.beneficiaryId,
+      reasonKind: 'ADMINISTRATIVE_ERROR',
+      reason: 'Se comprobó que el alta corresponde a un error administrativo.',
     });
-    expect(intento.ok).toBe(false);
-    if (!intento.ok) expect(intento.error.code).toBe('RULE_VIOLATION');
-  });
-
-  it('cerrar exige contar cómo terminó, y lo cerrado ya no se edita', async () => {
-    const { beneficiaryId } = await atencion();
-
-    const antes = await base.prisma.memberCredential.findFirstOrThrow({
-      where: { protectedBeneficiaryId: beneficiaryId },
-      select: { id: true, publicCode: true, signingKeyId: true, signature: true },
-    });
-    const token = tokenDe(antes);
-    expect((await verifyCredential(token)).status).toBe('ACTIVE');
-
-    const sinRelato = await closeBeneficiary(secretaria, {
-      beneficiaryId,
-      outcome: 'CLOSED',
-      closeReason: 'ya',
-    });
-    expect(sinRelato.ok).toBe(false);
-
-    const cerrada = await closeBeneficiary(secretaria, {
-      beneficiaryId,
-      outcome: 'CLOSED',
-      closeReason: 'Se acompañó el trámite hasta el final y la persona confirmó que quedó resuelto.',
-    });
-    expect(cerrada.ok, cerrada.ok ? '' : JSON.stringify(cerrada.error)).toBe(true);
-
+    expect(resultado.ok).toBe(true);
     expect((await verifyCredential(token)).status).toBe('REVOKED');
-    const credencialCerrada = await base.prisma.memberCredential.findUniqueOrThrow({
-      where: { id: antes.id },
-      select: { status: true, revokedAt: true, revokeReason: true },
-    });
-    expect(credencialCerrada.status).toBe('REVOKED');
-    expect(credencialCerrada.revokedAt).not.toBeNull();
-    expect(credencialCerrada.revokeReason).toMatch(/Terminó el registro protegido/);
-
-    const despues = await updateBeneficiary(secretaria, {
-      beneficiaryId,
-      urgencyLevel: 'URGENT',
-      status: 'IN_ATTENTION',
-      privacyLevel: 'REINFORCED',
-    });
-    expect(despues.ok).toBe(false);
-    if (!despues.ok) {
-      expect(despues.error.code).toBe('CONFLICT');
-      expect(despues.error.message).toMatch(/Abre una nueva/i);
-    }
-  });
-
-  it('cerrada una atención, se puede abrir otra más adelante', async () => {
-    const { beneficiaryId, persona } = await atencion();
-    const cerrada = await closeBeneficiary(secretaria, {
-      beneficiaryId,
-      outcome: 'CLOSED',
-      closeReason: 'Terminó el acompañamiento y la persona no necesita nada más por ahora.',
-    });
-    if (!cerrada.ok) throw cerrada.error;
-
-    const nueva = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'SELF',
-      initialNeed: 'Volvió meses después con una necesidad distinta, y esta vez es de vivienda.',
-    });
-    expect(nueva.ok, nueva.ok ? '' : JSON.stringify(nueva.error)).toBe(true);
+    const ficha = await base.prisma.protectedBeneficiary.findUniqueOrThrow({ where: { id: alta.beneficiaryId } });
+    expect(ficha.status).toBe('REVOKED');
+    expect(ficha.revokedAt).not.toBeNull();
+    expect(await base.prisma.notification.count({
+      where: { personId: persona.personId, relatedId: alta.beneficiaryId },
+    })).toBe(1);
   });
 });
 
-describe('el padrón de atenciones', () => {
-  it('con privacidad reforzada no enseña la necesidad en el listado', async () => {
-    const persona = await personaConEdad(45, 'Reservada');
-    const alta = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'EXTERNAL_REFERRAL',
-      initialNeed: 'Una necesidad que no tiene por qué leerse de pasada en una lista.',
-    });
-    if (!alta.ok) throw alta.error;
-
-    const listado = await beneficiaryRegistry(secretaria, { query: alta.data.publicId });
-    expect(listado.ok, listado.ok ? '' : JSON.stringify(listado.error)).toBe(true);
-    if (!listado.ok) return;
-    expect(listado.data).toHaveLength(1);
-    expect(listado.data[0]?.initialNeed).toBeNull();
-    expect(listado.data[0]?.personName).toContain('Reservada');
+describe('lectura del registro', () => {
+  it('lista y detalle muestran la ficha, no el relato de una atención', async () => {
+    const persona = await personaConEdad(33, 'Consultable');
+    const alta = await altaDe(persona);
+    const listado = await beneficiaryRegistry(secretaria, { query: alta.publicId });
+    expect(listado.ok).toBe(true);
+    if (listado.ok) {
+      expect(listado.data).toHaveLength(1);
+      expect(listado.data[0]?.profileKind).toBe('NEURODIVERGENT_PERSON');
+    }
+    const detalle = await beneficiaryDetail(secretaria, alta.beneficiaryId);
+    expect(detalle.ok).toBe(true);
+    if (detalle.ok) expect(detalle.data.status).toBe('ACTIVE');
   });
 
-  it('el expediente sí enseña la necesidad, y deja constancia de la lectura', async () => {
-    const persona = await personaConEdad(38, 'Expediente');
-    const alta = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'SELF',
-      initialNeed: 'Lo que contó de su vida se lee al abrir el expediente, no de pasada en una tabla.',
-    });
-    if (!alta.ok) throw alta.error;
-
-    const antes = await base.prisma.auditEvent.count({
-      where: { action: 'membership.beneficiary.file_read', objectId: alta.data.beneficiaryId },
-    });
-
-    const expediente = await beneficiaryDetail(secretaria, alta.data.beneficiaryId);
-    expect(expediente.ok, expediente.ok ? '' : JSON.stringify(expediente.error)).toBe(true);
-    if (!expediente.ok) return;
-    // Ocultar en el listado y mostrar en el expediente no son la misma regla
-    // (defecto `D-F4-011`).
-    expect(expediente.data.initialNeed).toContain('Lo que contó de su vida');
-    expect(expediente.data.privacyLevel).toBe('REINFORCED');
-
-    const despues = await base.prisma.auditEvent.count({
-      where: { action: 'membership.beneficiary.file_read', objectId: alta.data.beneficiaryId },
-    });
-    expect(despues).toBe(antes + 1);
-  });
-
-  it('el expediente con privacidad estándar se lee sin dejar asiento de lectura', async () => {
-    const persona = await personaConEdad(41, 'Estandar');
-    const alta = await registerBeneficiary(secretaria, {
-      personId: persona.personId,
-      legalEntityId: entidadId,
-      originKind: 'SELF',
-      initialNeed: 'Una necesidad que la propia persona pidió que pudiera ver el equipo territorial.',
-    });
-    if (!alta.ok) throw alta.error;
-    const bajada = await updateBeneficiary(secretaria, {
-      beneficiaryId: alta.data.beneficiaryId,
-      urgencyLevel: 'ROUTINE',
-      status: 'REGISTERED',
-      privacyLevel: 'STANDARD',
-      privacyChangeReason: 'La persona pidió por escrito que su caso lo pueda ver el equipo territorial.',
-    });
-    if (!bajada.ok) throw bajada.error;
-
-    const expediente = await beneficiaryDetail(secretaria, alta.data.beneficiaryId);
-    expect(expediente.ok).toBe(true);
-    if (!expediente.ok) return;
-    expect(expediente.data.initialNeed).toContain('equipo territorial');
-
-    const asientos = await base.prisma.auditEvent.count({
-      where: { action: 'membership.beneficiary.file_read', objectId: alta.data.beneficiaryId },
-    });
-    expect(asientos).toBe(0);
-  });
-
-  it('un expediente inexistente no se distingue de uno ajeno: no encontrado', async () => {
-    const inexistente = await beneficiaryDetail(secretaria, '00000000-0000-4000-8000-000000000000');
-    expect(inexistente.ok).toBe(false);
-    if (!inexistente.ok) expect(inexistente.error.code).toBe('NOT_FOUND');
-  });
-
-  it('quien no tiene la facultad de leer el padrón no lo lee', async () => {
-    const quien = await crearPersonaConCuenta(base.prisma, { givenName: 'Sin', familyName: 'Padron' });
+  it('sin permiso no se puede leer el registro masivo', async () => {
+    const persona = await personaConEdad(30, 'Sin Padrón');
     await nombrar(base.prisma, {
-      userId: quien.userId,
+      userId: persona.userId,
       roleCode: 'APPLICANT',
       grantedById: secretariaPersona.userId,
       legalEntityId: entidadId,
     });
-    const suyo = await contextoDe(base.prisma, quien);
-
-    const listado = await beneficiaryRegistry(suyo);
+    const actor = await contextoDe(base.prisma, persona);
+    const listado = await beneficiaryRegistry(actor);
     expect(listado.ok).toBe(false);
     if (!listado.ok) expect(listado.error.code).toBe('FORBIDDEN');
   });

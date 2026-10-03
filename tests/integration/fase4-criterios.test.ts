@@ -139,8 +139,8 @@ describe('una misma persona acumula relaciones sin duplicarse (F4-QA-001)', () =
     const atencion = await registerBeneficiary(secretaria, {
       personId: quien.personId,
       legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'SELF',
-      initialNeed: 'Pidió acompañamiento para un trámite y así llegó a la organización.',
     });
     expect(atencion.ok, atencion.ok ? '' : JSON.stringify(atencion.error)).toBe(true);
 
@@ -213,8 +213,8 @@ describe('una misma persona acumula relaciones sin duplicarse (F4-QA-001)', () =
     const atencion = await registerBeneficiary(secretaria, {
       personId: quien.personId,
       legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'SELF',
-      initialNeed: 'Vive una situación laboral difícil y pidió acompañamiento.',
     });
     if (!atencion.ok) throw atencion.error;
 
@@ -253,8 +253,8 @@ describe('una misma persona acumula relaciones sin duplicarse (F4-QA-001)', () =
     const atencion = await registerBeneficiary(secretaria, {
       personId: persona.personId,
       legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'EXTERNAL_REFERRAL',
-      initialNeed: 'Llegó canalizada por una organización aliada y necesita orientación laboral.',
     });
     expect(atencion.ok, atencion.ok ? '' : JSON.stringify(atencion.error)).toBe(true);
 

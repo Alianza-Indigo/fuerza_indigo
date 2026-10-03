@@ -1019,7 +1019,7 @@ export async function searchPeople(
         select: { membershipType: { select: { name: true } } },
       },
       beneficiaryRecords: {
-        where: { status: { notIn: ['CLOSED', 'ARCHIVED'] } },
+        where: { status: 'ACTIVE' },
         select: { id: true },
       },
     },

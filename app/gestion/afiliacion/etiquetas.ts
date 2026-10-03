@@ -9,18 +9,25 @@ export const ORIGEN: Record<string, string> = {
   EXTERNAL_REFERRAL: 'Canalización externa',
 };
 
-export const URGENCIA: Record<string, string> = {
-  ROUTINE: 'Ordinaria',
-  PRIORITY: 'Prioritaria',
-  URGENT: 'Urgente',
+export const ESTADO_DE_REGISTRO_PROTEGIDO: Record<string, string> = {
+  ACTIVE: 'Vigente',
+  REVOKED: 'Revocado',
 };
 
-export const ESTADO_DE_ATENCION: Record<string, string> = {
-  REGISTERED: 'Registrada',
-  IN_ATTENTION: 'En atención',
-  REFERRED: 'Canalizada',
-  CLOSED: 'Cerrada',
-  ARCHIVED: 'Archivada',
+export const PERFIL_PROTEGIDO: Record<string, string> = {
+  NEURODIVERGENT_PERSON: 'Persona neurodivergente',
+  FAMILY_MEMBER: 'Familiar de una persona neurodivergente',
+  CAREGIVER: 'Persona cuidadora',
+};
+
+export const MOTIVO_REVOCACION: Record<string, string> = {
+  IMPERSONATION: 'Suplantación de identidad',
+  DUPLICATE: 'Registro duplicado',
+  ADMINISTRATIVE_ERROR: 'Error administrativo',
+  FALSE_INFORMATION: 'Información falsa',
+  MISUSE: 'Uso indebido',
+  PERSON_REQUEST: 'Solicitud de la persona',
+  OTHER: 'Otro motivo',
 };
 
 export const PRIVACIDAD: Record<string, string> = {

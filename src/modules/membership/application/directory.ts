@@ -424,7 +424,7 @@ export async function setDirectoryPreference(
       where: {
         personId: datos.personId,
         privacyLevel: 'REINFORCED',
-        status: { notIn: ['CLOSED', 'ARCHIVED'] },
+        status: 'ACTIVE',
       },
       select: { publicId: true },
     });

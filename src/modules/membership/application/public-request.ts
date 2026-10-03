@@ -35,6 +35,28 @@ const PUBLIC_REGISTRATION_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxSubmission
 const AMBASSADOR_REGISTRATION_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxSubmissions: 60 } as const;
 const ACCOUNT_SETUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+function birthDateFromCurp(curp: string): Date | null {
+  const compact = curp.slice(4, 10);
+  if (!/^\d{6}$/.test(compact)) return null;
+  const century = /\d/.test(curp[16] ?? '') ? 1900 : 2000;
+  const year = century + Number(compact.slice(0, 2));
+  const month = Number(compact.slice(2, 4));
+  const day = Number(compact.slice(4, 6));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    ? date
+    : null;
+}
+
+function isMinor(birthDate: Date, now: Date): boolean {
+  const adulthood = new Date(Date.UTC(
+    birthDate.getUTCFullYear() + 18,
+    birthDate.getUTCMonth(),
+    birthDate.getUTCDate(),
+  ));
+  return adulthood > now;
+}
+
 function optionalText<T extends z.ZodType<string, string>>(schema: T) {
   return z.preprocess(
     (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -222,14 +244,6 @@ async function nextApplicationFolio(tx: Tx, prefix: string, year: number): Promi
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`folio:${series}`}))`;
   const used = await tx.membershipApplication.count({ where: { folio: { startsWith: `${series}-` } } });
   return `${series}-${String(used + 1).padStart(5, '0')}`;
-}
-
-function protectedProfileLabel(profile: 'NEURODIVERGENT_PERSON' | 'FAMILY_MEMBER' | 'CAREGIVER'): string {
-  return profile === 'NEURODIVERGENT_PERSON'
-    ? 'Persona neurodivergente'
-    : profile === 'FAMILY_MEMBER'
-      ? 'Familiar de una persona neurodivergente'
-      : 'Persona cuidadora';
 }
 
 /** Reutiliza una persona solo cuando la CURP o su cuenta identifican el mismo registro. */
@@ -482,8 +496,8 @@ export async function submitPublicMembershipRequest(
     identity.person === null || category !== null
       ? null
       : db().protectedBeneficiary.findFirst({
-          where: { personId: identity.person.id, status: { notIn: ['CLOSED', 'ARCHIVED'] } },
-          select: { publicId: true },
+          where: { personId: identity.person.id, legalEntityId: entity.id },
+          select: { publicId: true, status: true },
         }),
     existingOrganization === null || category !== 'HONORARY_AFFILIATE'
       ? null
@@ -539,8 +553,10 @@ export async function submitPublicMembershipRequest(
   if (activeBeneficiary !== null) {
     return fail(
       errors.conflict(
-        `Ya existe un registro protegido vigente con folio ${activeBeneficiary.publicId}. No necesitas enviarlo otra vez.`,
-        'beneficiario protegido vigente',
+        activeBeneficiary.status === 'ACTIVE'
+          ? `Ya existe un registro protegido vigente con folio ${activeBeneficiary.publicId}. No necesitas enviarlo otra vez.`
+          : `El registro ${activeBeneficiary.publicId} fue revocado y no puede reactivarse desde el formulario público. Contacta a la organización para solicitar su revisión.`,
+        activeBeneficiary.status === 'ACTIVE' ? 'beneficiario protegido vigente' : 'registro protegido revocado',
       ),
     );
   }
@@ -551,6 +567,16 @@ export async function submitPublicMembershipRequest(
     correlationId: context.correlationId,
   });
 
+  const birthDate = birthDateFromCurp(data.curp);
+  if (birthDate === null) {
+    return fail(errors.validation({ curp: ['La fecha contenida en la CURP no es válida.'] }));
+  }
+  if (category === null && isMinor(birthDate, now)) {
+    return fail(errors.validation({
+      curp: ['El registro de una persona menor requiere identificar a su madre, padre, tutor o representante. Solicita el alta asistida a Fuerza Índigo; no necesita aprobación posterior.'],
+    }));
+  }
+
   try {
     const registered = await transaction(async (tx) => {
       const person =
@@ -559,6 +585,7 @@ export async function submitPublicMembershipRequest(
               data: {
                 publicId: newPublicId(),
                 curp: data.curp,
+                birthDate,
                 givenName: data.givenName,
                 familyName: data.familyName,
                 secondFamilyName: data.secondFamilyName ?? null,
@@ -573,6 +600,7 @@ export async function submitPublicMembershipRequest(
               where: { id: identity.person.id },
               data: {
                 curp: data.curp,
+                birthDate,
                 primaryEmail: data.email,
                 ...(data.phone === undefined ? {} : { primaryPhone: data.phone }),
                 updatedByActorId: systemActor.id,
@@ -714,11 +742,8 @@ export async function submitPublicMembershipRequest(
             publicId: newPublicId(),
             personId: person.id,
             legalEntityId: entity.id,
+            profileKind: profile,
             originKind: profile === 'NEURODIVERGENT_PERSON' ? 'SELF' : 'FAMILY_OR_CAREGIVER',
-            initialNeed: [
-              `Perfil declarado: ${protectedProfileLabel(profile)}.`,
-              data.context ?? 'Registro preventivo; por ahora no declaró una necesidad específica.',
-            ].join('\n\n'),
             occupationText: data.occupation,
             territoryHint: data.territory,
             promoterReference: data.promoterReference ?? null,

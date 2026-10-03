@@ -98,7 +98,7 @@ async function calidadDe(personId: string): Promise<CaseMembershipQuality> {
   }
 
   const beneficiaria = await db().protectedBeneficiary.findFirst({
-    where: { personId, closedAt: null },
+    where: { personId, status: 'ACTIVE' },
     select: { id: true },
   });
   return beneficiaria === null ? 'NONE' : 'PROTECTED_BENEFICIARY';

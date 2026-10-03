@@ -54,15 +54,19 @@ export {
 export {
   registerBeneficiary,
   updateBeneficiary,
-  closeBeneficiary,
+  revokeBeneficiary,
+  restoreBeneficiary,
   beneficiaryDetail,
   beneficiaryRegistry,
+  ownBeneficiaryRegistrations,
   registerBeneficiarySchema,
   updateBeneficiarySchema,
-  closeBeneficiarySchema,
+  revokeBeneficiarySchema,
+  restoreBeneficiarySchema,
   type RegisterBeneficiaryInput,
   type UpdateBeneficiaryInput,
-  type CloseBeneficiaryInput,
+  type RevokeBeneficiaryInput,
+  type RestoreBeneficiaryInput,
   type BeneficiaryRow,
 } from './application/beneficiaries';
 export {

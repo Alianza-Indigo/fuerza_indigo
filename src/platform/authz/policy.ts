@@ -122,6 +122,23 @@ export function territorialReach(
   return alcances;
 }
 
+/** Entidades jurídicas alcanzadas por una facultad, para filtrar en SQL. */
+export type LegalEntityReach = 'ALL' | readonly string[];
+
+export function legalEntityReach(
+  actor: ActorContext,
+  permissionCode: string,
+  now: Date = new Date(),
+): LegalEntityReach {
+  const ids = new Set<string>();
+  for (const grant of resolveGrants(actor, now)) {
+    if (!grant.permissions.has(permissionCode)) continue;
+    if (grant.legalEntities === 'ALL') return 'ALL';
+    for (const id of grant.legalEntities) ids.add(id);
+  }
+  return [...ids];
+}
+
 interface Grant {
   readonly permissions: ReadonlySet<string>;
   readonly legalEntities: readonly string[] | 'ALL';

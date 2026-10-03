@@ -1,18 +1,16 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState } from 'react';
 import {
   ErrorNotice,
-  Notice,
   RadioGroup,
   Select,
   SubmitButton,
   SuccessNotice,
-  TextArea,
   type Option,
 } from '@/design-system/primitives';
 import { registerBeneficiaryAction, type BeneficiariaFormState } from './actions';
-import { ORIGEN, URGENCIA } from '../etiquetas';
+import { ORIGEN, PERFIL_PROTEGIDO } from '../etiquetas';
 
 const INICIAL: BeneficiariaFormState = { status: 'idle' };
 
@@ -25,14 +23,10 @@ const ORIGENES: readonly Option[] = [
   { value: 'EXTERNAL_REFERRAL', label: ORIGEN['EXTERNAL_REFERRAL']!, hint: 'Escuela, hospital, otra organización.' },
 ];
 
-const URGENCIAS: readonly Option[] = [
-  { value: 'ROUTINE', label: URGENCIA['ROUTINE']!, hint: 'Se atiende en el orden habitual.' },
-  { value: 'PRIORITY', label: URGENCIA['PRIORITY']!, hint: 'Pasa delante en la cola.' },
-  {
-    value: 'URGENT',
-    label: URGENCIA['URGENT']!,
-    hint: 'Requiere atención inmediata. Si hay peligro para la vida, llama al 911 además de registrar aquí.',
-  },
+const PERFILES: readonly Option[] = [
+  { value: 'NEURODIVERGENT_PERSON', label: PERFIL_PROTEGIDO['NEURODIVERGENT_PERSON']! },
+  { value: 'FAMILY_MEMBER', label: PERFIL_PROTEGIDO['FAMILY_MEMBER']! },
+  { value: 'CAREGIVER', label: PERFIL_PROTEGIDO['CAREGIVER']! },
 ];
 
 /**
@@ -55,20 +49,18 @@ export function BeneficiaryForm({
   territorios: readonly Option[];
 }) {
   const [estado, accion, pendiente] = useActionState(registerBeneficiaryAction, INICIAL);
-  const [urgencia, setUrgencia] = useState('ROUTINE');
-
   const dato = (campo: string): string | undefined => estado.values?.[campo];
   const clave = estado.status === 'idle' ? 'inicial' : JSON.stringify(estado.values ?? {});
 
   return (
     <form action={accion} className="space-y-5">
       {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo registrar'} />}
-      {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Atención registrada'} />}
+      {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Registro creado'} />}
 
       <div key={clave} className="space-y-5">
         <Select
           name="personId"
-          label="Persona que va a recibir atención"
+          label="Persona que quedará protegida"
           required
           hint="Tiene que estar en el registro maestro. Si no está, regístrala primero: no hace falta que tenga cuenta."
           options={personas}
@@ -84,6 +76,13 @@ export function BeneficiaryForm({
           errors={estado.fieldErrors?.['legalEntityId']}
         />
         <RadioGroup
+          name="profileKind"
+          legend="Perfil"
+          options={PERFILES}
+          value={dato('profileKind')}
+          errors={estado.fieldErrors?.['profileKind']}
+        />
+        <RadioGroup
           name="originKind"
           legend="Por dónde llegó"
           help="Saber por qué puerta entró cambia a quién hay que avisar."
@@ -91,31 +90,6 @@ export function BeneficiaryForm({
           value={dato('originKind')}
           errors={estado.fieldErrors?.['originKind']}
         />
-        <TextArea
-          name="initialNeed"
-          label="Con qué necesita ayuda"
-          required
-          rows={5}
-          hint="Con sus palabras, hasta donde se pueda. No hace falta clasificarlo ahora."
-          defaultValue={dato('initialNeed')}
-          errors={estado.fieldErrors?.['initialNeed']}
-        />
-        <RadioGroup
-          name="urgencyLevel"
-          legend="Urgencia"
-          options={URGENCIAS}
-          value={urgencia}
-          onChange={setUrgencia}
-          errors={estado.fieldErrors?.['urgencyLevel']}
-        />
-        {urgencia === 'URGENT' && (
-          <Notice tone="danger" title="Si hay peligro inmediato, llama al 911">
-            <p>
-              Este registro no es un canal de urgencias y no está atendido las veinticuatro horas. Regístralo
-              igual, y llama.
-            </p>
-          </Notice>
-        )}
         <Select
           name="territorialUnitId"
           label="Territorio"
@@ -137,14 +111,7 @@ export function BeneficiaryForm({
         <input type="hidden" name="privacyLevel" value="REINFORCED" />
       </div>
 
-      <Notice tone="neutral" title="La privacidad empieza reforzada">
-        <p>
-          Lo que esta persona cuente no aparecerá en listados ni en exportaciones. Se puede bajar a estándar
-          después, explicando por qué, y nunca para una persona menor de edad.
-        </p>
-      </Notice>
-
-      <SubmitButton>{pendiente ? 'Registrando…' : 'Registrar la atención'}</SubmitButton>
+      <SubmitButton>{pendiente ? 'Registrando…' : 'Crear registro protegido'}</SubmitButton>
       <p aria-live="polite" className="sr-only">{pendiente ? 'Registrando' : ''}</p>
     </form>
   );

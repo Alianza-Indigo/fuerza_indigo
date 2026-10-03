@@ -54,7 +54,7 @@ const MEMBRESIA_VIVA: MembershipStatus[] = ['ACTIVE', 'SUSPENDED', 'DISCIPLINARY
 
 /** Estados de membresía que suspenden lo que la credencial acredita. */
 const MEMBRESIA_EN_PAUSA: MembershipStatus[] = ['SUSPENDED', 'DISCIPLINARY_PROCESS'];
-const BENEFICIARIO_VIGENTE: BeneficiaryStatus[] = ['REGISTERED', 'IN_ATTENTION', 'REFERRED'];
+const BENEFICIARIO_VIGENTE: BeneficiaryStatus[] = ['ACTIVE'];
 
 export interface CredencialParaEstado {
   readonly status: MemberCredentialStatus;
@@ -236,7 +236,7 @@ export async function emitirCredencialDeBeneficiario(
   return { credentialId: creada.id, publicCode: creada.publicCode };
 }
 
-/** Revoca las credenciales vivas cuando termina el registro protegido. */
+/** Revoca las credenciales vivas cuando se revoca expresamente el registro. */
 export async function revocarCredencialesDeBeneficiario(
   tx: Tx,
   actor: ActorContext,
@@ -273,7 +273,7 @@ export async function revocarCredencialesDeBeneficiario(
       legalEntityId: beneficiario.legalEntityId,
       onBehalfOfPersonId: beneficiario.personId,
       reason: motivo,
-      metadata: { origen: 'cierre de registro protegido' },
+      metadata: { origen: 'revocación de registro protegido' },
     });
   }
   return vivas.length;

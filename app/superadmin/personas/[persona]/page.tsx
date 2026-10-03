@@ -298,7 +298,7 @@ export default async function Person360Page({
           {data.beneficiaries.map((item) => (
             <Card key={item.id}>
               <p className="font-semibold">Beneficiario protegido</p>
-              <p className="mt-1 text-sm">{item.status} · urgencia {item.urgency}</p>
+              <p className="mt-1 text-sm">{item.status} · perfil {item.profile}</p>
               <p className="text-sm text-[var(--color-ink-soft)]">Privacidad {item.privacyLevel}</p>
             </Card>
           ))}

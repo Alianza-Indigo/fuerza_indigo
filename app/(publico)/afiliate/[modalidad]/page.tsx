@@ -42,14 +42,14 @@ const CONTENT = {
   },
   beneficiario: {
     eyebrow: 'Beneficiario protegido',
-    title: 'Solicitud de registro como beneficiario protegido',
+    title: 'Registro como beneficiario protegido',
     description:
       'Para personas neurodivergentes, familiares y personas cuidadoras con derecho a recibir ayuda y protección de Fuerza Índigo.',
     modality: 'PROTECTED_BENEFICIARY' as const,
     icon: 'familia-comunidad',
     requirements: [
       'Ser una persona neurodivergente, familiar o persona cuidadora.',
-      'Compartir un correo donde podamos dar seguimiento a tu solicitud.',
+      'Compartir un correo para activar tu acceso.',
       'Aceptar el aviso de privacidad vigente.',
     ],
     benefits: ['Ayuda y protección', 'QR y credencial digital', 'Sin pago de cuota'],
@@ -208,7 +208,11 @@ export default async function AffiliationPage({
 
             <div className="border-l-2 border-fuchsia-400 pl-4 text-sm leading-relaxed text-blue-100/65">
               <p className="font-bold text-white">No necesitas defender tus derechos en soledad.</p>
-              <p className="mt-1">Una persona revisa cada solicitud y te contacta para continuar.</p>
+              <p className="mt-1">
+                {modalidad === 'beneficiario'
+                  ? 'Tu registro queda activo al enviarlo. Una atención se solicita aparte cuando la necesites.'
+                  : 'Una persona revisa cada solicitud y te contacta para continuar.'}
+              </p>
             </div>
           </aside>
 
@@ -217,13 +221,16 @@ export default async function AffiliationPage({
             className="rounded-2xl border border-cyan-200/25 bg-white p-5 text-slate-950 shadow-[0_28px_80px_rgba(0,0,0,.28)] sm:p-8"
           >
             <header className="mb-7 border-b border-slate-200 pb-6">
-              <p className="text-xs font-bold uppercase tracking-[.2em] text-indigo-700">Solicitud inicial</p>
+              <p className="text-xs font-bold uppercase tracking-[.2em] text-indigo-700">
+                {modalidad === 'beneficiario' ? 'Registro inmediato' : 'Solicitud inicial'}
+              </p>
               <h2 id="form-title" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
                 Cuéntanos quién eres
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-                Toma entre 4 y 6 minutos. Al enviarla recibirás un folio; después te contactaremos para continuar el
-                expediente formal.
+                {modalidad === 'beneficiario'
+                  ? 'Al enviarlo recibirás un folio y el registro quedará vigente, sin aprobación previa.'
+                  : 'Toma entre 4 y 6 minutos. Al enviarla recibirás un folio; después te contactaremos para continuar el expediente formal.'}
               </p>
             </header>
 

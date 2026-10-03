@@ -120,17 +120,18 @@ sequenceDiagram
 
 **Fase 4.** Puede iniciarla la propia persona, un familiar o cuidador autorizado, un agremiado, un delegado, personal de Alianza Índigo o una canalización externa (PRD §8.3).
 
-El sistema registra origen, necesidad inicial, consentimiento, nivel de urgencia, territorio y entidad responsable. **La persona recibe apoyo sin pagar ni afiliarse.**
+El sistema registra la calidad protegida, su perfil, origen, consentimiento, territorio y entidad responsable. El alta pública queda vigente al enviarse y no requiere aprobación. **La persona recibe apoyo sin pagar ni afiliarse.** Una necesidad concreta se registra aparte como expediente de atención.
 
 | Camino | Comportamiento |
 |---|---|
 | Persona sin correo ni dispositivo | Se registra sin cuenta digital; la comunicación se realiza por el medio declarado y queda registrada en el caso. |
 | Persona menor de edad o que requiere representación | Exige persona responsable con relación acreditada; el registro nace con privacidad reforzada. |
-| Urgencia declarada | Se muestra de inmediato el protocolo humano y los contactos de emergencia configurados. La plataforma **no** se presenta como servicio de emergencia ni la IA atiende la urgencia. |
+| Solicitud de atención | Abre un expediente separado, con relato, prioridad, asignaciones, tareas y cierre propios. Puede haber varios a lo largo del tiempo. |
 | Quien registra no es la persona beneficiaria | Se distingue `registeredById` de `personId`; el consentimiento lo otorga quien tiene facultad para hacerlo. |
-| Cierre | Requiere motivo; la persona conserva su registro y puede reabrir o solicitar apoyo nuevamente. |
+| Cierre de una atención | Cierra únicamente el expediente. El registro protegido y su credencial siguen vigentes. |
+| Revocación del registro | Solo Superadmin o Secretaría General, con clase de motivo y explicación. Revoca credenciales, conserva persona, cuenta, expedientes e historial y notifica a la persona. Solo Superadmin puede restaurarlo. |
 
-**Auditoría:** `BENEFICIARY_REGISTERED`, `CONSENT_GRANTED`, `EMERGENCY_PROTOCOL_SHOWN`, `BENEFICIARY_CLOSED`.
+**Auditoría:** `BENEFICIARY_REGISTERED`, `CONSENT_GRANTED`, `BENEFICIARY_REVOKED`, `BENEFICIARY_RESTORED`; las atenciones usan los eventos y auditorías del módulo de casos.
 
 ---
 

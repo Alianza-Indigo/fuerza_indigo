@@ -7,13 +7,12 @@ import { territoryOptions } from '@/modules/access';
 import { entitiesFor } from '@/platform/institution/entities';
 import { can } from '@/platform/authz/policy';
 import { BeneficiaryForm } from './beneficiary-form';
-import { ESTADO_DE_ATENCION, ORIGEN, PRIVACIDAD, URGENCIA } from '../etiquetas';
+import { ESTADO_DE_REGISTRO_PROTEGIDO, ORIGEN, PERFIL_PROTEGIDO, PRIVACIDAD } from '../etiquetas';
 
 export const metadata = { title: 'Personas beneficiarias', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-const ESTADOS = ['REGISTERED', 'IN_ATTENTION', 'REFERRED', 'CLOSED', 'ARCHIVED'] as const;
-const URGENCIAS = ['URGENT', 'PRIORITY', 'ROUTINE'] as const;
+const ESTADOS = ['ACTIVE', 'REVOKED'] as const;
 
 /**
  * Registro de personas beneficiarias protegidas (PRD §3.4, §8.3).
@@ -26,23 +25,18 @@ const URGENCIAS = ['URGENT', 'PRIORITY', 'ROUTINE'] as const;
 export default async function BeneficiariosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string; urgencia?: string; q?: string }>;
+  searchParams: Promise<{ estado?: string; q?: string }>;
 }) {
-  const { estado, urgencia, q } = await searchParams;
+  const { estado, q } = await searchParams;
   const actor = await currentActor();
   const puedeRegistrar = can(actor, 'membership.beneficiary.create', { kind: 'ProtectedBeneficiary' }).allowed;
 
   const filtroEstado = (ESTADOS as readonly string[]).includes(estado ?? '')
     ? (estado as (typeof ESTADOS)[number])
     : undefined;
-  const filtroUrgencia = (URGENCIAS as readonly string[]).includes(urgencia ?? '')
-    ? (urgencia as (typeof URGENCIAS)[number])
-    : undefined;
-
   const [registro, personas, territorios, entidades] = await Promise.all([
     beneficiaryRegistry(actor, {
       ...(filtroEstado === undefined ? {} : { status: filtroEstado }),
-      ...(filtroUrgencia === undefined ? {} : { urgency: filtroUrgencia }),
       ...(q === undefined || q === '' ? {} : { query: q }),
     }),
     puedeRegistrar ? searchPeople(actor, { limit: 200 }) : Promise.resolve(null),
@@ -79,21 +73,7 @@ export default async function BeneficiariosPage({
               >
                 <option value="">Todos</option>
                 {ESTADOS.map((uno) => (
-                  <option key={uno} value={uno}>{ESTADO_DE_ATENCION[uno] ?? uno}</option>
-                ))}
-              </select>
-            </div>
-            <div className="min-w-40 space-y-1.5">
-              <label htmlFor="urgencia" className="block text-sm font-medium">Urgencia</label>
-              <select
-                id="urgencia"
-                name="urgencia"
-                defaultValue={filtroUrgencia ?? ''}
-                className="min-h-11 w-full rounded-lg border border-[var(--color-line-strong)] bg-[var(--color-surface-raised)] px-3 py-2 text-base"
-              >
-                <option value="">Todas</option>
-                {URGENCIAS.map((uno) => (
-                  <option key={uno} value={uno}>{URGENCIA[uno] ?? uno}</option>
+                  <option key={uno} value={uno}>{ESTADO_DE_REGISTRO_PROTEGIDO[uno] ?? uno}</option>
                 ))}
               </select>
             </div>
@@ -116,19 +96,19 @@ export default async function BeneficiariosPage({
         <Section title="Registro">
           {!registro.ok ? (
             <ErrorNotice title={registro.error.message} />
-          ) : registro.data.length === 0 && (filtroEstado !== undefined || filtroUrgencia !== undefined || (q ?? '') !== '') ? (
+          ) : registro.data.length === 0 && (filtroEstado !== undefined || (q ?? '') !== '') ? (
             <NoResults hint="Prueba sin filtros, o con el identificador completo." />
           ) : registro.data.length === 0 ? (
             <EmptyState
-              title="Todavía no hay ninguna atención registrada"
+              title="Todavía no hay registros protegidos"
               description="Registra la primera con el formulario de abajo."
             />
           ) : (
-            <ScrollableTable caption="Atenciones registradas, con su urgencia, su estado y su origen">
+            <ScrollableTable caption="Personas registradas con su perfil, estado y origen">
               <thead>
                 <tr className="border-b border-[var(--color-line)] text-left">
                   <th scope="col" className="p-3 font-medium">Persona</th>
-                  <th scope="col" className="p-3 font-medium">Urgencia</th>
+                  <th scope="col" className="p-3 font-medium">Perfil</th>
                   <th scope="col" className="p-3 font-medium">Estado</th>
                   <th scope="col" className="p-3 font-medium">Origen</th>
                   <th scope="col" className="p-3 font-medium">Privacidad</th>
@@ -150,20 +130,8 @@ export default async function BeneficiariosPage({
                         <span className="block text-xs">Representa: {fila.responsiblePersonName}</span>
                       )}
                     </td>
-                    <td className="p-3">
-                      <Badge
-                        tone={
-                          fila.urgencyLevel === 'URGENT'
-                            ? 'danger'
-                            : fila.urgencyLevel === 'PRIORITY'
-                              ? 'warning'
-                              : 'neutral'
-                        }
-                      >
-                        {URGENCIA[fila.urgencyLevel] ?? fila.urgencyLevel}
-                      </Badge>
-                    </td>
-                    <td className="p-3">{ESTADO_DE_ATENCION[fila.status] ?? fila.status}</td>
+                    <td className="p-3 text-sm">{PERFIL_PROTEGIDO[fila.profileKind] ?? fila.profileKind}</td>
+                    <td className="p-3"><Badge tone={fila.status === 'ACTIVE' ? 'success' : 'danger'}>{ESTADO_DE_REGISTRO_PROTEGIDO[fila.status] ?? fila.status}</Badge></td>
                     <td className="p-3 text-sm">{ORIGEN[fila.originKind] ?? fila.originKind}</td>
                     <td className="p-3 text-sm">{PRIVACIDAD[fila.privacyLevel] ?? fila.privacyLevel}</td>
                     <td className="p-3 tabular-nums">{fecha.format(fila.registeredAt)}</td>
@@ -176,8 +144,8 @@ export default async function BeneficiariosPage({
 
         {puedeRegistrar && (
           <Section
-            title="Registrar una atención"
-            description="Cualquiera puede recibir apoyo sin afiliarse ni pagar."
+            title="Crear registro protegido"
+            description="El registro no abre una atención. Las solicitudes de ayuda se administran como expedientes separados."
           >
             <Card>
               <BeneficiaryForm

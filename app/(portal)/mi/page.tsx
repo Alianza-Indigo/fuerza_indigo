@@ -8,10 +8,12 @@ import {
   Section,
 } from '@/design-system/primitives';
 import { currentActor } from '@/platform/http/request-context';
-import { personalAgenda, type UrgenciaDePendiente } from '@/modules/membership';
+import { ownBeneficiaryRegistrations, personalAgenda, type UrgenciaDePendiente } from '@/modules/membership';
+import { can } from '@/platform/authz/policy';
 import { formatDate } from '@/platform/i18n/format';
 import { CALIDAD_EXACTA } from '../../gestion/afiliacion/padrones/etiquetas';
 import { ESTADO_DE_MEMBRESIA } from '../../gestion/afiliacion/membresias/etiquetas';
+import { ESTADO_DE_REGISTRO_PROTEGIDO, PERFIL_PROTEGIDO } from '../../gestion/afiliacion/etiquetas';
 
 export const metadata = { title: 'Mi cuenta', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -40,7 +42,16 @@ const URGENCIA: Record<UrgenciaDePendiente, { readonly etiqueta: string; readonl
 
 export default async function MiPanelPage() {
   const actor = await currentActor();
-  const agenda = await personalAgenda(actor);
+  const puedeVerRegistroProtegido = can(
+    actor,
+    'membership.beneficiary.read_own',
+    { kind: 'ProtectedBeneficiary' },
+    { hasLiveAssignment: () => actor.personId !== null },
+  ).allowed;
+  const [agenda, registrosProtegidos] = await Promise.all([
+    personalAgenda(actor),
+    puedeVerRegistroProtegido ? ownBeneficiaryRegistrations(actor) : Promise.resolve(null),
+  ]);
 
   if (!agenda.ok) {
     return (
@@ -100,7 +111,7 @@ export default async function MiPanelPage() {
         </Section>
 
         <Section title="Mi relación con Fuerza Índigo">
-          {calidades.length === 0 ? (
+          {calidades.length === 0 && (registrosProtegidos === null || !registrosProtegidos.ok || registrosProtegidos.data.length === 0) ? (
             <EmptyState
               title="Todavía no tienes una membresía activa"
               description="Puedes afiliarte como agremiada o de forma honoraria. El trámite empieza en Mi afiliación."
@@ -112,6 +123,22 @@ export default async function MiPanelPage() {
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
+              {registrosProtegidos !== null && registrosProtegidos.ok && registrosProtegidos.data.map((registro) => (
+                <Card key={registro.id}>
+                  <p className="font-mono text-sm text-[var(--color-ink-soft)]">{registro.publicId}</p>
+                  <p className="text-lg font-semibold">Beneficiario protegido</p>
+                  <p>{PERFIL_PROTEGIDO[registro.profileKind] ?? registro.profileKind}</p>
+                  <Badge tone={registro.status === 'ACTIVE' ? 'success' : 'danger'}>
+                    {ESTADO_DE_REGISTRO_PROTEGIDO[registro.status] ?? registro.status}
+                  </Badge>
+                  <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                    Las atenciones son expedientes separados de este registro.
+                  </p>
+                  <Link href="/solicitar-apoyo" className="mt-2 inline-block underline underline-offset-4">
+                    Solicitar apoyo
+                  </Link>
+                </Card>
+              ))}
               {calidades.map((calidad) => (
                 <Card key={calidad.memberNumber}>
                   <div className="space-y-1">

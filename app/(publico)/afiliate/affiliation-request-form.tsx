@@ -37,7 +37,7 @@ export function AffiliationRequestForm({
     const formalApplication = state.destination === 'APPLICATION';
     return (
       <div className="space-y-5">
-        <SuccessNotice title="Recibimos tu solicitud">
+        <SuccessNotice title={formalApplication ? 'Recibimos tu solicitud' : 'Tu registro protegido está activo'}>
           <p>
             Tu folio es <strong className="font-mono text-lg">{state.folio}</strong>. Guárdalo para cualquier
             seguimiento.
@@ -54,9 +54,14 @@ export function AffiliationRequestForm({
               <li>Te notificaremos la decisión al correo indicado.</li>
             </ol>
           ) : (
-            <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
-              Tu registro ya está en el padrón de beneficiarios protegidos para que el equipo pueda darle seguimiento.
-            </p>
+            <div className="mt-3 text-sm text-[var(--color-ink-soft)]">
+              <p>
+                Tu registro ya está vigente; no espera aprobación. Cada atención tendrá su propio expediente y podrá cerrarse sin cancelar tu registro.
+              </p>
+              <Link href="/solicitar-apoyo" className="mt-3 inline-block font-semibold underline underline-offset-4">
+                Solicitar apoyo ahora
+              </Link>
+            </div>
           )}
         </div>
 
@@ -438,14 +443,12 @@ export function AffiliationRequestForm({
             {...(errors['protectedProfile'] === undefined ? {} : { errors: errors['protectedProfile'] })}
           />
 
-          <TextArea
-            name="context"
-            label="¿Qué ayuda o protección te gustaría recibir?"
-            hint="Opcional. Puedes enviar tu registro aunque todavía no necesites atención."
-            rows={4}
-            maxLength={2000}
-            {...(errors['context'] === undefined ? {} : { errors: errors['context'] })}
-          />
+          <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface-sunken)] p-4 text-sm">
+            <p className="font-semibold">Este formulario crea el registro, no una atención.</p>
+            <p className="mt-1 text-[var(--color-ink-soft)]">
+              Después puedes usar “Solicitar apoyo” para explicar una necesidad concreta. No necesitas esperar aprobación para quedar registrado.
+            </p>
+          </div>
         </fieldset>
       )}
 
@@ -515,7 +518,7 @@ export function AffiliationRequestForm({
               ? 'Enviar solicitud como agremiado'
               : honoraryMember
                 ? 'Enviar solicitud como agremiado honorario'
-                : 'Enviar solicitud como beneficiario protegido'}
+                : 'Crear mi registro protegido'}
         </button>
         <p className="mt-3 text-center text-xs text-[var(--color-ink-soft)]">
           {unionMember || honoraryMember

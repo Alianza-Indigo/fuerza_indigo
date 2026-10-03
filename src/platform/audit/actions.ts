@@ -155,7 +155,8 @@ export const AUDIT_ACTIONS = {
   MEMBERSHIP_RENEWED: 'membership.record.renewed',
   BENEFICIARY_REGISTERED: 'membership.beneficiary.registered',
   BENEFICIARY_UPDATED: 'membership.beneficiary.updated',
-  BENEFICIARY_CLOSED: 'membership.beneficiary.closed',
+  BENEFICIARY_REVOKED: 'membership.beneficiary.revoked',
+  BENEFICIARY_RESTORED: 'membership.beneficiary.restored',
   /**
    * Abrir el expediente de una atención con privacidad reforzada.
    *

@@ -67,7 +67,7 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `identity` | `person.read`, `person.update`, `person.merge`, `person.read_sensitive` | Normal · Crítica en `merge` y `read_sensitive` |
 | `access` | `role.assign`, `role.revoke`, `permission.read`, `session.revoke_other` | Crítica |
 | `membership` | `type.manage`, `type.read`, `application.create`, `application.create_own`, `application.read`, `application.read_own`, `application.review`, `application.resolve`, `record.read`, `record.read_own`, `record.suspend`, `record.terminate`, `roster.read`, `roster.export`, `authority_filing.manage` | Sensible · Crítica en `type.manage`, `resolve`, `record.suspend`, `record.terminate` y `roster.export`; las cuatro últimas exigen motivo escrito |
-| `membership` (beneficiarias) | `beneficiary.create`, `beneficiary.create_own`, `beneficiary.read`, `beneficiary.read_own`, `beneficiary.update`, `relationship.read`, `relationship.read_own`, `relationship.manage`, `relationship.manage_own` | Sensible |
+| `membership` (beneficiarias) | `beneficiary.create`, `beneficiary.create_own`, `beneficiary.read`, `beneficiary.read_own`, `beneficiary.update`, `beneficiary.revoke`, `relationship.read`, `relationship.read_own`, `relationship.manage`, `relationship.manage_own` | Sensible · Crítica en `beneficiary.revoke`, que exige motivo |
 | `directory` | `internal.read`, `internal.export`, `publication.manage`, `publication.manage_own` | Sensible · Crítica en `internal.export`, que exige motivo, y en `publication.manage` |
 | `credentialing` | `credential.issue`, `credential.revoke`, `credential.read`, `credential.read_own` | Crítica en `issue` y `revoke`; `revoke` exige motivo |
 | `consent` | `grant`, `grant_own`, `revoke`, `revoke_own`, `read`, `version.manage` | Sensible · Crítica en `version.manage`. Las parejas `_own` existen porque decidir sobre lo propio —o sobre quien se representa con una relación de cuidado acreditada— no es la misma facultad que registrar el sí de cualquier persona (defecto `D-F4-009`) |
@@ -111,6 +111,7 @@ Los sufijos `_own` no son una variante cómoda del permiso general: son permisos
 | `authority_filing.manage` | — | — | — | — | — | — | P | — | — | — | — | — | — | — |
 | `beneficiary.create` | — | O | O | O | P | P | P | — | — | P | — | — | — | — |
 | `beneficiary.read` | — | — | O | — | — | A | P | — | — | A | — | — | L | — |
+| `beneficiary.revoke` | — | — | — | — | — | — | P | — | — | — | — | — | — | P |
 | `directory.read_internal` | — | — | — | — | P | P | P | L | L | — | — | — | L | — |
 | `directory.publish` | — | — | — | O | O | — | P | — | — | — | — | P | — | — |
 | `credential.issue` | — | — | — | — | — | — | P | — | — | — | — | — | — | — |

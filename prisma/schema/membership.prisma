@@ -540,10 +540,9 @@ model ProtectedBeneficiary {
   publicId            String             @unique @db.VarChar(22)
   personId            String             @db.Uuid
   legalEntityId       String             @db.Uuid
+  profileKind         ProtectedBeneficiaryProfile
   originKind          BeneficiaryOrigin
   registeredById      String?            @db.Uuid
-  initialNeed         String             @db.Text
-  urgencyLevel        BeneficiaryUrgency @default(ROUTINE)
   territorialUnitId   String?            @db.Uuid
   occupationText      String?            @db.VarChar(160)
   territoryHint       String?            @db.VarChar(160)
@@ -553,12 +552,14 @@ model ProtectedBeneficiary {
   originFingerprint   String?            @db.VarChar(64)
   responsiblePersonId String?            @db.Uuid
   hasDigitalAccount   Boolean            @default(false)
-  status              BeneficiaryStatus  @default(REGISTERED)
+  status              BeneficiaryStatus  @default(ACTIVE)
   /// Reforzado por omisión para personas menores de edad. La privacidad no se
   /// decide por descuido.
   privacyLevel        PrivacyLevel       @default(REINFORCED)
-  closedAt            DateTime?          @db.Timestamptz(3)
-  closeReason         String?            @db.Text
+  revokedAt           DateTime?          @db.Timestamptz(3)
+  revocationReasonKind BeneficiaryRevocationReason?
+  revocationReason    String?             @db.Text
+  revokedByActorId    String?             @db.Uuid
 
   createdAt        DateTime @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime @updatedAt @db.Timestamptz(3)
@@ -573,16 +574,24 @@ model ProtectedBeneficiary {
   responsiblePerson Person?          @relation("BeneficiaryResponsible", fields: [responsiblePersonId], references: [id], onDelete: Restrict)
   createdByActor    Actor            @relation("BeneficiaryCreatedBy", fields: [createdByActorId], references: [id], onDelete: Restrict)
   updatedByActor    Actor            @relation("BeneficiaryUpdatedBy", fields: [updatedByActorId], references: [id], onDelete: Restrict)
+  revokedByActor    Actor?           @relation("BeneficiaryRevokedBy", fields: [revokedByActorId], references: [id], onDelete: Restrict)
   ambassador        IndigoAmbassador? @relation(fields: [ambassadorId], references: [id], onDelete: Restrict)
   credentials       MemberCredential[]
+  attentionCases    Case[]            @relation("CaseProtectedBeneficiary")
 
-  @@index([personId])
+  @@unique([personId, legalEntityId])
   @@index([legalEntityId, status])
   @@index([territorialUnitId])
   @@index([privacyLevel])
   @@index([originFingerprint, createdAt])
   @@index([ambassadorId, createdAt])
   @@map("protected_beneficiary")
+}
+
+enum ProtectedBeneficiaryProfile {
+  NEURODIVERGENT_PERSON
+  FAMILY_MEMBER
+  CAREGIVER
 }
 
 enum BeneficiaryOrigin {
@@ -594,18 +603,19 @@ enum BeneficiaryOrigin {
   EXTERNAL_REFERRAL
 }
 
-enum BeneficiaryUrgency {
-  ROUTINE
-  PRIORITY
-  URGENT
+enum BeneficiaryStatus {
+  ACTIVE
+  REVOKED
 }
 
-enum BeneficiaryStatus {
-  REGISTERED
-  IN_ATTENTION
-  REFERRED
-  CLOSED
-  ARCHIVED
+enum BeneficiaryRevocationReason {
+  IMPERSONATION
+  DUPLICATE
+  ADMINISTRATIVE_ERROR
+  FALSE_INFORMATION
+  MISUSE
+  PERSON_REQUEST
+  OTHER
 }
 
 enum PrivacyLevel {

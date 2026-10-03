@@ -398,8 +398,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   define('membership.beneficiary.read_own', 'Consultar el registro propio de beneficiaria', {
     needsAssignment: true,
   }),
-  define('membership.beneficiary.update', 'Actualizar o cerrar el registro de una persona beneficiaria', {
+  define('membership.beneficiary.update', 'Actualizar el registro de una persona beneficiaria', {
     sensitivity: 'SENSITIVE',
+  }),
+  define('membership.beneficiary.revoke', 'Revocar un registro de persona beneficiaria', {
+    sensitivity: 'CRITICAL',
+    requiresReason: true,
   }),
   define('membership.relationship.read_own', 'Consultar las relaciones propias', { needsAssignment: true }),
   define('membership.relationship.manage_own', 'Registrar o revocar una relación propia', {

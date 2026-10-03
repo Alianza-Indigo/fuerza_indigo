@@ -30,6 +30,11 @@ model Case {
   /// abrirse sin solicitud: alguien llega al local y lo cuenta en persona.
   supportRequestId String? @unique @db.Uuid
 
+  /// Registro protegido relacionado, cuando la atención se presta con esa
+  /// calidad. El expediente tiene su propio ciclo de vida: cerrarlo no revoca
+  /// el registro ni su credencial.
+  protectedBeneficiaryId String? @db.Uuid
+
   /// Entidad jurídica responsable. Determina quién responde por el expediente,
   /// y ninguna canalización cruza de una a otra sin consentimiento (PRD §10.4).
   legalEntityId String @db.Uuid
@@ -74,6 +79,7 @@ model Case {
   rowVersion       Int      @default(0)
 
   supportRequest   SupportRequest?  @relation("CaseFromRequest", fields: [supportRequestId], references: [id], onDelete: Restrict)
+  protectedBeneficiary ProtectedBeneficiary? @relation("CaseProtectedBeneficiary", fields: [protectedBeneficiaryId], references: [id], onDelete: Restrict)
   legalEntity      LegalEntity      @relation("CaseLegalEntity", fields: [legalEntityId], references: [id], onDelete: Restrict)
   territorialUnit  TerritorialUnit? @relation("CaseTerritory", fields: [territorialUnitId], references: [id], onDelete: Restrict)
   reopenedFromCase Case?            @relation("CaseReopenChain", fields: [reopenedFromCaseId], references: [id], onDelete: Restrict)
@@ -92,6 +98,7 @@ model Case {
   emergencyFlags EmergencyFlag[]
 
   @@index([legalEntityId, status])
+  @@index([protectedBeneficiaryId, status])
   @@index([domain, status])
   @@index([priority, status])
   @@index([territorialUnitId])

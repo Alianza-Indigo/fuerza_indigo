@@ -10,34 +10,25 @@ import {
   TextArea,
   type Option,
 } from '@/design-system/primitives';
-import { closeBeneficiaryAction, updateBeneficiaryAction, type BeneficiariaFormState } from '../actions';
-import { ESTADO_DE_ATENCION, PRIVACIDAD, URGENCIA } from '../../etiquetas';
+import {
+  restoreBeneficiaryAction,
+  revokeBeneficiaryAction,
+  updateBeneficiaryAction,
+  type BeneficiariaFormState,
+} from '../actions';
+import { MOTIVO_REVOCACION, PERFIL_PROTEGIDO, PRIVACIDAD } from '../../etiquetas';
 
 const INICIAL: BeneficiariaFormState = { status: 'idle' };
-
-const URGENCIAS: readonly Option[] = ['ROUTINE', 'PRIORITY', 'URGENT'].map((value) => ({
+const PERFILES: readonly Option[] = ['NEURODIVERGENT_PERSON', 'FAMILY_MEMBER', 'CAREGIVER'].map((value) => ({
   value,
-  label: URGENCIA[value] ?? value,
+  label: PERFIL_PROTEGIDO[value] ?? value,
 }));
-
-const ESTADOS: readonly Option[] = ['REGISTERED', 'IN_ATTENTION', 'REFERRED'].map((value) => ({
-  value,
-  label: ESTADO_DE_ATENCION[value] ?? value,
-}));
-
 const PRIVACIDADES: readonly Option[] = ['REINFORCED', 'STANDARD'].map((value) => ({
   value,
   label: PRIVACIDAD[value] ?? value,
 }));
+const MOTIVOS: readonly Option[] = Object.entries(MOTIVO_REVOCACION).map(([value, label]) => ({ value, label }));
 
-/**
- * Seguimiento de una atención (PRD §3.4).
- *
- * Bajar la privacidad a estándar exige explicarlo, y para una persona menor de
- * edad el caso de uso lo rechaza sin excepción. Por eso el campo de motivo
- * aparece en cuanto se elige «estándar»: pedirlo después de guardar sería
- * pedirlo cuando ya no sirve.
- */
 export function BeneficiaryManageForm({
   beneficiaryId,
   personas,
@@ -48,38 +39,19 @@ export function BeneficiaryManageForm({
   personas: readonly Option[];
   territorios: readonly Option[];
   actual: {
-    urgencyLevel: string;
-    status: string;
+    profileKind: string;
     territorialUnitId: string;
     responsiblePersonId: string;
     privacyLevel: string;
   };
 }) {
   const [estado, accion, pendiente] = useActionState(updateBeneficiaryAction, INICIAL);
-
   return (
     <form action={accion} className="space-y-4">
       <input type="hidden" name="beneficiaryId" value={beneficiaryId} />
-
       {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo actualizar'} />}
       {estado.status === 'ok' && <SuccessNotice title={estado.message ?? 'Registro actualizado'} />}
-
-      <Select
-        name="status"
-        label="Estado de la atención"
-        required
-        options={ESTADOS}
-        defaultValue={actual.status}
-        errors={estado.fieldErrors?.['status']}
-      />
-      <Select
-        name="urgencyLevel"
-        label="Urgencia"
-        required
-        options={URGENCIAS}
-        defaultValue={actual.urgencyLevel}
-        errors={estado.fieldErrors?.['urgencyLevel']}
-      />
+      <Select name="profileKind" label="Perfil" required options={PERFILES} defaultValue={actual.profileKind} />
       <Select
         name="territorialUnitId"
         label="Territorio"
@@ -104,56 +76,44 @@ export function BeneficiaryManageForm({
         defaultValue={actual.privacyLevel}
         errors={estado.fieldErrors?.['privacyLevel']}
       />
-
       <TextArea
         name="privacyChangeReason"
         label="Por qué se baja la privacidad"
         rows={2}
-        hint="Obligatorio solo si pasas de reforzada a estándar. Nunca se puede para una persona menor de edad."
+        hint="Obligatorio solo al pasar de reforzada a estándar; nunca se permite para una persona menor."
         errors={estado.fieldErrors?.['privacyChangeReason']}
       />
-
       <SubmitButton>{pendiente ? 'Guardando…' : 'Guardar cambios'}</SubmitButton>
-      <p aria-live="polite" className="sr-only">{pendiente ? 'Guardando' : ''}</p>
     </form>
   );
 }
 
-/** Cierre de la atención. */
-export function CloseBeneficiaryForm({ beneficiaryId }: { beneficiaryId: string }) {
-  const [estado, accion, pendiente] = useActionState(closeBeneficiaryAction, INICIAL);
-
-  if (estado.status === 'ok') return <SuccessNotice title={estado.message ?? 'Atención cerrada'} />;
-
+export function RevokeBeneficiaryForm({ beneficiaryId }: { beneficiaryId: string }) {
+  const [estado, accion, pendiente] = useActionState(revokeBeneficiaryAction, INICIAL);
+  if (estado.status === 'ok') return <SuccessNotice title={estado.message ?? 'Registro revocado'} />;
   return (
     <form action={accion} className="space-y-4">
       <input type="hidden" name="beneficiaryId" value={beneficiaryId} />
-      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo cerrar'} />}
-
-      <Notice tone="neutral" title="Cerrar no borra nada">
-        <p>El registro queda con su historial. Si la persona vuelve, se abre una atención nueva.</p>
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo revocar'} />}
+      <Notice tone="danger" title="La revocación es inmediata">
+        <p>Revoca la credencial y el acceso derivado de esta calidad. Los expedientes y su historial se conservan.</p>
       </Notice>
+      <Select name="reasonKind" label="Tipo de motivo" required options={MOTIVOS} />
+      <TextArea name="reason" label="Motivo detallado" required rows={3} errors={estado.fieldErrors?.['reason']} />
+      <SubmitButton variant="danger">{pendiente ? 'Revocando…' : 'Revocar registro'}</SubmitButton>
+    </form>
+  );
+}
 
-      <Select
-        name="outcome"
-        label="Cómo termina"
-        required
-        options={[
-          { value: 'CLOSED', label: 'Cerrada', hint: 'La atención terminó.' },
-          { value: 'ARCHIVED', label: 'Archivada', hint: 'Sin actividad y sin desenlace conocido.' },
-        ]}
-        errors={estado.fieldErrors?.['outcome']}
-      />
-      <TextArea
-        name="closeReason"
-        label="Cómo terminó"
-        required
-        rows={3}
-        errors={estado.fieldErrors?.['closeReason']}
-      />
-
-      <SubmitButton variant="danger">{pendiente ? 'Cerrando…' : 'Cerrar la atención'}</SubmitButton>
-      <p aria-live="polite" className="sr-only">{pendiente ? 'Cerrando' : ''}</p>
+export function RestoreBeneficiaryForm({ beneficiaryId }: { beneficiaryId: string }) {
+  const [estado, accion, pendiente] = useActionState(restoreBeneficiaryAction, INICIAL);
+  if (estado.status === 'ok') return <SuccessNotice title={estado.message ?? 'Registro restaurado'} />;
+  return (
+    <form action={accion} className="space-y-4">
+      <input type="hidden" name="beneficiaryId" value={beneficiaryId} />
+      {estado.status === 'error' && <ErrorNotice title={estado.message ?? 'No se pudo restaurar'} />}
+      <TextArea name="reason" label="Motivo de la restauración" required rows={3} errors={estado.fieldErrors?.['reason']} />
+      <SubmitButton>{pendiente ? 'Restaurando…' : 'Restaurar y emitir credencial nueva'}</SubmitButton>
     </form>
   );
 }

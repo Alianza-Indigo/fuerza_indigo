@@ -265,6 +265,7 @@ export const ROLE_SEEDS: readonly RoleSeed[] = [
       'membership.beneficiary.create',
       'membership.beneficiary.read',
       'membership.beneficiary.update',
+      'membership.beneficiary.revoke',
       'membership.relationship.read',
       'membership.relationship.manage',
       'credentialing.credential.issue',

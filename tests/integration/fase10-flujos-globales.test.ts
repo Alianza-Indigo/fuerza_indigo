@@ -267,8 +267,8 @@ describe('Flujo 3 · registro de beneficiario protegido sin afiliación ni cobro
     const alta = await registerBeneficiary(secretaria, {
       personId: persona.personId,
       legalEntityId: fuerzaId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'EXTERNAL_REFERRAL',
-      initialNeed: 'Necesita acompañamiento para un trámite escolar y no busca afiliarse.',
     });
     expect(alta.ok, alta.ok ? '' : alta.error.message).toBe(true);
     if (!alta.ok) return;

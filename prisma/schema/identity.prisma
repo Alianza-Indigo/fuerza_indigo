@@ -80,6 +80,7 @@ model Actor {
   membershipStatusEvents      MembershipStatusEvent[] @relation("MembershipStatusEventActor")
   createdBeneficiaries        ProtectedBeneficiary[]  @relation("BeneficiaryCreatedBy")
   updatedBeneficiaries        ProtectedBeneficiary[]  @relation("BeneficiaryUpdatedBy")
+  revokedBeneficiaries        ProtectedBeneficiary[]  @relation("BeneficiaryRevokedBy")
   createdCareRelationships    CareRelationship[]      @relation("CareRelationshipCreatedBy")
   updatedCareRelationships    CareRelationship[]      @relation("CareRelationshipUpdatedBy")
   createdProfessionalProfiles ProfessionalProfile[]   @relation("ProfessionalProfileCreatedBy")

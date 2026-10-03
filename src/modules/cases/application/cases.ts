@@ -37,6 +37,8 @@ import { compartimentoDe } from '../domain/access';
 export const openCaseSchema = z.object({
   /** Solicitud de la que nace. Un caso puede abrirse sin ella. */
   supportRequestId: z.uuid().nullable().default(null),
+  /** Registro persistente de beneficiario al que pertenece esta atención. */
+  protectedBeneficiaryId: z.uuid().nullable().default(null),
   /** Entidad responsable. Con solicitud, tiene que ser la confirmada. */
   legalEntityId: z.uuid({ error: () => 'Elige la entidad responsable.' }),
   domain: z.enum(['UNION_DEFENSE', 'SOCIAL_ATTENTION'] as const satisfies readonly CaseDomain[]),
@@ -111,6 +113,7 @@ export async function openCase(
 
   let relato = data.summary;
   let personaSolicitante: string | null = null;
+  let registroProtegido: string | null = data.protectedBeneficiaryId;
   let territorio = data.territorialUnitId;
 
   if (data.supportRequestId !== null) {
@@ -167,6 +170,36 @@ export async function openCase(
     }
   }
 
+  if (registroProtegido !== null) {
+    if (data.domain !== 'SOCIAL_ATTENTION') {
+      return fail(errors.validation({
+        protectedBeneficiaryId: ['Un registro protegido solo se vincula a expedientes de atención social.'],
+      }));
+    }
+    const beneficiario = await db().protectedBeneficiary.findUnique({
+      where: { id: registroProtegido },
+      select: { personId: true, legalEntityId: true, territorialUnitId: true, status: true },
+    });
+    if (beneficiario === null) return fail(errors.notFound('Ese registro protegido no existe.'));
+    if (beneficiario.status !== 'ACTIVE') {
+      return fail(errors.conflict('El registro protegido está revocado. No puede originar una atención nueva.'));
+    }
+    if (beneficiario.legalEntityId !== data.legalEntityId) {
+      return fail(errors.conflict('El registro protegido pertenece a otra entidad jurídica.'));
+    }
+    if (personaSolicitante !== null && personaSolicitante !== beneficiario.personId) {
+      return fail(errors.conflict('La solicitud y el registro protegido pertenecen a personas distintas.'));
+    }
+    personaSolicitante = beneficiario.personId;
+    territorio ??= beneficiario.territorialUnitId;
+  } else if (personaSolicitante !== null && data.domain === 'SOCIAL_ATTENTION') {
+    const beneficiario = await db().protectedBeneficiary.findUnique({
+      where: { personId_legalEntityId: { personId: personaSolicitante, legalEntityId: data.legalEntityId } },
+      select: { id: true, status: true },
+    });
+    if (beneficiario?.status === 'ACTIVE') registroProtegido = beneficiario.id;
+  }
+
   // Una unidad territorial disuelta no recibe expedientes nuevos: el asunto
   // quedaría a cargo de una delegación que ya no existe.
   let rutaDelTerritorio: string | null = null;
@@ -214,6 +247,7 @@ export async function openCase(
         folio,
         publicId,
         supportRequestId: data.supportRequestId,
+        protectedBeneficiaryId: registroProtegido,
         legalEntityId: entidad.id,
         domain: data.domain,
         caseType: data.caseType,
@@ -246,6 +280,7 @@ export async function openCase(
           caseId: fila.id,
           personId: personaSolicitante,
           role: 'APPLICANT',
+          membershipQuality: registroProtegido === null ? 'NONE' : 'PROTECTED_BENEFICIARY',
           canViewCase: true,
           createdByActorId: actor.actorId,
           updatedByActorId: actor.actorId,

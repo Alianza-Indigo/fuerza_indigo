@@ -324,8 +324,8 @@ describe('el directorio público se deriva de autorizaciones expresas (F4-DIR-00
     const atencion = await registerBeneficiary(secretaria, {
       personId: persona.personId,
       legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'SELF',
-      initialNeed: 'Pidió acompañamiento y su expediente lleva privacidad reforzada.',
     });
     if (!atencion.ok) throw atencion.error;
 

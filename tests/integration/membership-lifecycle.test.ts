@@ -501,8 +501,8 @@ describe('conversión sin duplicar a la persona (PRD §8.4)', () => {
     const atencion = await registerBeneficiary(secretaria, {
       personId: quien.personId,
       legalEntityId: entidadId,
+      profileKind: 'NEURODIVERGENT_PERSON',
       originKind: 'SELF',
-      initialNeed: 'Pidió acompañamiento para un trámite y así llegó a la organización.',
     });
     if (!atencion.ok) throw atencion.error;
 

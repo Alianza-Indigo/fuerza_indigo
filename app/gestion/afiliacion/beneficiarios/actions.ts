@@ -1,7 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { closeBeneficiary, registerBeneficiary, updateBeneficiary } from '@/modules/membership';
+import {
+  registerBeneficiary,
+  restoreBeneficiary,
+  revokeBeneficiary,
+  updateBeneficiary,
+} from '@/modules/membership';
 import { currentActor } from '@/platform/http/request-context';
 import { textField } from '@/platform/http/form-fields';
 
@@ -18,9 +23,8 @@ export interface BeneficiariaFormState {
 const CAMPOS = [
   'personId',
   'legalEntityId',
+  'profileKind',
   'originKind',
-  'initialNeed',
-  'urgencyLevel',
   'territorialUnitId',
   'responsiblePersonId',
   'privacyLevel',
@@ -42,6 +46,10 @@ export async function registerBeneficiaryAction(
   const resultado = await registerBeneficiary(actor, {
     personId: textField(formData, 'personId'),
     legalEntityId: textField(formData, 'legalEntityId'),
+    profileKind: textField(formData, 'profileKind') as
+      | 'NEURODIVERGENT_PERSON'
+      | 'FAMILY_MEMBER'
+      | 'CAREGIVER',
     originKind: textField(formData, 'originKind') as
       | 'SELF'
       | 'FAMILY_OR_CAREGIVER'
@@ -49,8 +57,6 @@ export async function registerBeneficiaryAction(
       | 'DELEGATE'
       | 'SOCIAL_STAFF'
       | 'EXTERNAL_REFERRAL',
-    initialNeed: textField(formData, 'initialNeed'),
-    urgencyLevel: (textField(formData, 'urgencyLevel') || 'ROUTINE') as 'ROUTINE' | 'PRIORITY' | 'URGENT',
     territorialUnitId: nulo(textField(formData, 'territorialUnitId')),
     responsiblePersonId: nulo(textField(formData, 'responsiblePersonId')),
     privacyLevel: (textField(formData, 'privacyLevel') || 'REINFORCED') as 'STANDARD' | 'REINFORCED',
@@ -68,7 +74,7 @@ export async function registerBeneficiaryAction(
   revalidatePath('/gestion/afiliacion/beneficiarios');
   return {
     status: 'ok',
-    message: `Atención registrada con el identificador ${resultado.data.publicId}.`,
+    message: `Registro protegido creado con el identificador ${resultado.data.publicId}.`,
     beneficiaryId: resultado.data.beneficiaryId,
   };
 }
@@ -81,8 +87,10 @@ export async function updateBeneficiaryAction(
   const beneficiaryId = textField(formData, 'beneficiaryId');
   const resultado = await updateBeneficiary(actor, {
     beneficiaryId,
-    urgencyLevel: textField(formData, 'urgencyLevel') as 'ROUTINE' | 'PRIORITY' | 'URGENT',
-    status: textField(formData, 'status') as 'REGISTERED' | 'IN_ATTENTION' | 'REFERRED',
+    profileKind: textField(formData, 'profileKind') as
+      | 'NEURODIVERGENT_PERSON'
+      | 'FAMILY_MEMBER'
+      | 'CAREGIVER',
     territorialUnitId: nulo(textField(formData, 'territorialUnitId')),
     responsiblePersonId: nulo(textField(formData, 'responsiblePersonId')),
     privacyLevel: textField(formData, 'privacyLevel') as 'STANDARD' | 'REINFORCED',
@@ -102,16 +110,23 @@ export async function updateBeneficiaryAction(
   return { status: 'ok', message: 'Registro actualizado.' };
 }
 
-export async function closeBeneficiaryAction(
+export async function revokeBeneficiaryAction(
   _previous: BeneficiariaFormState,
   formData: FormData,
 ): Promise<BeneficiariaFormState> {
   const actor = await currentActor();
   const beneficiaryId = textField(formData, 'beneficiaryId');
-  const resultado = await closeBeneficiary(actor, {
+  const resultado = await revokeBeneficiary(actor, {
     beneficiaryId,
-    outcome: textField(formData, 'outcome') as 'CLOSED' | 'ARCHIVED',
-    closeReason: textField(formData, 'closeReason'),
+    reasonKind: textField(formData, 'reasonKind') as
+      | 'IMPERSONATION'
+      | 'DUPLICATE'
+      | 'ADMINISTRATIVE_ERROR'
+      | 'FALSE_INFORMATION'
+      | 'MISUSE'
+      | 'PERSON_REQUEST'
+      | 'OTHER',
+    reason: textField(formData, 'reason'),
   });
 
   if (!resultado.ok) {
@@ -124,5 +139,27 @@ export async function closeBeneficiaryAction(
 
   revalidatePath('/gestion/afiliacion/beneficiarios');
   revalidatePath(`/gestion/afiliacion/beneficiarios/${beneficiaryId}`);
-  return { status: 'ok', message: 'Atención cerrada.' };
+  return { status: 'ok', message: 'Registro revocado.' };
+}
+
+export async function restoreBeneficiaryAction(
+  _previous: BeneficiariaFormState,
+  formData: FormData,
+): Promise<BeneficiariaFormState> {
+  const actor = await currentActor();
+  const beneficiaryId = textField(formData, 'beneficiaryId');
+  const resultado = await restoreBeneficiary(actor, {
+    beneficiaryId,
+    reason: textField(formData, 'reason'),
+  });
+  if (!resultado.ok) {
+    return {
+      status: 'error',
+      message: resultado.error.message,
+      ...(resultado.error.details === undefined ? {} : { fieldErrors: resultado.error.details }),
+    };
+  }
+  revalidatePath('/gestion/afiliacion/beneficiarios');
+  revalidatePath(`/gestion/afiliacion/beneficiarios/${beneficiaryId}`);
+  return { status: 'ok', message: 'Registro restaurado y credencial nueva emitida.' };
 }

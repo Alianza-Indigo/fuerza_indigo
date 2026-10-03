@@ -75,7 +75,7 @@ export interface Person360View {
     readonly id: string;
     readonly publicId: string;
     readonly status: string;
-    readonly urgency: string;
+    readonly profile: string;
     readonly privacyLevel: string;
     readonly legalEntity: string;
     readonly territory: string | null;
@@ -378,7 +378,7 @@ export async function getPerson360(
         id: true,
         publicId: true,
         status: true,
-        urgencyLevel: true,
+        profileKind: true,
         privacyLevel: true,
         legalEntity: { select: { shortName: true } },
         territorialUnit: { select: { name: true } },
@@ -640,7 +640,7 @@ export async function getPerson360(
       id: item.id,
       publicId: item.publicId,
       status: item.status,
-      urgency: item.urgencyLevel,
+      profile: item.profileKind,
       privacyLevel: item.privacyLevel,
       legalEntity: item.legalEntity.shortName,
       territory: item.territorialUnit?.name ?? null,

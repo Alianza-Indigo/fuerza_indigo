@@ -296,8 +296,8 @@ describe('una persona acumula calidades sin duplicarse', () => {
         publicId: newPublicId(),
         personId: quien.personId,
         legalEntityId: entidadId,
+        profileKind: 'NEURODIVERGENT_PERSON',
         originKind: 'SELF',
-        initialNeed: 'Orientación sobre un ajuste razonable en el trabajo.',
         createdByActorId: actorId,
         updatedByActorId: actorId,
       },
@@ -692,16 +692,16 @@ describe('el beneficiario protegido no paga ni se afilia', () => {
         publicId: newPublicId(),
         personId: quien.personId,
         legalEntityId: entidadId,
+        profileKind: 'NEURODIVERGENT_PERSON',
         originKind: 'EXTERNAL_REFERRAL',
-        initialNeed: 'Canalización desde una escuela.',
         createdByActorId: actorId,
         updatedByActorId: actorId,
       },
-      select: { privacyLevel: true, hasDigitalAccount: true, urgencyLevel: true },
+      select: { privacyLevel: true, hasDigitalAccount: true, status: true },
     });
     expect(registro.privacyLevel).toBe('REINFORCED');
     expect(registro.hasDigitalAccount).toBe(false);
-    expect(registro.urgencyLevel).toBe('ROUTINE');
+    expect(registro.status).toBe('ACTIVE');
   });
 
   it('nadie es responsable de sí mismo', async () => {
@@ -712,8 +712,8 @@ describe('el beneficiario protegido no paga ni se afilia', () => {
           publicId: newPublicId(),
           personId: quien.personId,
           legalEntityId: entidadId,
+          profileKind: 'NEURODIVERGENT_PERSON',
           originKind: 'SELF',
-          initialNeed: 'x',
           responsiblePersonId: quien.personId,
           createdByActorId: actorId,
           updatedByActorId: actorId,
@@ -729,8 +729,8 @@ describe('el beneficiario protegido no paga ni se afilia', () => {
         publicId: newPublicId(),
         personId: quien.personId,
         legalEntityId: entidadId,
+        profileKind: 'NEURODIVERGENT_PERSON',
         originKind: 'EXTERNAL_REFERRAL',
-        initialNeed: 'Acompañamiento en una valoración.',
         createdByActorId: actorId,
         updatedByActorId: actorId,
       },
@@ -740,8 +740,8 @@ describe('el beneficiario protegido no paga ni se afilia', () => {
     await expect(
       base.prisma.protectedBeneficiary.update({
         where: { id: registro.id },
-        data: { status: 'CLOSED', closedAt: new Date() },
+        data: { status: 'REVOKED' },
       }),
-    ).rejects.toThrow(/cierre_con_motivo/);
+    ).rejects.toThrow(/revocation_consistency/);
   });
 });
